@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import { config } from '../config.js';
 import { createSession, getSession, updateSession } from '../session-store.js';
 
-const states = new Map();
+export const states = new Map();
 
 // export function authorizationUrl() {
 //   if (!config.trimble.clientId || !config.trimble.authorizationEndpoint) throw new Error('Trimble OAuth configuration is incomplete');
@@ -68,9 +68,7 @@ export function authorizationUrl() {
   return url.toString();
 }
 
-export function authorizationUrlForMcp(
-  transactionId
-) {
+export function authorizationUrlForMcp(transactionId) {
 
   if (
     !config.trimble.clientId ||
@@ -88,11 +86,8 @@ export function authorizationUrlForMcp(
     trimbleState,
     {
       type: 'mcp',
-
       transactionId,
-
-      createdAt:
-        Date.now()
+      createdAt: Date.now()
     }
   );
 
@@ -140,6 +135,7 @@ export function authorizationUrlForMcp(
 //   const sessionId = createSession({ trimble: json });
 //   return sessionId;
 // }
+
 export async function exchangeCode(code, state) {
 
   const issued =
@@ -151,12 +147,6 @@ export async function exchangeCode(code, state) {
     );
   }
 
-  /*
-   * Existing extension OAuth stores
-   * a number.
-   *
-   * MCP OAuth stores an object.
-   */
   const issuedAt =
     typeof issued === 'number'
       ? issued
@@ -174,18 +164,6 @@ export async function exchangeCode(code, state) {
       'Invalid or expired OAuth state'
     );
   }
-
-  /*
-   * IMPORTANT:
-   *
-   * Do NOT delete the state here.
-   *
-   * The MCP callback still needs to know
-   * whether this was an MCP OAuth request.
-   *
-   * We will delete it after the flow is
-   * successfully completed.
-   */
 
   const body =
     new URLSearchParams({
@@ -230,9 +208,6 @@ export async function exchangeCode(code, state) {
     );
   }
 
-  /*
-   * Create your existing application session.
-   */
   const sessionId =
     createSession({
       trimble: json

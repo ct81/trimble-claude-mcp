@@ -3,7 +3,8 @@ import crypto from 'crypto';
 const tokens = new Map();
 
 export function createMcpAccessToken(
-  sessionId
+  sessionId,
+  resource
 ) {
 
   const token =
@@ -14,6 +15,7 @@ export function createMcpAccessToken(
     token,
     {
       sessionId,
+      resource,
       createdAt: Date.now(),
       expiresAt:
         Date.now() +

@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { config } from './config.js';
-import { authorizationUrl, exchangeCode, requireSession } from './oauth/oauth.js';
+import { authorizationUrl, exchangeCode, requireSession, states } from './oauth/oauth.js';
 import { handleMcp } from './mcp/http.js';
 import {
   createOAuthTransaction,
@@ -35,7 +35,13 @@ import {
 
 const app = express();
 app.set('trust proxy', 1);
-app.use(cors({origin: config.extensionOrigin === '*' ? true : config.extensionOrigin, credentials:true}));
+//app.use(cors({origin: config.extensionOrigin === '*' ? true : config.extensionOrigin, credentials:true}));
+app.use(
+  cors({
+    origin: true,
+    credentials: true
+  })
+);
 //app.use(express.json({limit:'2mb'}));
 app.use(express.json());
 app.use(
@@ -231,7 +237,8 @@ app.get(
         response_type,
         state,
         code_challenge,
-        code_challenge_method
+        code_challenge_method,
+        resource
       } = req.query;
 
       console.log(
@@ -353,7 +360,10 @@ app.get(
             code_challenge,
 
           codeChallengeMethod:
-            code_challenge_method
+            code_challenge_method,
+
+          resource:
+            resource || `${process.env.PUBLIC_BASE_URL}/mcp`
         });
 
       // -----------------------------------------
@@ -402,7 +412,8 @@ app.post(
         code,
         client_id,
         redirect_uri,
-        code_verifier
+        code_verifier,
+        resource
       } = req.body;
 
       if (
@@ -453,6 +464,23 @@ app.post(
             'invalid_grant'
         });
       }
+      
+      const expectedResource = `${process.env.PUBLIC_BASE_URL}/mcp`;
+
+    if (
+      (resource || expectedResource) !==
+      authorization.resource
+    ) {
+
+      return res.status(400).json({
+
+        error:
+          'invalid_grant',
+
+        error_description:
+          'Invalid resource'
+      });
+    }
 
       /*
        * Verify PKCE.
@@ -478,10 +506,33 @@ app.post(
        * Create MCP access token.
        */
 
+      // const accessToken =
+      //   createMcpAccessToken(
+      //     authorization.sessionId
+      //   );
       const accessToken =
-        createMcpAccessToken(
-          authorization.sessionId
-        );
+      createMcpAccessToken({
+
+        sessionId:
+          authorization.sessionId,
+
+        resource:
+          authorization.resource
+
+      });
+
+      console.log(
+        '========== MCP TOKEN REQUEST =========='
+      );
+
+      console.log({
+        grant_type,
+        client_id,
+        redirect_uri,
+        hasCode: !!code,
+        hasCodeVerifier: !!code_verifier,
+        resource
+      });
 
       return res.json({
 
@@ -721,7 +772,10 @@ app.get(
               transaction.codeChallenge,
 
             codeChallengeMethod:
-              transaction.codeChallengeMethod
+              transaction.codeChallengeMethod,
+
+            resource:
+              transaction.resource
           });
 
         /*
@@ -813,7 +867,35 @@ app.get(
 );
 app.get('/auth/success', (_, res) => res.send('<h2>Trimble authentication successful.</h2><p>You can close this window and return to Claude.</p>'));
 app.get('/auth/status', requireSession, (req,res) => res.json({authenticated:true}));
-app.post('/mcp', requireSession, handleMcp);
+//app.post('/mcp', requireSession, handleMcp);
+app.post(
+  '/mcp',
+  (req, res, next) => {
+
+    console.log(
+      '========== MCP REQUEST =========='
+    );
+
+    console.log(
+      'Method:',
+      req.method
+    );
+
+    console.log(
+      'Headers:',
+      req.headers
+    );
+
+    console.log(
+      'Body:',
+      req.body
+    );
+
+    next();
+  },
+  requireSession,
+  handleMcp
+);
 
 app.listen(config.port, () => console.log(`Trimble Claude MCP listening on ${config.port}`));
 function escapeHtml(s){return String(s).replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\\':'&#39;'}[c]));}
