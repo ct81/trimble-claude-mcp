@@ -29,11 +29,63 @@ export async function exchangeCode(code, state) {
   return sessionId;
 }
 
+// export function requireSession(req, res, next) {
+//   const id = req.headers['x-mcp-session'] || req.cookies?.mcp_session;
+//   const session = getSession(id);
+//   if (!session) return res.status(401).json({ error: 'authentication_required', authorize: '/oauth/login' });
+//   req.mcpSessionId = id; req.session = session; next();
+// }
 export function requireSession(req, res, next) {
-  const id = req.headers['x-mcp-session'] || req.cookies?.mcp_session;
+  /*
+   * 1. Existing browser/extension session
+   */
+  const legacyId =
+    req.headers['x-mcp-session'] ||
+    req.cookies?.mcp_session;
+
+  /*
+   * 2. MCP OAuth Bearer token
+   */
+  const authHeader =
+    req.headers.authorization;
+
+  let bearerToken = null;
+
+  if (authHeader) {
+    const match =
+      authHeader.match(/^Bearer\s+(.+)$/i);
+
+    if (match) {
+      bearerToken = match[1];
+    }
+  }
+
+  /*
+   * Prefer OAuth Bearer token for Claude.
+   * Fall back to existing session authentication.
+   */
+  const id = bearerToken || legacyId;
+
   const session = getSession(id);
-  if (!session) return res.status(401).json({ error: 'authentication_required', authorize: '/oauth/login' });
-  req.mcpSessionId = id; req.session = session; next();
+
+  if (!session) {
+    const baseUrl =
+      process.env.PUBLIC_BASE_URL;
+
+    res.setHeader(
+      'WWW-Authenticate',
+      `Bearer resource_metadata="${baseUrl}/.well-known/oauth-protected-resource"`
+    );
+
+    return res.status(401).json({
+      error: 'authentication_required'
+    });
+  }
+
+  req.mcpSessionId = id;
+  req.session = session;
+
+  next();
 }
 
 export async function refreshIfNeeded(sessionId) {

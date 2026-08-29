@@ -12,6 +12,61 @@ app.use(express.json({limit:'2mb'}));
 app.use(cookieParser());
 
 app.get('/health', (_, res) => res.json({status:'ok',service:'trimble-connect-mcp'}));
+app.get(
+    "/.well-known/oauth-protected-resource",
+    (req, res) => {
+
+        const baseUrl =
+            process.env.PUBLIC_BASE_URL;
+
+        res.json({
+            resource: `${baseUrl}/mcp`,
+
+            authorization_servers: [
+                baseUrl
+            ]
+        });
+    }
+);
+app.get(
+    "/.well-known/oauth-authorization-server",
+    (req, res) => {
+
+        const baseUrl =
+            process.env.PUBLIC_BASE_URL;
+
+        res.json({
+
+            issuer: baseUrl,
+
+            authorization_endpoint:
+                `${baseUrl}/oauth/authorize`,
+
+            token_endpoint:
+                `${baseUrl}/oauth/token`,
+
+            registration_endpoint:
+                `${baseUrl}/oauth/register`,
+
+            response_types_supported: [
+                "code"
+            ],
+
+            grant_types_supported: [
+                "authorization_code",
+                "refresh_token"
+            ],
+
+            code_challenge_methods_supported: [
+                "S256"
+            ],
+
+            token_endpoint_auth_methods_supported: [
+                "none"
+            ]
+        });
+    }
+);
 app.get('/oauth/login', (_, res) => { try { res.redirect(authorizationUrl()); } catch (e) { res.status(500).json({error:e.message}); } });
 app.get('/oauth/callback', async (req, res) => {
   try {
