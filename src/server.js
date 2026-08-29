@@ -1,5 +1,5 @@
 // git add .
-// git commit -m "Start MCP 4"
+// git commit -m "Start MCP 5"
 // git push origin main
 
 
@@ -952,6 +952,55 @@ app.get(
 );
 app.get('/auth/success', (_, res) => res.send('<h2>Trimble authentication successful.</h2><p>You can close this window and return to Claude.</p>'));
 app.get('/auth/status', requireSession, (req,res) => res.json({authenticated:true}));
+
+// =========================================================
+// TEST: GET TRIMBLE CONNECT PROJECTS
+// =========================================================
+
+app.get(
+  '/api/v1/projects',
+  requireSession,
+  async (req, res) => {
+
+    try {
+
+      console.log(
+        '[Swagger] Calling Trimble Connect getProjects'
+      );
+
+      console.log(
+        '[Swagger] Session ID:',
+        req.mcpSessionId
+          ? `${req.mcpSessionId.substring(0, 8)}...`
+          : null
+      );
+
+      const result =
+        await tools.getProjects(
+          req.mcpSessionId
+        );
+
+      console.log(
+        '[Swagger] getProjects successful'
+      );
+
+      return res.json(result);
+
+    } catch (error) {
+
+      console.error(
+        '[Swagger] getProjects failed:',
+        error
+      );
+
+      return res.status(500).json({
+        error: error.message
+      });
+
+    }
+  }
+);
+
 app.post('/mcp', requireSession, handleMcp);
 // app.post(
 //   '/mcp',
