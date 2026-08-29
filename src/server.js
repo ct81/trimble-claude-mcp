@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { config } from './config.js';
-import { authorizationUrl, exchangeCode, requireSession, states } from './oauth/oauth.js';
+import { authorizationUrl, exchangeCode, requireSession, states, authorizationUrlForMcp } from './oauth/oauth.js';
 import { handleMcp } from './mcp/http.js';
 import {
   createOAuthTransaction,

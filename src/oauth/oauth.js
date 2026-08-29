@@ -1,6 +1,9 @@
 import crypto from 'node:crypto';
 import { config } from '../config.js';
 import { createSession, getSession, updateSession } from '../session-store.js';
+import {
+  getSessionIdFromMcpToken
+} from './mcpTokens.js';
 
 export const states = new Map();
 
