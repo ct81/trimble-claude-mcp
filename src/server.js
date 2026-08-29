@@ -1,9 +1,10 @@
 // git add .
-// git commit -m "Start MCP 2"
+// git commit -m "Start MCP 3"
 // git push origin main
 
 
 import express from 'express';
+import swaggerUi from 'swagger-ui-express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { config } from './config.js';
@@ -46,6 +47,43 @@ import {
 } from './oauth/oauthState.js';
 
 const app = express();
+
+const swaggerDocument = {
+    openapi: '3.0.0',
+
+    info: {
+        title: 'Trimble Connect MCP API',
+        version: '1.0.0',
+        description:
+            'API for testing Trimble Connect MCP tools'
+    },
+
+    servers: [
+        {
+            url:
+                process.env.PUBLIC_BASE_URL ||
+                `http://localhost:${config.port}`
+        }
+    ],
+
+    components: {
+        securitySchemes: {
+            bearerAuth: {
+                type: 'http',
+                scheme: 'bearer'
+            }
+        }
+    },
+
+    security: [
+        {
+            bearerAuth: []
+        }
+    ],
+
+    paths: {}
+};
+
 app.set('trust proxy', 1);
 app.use(cors({origin: config.extensionOrigin === '*' ? true : config.extensionOrigin, credentials:true}));
 // app.use(
@@ -60,6 +98,11 @@ app.use(
     express.urlencoded({
         extended: true
     })
+);
+app.use(
+    '/swagger',
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerDocument)
 );
 app.use(cookieParser());
 
