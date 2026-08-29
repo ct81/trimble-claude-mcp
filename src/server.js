@@ -1,5 +1,5 @@
 // git add .
-// git commit -m "Start MCP 5"
+// git commit -m "Start MCP 6"
 // git push origin main
 
 
@@ -101,6 +101,35 @@ const swaggerDocument = {
     },
 
     paths: {}
+};
+
+swaggerDocument.paths['/api/v1/projects'] = {
+  get: {
+    summary: 'Get Trimble Connect projects',
+
+    description:
+      'Returns the Trimble Connect projects available to the authenticated user.',
+
+    security: [
+      {
+        bearerAuth: []
+      }
+    ],
+
+    responses: {
+      200: {
+        description: 'Projects retrieved successfully'
+      },
+
+      401: {
+        description: 'Authentication required'
+      },
+
+      500: {
+        description: 'Trimble API error'
+      }
+    }
+  }
 };
 
 app.set('trust proxy', 1);
