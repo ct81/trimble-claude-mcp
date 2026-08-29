@@ -1,5 +1,5 @@
 // git add .
-// git commit -m "Fix OAuth state handling 6"
+// git commit -m "Fix OAuth state handling 7"
 // git push origin main
 
 
@@ -41,7 +41,8 @@ import {
 
 import {
   getOAuthState,
-  deleteOAuthState
+  deleteOAuthState,
+  createOAuthState
 } from './oauth/oauthState.js';
 
 const app = express();
@@ -832,7 +833,7 @@ app.get(
       // const stateData =
       //   states.get(state);
       const stateData =
-        getOAuthState.get(state);
+        getOAuthState(state);
 
       if (!stateData) {
         throw new Error(
@@ -856,7 +857,7 @@ app.get(
       ) {
 
         // states.delete(state);
-        states.deleteOAuthState(state);
+        deleteOAuthState(state);
 
         throw new Error(
           'OAuth state expired'
@@ -922,7 +923,7 @@ app.get(
          * Delete temporary state.
          */
         //states.delete(state);
-        states.deleteOAuthState(state);
+        deleteOAuthState(state);
 
         /*
          * Delete MCP transaction.
@@ -967,7 +968,7 @@ app.get(
         );
 
       //states.delete(state);
-      states.deleteOAuthState(state);
+      deleteOAuthState(state);
 
       res.cookie(
         'mcp_session',
