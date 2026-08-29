@@ -96,39 +96,6 @@ export function authorizationUrl() {
   return url.toString();
 }
 
-  const url =
-    new URL(
-      config.trimble.authorizationEndpoint
-    );
-
-  url.searchParams.set(
-    'client_id',
-    config.trimble.clientId
-  );
-
-  url.searchParams.set(
-    'redirect_uri',
-    config.trimble.redirectUri
-  );
-
-  url.searchParams.set(
-    'response_type',
-    'code'
-  );
-
-  url.searchParams.set(
-    'scope',
-    config.trimble.scope
-  );
-
-  url.searchParams.set(
-    'state',
-    state
-  );
-
-  return url.toString();
-}
-
 // export function authorizationUrlForMcp(transactionId) {
 
 //   if (
