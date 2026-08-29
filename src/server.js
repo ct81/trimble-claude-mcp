@@ -1,5 +1,5 @@
 // git add .
-// git commit -m "Fix OAuth state handling"
+// git commit -m "Fix OAuth state handling 2"
 // git push origin main
 
 
@@ -42,7 +42,7 @@ import {
 import {
   getOAuthState,
   deleteOAuthState
-} from './oauthState.js';
+} from './oauth/oauthState.js';
 
 const app = express();
 app.set('trust proxy', 1);
