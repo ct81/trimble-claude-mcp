@@ -14,10 +14,6 @@ export function createOAuthState(data) {
       createdAt: Date.now()
     }
   );
-// states.createOAuthState({
-//   type: 'extension',
-//   createdAt: Date.now()
-// });
 
   return state;
 }
@@ -37,7 +33,6 @@ export function getOAuthState(state) {
   ) {
 
     states.delete(state);
-    //states.deleteOAuthState(state);
 
     return null;
   }
@@ -47,5 +42,4 @@ export function getOAuthState(state) {
 
 export function deleteOAuthState(state) {
   states.delete(state);
-  //states.deleteOAuthState(state);
 }

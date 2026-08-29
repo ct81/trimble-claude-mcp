@@ -1,5 +1,5 @@
 // git add .
-// git commit -m "Fix OAuth state handling 7"
+// git commit -m "Start MCP 1"
 // git push origin main
 
 
@@ -119,124 +119,6 @@ app.get(
         });
     }
 );
-// app.get(
-//   '/oauth/authorize',
-//   async (req, res) => {
-
-//     try {
-
-//       const {
-//         client_id,
-//         redirect_uri,
-//         response_type,
-//         state,
-//         code_challenge,
-//         code_challenge_method
-//       } = req.query;
-
-//       // ----------------------------------------
-//       // Validate Claude request
-//       // ----------------------------------------
-
-//       if (!client_id) {
-//         return res.status(400).json({
-//           error: 'invalid_request',
-//           error_description:
-//             'Missing client_id'
-//         });
-//       }
-
-//       if (response_type !== 'code') {
-//         return res.status(400).json({
-//           error: 'unsupported_response_type'
-//         });
-//       }
-
-//       if (!redirect_uri) {
-//         return res.status(400).json({
-//           error: 'invalid_request',
-//           error_description:
-//             'Missing redirect_uri'
-//         });
-//       }
-
-//       if (!state) {
-//         return res.status(400).json({
-//           error: 'invalid_request',
-//           error_description:
-//             'Missing state'
-//         });
-//       }
-
-//       if (!code_challenge) {
-//         return res.status(400).json({
-//           error: 'invalid_request',
-//           error_description:
-//             'Missing code_challenge'
-//         });
-//       }
-
-//       if (
-//         code_challenge_method !==
-//         'S256'
-//       ) {
-//         return res.status(400).json({
-//           error: 'invalid_request',
-//           error_description:
-//             'Only S256 PKCE is supported'
-//         });
-//       }
-
-//       // ----------------------------------------
-//       // Store Claude transaction
-//       // ----------------------------------------
-
-//       const transactionId =
-//         createOAuthTransaction({
-
-//           clientId:
-//             client_id,
-
-//           redirectUri:
-//             redirect_uri,
-
-//           state,
-
-//           codeChallenge:
-//             code_challenge,
-
-//           codeChallengeMethod:
-//             code_challenge_method
-//         });
-
-//       // ----------------------------------------
-//       // Start Trimble OAuth
-//       // ----------------------------------------
-
-//       const trimbleUrl =
-//         authorizationUrlForMcp(
-//           transactionId
-//         );
-
-//       return res.redirect(
-//         trimbleUrl
-//       );
-
-//     } catch (e) {
-
-//       console.error(
-//         'MCP authorize error:',
-//         e
-//       );
-
-//       return res.status(500).json({
-//         error: 'server_error',
-//         error_description:
-//           e.message
-//       });
-//     }
-//   }
-// );
 app.get(
   '/oauth/authorize',
   async (req, res) => {
@@ -797,13 +679,6 @@ app.post(
   }
 );
 app.get('/oauth/login', (_, res) => { try { res.redirect(authorizationUrl()); } catch (e) { res.status(500).json({error:e.message}); } });
-// app.get('/oauth/callback', async (req, res) => {
-//   try {
-//     const sessionId = await exchangeCode(req.query.code, req.query.state);
-//     res.cookie('mcp_session', sessionId, {httpOnly:true, secure:config.sessionSecret && config.extensionOrigin.startsWith('https://'), sameSite:'lax', maxAge:7*24*3600*1000});
-//     res.redirect('/auth/success');
-//   } catch (e) { res.status(400).send(`<h1>OAuth failed</h1><pre>${escapeHtml(e.message)}</pre>`); }
-// });
 app.get(
   '/oauth/callback',
   async (req, res) => {
