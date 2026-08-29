@@ -16,7 +16,8 @@ import {
 
 import {
   getOAuthState,
-  deleteOAuthState
+  deleteOAuthState,
+  createOAuthState
 } from './oauthState.js';
 
 export function authorizationUrlForMcp(
