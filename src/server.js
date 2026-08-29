@@ -521,18 +521,18 @@ app.post(
 
       });
 
-      console.log(
-        '========== MCP TOKEN REQUEST =========='
-      );
+      // console.log(
+      //   '========== MCP TOKEN REQUEST =========='
+      // );
 
-      console.log({
-        grant_type,
-        client_id,
-        redirect_uri,
-        hasCode: !!code,
-        hasCodeVerifier: !!code_verifier,
-        resource
-      });
+      // console.log({
+      //   grant_type,
+      //   client_id,
+      //   redirect_uri,
+      //   hasCode: !!code,
+      //   hasCodeVerifier: !!code_verifier,
+      //   resource
+      // });
 
       return res.json({
 
@@ -867,35 +867,35 @@ app.get(
 );
 app.get('/auth/success', (_, res) => res.send('<h2>Trimble authentication successful.</h2><p>You can close this window and return to Claude.</p>'));
 app.get('/auth/status', requireSession, (req,res) => res.json({authenticated:true}));
-//app.post('/mcp', requireSession, handleMcp);
-app.post(
-  '/mcp',
-  (req, res, next) => {
+app.post('/mcp', requireSession, handleMcp);
+// app.post(
+//   '/mcp',
+//   (req, res, next) => {
 
-    console.log(
-      '========== MCP REQUEST =========='
-    );
+//     console.log(
+//       '========== MCP REQUEST =========='
+//     );
 
-    console.log(
-      'Method:',
-      req.method
-    );
+//     console.log(
+//       'Method:',
+//       req.method
+//     );
 
-    console.log(
-      'Headers:',
-      req.headers
-    );
+//     console.log(
+//       'Headers:',
+//       req.headers
+//     );
 
-    console.log(
-      'Body:',
-      req.body
-    );
+//     console.log(
+//       'Body:',
+//       req.body
+//     );
 
-    next();
-  },
-  requireSession,
-  handleMcp
-);
+//     next();
+//   },
+//   requireSession,
+//   handleMcp
+// );
 
 app.listen(config.port, () => console.log(`Trimble Claude MCP listening on ${config.port}`));
 function escapeHtml(s){return String(s).replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\\':'&#39;'}[c]));}
