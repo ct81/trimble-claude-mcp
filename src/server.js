@@ -4,6 +4,34 @@ import cookieParser from 'cookie-parser';
 import { config } from './config.js';
 import { authorizationUrl, exchangeCode, requireSession } from './oauth/oauth.js';
 import { handleMcp } from './mcp/http.js';
+import {
+  createOAuthTransaction,
+  getOAuthTransaction,
+  deleteOAuthTransaction
+} from './oauth/mcpOAuthStore.js';
+
+import {
+  createAuthorizationCode,
+  consumeAuthorizationCode
+} from './oauth/mcpAuthorizationCodes.js';
+
+import {
+  authorizationUrlForMcp
+} from './oauth/trimbleOAuth.js';
+
+import {
+  verifyPkce
+} from './oauth/pkce.js';
+
+import {
+  createMcpAccessToken,
+  getSessionIdFromMcpToken
+} from './oauth/mcpTokens.js';
+
+import {
+  registerClient,
+  getClient
+} from './oauth/mcpClients.js';
 
 const app = express();
 app.set('trust proxy', 1);
@@ -67,14 +95,716 @@ app.get(
         });
     }
 );
+// app.get(
+//   '/oauth/authorize',
+//   async (req, res) => {
+
+//     try {
+
+//       const {
+//         client_id,
+//         redirect_uri,
+//         response_type,
+//         state,
+//         code_challenge,
+//         code_challenge_method
+//       } = req.query;
+
+//       // ----------------------------------------
+//       // Validate Claude request
+//       // ----------------------------------------
+
+//       if (!client_id) {
+//         return res.status(400).json({
+//           error: 'invalid_request',
+//           error_description:
+//             'Missing client_id'
+//         });
+//       }
+
+//       if (response_type !== 'code') {
+//         return res.status(400).json({
+//           error: 'unsupported_response_type'
+//         });
+//       }
+
+//       if (!redirect_uri) {
+//         return res.status(400).json({
+//           error: 'invalid_request',
+//           error_description:
+//             'Missing redirect_uri'
+//         });
+//       }
+
+//       if (!state) {
+//         return res.status(400).json({
+//           error: 'invalid_request',
+//           error_description:
+//             'Missing state'
+//         });
+//       }
+
+//       if (!code_challenge) {
+//         return res.status(400).json({
+//           error: 'invalid_request',
+//           error_description:
+//             'Missing code_challenge'
+//         });
+//       }
+
+//       if (
+//         code_challenge_method !==
+//         'S256'
+//       ) {
+//         return res.status(400).json({
+//           error: 'invalid_request',
+//           error_description:
+//             'Only S256 PKCE is supported'
+//         });
+//       }
+
+//       // ----------------------------------------
+//       // Store Claude transaction
+//       // ----------------------------------------
+
+//       const transactionId =
+//         createOAuthTransaction({
+
+//           clientId:
+//             client_id,
+
+//           redirectUri:
+//             redirect_uri,
+
+//           state,
+
+//           codeChallenge:
+//             code_challenge,
+
+//           codeChallengeMethod:
+//             code_challenge_method
+//         });
+
+//       // ----------------------------------------
+//       // Start Trimble OAuth
+//       // ----------------------------------------
+
+//       const trimbleUrl =
+//         authorizationUrlForMcp(
+//           transactionId
+//         );
+
+//       return res.redirect(
+//         trimbleUrl
+//       );
+
+//     } catch (e) {
+
+//       console.error(
+//         'MCP authorize error:',
+//         e
+//       );
+
+//       return res.status(500).json({
+//         error: 'server_error',
+//         error_description:
+//           e.message
+//       });
+//     }
+//   }
+// );
+app.get(
+  '/oauth/authorize',
+  async (req, res) => {
+
+    try {
+
+      const {
+        client_id,
+        redirect_uri,
+        response_type,
+        state,
+        code_challenge,
+        code_challenge_method
+      } = req.query;
+
+      console.log(
+        'MCP authorization request:',
+        req.query
+      );
+
+      // -----------------------------------------
+      // Validate client
+      // -----------------------------------------
+
+      const client =
+        getClient(client_id);
+
+      if (!client) {
+
+        return res.status(400).json({
+          error:
+            'unauthorized_client',
+
+          error_description:
+            'Unknown client_id'
+        });
+      }
+
+      // -----------------------------------------
+      // Validate redirect URI
+      // -----------------------------------------
+
+      if (
+        !client.redirectUris.includes(
+          redirect_uri
+        )
+      ) {
+
+        return res.status(400).json({
+          error:
+            'invalid_request',
+
+          error_description:
+            'Invalid redirect_uri'
+        });
+      }
+
+      // -----------------------------------------
+      // Validate response type
+      // -----------------------------------------
+
+      if (
+        response_type !== 'code'
+      ) {
+
+        return res.status(400).json({
+          error:
+            'unsupported_response_type'
+        });
+      }
+
+      // -----------------------------------------
+      // State
+      // -----------------------------------------
+
+      if (!state) {
+
+        return res.status(400).json({
+          error:
+            'invalid_request',
+
+          error_description:
+            'Missing state'
+        });
+      }
+
+      // -----------------------------------------
+      // PKCE
+      // -----------------------------------------
+
+      if (!code_challenge) {
+
+        return res.status(400).json({
+          error:
+            'invalid_request',
+
+          error_description:
+            'Missing code_challenge'
+        });
+      }
+
+      if (
+        code_challenge_method !==
+        'S256'
+      ) {
+
+        return res.status(400).json({
+          error:
+            'invalid_request',
+
+          error_description:
+            'Only S256 PKCE is supported'
+        });
+      }
+
+      // -----------------------------------------
+      // Create MCP transaction
+      // -----------------------------------------
+
+      const transactionId =
+        createOAuthTransaction({
+
+          clientId:
+            client_id,
+
+          redirectUri:
+            redirect_uri,
+
+          state,
+
+          codeChallenge:
+            code_challenge,
+
+          codeChallengeMethod:
+            code_challenge_method
+        });
+
+      // -----------------------------------------
+      // Start Trimble OAuth
+      // -----------------------------------------
+
+      const trimbleUrl =
+        authorizationUrlForMcp(
+          transactionId
+        );
+
+      console.log(
+        'Redirecting to Trimble OAuth:',
+        trimbleUrl
+      );
+
+      return res.redirect(
+        trimbleUrl
+      );
+
+    } catch (e) {
+
+      console.error(
+        'MCP authorize error:',
+        e
+      );
+
+      return res.status(500).json({
+        error:
+          'server_error',
+
+        error_description:
+          e.message
+      });
+    }
+  }
+);
+app.post(
+  '/oauth/token',
+  async (req, res) => {
+
+    try {
+
+      const {
+        grant_type,
+        code,
+        client_id,
+        redirect_uri,
+        code_verifier
+      } = req.body;
+
+      if (
+        grant_type !==
+        'authorization_code'
+      ) {
+        return res.status(400).json({
+          error:
+            'unsupported_grant_type'
+        });
+      }
+
+      if (!code) {
+        return res.status(400).json({
+          error:
+            'invalid_request'
+        });
+      }
+
+      const authorization =
+        consumeAuthorizationCode(
+          code
+        );
+
+      if (!authorization) {
+        return res.status(400).json({
+          error:
+            'invalid_grant'
+        });
+      }
+
+      if (
+        authorization.clientId !==
+        client_id
+      ) {
+        return res.status(400).json({
+          error:
+            'invalid_grant'
+        });
+      }
+
+      if (
+        authorization.redirectUri !==
+        redirect_uri
+      ) {
+        return res.status(400).json({
+          error:
+            'invalid_grant'
+        });
+      }
+
+      /*
+       * Verify PKCE.
+       */
+
+      const pkceValid =
+        verifyPkce(
+          code_verifier,
+          authorization.codeChallenge
+        );
+
+      if (!pkceValid) {
+
+        return res.status(400).json({
+          error:
+            'invalid_grant',
+          error_description:
+            'PKCE verification failed'
+        });
+      }
+
+      /*
+       * Create MCP access token.
+       */
+
+      const accessToken =
+        createMcpAccessToken(
+          authorization.sessionId
+        );
+
+      return res.json({
+
+        access_token:
+          accessToken,
+
+        token_type:
+          'Bearer',
+
+        expires_in:
+          3600
+      });
+
+    } catch (e) {
+
+      console.error(
+        'MCP token error:',
+        e
+      );
+
+      return res.status(500).json({
+        error:
+          'server_error'
+      });
+    }
+  }
+);
+app.post(
+  '/oauth/register',
+  async (req, res) => {
+
+    try {
+
+      console.log(
+        'MCP client registration:',
+        JSON.stringify(req.body, null, 2)
+      );
+
+      const {
+        client_name,
+        redirect_uris,
+        grant_types,
+        response_types,
+        token_endpoint_auth_method,
+        application_type
+      } = req.body;
+
+      if (
+        !Array.isArray(redirect_uris) ||
+        redirect_uris.length === 0
+      ) {
+
+        return res.status(400).json({
+          error:
+            'invalid_client_metadata',
+
+          error_description:
+            'redirect_uris is required'
+        });
+      }
+
+      /*
+       * Claude is a public OAuth client.
+       * It should use PKCE rather than a
+       * client secret.
+       */
+
+      const client =
+        registerClient({
+
+          client_name,
+
+          redirect_uris,
+
+          grant_types,
+
+          response_types,
+
+          token_endpoint_auth_method,
+
+          application_type
+        });
+
+      return res.status(201).json({
+
+        client_id:
+          client.clientId,
+
+        client_name:
+          client.clientName,
+
+        redirect_uris:
+          client.redirectUris,
+
+        grant_types:
+          client.grantTypes,
+
+        response_types:
+          client.responseTypes,
+
+        token_endpoint_auth_method:
+          client.tokenEndpointAuthMethod,
+
+        application_type:
+          client.applicationType
+
+      });
+
+    } catch (e) {
+
+      console.error(
+        'MCP client registration failed:',
+        e
+      );
+
+      return res.status(500).json({
+        error:
+          'server_error',
+
+        error_description:
+          e.message
+      });
+    }
+  }
+);
 app.get('/oauth/login', (_, res) => { try { res.redirect(authorizationUrl()); } catch (e) { res.status(500).json({error:e.message}); } });
-app.get('/oauth/callback', async (req, res) => {
-  try {
-    const sessionId = await exchangeCode(req.query.code, req.query.state);
-    res.cookie('mcp_session', sessionId, {httpOnly:true, secure:config.sessionSecret && config.extensionOrigin.startsWith('https://'), sameSite:'lax', maxAge:7*24*3600*1000});
-    res.redirect('/auth/success');
-  } catch (e) { res.status(400).send(`<h1>OAuth failed</h1><pre>${escapeHtml(e.message)}</pre>`); }
-});
+// app.get('/oauth/callback', async (req, res) => {
+//   try {
+//     const sessionId = await exchangeCode(req.query.code, req.query.state);
+//     res.cookie('mcp_session', sessionId, {httpOnly:true, secure:config.sessionSecret && config.extensionOrigin.startsWith('https://'), sameSite:'lax', maxAge:7*24*3600*1000});
+//     res.redirect('/auth/success');
+//   } catch (e) { res.status(400).send(`<h1>OAuth failed</h1><pre>${escapeHtml(e.message)}</pre>`); }
+// });
+app.get(
+  '/oauth/callback',
+  async (req, res) => {
+
+    try {
+
+      const {
+        code,
+        state
+      } = req.query;
+
+      if (!code) {
+        throw new Error(
+          'Missing OAuth authorization code'
+        );
+      }
+
+      if (!state) {
+        throw new Error(
+          'Missing OAuth state'
+        );
+      }
+
+      /*
+       * Look up Trimble OAuth state.
+       */
+      const stateData =
+        states.get(state);
+
+      if (!stateData) {
+        throw new Error(
+          'Invalid or expired OAuth state'
+        );
+      }
+
+      /*
+       * Check expiration.
+       *
+       * Example: 10 minutes.
+       */
+      const createdAt =
+        typeof stateData === 'number'
+          ? stateData
+          : stateData.createdAt;
+
+      if (
+        Date.now() - createdAt >
+        10 * 60 * 1000
+      ) {
+
+        states.delete(state);
+
+        throw new Error(
+          'OAuth state expired'
+        );
+      }
+
+      /*
+       * -----------------------------------------
+       * MCP FLOW
+       * -----------------------------------------
+       */
+
+      if (
+        typeof stateData === 'object' &&
+        stateData.type === 'mcp'
+      ) {
+
+        const transaction =
+          getOAuthTransaction(
+            stateData.transactionId
+          );
+
+        if (!transaction) {
+          throw new Error(
+            'MCP OAuth transaction not found'
+          );
+        }
+
+        /*
+         * Exchange Trimble code.
+         */
+        const sessionId =
+          await exchangeCode(
+            code,
+            state
+          );
+
+        /*
+         * Create temporary MCP authorization code.
+         */
+        const mcpCode =
+          createAuthorizationCode({
+
+            sessionId,
+
+            clientId:
+              transaction.clientId,
+
+            redirectUri:
+              transaction.redirectUri,
+
+            codeChallenge:
+              transaction.codeChallenge,
+
+            codeChallengeMethod:
+              transaction.codeChallengeMethod
+          });
+
+        /*
+         * Delete temporary state.
+         */
+        states.delete(state);
+
+        /*
+         * Delete MCP transaction.
+         */
+        deleteOAuthTransaction(
+          stateData.transactionId
+        );
+
+        /*
+         * Redirect to Claude.
+         */
+        const callbackUrl =
+          new URL(
+            transaction.redirectUri
+          );
+
+        callbackUrl.searchParams.set(
+          'code',
+          mcpCode
+        );
+
+        callbackUrl.searchParams.set(
+          'state',
+          transaction.state
+        );
+
+        return res.redirect(
+          callbackUrl.toString()
+        );
+      }
+
+      /*
+       * -----------------------------------------
+       * EXISTING EXTENSION FLOW
+       * -----------------------------------------
+       */
+
+      const sessionId =
+        await exchangeCode(
+          code,
+          state
+        );
+
+      states.delete(state);
+
+      res.cookie(
+        'mcp_session',
+        sessionId,
+        {
+          httpOnly: true,
+
+          secure:
+            config.sessionSecret &&
+            config.extensionOrigin
+              .startsWith('https://'),
+
+          sameSite: 'lax',
+
+          maxAge:
+            7 * 24 * 3600 * 1000
+        }
+      );
+
+      return res.redirect(
+        '/auth/success'
+      );
+
+    } catch (e) {
+
+      console.error(
+        'OAuth callback error:',
+        e
+      );
+
+      return res.status(400).send(
+        `<h1>OAuth failed</h1>
+         <pre>${escapeHtml(
+           e.message
+         )}</pre>`
+      );
+    }
+  }
+);
 app.get('/auth/success', (_, res) => res.send('<h2>Trimble authentication successful.</h2><p>You can close this window and return to Claude.</p>'));
 app.get('/auth/status', requireSession, (req,res) => res.json({authenticated:true}));
 app.post('/mcp', requireSession, handleMcp);
