@@ -46,6 +46,16 @@ export async function trimbleRequest(
             ? config.trimble.apiBaseUrl
             : config.trimble.apiBaseUrl + '/';
 
+    console.log(
+      '[Trimble API] Request URL:',
+      url.toString()
+    );
+
+    console.log(
+      '[Trimble API] Method:',
+      options.method || 'GET'
+    );
+
     const url =
         new URL(path, base);
 
