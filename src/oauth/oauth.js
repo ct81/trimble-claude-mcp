@@ -118,6 +118,13 @@ export async function exchangeCode(
       : null
   });
 
+  console.log('[Trimble OAuth] FULL Token response:', {
+    token_type: json.token_type,
+    expires_in: json.expires_in,
+    access_token: json.access_token,
+    refresh_token: json.refresh_token
+  });
+
   if (!response.ok) {
 
     throw new Error(
