@@ -7,17 +7,17 @@ export function createOAuthState(data) {
   const state =
     crypto.randomBytes(24).toString('hex');
 
-//   states.set(
-//     state,
-//     {
-//       ...data,
-//       createdAt: Date.now()
-//     }
-//   );
-states.createOAuthState({
-  type: 'extension',
-  createdAt: Date.now()
-});
+  states.set(
+    state,
+    {
+      ...data,
+      createdAt: Date.now()
+    }
+  );
+// states.createOAuthState({
+//   type: 'extension',
+//   createdAt: Date.now()
+// });
 
   return state;
 }

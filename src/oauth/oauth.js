@@ -1,4 +1,4 @@
-import crypto from 'node:crypto';
+//import crypto from 'node:crypto';
 import { config } from '../config.js';
 import { createSession, getSession, updateSession } from '../session-store.js';
 import {
@@ -25,6 +25,28 @@ import {
 //   url.searchParams.set('state', state);
 //   return url.toString();
 // }
+// export function authorizationUrl() {
+
+//   if (
+//     !config.trimble.clientId ||
+//     !config.trimble.authorizationEndpoint
+//   ) {
+//     throw new Error(
+//       'Trimble OAuth configuration is incomplete'
+//     );
+//   }
+
+//   const state =
+//     crypto.randomBytes(24).toString('hex');
+
+//   // states.set(
+//   //   state,
+//   //   Date.now()
+//   // );
+//    states.createOAuthState(
+//     state,
+//     Date.now()
+//   );
 export function authorizationUrl() {
 
   if (
@@ -37,17 +59,42 @@ export function authorizationUrl() {
   }
 
   const state =
-    crypto.randomBytes(24).toString('hex');
+    createOAuthState({
+      type: 'extension'
+    });
 
-  // states.set(
-  //   state,
-  //   Date.now()
-  // );
-   states.createOAuthState(
-    state,
-    Date.now()
+  const url =
+    new URL(
+      config.trimble.authorizationEndpoint
+    );
+
+  url.searchParams.set(
+    'client_id',
+    config.trimble.clientId
   );
 
+  url.searchParams.set(
+    'redirect_uri',
+    config.trimble.redirectUri
+  );
+
+  url.searchParams.set(
+    'response_type',
+    'code'
+  );
+
+  url.searchParams.set(
+    'scope',
+    config.trimble.scope
+  );
+
+  url.searchParams.set(
+    'state',
+    state
+  );
+
+  return url.toString();
+}
 
   const url =
     new URL(
@@ -145,61 +192,61 @@ export function authorizationUrl() {
 
 //   return url.toString();
 // }
-export function authorizationUrlForMcp(
-  transactionId
-) {
+// export function authorizationUrlForMcp(
+//   transactionId
+// ) {
 
-  if (
-    !config.trimble.clientId ||
-    !config.trimble.authorizationEndpoint
-  ) {
-    throw new Error(
-      'Trimble OAuth configuration is incomplete'
-    );
-  }
+//   if (
+//     !config.trimble.clientId ||
+//     !config.trimble.authorizationEndpoint
+//   ) {
+//     throw new Error(
+//       'Trimble OAuth configuration is incomplete'
+//     );
+//   }
 
-  const trimbleState =
-    createOAuthState({
-      type: 'mcp',
-      transactionId
-    });
+//   const trimbleState =
+//     createOAuthState({
+//       type: 'mcp',
+//       transactionId
+//     });
 
-  const url =
-    new URL(
-      config.trimble.authorizationEndpoint
-    );
+//   const url =
+//     new URL(
+//       config.trimble.authorizationEndpoint
+//     );
 
-  url.searchParams.set(
-    'client_id',
-    config.trimble.clientId
-  );
+//   url.searchParams.set(
+//     'client_id',
+//     config.trimble.clientId
+//   );
 
-  url.searchParams.set(
-    'redirect_uri',
-    config.trimble.redirectUri
-  );
+//   url.searchParams.set(
+//     'redirect_uri',
+//     config.trimble.redirectUri
+//   );
 
-  url.searchParams.set(
-    'response_type',
-    'code'
-  );
+//   url.searchParams.set(
+//     'response_type',
+//     'code'
+//   );
 
-  url.searchParams.set(
-    'scope',
-    config.trimble.scope
-  );
+//   url.searchParams.set(
+//     'scope',
+//     config.trimble.scope
+//   );
 
-  url.searchParams.set(
-    'state',
-    trimbleState
-  );
+//   url.searchParams.set(
+//     'state',
+//     trimbleState
+//   );
 
-  console.log(
-    'Trimble MCP OAuth URL created'
-  );
+//   console.log(
+//     'Trimble MCP OAuth URL created'
+//   );
 
-  return url.toString();
-}
+//   return url.toString();
+// }
 
 // export async function exchangeCode(code, state) {
 //   const issued = states.get(state);
