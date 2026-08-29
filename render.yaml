@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: trimble-claude-mcp
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: SESSION_SECRET
+        sync: false
+      - key: TRIMBLE_CLIENT_ID
+        sync: false
+      - key: TRIMBLE_CLIENT_SECRET
+        sync: false
+      - key: TRIMBLE_REDIRECT_URI
+        sync: false
+      - key: TRIMBLE_SCOPE
+        sync: false
+      - key: TRIMBLE_AUTHORIZATION_ENDPOINT
+        sync: false
+      - key: TRIMBLE_TOKEN_ENDPOINT
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      - key: EXTENSION_ORIGIN
+        sync: false
+      - key: TRIMBLE_API_BASE_URL
+        sync: false
