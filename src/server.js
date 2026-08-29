@@ -1,5 +1,5 @@
 // git add .
-// git commit -m "Start MCP 3"
+// git commit -m "Start MCP 4"
 // git push origin main
 
 
@@ -9,6 +9,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { config } from './config.js';
 import { authorizationUrl, exchangeCode, requireSession } from './oauth/oauth.js';
+import { tools } from './trimble/client.js';
 import { handleMcp } from './mcp/http.js';
 import {
   createOAuthTransaction,
@@ -49,13 +50,13 @@ import {
 const app = express();
 
 const swaggerDocument = {
-    openapi: '3.0.0',
+    openapi: '3.0.3',
 
     info: {
         title: 'Trimble Connect MCP API',
         version: '1.0.0',
         description:
-            'API for testing Trimble Connect MCP tools'
+            'Testing API for Trimble Connect MCP tools'
     },
 
     servers: [
@@ -67,19 +68,37 @@ const swaggerDocument = {
     ],
 
     components: {
+
         securitySchemes: {
+
             bearerAuth: {
                 type: 'http',
-                scheme: 'bearer'
+                scheme: 'bearer',
+                bearerFormat: 'MCP Access Token'
             }
-        }
-    },
 
-    security: [
-        {
-            bearerAuth: []
+        },
+
+        schemas: {
+
+            Project: {
+                type: 'object',
+                additionalProperties: true
+            },
+
+            Error: {
+                type: 'object',
+
+                properties: {
+                    error: {
+                        type: 'string'
+                    }
+                }
+            }
+
         }
-    ],
+
+    },
 
     paths: {}
 };
@@ -99,12 +118,17 @@ app.use(
         extended: true
     })
 );
+app.use(cookieParser());
 app.use(
     '/swagger',
     swaggerUi.serve,
-    swaggerUi.setup(swaggerDocument)
+    swaggerUi.setup(
+        swaggerDocument,
+        {
+            explorer: true
+        }
+    )
 );
-app.use(cookieParser());
 
 app.get('/health', (_, res) => res.json({status:'ok',service:'trimble-connect-mcp'}));
 app.get(
