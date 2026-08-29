@@ -1,37 +1,43 @@
 import crypto from 'node:crypto';
-import { config } from '../config.js';
 
-export function authorizationUrlForMcp(transactionId) {
+import {
+  config
+} from '../config.js';
+
+import {
+  createSession,
+  getSession,
+  updateSession
+} from '../session-store.js';
+
+import {
+  getSessionIdFromMcpToken
+} from './mcpTokens.js';
+
+import {
+  getOAuthState,
+  deleteOAuthState
+} from './oauthState.js';
+
+export function authorizationUrlForMcp(
+  transactionId
+) {
 
   if (
     !config.trimble.clientId ||
     !config.trimble.authorizationEndpoint
   ) {
+
     throw new Error(
       'Trimble OAuth configuration is incomplete'
     );
   }
 
-  /*
-   * Generate a real Trimble OAuth state.
-   */
   const trimbleState =
-    crypto.randomBytes(24).toString('hex');
-
-  /*
-   * Store the Trimble state.
-   *
-   * Instead of only storing a timestamp,
-   * associate it with the MCP transaction.
-   */
-  states.set(
-    trimbleState,
-    {
-      createdAt: Date.now(),
+    createOAuthState({
       type: 'mcp',
       transactionId
-    }
-  );
+    });
 
   const url =
     new URL(
@@ -61,6 +67,10 @@ export function authorizationUrlForMcp(transactionId) {
   url.searchParams.set(
     'state',
     trimbleState
+  );
+
+  console.log(
+    'Trimble OAuth URL generated'
   );
 
   return url.toString();

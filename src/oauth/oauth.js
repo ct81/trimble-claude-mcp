@@ -5,7 +5,13 @@ import {
   getSessionIdFromMcpToken
 } from './mcpTokens.js';
 
-export const states = new Map();
+import {
+  getOAuthState,
+  deleteOAuthState,
+  createOAuthState
+} from './oauthState.js';
+
+//export const states = new Map();
 
 // export function authorizationUrl() {
 //   if (!config.trimble.clientId || !config.trimble.authorizationEndpoint) throw new Error('Trimble OAuth configuration is incomplete');
@@ -33,10 +39,15 @@ export function authorizationUrl() {
   const state =
     crypto.randomBytes(24).toString('hex');
 
-  states.set(
+  // states.set(
+  //   state,
+  //   Date.now()
+  // );
+   states.createOAuthState(
     state,
     Date.now()
   );
+
 
   const url =
     new URL(
@@ -71,7 +82,72 @@ export function authorizationUrl() {
   return url.toString();
 }
 
-export function authorizationUrlForMcp(transactionId) {
+// export function authorizationUrlForMcp(transactionId) {
+
+//   if (
+//     !config.trimble.clientId ||
+//     !config.trimble.authorizationEndpoint
+//   ) {
+//     throw new Error(
+//       'Trimble OAuth configuration is incomplete'
+//     );
+//   }
+
+//   const trimbleState =
+//     crypto.randomBytes(24).toString('hex');
+
+//   // states.set(
+//   //   trimbleState,
+//   //   {
+//   //     type: 'mcp',
+//   //     transactionId,
+//   //     createdAt: Date.now()
+//   //   }
+//   // );
+//    states.createOAuthState(
+//     trimbleState,
+//     {
+//       type: 'mcp',
+//       transactionId,
+//       createdAt: Date.now()
+//     }
+//   );
+
+//   const url =
+//     new URL(
+//       config.trimble.authorizationEndpoint
+//     );
+
+//   url.searchParams.set(
+//     'client_id',
+//     config.trimble.clientId
+//   );
+
+//   url.searchParams.set(
+//     'redirect_uri',
+//     config.trimble.redirectUri
+//   );
+
+//   url.searchParams.set(
+//     'response_type',
+//     'code'
+//   );
+
+//   url.searchParams.set(
+//     'scope',
+//     config.trimble.scope
+//   );
+
+//   url.searchParams.set(
+//     'state',
+//     trimbleState
+//   );
+
+//   return url.toString();
+// }
+export function authorizationUrlForMcp(
+  transactionId
+) {
 
   if (
     !config.trimble.clientId ||
@@ -83,16 +159,10 @@ export function authorizationUrlForMcp(transactionId) {
   }
 
   const trimbleState =
-    crypto.randomBytes(24).toString('hex');
-
-  states.set(
-    trimbleState,
-    {
+    createOAuthState({
       type: 'mcp',
-      transactionId,
-      createdAt: Date.now()
-    }
-  );
+      transactionId
+    });
 
   const url =
     new URL(
@@ -124,6 +194,10 @@ export function authorizationUrlForMcp(transactionId) {
     trimbleState
   );
 
+  console.log(
+    'Trimble MCP OAuth URL created'
+  );
+
   return url.toString();
 }
 
@@ -139,32 +213,93 @@ export function authorizationUrlForMcp(transactionId) {
 //   return sessionId;
 // }
 
-export async function exchangeCode(code, state) {
+// export async function exchangeCode(code, state) {
 
-  const issued =
-    states.get(state);
+//   const issued =
+//     states.get(state);
 
-  if (!issued) {
+//   if (!issued) {
+//     throw new Error(
+//       'Invalid or expired OAuth state'
+//     );
+//   }
+
+//   const issuedAt =
+//     typeof issued === 'number'
+//       ? issued
+//       : issued.createdAt;
+
+//   if (
+//     !issuedAt ||
+//     Date.now() - issuedAt >
+//       10 * 60 * 1000
+//   ) {
+
+//     states.delete(state);
+
+//     throw new Error(
+//       'Invalid or expired OAuth state'
+//     );
+//   }
+
+//   const body =
+//     new URLSearchParams({
+
+//       grant_type:
+//         'authorization_code',
+
+//       code,
+
+//       redirect_uri:
+//         config.trimble.redirectUri,
+
+//       client_id:
+//         config.trimble.clientId,
+
+//       client_secret:
+//         config.trimble.clientSecret
+//     });
+
+//   const response =
+//     await fetch(
+//       config.trimble.tokenEndpoint,
+//       {
+//         method: 'POST',
+
+//         headers: {
+//           'content-type':
+//             'application/x-www-form-urlencoded'
+//         },
+
+//         body
+//       }
+//     );
+
+//   const json =
+//     await response.json();
+
+//   if (!response.ok) {
+
+//     throw new Error(
+//       `Trimble token exchange failed: ${JSON.stringify(json)}`
+//     );
+//   }
+
+//   const sessionId =
+//     createSession({
+//       trimble: json
+//     });
+
+//   return sessionId;
+// }
+export async function exchangeCode(
+  code,
+  state
+) {
+
+  if (!code) {
     throw new Error(
-      'Invalid or expired OAuth state'
-    );
-  }
-
-  const issuedAt =
-    typeof issued === 'number'
-      ? issued
-      : issued.createdAt;
-
-  if (
-    !issuedAt ||
-    Date.now() - issuedAt >
-      10 * 60 * 1000
-  ) {
-
-    states.delete(state);
-
-    throw new Error(
-      'Invalid or expired OAuth state'
+      'Missing Trimble authorization code'
     );
   }
 
@@ -213,7 +348,10 @@ export async function exchangeCode(code, state) {
 
   const sessionId =
     createSession({
-      trimble: json
+      trimble: {
+        ...json,
+        obtained_at: Date.now()
+      }
     });
 
   return sessionId;

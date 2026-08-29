@@ -1,3 +1,8 @@
+// git add .
+// git commit -m "Fix OAuth state handling"
+// git push origin main
+
+
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -32,6 +37,12 @@ import {
   registerClient,
   getClient
 } from './oauth/mcpClients.js';
+
+
+import {
+  getOAuthState,
+  deleteOAuthState
+} from './oauthState.js';
 
 const app = express();
 app.set('trust proxy', 1);
@@ -818,8 +829,10 @@ app.get(
       /*
        * Look up Trimble OAuth state.
        */
+      // const stateData =
+      //   states.get(state);
       const stateData =
-        states.get(state);
+        getOAuthState.get(state);
 
       if (!stateData) {
         throw new Error(
@@ -842,7 +855,8 @@ app.get(
         10 * 60 * 1000
       ) {
 
-        states.delete(state);
+        // states.delete(state);
+        states.deleteOAuthState(state);
 
         throw new Error(
           'OAuth state expired'
@@ -907,7 +921,8 @@ app.get(
         /*
          * Delete temporary state.
          */
-        states.delete(state);
+        //states.delete(state);
+        states.deleteOAuthState(state);
 
         /*
          * Delete MCP transaction.
@@ -951,7 +966,8 @@ app.get(
           state
         );
 
-      states.delete(state);
+      //states.delete(state);
+      states.deleteOAuthState(state);
 
       res.cookie(
         'mcp_session',
