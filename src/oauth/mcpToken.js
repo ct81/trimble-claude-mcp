@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 const tokens = new Map();
 
@@ -8,25 +8,39 @@ export function createMcpAccessToken(
 ) {
 
   const token =
-    crypto.randomBytes(48)
+    crypto
+      .randomBytes(48)
       .toString('hex');
 
   tokens.set(
     token,
     {
       sessionId,
+
       resource,
-      createdAt: Date.now(),
+
+      createdAt:
+        Date.now(),
+
       expiresAt:
         Date.now() +
         60 * 60 * 1000
     }
   );
 
+  console.log(
+    'Created MCP access token:',
+    {
+      sessionId,
+      resource
+    }
+  );
+
   return token;
 }
 
-export function getSessionIdFromMcpToken(
+
+export function getMcpToken(
   token
 ) {
 
@@ -44,6 +58,21 @@ export function getSessionIdFromMcpToken(
 
     tokens.delete(token);
 
+    return null;
+  }
+
+  return data;
+}
+
+
+export function getSessionIdFromMcpToken(
+  token
+) {
+
+  const data =
+    getMcpToken(token);
+
+  if (!data) {
     return null;
   }
 

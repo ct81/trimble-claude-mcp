@@ -242,7 +242,11 @@ app.get(
       } = req.query;
 
       console.log(
-        'MCP authorization request:',
+        '========== MCP AUTHORIZE =========='
+      );
+
+      console.log(
+        'Query:',
         req.query
       );
 
@@ -256,6 +260,7 @@ app.get(
       if (!client) {
 
         return res.status(400).json({
+
           error:
             'unauthorized_client',
 
@@ -275,6 +280,7 @@ app.get(
       ) {
 
         return res.status(400).json({
+
           error:
             'invalid_request',
 
@@ -292,18 +298,20 @@ app.get(
       ) {
 
         return res.status(400).json({
+
           error:
             'unsupported_response_type'
         });
       }
 
       // -----------------------------------------
-      // State
+      // Validate state
       // -----------------------------------------
 
       if (!state) {
 
         return res.status(400).json({
+
           error:
             'invalid_request',
 
@@ -313,12 +321,13 @@ app.get(
       }
 
       // -----------------------------------------
-      // PKCE
+      // Validate PKCE
       // -----------------------------------------
 
       if (!code_challenge) {
 
         return res.status(400).json({
+
           error:
             'invalid_request',
 
@@ -333,6 +342,7 @@ app.get(
       ) {
 
         return res.status(400).json({
+
           error:
             'invalid_request',
 
@@ -340,6 +350,19 @@ app.get(
             'Only S256 PKCE is supported'
         });
       }
+
+      // -----------------------------------------
+      // Resource
+      // -----------------------------------------
+
+      const mcpResource =
+        resource ||
+        `${process.env.PUBLIC_BASE_URL}/mcp`;
+
+      console.log(
+        'MCP resource:',
+        mcpResource
+      );
 
       // -----------------------------------------
       // Create MCP transaction
@@ -363,8 +386,13 @@ app.get(
             code_challenge_method,
 
           resource:
-            resource || `${process.env.PUBLIC_BASE_URL}/mcp`
+            mcpResource
         });
+
+      console.log(
+        'MCP transaction:',
+        transactionId
+      );
 
       // -----------------------------------------
       // Start Trimble OAuth
@@ -376,7 +404,7 @@ app.get(
         );
 
       console.log(
-        'Redirecting to Trimble OAuth:',
+        'Redirecting to Trimble:',
         trimbleUrl
       );
 
@@ -392,6 +420,7 @@ app.get(
       );
 
       return res.status(500).json({
+
         error:
           'server_error',
 
@@ -407,6 +436,33 @@ app.post(
 
     try {
 
+      console.log(
+        '========== MCP TOKEN =========='
+      );
+
+      console.log(
+        'Token request:',
+        {
+          grant_type:
+            req.body?.grant_type,
+
+          client_id:
+            req.body?.client_id,
+
+          redirect_uri:
+            req.body?.redirect_uri,
+
+          hasCode:
+            !!req.body?.code,
+
+          hasCodeVerifier:
+            !!req.body?.code_verifier,
+
+          resource:
+            req.body?.resource
+        }
+      );
+
       const {
         grant_type,
         code,
@@ -416,22 +472,60 @@ app.post(
         resource
       } = req.body;
 
+      // -----------------------------------------
+      // Grant type
+      // -----------------------------------------
+
       if (
         grant_type !==
         'authorization_code'
       ) {
+
         return res.status(400).json({
+
           error:
             'unsupported_grant_type'
         });
       }
 
+      // -----------------------------------------
+      // Code
+      // -----------------------------------------
+
       if (!code) {
+
         return res.status(400).json({
+
           error:
-            'invalid_request'
+            'invalid_request',
+
+          error_description:
+            'Missing authorization code'
         });
       }
+
+      // -----------------------------------------
+      // Client
+      // -----------------------------------------
+
+      const client =
+        getClient(client_id);
+
+      if (!client) {
+
+        return res.status(400).json({
+
+          error:
+            'invalid_client',
+
+          error_description:
+            'Unknown client'
+        });
+      }
+
+      // -----------------------------------------
+      // Consume authorization code
+      // -----------------------------------------
 
       const authorization =
         consumeAuthorizationCode(
@@ -439,52 +533,93 @@ app.post(
         );
 
       if (!authorization) {
+
         return res.status(400).json({
+
           error:
-            'invalid_grant'
+            'invalid_grant',
+
+          error_description:
+            'Invalid or expired authorization code'
         });
       }
+
+      // -----------------------------------------
+      // Client ID
+      // -----------------------------------------
 
       if (
         authorization.clientId !==
         client_id
       ) {
+
         return res.status(400).json({
+
           error:
-            'invalid_grant'
+            'invalid_grant',
+
+          error_description:
+            'Client mismatch'
         });
       }
+
+      // -----------------------------------------
+      // Redirect URI
+      // -----------------------------------------
 
       if (
         authorization.redirectUri !==
         redirect_uri
       ) {
+
         return res.status(400).json({
+
           error:
-            'invalid_grant'
+            'invalid_grant',
+
+          error_description:
+            'Redirect URI mismatch'
         });
       }
-      
-      const expectedResource = `${process.env.PUBLIC_BASE_URL}/mcp`;
 
-    if (
-      (resource || expectedResource) !==
-      authorization.resource
-    ) {
+      // -----------------------------------------
+      // Resource
+      // -----------------------------------------
 
-      return res.status(400).json({
+      const expectedResource =
+        authorization.resource ||
+        `${process.env.PUBLIC_BASE_URL}/mcp`;
 
-        error:
-          'invalid_grant',
+      if (
+        resource &&
+        resource !== expectedResource
+      ) {
 
-        error_description:
-          'Invalid resource'
-      });
-    }
+        return res.status(400).json({
 
-      /*
-       * Verify PKCE.
-       */
+          error:
+            'invalid_grant',
+
+          error_description:
+            'Resource mismatch'
+        });
+      }
+
+      // -----------------------------------------
+      // PKCE
+      // -----------------------------------------
+
+      if (!code_verifier) {
+
+        return res.status(400).json({
+
+          error:
+            'invalid_grant',
+
+          error_description:
+            'Missing code_verifier'
+        });
+      }
 
       const pkceValid =
         verifyPkce(
@@ -495,44 +630,28 @@ app.post(
       if (!pkceValid) {
 
         return res.status(400).json({
+
           error:
             'invalid_grant',
+
           error_description:
             'PKCE verification failed'
         });
       }
 
-      /*
-       * Create MCP access token.
-       */
+      // -----------------------------------------
+      // Create MCP access token
+      // -----------------------------------------
 
-      // const accessToken =
-      //   createMcpAccessToken(
-      //     authorization.sessionId
-      //   );
       const accessToken =
-      createMcpAccessToken({
-
-        sessionId:
+        createMcpAccessToken(
           authorization.sessionId,
+          expectedResource
+        );
 
-        resource:
-          authorization.resource
-
-      });
-
-      // console.log(
-      //   '========== MCP TOKEN REQUEST =========='
-      // );
-
-      // console.log({
-      //   grant_type,
-      //   client_id,
-      //   redirect_uri,
-      //   hasCode: !!code,
-      //   hasCodeVerifier: !!code_verifier,
-      //   resource
-      // });
+      console.log(
+        'MCP token created successfully'
+      );
 
       return res.json({
 
@@ -543,7 +662,10 @@ app.post(
           'Bearer',
 
         expires_in:
-          3600
+          3600,
+
+        resource:
+          expectedResource
       });
 
     } catch (e) {
@@ -554,8 +676,12 @@ app.post(
       );
 
       return res.status(500).json({
+
         error:
-          'server_error'
+          'server_error',
+
+        error_description:
+          e.message
       });
     }
   }

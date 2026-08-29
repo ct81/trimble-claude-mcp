@@ -1,25 +1,64 @@
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
-const authorizationCodes =
-  new Map();
+const authorizationCodes = new Map();
 
-export function createAuthorizationCode(data) {
+export function createAuthorizationCode({
+  sessionId,
+  clientId,
+  redirectUri,
+  codeChallenge,
+  codeChallengeMethod,
+  resource
+}) {
 
   const code =
-    crypto.randomBytes(32).toString('hex');
+    crypto
+      .randomBytes(48)
+      .toString('hex');
 
   authorizationCodes.set(
     code,
     {
-      ...data,
-      createdAt: Date.now()
+      sessionId,
+
+      clientId,
+
+      redirectUri,
+
+      codeChallenge,
+
+      codeChallengeMethod,
+
+      resource,
+
+      createdAt:
+        Date.now(),
+
+      expiresAt:
+        Date.now() +
+        5 * 60 * 1000
     }
   );
+
+  console.log(
+    'Created MCP authorization code'
+  );
+
+  console.log({
+    clientId,
+    redirectUri,
+    resource,
+    hasCodeChallenge:
+      !!codeChallenge
+  });
 
   return code;
 }
 
-export function consumeAuthorizationCode(code) {
+
+export function consumeAuthorizationCode(
+  code
+) {
 
   const data =
     authorizationCodes.get(code);
@@ -28,10 +67,14 @@ export function consumeAuthorizationCode(code) {
     return null;
   }
 
-  /*
-   * Authorization codes are single-use.
-   */
   authorizationCodes.delete(code);
+
+  if (
+    Date.now() >
+    data.expiresAt
+  ) {
+    return null;
+  }
 
   return data;
 }
