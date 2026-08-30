@@ -142,13 +142,21 @@ export async function trimbleRequest(
         );
     }
 
-    const base =
-        config.trimble.apiBaseUrl.endsWith('/')
-            ? config.trimble.apiBaseUrl
-            : config.trimble.apiBaseUrl + '/';
+    const baseUrl =
+    config.trimble.apiBaseUrl.endsWith('/')
+        ? config.trimble.apiBaseUrl
+        : config.trimble.apiBaseUrl + '/';
+
+    const cleanPath =
+    path.startsWith('/')
+        ? path.substring(1)
+        : path;
 
     const url =
-        new URL(path, base);
+    new URL(
+        cleanPath,
+        baseUrl
+    );
 
     console.log('================ TRIMBLE API DEBUG ================');
     console.log('[Trimble API] Base URL:', config.trimble.apiBaseUrl);
