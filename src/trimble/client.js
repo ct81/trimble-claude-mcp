@@ -11,22 +11,130 @@ import { refreshIfNeeded } from '../oauth/oauth.js';
 //   if (!response.ok) throw new Error(`Trimble API ${response.status}: ${typeof data === 'string' ? data : JSON.stringify(data)}`);
 //   return data;
 // }
+// export async function trimbleRequest(
+//     sessionId,
+//     path,
+//     options = {}
+// ) {
+
+//     console.log('[Trimble API] Request:', {
+//         sessionId:
+//             sessionId
+//                 ? `${sessionId.substring(0, 8)}...`
+//                 : null,
+//         path,
+//         method:
+//             options.method || 'GET'
+//     });
+
+//     const session =
+//         await refreshIfNeeded(sessionId);
+
+//     if (!session?.trimble?.access_token) {
+//         throw new Error(
+//             'No Trimble access token'
+//         );
+//     }
+
+//     console.log(
+//         '[Trimble API] Access token exists:',
+//         true
+//     );
+
+//     const base =
+//         config.trimble.apiBaseUrl.endsWith('/')
+//             ? config.trimble.apiBaseUrl
+//             : config.trimble.apiBaseUrl + '/';
+
+//     const url =
+//         new URL(path, base);
+
+//     console.log(
+//         '[Trimble API] URL:',
+//         url.toString()
+//     );
+
+//     console.log(
+//       '[Trimble API] Request URL:',
+//       url.toString()
+//     );
+
+//     console.log(
+//       '[Trimble API] Method:',
+//       options.method || 'GET'
+//     );
+
+//     const response =
+//         await fetch(
+//             url,
+//             {
+//                 ...options,
+
+//                 headers: {
+//                     accept:
+//                         'application/json',
+
+//                     ...(options.body
+//                         ? {
+//                             'content-type':
+//                                 'application/json'
+//                         }
+//                         : {}),
+
+//                     ...(options.headers || {}),
+
+//                     authorization:
+//                         `Bearer ${session.trimble.access_token}`
+//                 }
+//             }
+//         );
+
+//     console.log(
+//         '[Trimble API] Status:',
+//         response.status
+//     );
+
+//     const text =
+//         await response.text();
+
+//     let data;
+
+//     try {
+//         data = JSON.parse(text);
+//     } catch {
+//         data = text;
+//     }
+
+//     if (!response.ok) {
+
+//         console.error(
+//             '[Trimble API] Error:',
+//             data
+//         );
+
+//         throw new Error(
+//             `Trimble API ${response.status}: ${
+//                 typeof data === 'string'
+//                     ? data
+//                     : JSON.stringify(data)
+//             }`
+//         );
+//     }
+
+//     console.log(
+//         '[Trimble API] Success'
+//     );
+
+//     return data;
+// }
+import { config } from '../config.js';
+import { refreshIfNeeded } from '../oauth/oauth.js';
+
 export async function trimbleRequest(
     sessionId,
     path,
     options = {}
 ) {
-
-    console.log('[Trimble API] Request:', {
-        sessionId:
-            sessionId
-                ? `${sessionId.substring(0, 8)}...`
-                : null,
-        path,
-        method:
-            options.method || 'GET'
-    });
-
     const session =
         await refreshIfNeeded(sessionId);
 
@@ -36,32 +144,22 @@ export async function trimbleRequest(
         );
     }
 
-    console.log(
-        '[Trimble API] Access token exists:',
-        true
-    );
-
     const base =
         config.trimble.apiBaseUrl.endsWith('/')
             ? config.trimble.apiBaseUrl
             : config.trimble.apiBaseUrl + '/';
 
-    console.log(
-      '[Trimble API] Request URL:',
-      url.toString()
-    );
-
-    console.log(
-      '[Trimble API] Method:',
-      options.method || 'GET'
-    );
-
     const url =
         new URL(path, base);
 
     console.log(
-        '[Trimble API] URL:',
+        '[Trimble API] Request URL:',
         url.toString()
+    );
+
+    console.log(
+        '[Trimble API] Method:',
+        options.method || 'GET'
     );
 
     const response =
@@ -89,11 +187,6 @@ export async function trimbleRequest(
             }
         );
 
-    console.log(
-        '[Trimble API] Status:',
-        response.status
-    );
-
     const text =
         await response.text();
 
@@ -101,17 +194,12 @@ export async function trimbleRequest(
 
     try {
         data = JSON.parse(text);
-    } catch {
+    }
+    catch {
         data = text;
     }
 
     if (!response.ok) {
-
-        console.error(
-            '[Trimble API] Error:',
-            data
-        );
-
         throw new Error(
             `Trimble API ${response.status}: ${
                 typeof data === 'string'
@@ -121,12 +209,53 @@ export async function trimbleRequest(
         );
     }
 
-    console.log(
-        '[Trimble API] Success'
-    );
-
     return data;
 }
+
+
+export const tools = {
+
+    async getProjects(sessionId) {
+
+        return trimbleRequest(
+            sessionId,
+            '/projects?fullyLoaded=false'
+        );
+    },
+
+    async getProject(
+        sessionId,
+        projectId
+    ) {
+
+        return trimbleRequest(
+            sessionId,
+            `/projects/${encodeURIComponent(projectId)}`
+        );
+    },
+
+    async getFolders(
+        sessionId,
+        projectId
+    ) {
+
+        return trimbleRequest(
+            sessionId,
+            `/projects/${encodeURIComponent(projectId)}/folders`
+        );
+    },
+
+    async getIssues(
+        sessionId,
+        projectId
+    ) {
+
+        return trimbleRequest(
+            sessionId,
+            `/projects/${encodeURIComponent(projectId)}/issues`
+        );
+    }
+};
 
 export const tools = {
   async getProjects(sessionId) { return trimbleRequest(sessionId, '/projects'); },
