@@ -238,7 +238,7 @@ export const tools = {
             sessionId,
             '/users/me'
         );
-    }
+    },
     // async getProjects(sessionId) {
     //     return trimbleRequest(
     //         sessionId,
