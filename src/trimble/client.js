@@ -127,8 +127,6 @@ import { refreshIfNeeded } from '../oauth/oauth.js';
 
 //     return data;
 // }
-import { config } from '../config.js';
-import { refreshIfNeeded } from '../oauth/oauth.js';
 
 export async function trimbleRequest(
     sessionId,
@@ -257,9 +255,9 @@ export const tools = {
     }
 };
 
-export const tools = {
-  async getProjects(sessionId) { return trimbleRequest(sessionId, '/projects'); },
-  async getProject(sessionId, projectId) { return trimbleRequest(sessionId, `/projects/${encodeURIComponent(projectId)}`); },
-  async getFolders(sessionId, projectId) { return trimbleRequest(sessionId, `/projects/${encodeURIComponent(projectId)}/folders`); },
-  async getIssues(sessionId, projectId) { return trimbleRequest(sessionId, `/projects/${encodeURIComponent(projectId)}/issues`); }
-};
+// export const tools = {
+//   async getProjects(sessionId) { return trimbleRequest(sessionId, '/projects'); },
+//   async getProject(sessionId, projectId) { return trimbleRequest(sessionId, `/projects/${encodeURIComponent(projectId)}`); },
+//   async getFolders(sessionId, projectId) { return trimbleRequest(sessionId, `/projects/${encodeURIComponent(projectId)}/folders`); },
+//   async getIssues(sessionId, projectId) { return trimbleRequest(sessionId, `/projects/${encodeURIComponent(projectId)}/issues`); }
+// };
