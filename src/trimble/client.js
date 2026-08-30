@@ -241,18 +241,18 @@ export const tools = {
         );
     },
 
-    async getProjects(sessionId) {
-        return trimbleRequest(
-            sessionId,
-            '/users/me'
-        );
-    },
     // async getProjects(sessionId) {
     //     return trimbleRequest(
     //         sessionId,
-    //         '/projects?fullyLoaded=false'
+    //         '/users/me'
     //     );
     // },
+    async getProjects(sessionId) {
+        return trimbleRequest(
+            sessionId,
+            '/projects?fullyLoaded=false'
+        );
+    },
 
     async getProject(sessionId, projectId) {
         return trimbleRequest(
