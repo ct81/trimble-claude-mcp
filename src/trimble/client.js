@@ -210,44 +210,44 @@ export async function trimbleRequest(
     return data;
 }
 
-
 export const tools = {
 
-    async getProjects(sessionId) {
+    async getUser(sessionId) {
+        return trimbleRequest(
+            sessionId,
+            '/users/me'
+        );
+    },
 
+    async getRegions(sessionId) {
+        return trimbleRequest(
+            sessionId,
+            '/regions'
+        );
+    },
+
+    async getProjects(sessionId) {
         return trimbleRequest(
             sessionId,
             '/projects?fullyLoaded=false'
         );
     },
 
-    async getProject(
-        sessionId,
-        projectId
-    ) {
-
+    async getProject(sessionId, projectId) {
         return trimbleRequest(
             sessionId,
             `/projects/${encodeURIComponent(projectId)}`
         );
     },
 
-    async getFolders(
-        sessionId,
-        projectId
-    ) {
-
+    async getFolders(sessionId, projectId) {
         return trimbleRequest(
             sessionId,
             `/projects/${encodeURIComponent(projectId)}/folders`
         );
     },
 
-    async getIssues(
-        sessionId,
-        projectId
-    ) {
-
+    async getIssues(sessionId, projectId) {
         return trimbleRequest(
             sessionId,
             `/projects/${encodeURIComponent(projectId)}/issues`
