@@ -150,15 +150,22 @@ export async function trimbleRequest(
     const url =
         new URL(path, base);
 
-    console.log(
-        '[Trimble API] Request URL:',
-        url.toString()
-    );
+    console.log('================ TRIMBLE API DEBUG ================');
+    console.log('[Trimble API] Base URL:', config.trimble.apiBaseUrl);
+    console.log('[Trimble API] Path:', path);
+    console.log('[Trimble API] FINAL URL:', url.toString());
+    console.log('[Trimble API] Method:', options.method || 'GET');
+    console.log('====================================================');
 
-    console.log(
-        '[Trimble API] Method:',
-        options.method || 'GET'
-    );
+    // console.log(
+    //     '[Trimble API] Request URL:',
+    //     url.toString()
+    // );
+
+    // console.log(
+    //     '[Trimble API] Method:',
+    //     options.method || 'GET'
+    // );
 
     const response =
         await fetch(
@@ -229,9 +236,15 @@ export const tools = {
     async getProjects(sessionId) {
         return trimbleRequest(
             sessionId,
-            '/projects?fullyLoaded=false'
+            '/users/me'
         );
-    },
+    }
+    // async getProjects(sessionId) {
+    //     return trimbleRequest(
+    //         sessionId,
+    //         '/projects?fullyLoaded=false'
+    //     );
+    // },
 
     async getProject(sessionId, projectId) {
         return trimbleRequest(
