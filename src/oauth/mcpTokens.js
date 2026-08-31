@@ -127,20 +127,20 @@ export function createMcpAccessToken(
     }
   );
 
-  console.log(
-    '[MCP TOKEN] Created token:',
-    token
-  );
+  // console.log(
+  //   '[MCP TOKEN] Created token:',
+  //   token
+  // );
 
-  console.log(
-    '[MCP TOKEN] Session ID:',
-    sessionId
-  );
+  // console.log(
+  //   '[MCP TOKEN] Session ID:',
+  //   sessionId
+  // );
 
-  console.log(
-    '[MCP TOKEN] Total tokens:',
-    tokens.size
-  );
+  // console.log(
+  //   '[MCP TOKEN] Total tokens:',
+  //   tokens.size
+  // );
 
 
   return token;
