@@ -1,0 +1,55 @@
+Claude
+   │
+   │ Connect to MCP
+   ▼
+https://trimble-claude-mcp-g86i.onrender.com/mcp
+   │
+   │ No valid MCP token
+   ▼
+401 + WWW-Authenticate
+   │
+   ▼
+Claude starts OAuth
+   │
+   ▼
+Your MCP /oauth/authorize
+   │
+   ▼
+Trimble ID
+┌─────────────────────────┐
+│                         │
+│  Sign in with Trimble   │
+│                         │
+│  Email                  │
+│  Password               │
+│                         │
+│       Sign in           │
+│                         │
+└─────────────────────────┘
+   │
+   │ User authenticates
+   ▼
+Trimble /oauth/authorize
+   │
+   │ authorization code
+   ▼
+Your /oauth/callback
+   │
+   ▼
+Trimble /oauth/token
+   │
+   ├── access_token
+   └── refresh_token
+   │
+   ▼
+Create MCP access token
+   │
+   ▼
+Claude
+   │
+   │ Bearer MCP token
+   ▼
+/mcp
+   │
+   ▼
+Trimble Connect API
