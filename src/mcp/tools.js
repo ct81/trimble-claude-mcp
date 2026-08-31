@@ -9,191 +9,118 @@ import {
   topics
 } from '../trimble/index.js';
 
-export const tools = {
-
-  // ==========================================
-  // CURRENT USER
-  // ==========================================
-
-  getCurrentUser: async (sessionId) => {
-    return await core.getCurrentUser(sessionId);
+export const definitions = [
+  {
+    name: 'get_projects',
+    description:
+      'List Trimble Connect projects available to the authenticated user.',
+    inputSchema: {
+      type: 'object',
+      properties: {}
+    }
   },
 
-
-  // ==========================================
-  // REGIONS
-  // ==========================================
-
-  getRegions: async (sessionId) => {
-    return await core.getRegions(sessionId);
+  {
+    name: 'get_project',
+    description:
+      'Get details for a Trimble Connect project.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: {
+          type: 'string'
+        }
+      },
+      required: ['projectId']
+    }
   },
 
-
-  // ==========================================
-  // PROJECTS
-  // ==========================================
-
-  getProjects: async (
-    sessionId,
-    query = {}
-  ) => {
-    return await core.getProjects(
-      sessionId,
-      query
-    );
+  {
+    name: 'get_folders',
+    description:
+      'List folders for a Trimble Connect project.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: {
+          type: 'string'
+        }
+      },
+      required: ['projectId']
+    }
   },
 
+  {
+    name: 'get_issues',
+    description:
+      'List issues for a Trimble Connect project.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: {
+          type: 'string'
+        }
+      },
+      required: ['projectId']
+    }
+  }
+];
 
-  getProject: async (
-    sessionId,
-    projectId
-  ) => {
-    return await core.getProject(
-      sessionId,
-      projectId
-    );
-  },
+export async function callTool(
+  sessionId,
+  name,
+  args = {}
+) {
+  let result;
 
+  switch (name) {
 
-  // ==========================================
-  // FOLDERS
-  // ==========================================
+    case 'get_projects':
+      result = await core.getProjects(
+        sessionId
+      );
+      break;
 
-  getFolders: async (
-    sessionId,
-    projectId,
-    query = {}
-  ) => {
-    return await core.getFolders(
-      sessionId,
-      projectId,
-      query
-    );
-  },
+    case 'get_project':
+      result = await core.getProject(
+        sessionId,
+        args.projectId
+      );
+      break;
 
+    case 'get_folders':
+      result = await core.getFolders(
+        sessionId,
+        args.projectId
+      );
+      break;
 
-  // ==========================================
-  // FILES
-  // ==========================================
+    case 'get_issues':
+      result = await topics.getTopics(
+        sessionId,
+        args.projectId
+      );
+      break;
 
-  getFiles: async (
-    sessionId,
-    projectId,
-    query = {}
-  ) => {
-    return await core.getFiles(
-      sessionId,
-      projectId,
-      query
-    );
-  },
-
-
-  // ==========================================
-  // MODEL
-  // ==========================================
-
-  getModel: async (
-    sessionId,
-    projectId,
-    modelId
-  ) => {
-    return await model.getModel(
-      sessionId,
-      projectId,
-      modelId
-    );
-  },
-
-
-  getEntities: async (
-    sessionId,
-    projectId,
-    modelId,
-    query = {}
-  ) => {
-    return await model.getEntities(
-      sessionId,
-      projectId,
-      modelId,
-      query
-    );
-  },
-
-
-  // ==========================================
-  // MODEL FEATURE
-  // ==========================================
-
-  getGroups: async (
-    sessionId,
-    projectId
-  ) => {
-    return await modelFeature.getGroups(
-      sessionId,
-      projectId
-    );
-  },
-
-
-  getGroup: async (
-    sessionId,
-    projectId,
-    groupId
-  ) => {
-    return await modelFeature.getGroup(
-      sessionId,
-      projectId,
-      groupId
-    );
-  },
-
-
-  // ==========================================
-  // PROPERTY SET
-  // ==========================================
-
-  getPropertySetLibraries: async (
-    sessionId,
-    projectId
-  ) => {
-    return await propertySet.getLibraries(
-      sessionId,
-      projectId
-    );
-  },
-
-
-  // ==========================================
-  // TOPICS
-  // ==========================================
-
-  getTopics: async (
-    sessionId,
-    projectId,
-    query = {}
-  ) => {
-    return await topics.getTopics(
-      sessionId,
-      projectId,
-      query
-    );
-  },
-
-
-  getTopic: async (
-    sessionId,
-    projectId,
-    topicId
-  ) => {
-    return await topics.getTopic(
-      sessionId,
-      projectId,
-      topicId
-    );
+    default:
+      throw new Error(
+        `Unknown tool: ${name}`
+      );
   }
 
-};
+  return {
+    content: [
+      {
+        type: 'text',
+        text: JSON.stringify(
+          result,
+          null,
+          2
+        )
+      }
+    ]
+  };
+}
 
 // export const definitions = [
 //   { name:'get_projects', description:'List Trimble Connect projects available to the authenticated user.', inputSchema:{type:'object',properties:{}} },
