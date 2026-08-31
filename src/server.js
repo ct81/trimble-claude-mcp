@@ -1,5 +1,5 @@
 // git add .
-// git commit -m "Start MCP 7"
+// git commit -m "Start MCP 8"
 // git push origin main
 
 
@@ -40,97 +40,109 @@ import {
   getClient
 } from './oauth/mcpClients.js';
 
-
 import {
   getOAuthState,
   deleteOAuthState,
   createOAuthState
 } from './oauth/oauthState.js';
 
+import {
+  swaggerDocument
+} from './swagger/swagger.js';
+
+import {
+  core,
+  model,
+  modelFeature,
+  organizer,
+  propertySet,
+  topics
+} from './trimble/index.js';
+
 const app = express();
 
-const swaggerDocument = {
-    openapi: '3.0.3',
+// const swaggerDocument = {
+//     openapi: '3.0.3',
 
-    info: {
-        title: 'Trimble Connect MCP API',
-        version: '1.0.0',
-        description:
-            'Testing API for Trimble Connect MCP tools'
-    },
+//     info: {
+//         title: 'Trimble Connect MCP API',
+//         version: '1.0.0',
+//         description:
+//             'Testing API for Trimble Connect MCP tools'
+//     },
 
-    servers: [
-        {
-            url:
-                process.env.PUBLIC_BASE_URL ||
-                `http://localhost:${config.port}`
-        }
-    ],
+//     servers: [
+//         {
+//             url:
+//                 process.env.PUBLIC_BASE_URL ||
+//                 `http://localhost:${config.port}`
+//         }
+//     ],
 
-    components: {
+//     components: {
 
-        securitySchemes: {
+//         securitySchemes: {
 
-            bearerAuth: {
-                type: 'http',
-                scheme: 'bearer',
-                bearerFormat: 'MCP Access Token'
-            }
+//             bearerAuth: {
+//                 type: 'http',
+//                 scheme: 'bearer',
+//                 bearerFormat: 'MCP Access Token'
+//             }
 
-        },
+//         },
 
-        schemas: {
+//         schemas: {
 
-            Project: {
-                type: 'object',
-                additionalProperties: true
-            },
+//             Project: {
+//                 type: 'object',
+//                 additionalProperties: true
+//             },
 
-            Error: {
-                type: 'object',
+//             Error: {
+//                 type: 'object',
 
-                properties: {
-                    error: {
-                        type: 'string'
-                    }
-                }
-            }
+//                 properties: {
+//                     error: {
+//                         type: 'string'
+//                     }
+//                 }
+//             }
 
-        }
+//         }
 
-    },
+//     },
 
-    paths: {}
-};
+//     paths: {}
+// };
 
-swaggerDocument.paths['/api/v1/projects'] = {
-  get: {
-    summary: 'Get Trimble Connect projects',
+// swaggerDocument.paths['/api/v1/projects'] = {
+//   get: {
+//     summary: 'Get Trimble Connect projects',
 
-    description:
-      'Returns the Trimble Connect projects available to the authenticated user.',
+//     description:
+//       'Returns the Trimble Connect projects available to the authenticated user.',
 
-    security: [
-      {
-        bearerAuth: []
-      }
-    ],
+//     security: [
+//       {
+//         bearerAuth: []
+//       }
+//     ],
 
-    responses: {
-      200: {
-        description: 'Projects retrieved successfully'
-      },
+//     responses: {
+//       200: {
+//         description: 'Projects retrieved successfully'
+//       },
 
-      401: {
-        description: 'Authentication required'
-      },
+//       401: {
+//         description: 'Authentication required'
+//       },
 
-      500: {
-        description: 'Trimble API error'
-      }
-    }
-  }
-};
+//       500: {
+//         description: 'Trimble API error'
+//       }
+//     }
+//   }
+// };
 
 app.set('trust proxy', 1);
 app.use(cors({origin: config.extensionOrigin === '*' ? true : config.extensionOrigin, credentials:true}));
@@ -986,6 +998,103 @@ app.get('/auth/status', requireSession, (req,res) => res.json({authenticated:tru
 // TEST: GET TRIMBLE CONNECT PROJECTS
 // =========================================================
 
+// app.get(
+//   '/api/v1/projects',
+//   requireSession,
+//   async (req, res) => {
+
+//     try {
+
+//       console.log(
+//         '[Swagger] Calling Trimble Connect getProjects'
+//       );
+
+//       console.log(
+//         '[Swagger] Session ID:',
+//         req.mcpSessionId
+//           ? `${req.mcpSessionId.substring(0, 8)}...`
+//           : null
+//       );
+
+//       const result =
+//         await tools.getProjects(
+//           req.mcpSessionId
+//         );
+
+//       console.log(
+//         '[Swagger] getProjects successful'
+//       );
+
+//       return res.json(result);
+
+//     } catch (error) {
+
+//       console.error(
+//         '[Swagger] getProjects failed:',
+//         error
+//       );
+
+//       return res.status(500).json({
+//         error: error.message
+//       });
+
+//     }
+//   }
+// );
+app.get(
+  '/api/v1/users/me',
+  requireSession,
+  async (req, res) => {
+
+    try {
+
+      const result =
+        await core.getCurrentUser(
+          req.mcpSessionId
+        );
+
+      return res.json(result);
+
+    } catch (e) {
+
+      console.error(
+        'GET /api/v1/users/me:',
+        e
+      );
+
+      return res.status(500).json({
+        error: e.message
+      });
+    }
+  }
+);
+app.get(
+  '/api/v1/regions',
+  requireSession,
+  async (req, res) => {
+
+    try {
+
+      const result =
+        await core.getRegions(
+          req.mcpSessionId
+        );
+
+      return res.json(result);
+
+    } catch (e) {
+
+      console.error(
+        'GET /api/v1/regions:',
+        e
+      );
+
+      return res.status(500).json({
+        error: e.message
+      });
+    }
+  }
+);
 app.get(
   '/api/v1/projects',
   requireSession,
@@ -993,39 +1102,110 @@ app.get(
 
     try {
 
-      console.log(
-        '[Swagger] Calling Trimble Connect getProjects'
-      );
-
-      console.log(
-        '[Swagger] Session ID:',
-        req.mcpSessionId
-          ? `${req.mcpSessionId.substring(0, 8)}...`
-          : null
-      );
-
       const result =
-        await tools.getProjects(
-          req.mcpSessionId
+        await core.getProjects(
+          req.mcpSessionId,
+          req.query
         );
-
-      console.log(
-        '[Swagger] getProjects successful'
-      );
 
       return res.json(result);
 
-    } catch (error) {
+    } catch (e) {
 
       console.error(
-        '[Swagger] getProjects failed:',
-        error
+        'GET /api/v1/projects:',
+        e
       );
 
       return res.status(500).json({
-        error: error.message
+        error: e.message
       });
+    }
+  }
+);
+app.get(
+  '/api/v1/projects/:projectId',
+  requireSession,
+  async (req, res) => {
 
+    try {
+
+      const result =
+        await core.getProject(
+          req.mcpSessionId,
+          req.params.projectId
+        );
+
+      return res.json(result);
+
+    } catch (e) {
+
+      console.error(
+        'GET /api/v1/projects/:projectId:',
+        e
+      );
+
+      return res.status(500).json({
+        error: e.message
+      });
+    }
+  }
+);
+app.get(
+  '/api/v1/projects/:projectId/folders',
+  requireSession,
+  async (req, res) => {
+
+    try {
+
+      const result =
+        await core.getFolders(
+          req.mcpSessionId,
+          req.params.projectId,
+          req.query
+        );
+
+      return res.json(result);
+
+    } catch (e) {
+
+      console.error(
+        'GET folders:',
+        e
+      );
+
+      return res.status(500).json({
+        error: e.message
+      });
+    }
+  }
+);
+app.get(
+  '/api/v1/projects/:projectId/files',
+  requireSession,
+  async (req, res) => {
+
+    try {
+
+      const result =
+        await core.getFiles(
+          req.mcpSessionId,
+          req.params.projectId,
+          req.query
+        );
+
+      return res.json(result);
+
+    } catch (e) {
+
+      console.error(
+        'GET files:',
+        e
+      );
+
+      return res.status(500).json({
+        error: e.message
+      });
     }
   }
 );
