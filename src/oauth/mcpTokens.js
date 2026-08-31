@@ -132,15 +132,12 @@ export function createMcpAccessToken(
   //   token
   // );
 
-  // console.log(
-  //   '[MCP TOKEN] Session ID:',
-  //   sessionId
-  // );
-
-  // console.log(
-  //   '[MCP TOKEN] Total tokens:',
-  //   tokens.size
-  // );
+  console.log( '[MCP TOKEN] Created token:', token ); 
+  console.log( '[MCP TOKEN] Session ID:', sessionId ); 
+  console.log( '[MCP TOKEN] Resource:', resource ); 
+  console.log( '[MCP TOKEN] Created At:', new Date().toISOString() ); 
+  console.log( '[MCP TOKEN] Expires At:', new Date( Date.now() + 60 * 60 * 1000 ).toISOString() ); 
+  console.log( '[MCP TOKEN] Total tokens:', tokens.size );
 
 
   return token;
