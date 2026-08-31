@@ -11,6 +11,54 @@ import {
   createOAuthState
 } from './oauthState.js';
 
+// export function authorizationUrl() {
+
+//   if (
+//     !config.trimble.clientId ||
+//     !config.trimble.authorizationEndpoint
+//   ) {
+//     throw new Error(
+//       'Trimble OAuth configuration is incomplete'
+//     );
+//   }
+
+//   const state =
+//     createOAuthState({
+//       type: 'extension'
+//     });
+
+//   const url =
+//     new URL(
+//       config.trimble.authorizationEndpoint
+//     );
+
+//   url.searchParams.set(
+//     'client_id',
+//     config.trimble.clientId
+//   );
+
+//   url.searchParams.set(
+//     'redirect_uri',
+//     config.trimble.redirectUri
+//   );
+
+//   url.searchParams.set(
+//     'response_type',
+//     'code'
+//   );
+
+//   url.searchParams.set(
+//     'scope',
+//     config.trimble.scope
+//   );
+
+//   url.searchParams.set(
+//     'state',
+//     state
+//   );
+
+//   return url.toString();
+// }
 export function authorizationUrl() {
 
   if (
@@ -23,9 +71,16 @@ export function authorizationUrl() {
   }
 
   const state =
-    createOAuthState({
-      type: 'extension'
-    });
+    crypto
+      .randomBytes(24)
+      .toString('hex');
+
+  createOAuthState(
+    state,
+    {
+      type: 'trimble'
+    }
+  );
 
   const url =
     new URL(
@@ -60,6 +115,88 @@ export function authorizationUrl() {
   return url.toString();
 }
 
+// export async function exchangeCode(
+//   code,
+//   state
+// ) {
+
+//   if (!code) {
+//     throw new Error(
+//       'Missing Trimble authorization code'
+//     );
+//   }
+
+//   const body =
+//     new URLSearchParams({
+
+//       grant_type:
+//         'authorization_code',
+
+//       code,
+
+//       redirect_uri:
+//         config.trimble.redirectUri,
+
+//       client_id:
+//         config.trimble.clientId,
+
+//       client_secret:
+//         config.trimble.clientSecret
+//     });
+
+//   const response =
+//     await fetch(
+//       config.trimble.tokenEndpoint,
+//       {
+//         method: 'POST',
+
+//         headers: {
+//           'content-type':
+//             'application/x-www-form-urlencoded'
+//         },
+
+//         body
+//       }
+//     );
+
+//   const json =
+//     await response.json();
+
+//   console.log('[Trimble OAuth] Token response:', {
+//     token_type: json.token_type,
+//     expires_in: json.expires_in,
+//     access_token: json.access_token
+//       ? `${json.access_token.substring(0, 8)}...`
+//       : null,
+//     refresh_token: json.refresh_token
+//       ? `${json.refresh_token.substring(0, 8)}...`
+//       : null
+//   });
+
+//   console.log('[Trimble OAuth] FULL Token response:', {
+//     token_type: json.token_type,
+//     expires_in: json.expires_in,
+//     access_token: json.access_token,
+//     refresh_token: json.refresh_token
+//   });
+
+//   if (!response.ok) {
+
+//     throw new Error(
+//       `Trimble token exchange failed: ${JSON.stringify(json)}`
+//     );
+//   }
+
+//   const sessionId =
+//     createSession({
+//       trimble: {
+//         ...json,
+//         obtained_at: Date.now()
+//       }
+//     });
+
+//   return sessionId;
+// }
 export async function exchangeCode(
   code,
   state
@@ -71,9 +208,19 @@ export async function exchangeCode(
     );
   }
 
+  const oauthState =
+    getOAuthState(state);
+
+  if (!oauthState) {
+    throw new Error(
+      'Invalid or expired OAuth state'
+    );
+  }
+
+  deleteOAuthState(state);
+
   const body =
     new URLSearchParams({
-
       grant_type:
         'authorization_code',
 
@@ -107,40 +254,47 @@ export async function exchangeCode(
   const json =
     await response.json();
 
-  console.log('[Trimble OAuth] Token response:', {
-    token_type: json.token_type,
-    expires_in: json.expires_in,
-    access_token: json.access_token
-      ? `${json.access_token.substring(0, 8)}...`
-      : null,
-    refresh_token: json.refresh_token
-      ? `${json.refresh_token.substring(0, 8)}...`
-      : null
-  });
-
-  console.log('[Trimble OAuth] FULL Token response:', {
-    token_type: json.token_type,
-    expires_in: json.expires_in,
-    access_token: json.access_token,
-    refresh_token: json.refresh_token
-  });
-
   if (!response.ok) {
-
     throw new Error(
       `Trimble token exchange failed: ${JSON.stringify(json)}`
     );
   }
 
+  console.log(
+    '[Trimble OAuth] Token response:',
+    {
+      token_type:
+        json.token_type,
+
+      expires_in:
+        json.expires_in,
+
+      access_token:
+        json.access_token
+          ? `${json.access_token.substring(0, 8)}...`
+          : null,
+
+      refresh_token:
+        json.refresh_token
+          ? `${json.refresh_token.substring(0, 8)}...`
+          : null
+    }
+  );
+
   const sessionId =
     createSession({
       trimble: {
         ...json,
-        obtained_at: Date.now()
+
+        obtained_at:
+          Date.now()
       }
     });
 
-  return sessionId;
+  return {
+    sessionId,
+    oauthState
+  };
 }
 
 export function requireSession(
@@ -245,13 +399,117 @@ export function requireSession(
   next();
 }
 
-export async function refreshIfNeeded(sessionId) {
-  const session = getSession(sessionId); if (!session?.trimble?.refresh_token) return session;
-  const expiresAt = (session.trimble.obtained_at || 0) + (session.trimble.expires_in || 3600) * 1000;
-  if (Date.now() < expiresAt - 60000) return session;
-  const body = new URLSearchParams({ grant_type: 'refresh_token', refresh_token: session.trimble.refresh_token, client_id: config.trimble.clientId, client_secret: config.trimble.clientSecret });
-  const response = await fetch(config.trimble.tokenEndpoint, { method:'POST', headers:{'content-type':'application/x-www-form-urlencoded'}, body });
-  const json = await response.json();
-  if (!response.ok) throw new Error(`Trimble refresh failed: ${JSON.stringify(json)}`);
-  return updateSession(sessionId, { trimble: { ...session.trimble, ...json, obtained_at: Date.now() } });
+// export async function refreshIfNeeded(sessionId) {
+//   const session = getSession(sessionId); if (!session?.trimble?.refresh_token) return session;
+//   const expiresAt = (session.trimble.obtained_at || 0) + (session.trimble.expires_in || 3600) * 1000;
+//   if (Date.now() < expiresAt - 60000) return session;
+//   const body = new URLSearchParams({ grant_type: 'refresh_token', refresh_token: session.trimble.refresh_token, client_id: config.trimble.clientId, client_secret: config.trimble.clientSecret });
+//   const response = await fetch(config.trimble.tokenEndpoint, { method:'POST', headers:{'content-type':'application/x-www-form-urlencoded'}, body });
+//   const json = await response.json();
+//   if (!response.ok) throw new Error(`Trimble refresh failed: ${JSON.stringify(json)}`);
+//   return updateSession(sessionId, { trimble: { ...session.trimble, ...json, obtained_at: Date.now() } });
+// }
+export async function refreshIfNeeded(
+  sessionId
+) {
+
+  const session =
+    getSession(sessionId);
+
+  if (
+    !session?.trimble?.refresh_token
+  ) {
+    return session;
+  }
+
+  const expiresAt =
+    (
+      session.trimble.obtained_at ||
+      0
+    ) +
+    (
+      session.trimble.expires_in ||
+      3600
+    ) *
+    1000;
+
+  if (
+    Date.now() <
+    expiresAt - 60000
+  ) {
+    return session;
+  }
+
+  console.log(
+    '[Trimble OAuth] Access token expired. Refreshing...'
+  );
+
+  const body =
+    new URLSearchParams({
+      grant_type:
+        'refresh_token',
+
+      refresh_token:
+        session.trimble.refresh_token,
+
+      client_id:
+        config.trimble.clientId,
+
+      client_secret:
+        config.trimble.clientSecret
+    });
+
+  const response =
+    await fetch(
+      config.trimble.tokenEndpoint,
+      {
+        method: 'POST',
+
+        headers: {
+          'content-type':
+            'application/x-www-form-urlencoded'
+        },
+
+        body
+      }
+    );
+
+  const json =
+    await response.json();
+
+  if (!response.ok) {
+
+    console.error(
+      '[Trimble OAuth] Refresh failed:',
+      json
+    );
+
+    throw new Error(
+      `Trimble refresh failed: ${JSON.stringify(json)}`
+    );
+  }
+
+  return updateSession(
+    sessionId,
+    {
+      trimble: {
+        ...session.trimble,
+
+        ...json,
+
+        /*
+         * Some OAuth providers don't return
+         * a new refresh_token.
+         *
+         * Keep the old one.
+         */
+        refresh_token:
+          json.refresh_token ||
+          session.trimble.refresh_token,
+
+        obtained_at:
+          Date.now()
+      }
+    }
+  );
 }
