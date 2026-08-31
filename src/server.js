@@ -1,5 +1,5 @@
 // git add .
-// git commit -m "Start MCP 10"
+// git commit -m "Start MCP 11"
 // git push origin main
 
 
@@ -9,7 +9,8 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { config } from './config.js';
 import { authorizationUrl, exchangeCode, requireSession } from './oauth/oauth.js';
-import { tools } from './trimble/client.js';
+// import { tools } from './trimble/client.js';
+import { definitions, callTool } from './mcp/tools.js';
 import { handleMcp } from './mcp/http.js';
 import {
   createOAuthTransaction,

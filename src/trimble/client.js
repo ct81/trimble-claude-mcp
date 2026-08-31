@@ -20,7 +20,6 @@ export async function trimbleRequest(
   }
 
   const baseUrl = config.trimble.apiBaseUrl;
-
   const url = joinUrl(baseUrl, path);
 
   console.log('[Trimble API] Base URL:', baseUrl);
@@ -29,9 +28,7 @@ export async function trimbleRequest(
 
   const headers = {
     accept: 'application/json',
-
-    authorization:
-      `Bearer ${session.trimble.access_token}`,
+    authorization: `Bearer ${session.trimble.access_token}`,
 
     ...(options.body
       ? {
@@ -45,7 +42,6 @@ export async function trimbleRequest(
   const response = await fetch(url, {
     method: options.method || 'GET',
     headers,
-
     body: options.body
       ? typeof options.body === 'string'
         ? options.body
