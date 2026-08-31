@@ -76,6 +76,8 @@ import {
 
 //   return url.toString();
 // }
+
+
 export function authorizationUrlForMcp(
   transactionId
 ) {
@@ -89,16 +91,15 @@ export function authorizationUrlForMcp(
     );
   }
 
-  const state =
-    crypto
-      .randomBytes(24)
-      .toString('hex');
+  const trimbleState =
+    crypto.randomBytes(24).toString('hex');
 
   createOAuthState(
-    state,
+    trimbleState,
     {
       type: 'mcp',
-      transactionId
+      transactionId,
+      createdAt: Date.now()
     }
   );
 
@@ -129,7 +130,21 @@ export function authorizationUrlForMcp(
 
   url.searchParams.set(
     'state',
-    state
+    trimbleState
+  );
+
+  console.log(
+    '[OAuth MCP] Authorization URL created'
+  );
+
+  console.log(
+    '[OAuth MCP] State:',
+    trimbleState
+  );
+
+  console.log(
+    '[OAuth MCP] Transaction:',
+    transactionId
   );
 
   return url.toString();
