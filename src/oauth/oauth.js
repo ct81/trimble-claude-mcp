@@ -420,25 +420,25 @@ export async function exchangeCode(
     };
   }
 
-  const jsonPrint = await response.json();
+  // const jsonPrint = await response.json();
 
-  console.log('[Trimble OAuth] Token response:', {
-    token_type: jsonPrint.token_type,
-    expires_in: jsonPrint.expires_in,
-    access_token: jsonPrint.access_token
-      ? `${jsonPrint.access_token.substring(0, 8)}...`
-      : null,
-    refresh_token: jsonPrint.refresh_token
-      ? `${jsonPrint.refresh_token.substring(0, 8)}...`
-      : null
-  });
+  // console.log('[Trimble OAuth] Token response:', {
+  //   token_type: jsonPrint.token_type,
+  //   expires_in: jsonPrint.expires_in,
+  //   access_token: jsonPrint.access_token
+  //     ? `${jsonPrint.access_token.substring(0, 8)}...`
+  //     : null,
+  //   refresh_token: jsonPrint.refresh_token
+  //     ? `${jsonPrint.refresh_token.substring(0, 8)}...`
+  //     : null
+  // });
 
-  console.log('[Trimble OAuth] FULL Token response:', {
-    token_type: jsonPrint.token_type,
-    expires_in: jsonPrint.expires_in,
-    access_token: jsonPrint.access_token,
-    refresh_token: jsonPrint.refresh_token
-  });
+  // console.log('[Trimble OAuth] FULL Token response:', {
+  //   token_type: jsonPrint.token_type,
+  //   expires_in: jsonPrint.expires_in,
+  //   access_token: jsonPrint.access_token,
+  //   refresh_token: jsonPrint.refresh_token
+  // });
 
   if (!response.ok) {
 
