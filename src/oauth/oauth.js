@@ -407,6 +407,24 @@ export async function exchangeCode(
   const text =
     await response.text();
 
+  // console.log('[Trimble OAuth] Token response:', {
+  //   token_type: text.token_type,
+  //   expires_in: text.expires_in,
+  //   access_token: text.access_token
+  //     ? `${text.access_token.substring(0, 8)}...`
+  //     : null,
+  //   refresh_token: text.refresh_token
+  //     ? `${text.refresh_token.substring(0, 8)}...`
+  //     : null
+  // });
+
+  // console.log('[Trimble OAuth] FULL Token response:', {
+  //   token_type: text.token_type,
+  //   expires_in: text.expires_in,
+  //   access_token: text.access_token,
+  //   refresh_token: text.refresh_token
+  // });
+
   let json;
 
   try {
@@ -419,26 +437,6 @@ export async function exchangeCode(
       raw: text
     };
   }
-
-  // const jsonPrint = await response.json();
-
-  // console.log('[Trimble OAuth] Token response:', {
-  //   token_type: jsonPrint.token_type,
-  //   expires_in: jsonPrint.expires_in,
-  //   access_token: jsonPrint.access_token
-  //     ? `${jsonPrint.access_token.substring(0, 8)}...`
-  //     : null,
-  //   refresh_token: jsonPrint.refresh_token
-  //     ? `${jsonPrint.refresh_token.substring(0, 8)}...`
-  //     : null
-  // });
-
-  // console.log('[Trimble OAuth] FULL Token response:', {
-  //   token_type: jsonPrint.token_type,
-  //   expires_in: jsonPrint.expires_in,
-  //   access_token: jsonPrint.access_token,
-  //   refresh_token: jsonPrint.refresh_token
-  // });
 
   if (!response.ok) {
 
