@@ -418,12 +418,12 @@ export async function exchangeCode(
   //     : null
   // });
 
-  // console.log('[Trimble OAuth] FULL Token response:', {
-  //   token_type: text.token_type,
-  //   expires_in: text.expires_in,
-  //   access_token: text.access_token,
-  //   refresh_token: text.refresh_token
-  // });
+  console.log('[Trimble OAuth] FULL Token response:', {
+    token_type: text.token_type,
+    expires_in: text.expires_in,
+    access_token: text.access_token,
+    refresh_token: text.refresh_token
+  });
 
   let json;
 
