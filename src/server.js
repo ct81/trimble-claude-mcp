@@ -1,5 +1,5 @@
 // git add .
-// git commit -m "Start MCP with extract pdf 6"
+// git commit -m "Start MCP with extract pdf 7"
 // git push origin main
 
 
@@ -59,6 +59,9 @@ import {
   propertySet,
   topics
 } from './trimble/index.js';
+
+import pdfRouter
+  from './pdf/pdf.js';
 
 const app = express();
 
@@ -1210,7 +1213,10 @@ app.get(
     }
   }
 );
-
+app.use(
+  '/api/pdf',
+  pdfRouter
+);
 app.post('/mcp', requireSession, handleMcp);
 // app.post(
 //   '/mcp',

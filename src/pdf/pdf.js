@@ -6,91 +6,136 @@ import {
   extractColumnScheduleFromPdf
 } from './extractColumnSchedule.js';
 
+
 const router = express.Router();
+
 
 const upload = multer({
   dest: 'uploads/'
 });
 
 
-/**
- * @swagger
- * /api/pdf/extract-column-schedule:
- *   post:
- *     summary: Extract column schedule from PDF
- *     description: Upload a Tekla column schedule PDF and extract the column schedule data.
- *     tags:
- *       - PDF
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             required:
- *               - file
- *             properties:
- *               file:
- *                 type: string
- *                 format: binary
- *                 description: PDF file to process
- *     responses:
- *       200:
- *         description: PDF processed successfully
- *       400:
- *         description: PDF file is missing
- *       500:
- *         description: PDF processing failed
- */
 router.post(
   '/extract-column-schedule',
+
   upload.single('file'),
+
   async (req, res) => {
+
+    console.log(
+      '[PDF] Extract column schedule endpoint called'
+    );
+
 
     try {
 
+      // ==========================================
+      // Check file
+      // ==========================================
+
       if (!req.file) {
+
         return res.status(400).json({
           success: false,
           error: 'PDF file is required'
         });
+
       }
 
+
       console.log(
-        'PDF received:',
+        '[PDF] File:',
         req.file.originalname
       );
 
       console.log(
-        'Temporary path:',
+        '[PDF] Temporary path:',
         req.file.path
       );
+
+
+      // ==========================================
+      // Call PDF extraction
+      // ==========================================
 
       const rows =
         await extractColumnScheduleFromPdf(
           req.file.path
         );
 
-      fs.unlinkSync(req.file.path);
+
+      // ==========================================
+      // Delete temporary PDF
+      // ==========================================
+
+      try {
+
+        fs.unlinkSync(
+          req.file.path
+        );
+
+      }
+      catch (deleteError) {
+
+        console.warn(
+          '[PDF] Could not delete temporary file:',
+          deleteError.message
+        );
+
+      }
+
+
+      // ==========================================
+      // Return result
+      // ==========================================
 
       return res.json({
+
         success: true,
-        file: req.file.originalname,
-        count: rows.length,
+
+        file:
+          req.file.originalname,
+
+        count:
+          rows.length,
+
         rows
+
       });
 
     }
     catch (error) {
 
       console.error(
-        'Column schedule extraction failed:',
+        '[PDF] Extraction failed:',
         error
       );
 
+
+      // Try to delete temporary file
+      if (req.file?.path) {
+
+        try {
+
+          fs.unlinkSync(
+            req.file.path
+          );
+
+        }
+        catch {
+          // Ignore cleanup failure
+        }
+
+      }
+
+
       return res.status(500).json({
+
         success: false,
-        error: error.message
+
+        error:
+          error.message
+
       });
 
     }
