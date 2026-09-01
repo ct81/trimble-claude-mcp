@@ -1,23 +1,126 @@
-export function parseColumnSchedule(pdfData) {
-
-  console.log(
-    '[PDF Parser] PDF data received'
-  );
-
-  console.log(
-    '[PDF Parser] Keys:',
-    Object.keys(pdfData || {})
-  );
-
-  console.log(
-    '[PDF Parser] Text length:',
-    pdfData?.text?.length || 0
-  );
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 
 
-  // Temporary test row
-  return [];
+// =====================================================
+// LOAD PDF
+// =====================================================
+
+async function loadPdf(buffer) {
+
+  const loadingTask =
+    pdfjsLib.getDocument({
+      data: new Uint8Array(buffer)
+    });
+
+  return await loadingTask.promise;
 }
+
+
+// =====================================================
+// EXTRACT TEXT WITH POSITION
+// =====================================================
+
+async function extractPageItems(page) {
+
+  const content =
+    await page.getTextContent();
+
+  return content.items
+
+    .filter(item =>
+      item.str &&
+      item.str.trim()
+    )
+
+    .map(item => {
+
+      const transform =
+        item.transform;
+
+      return {
+
+        text:
+          item.str.trim(),
+
+        x:
+          transform[4],
+
+        y:
+          transform[5],
+
+        width:
+          item.width || 0,
+
+        height:
+          item.height || 0
+
+      };
+
+    });
+
+}
+
+
+// =====================================================
+// EXTRACT ALL PAGES
+// =====================================================
+
+async function extractPdfItems(buffer) {
+
+  const pdf =
+    await loadPdf(buffer);
+
+  const pages = [];
+
+  for (
+    let pageNumber = 1;
+    pageNumber <= pdf.numPages;
+    pageNumber++
+  ) {
+
+    const page =
+      await pdf.getPage(pageNumber);
+
+    const items =
+      await extractPageItems(page);
+
+    pages.push({
+
+      pageNumber,
+
+      items
+
+    });
+
+  }
+
+  return pages;
+
+}
+
+
+// export function parseColumnSchedule(pdfData) {
+
+//   console.log(
+//     '[PDF Parser] PDF data received'
+//   );
+
+//   console.log(
+//     '[PDF Parser] Keys:',
+//     Object.keys(pdfData || {})
+//   );
+
+//   console.log(
+//     '[PDF Parser] Text length:',
+//     pdfData?.text?.length || 0
+//   );
+
+
+//   // Temporary test row
+//   return [];
+// }
+
+
 
 // export function parseColumnSchedule(pdfData) {
 
