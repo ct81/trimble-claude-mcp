@@ -5,20 +5,18 @@ export function parseColumnSchedule(pdfData) {
   );
 
   console.log(
-    '[PDF Parser] Type:',
-    typeof pdfData
-  );
-
-  console.log(
     '[PDF Parser] Keys:',
     Object.keys(pdfData || {})
   );
 
+  console.log(
+    '[PDF Parser] Text length:',
+    pdfData?.text?.length || 0
+  );
 
-  return {
-    pages: pdfData?.pages || [],
-    text: pdfData?.text || ''
-  };
+
+  // Temporary test row
+  return [];
 }
 
 // export function parseColumnSchedule(pdfData) {
