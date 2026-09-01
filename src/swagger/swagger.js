@@ -19,6 +19,10 @@ export const swaggerDocument = {
     }
   ],
 
+  apis: [
+    './src/**/*.js'
+  ],
+
   components: {
 
     securitySchemes: {

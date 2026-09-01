@@ -4,7 +4,7 @@ import fs from 'fs';
 
 import {
   extractColumnScheduleFromPdf
-} from '../pdf/extractColumnSchedule.js';
+} from './extractColumnSchedule.js';
 
 const router = express.Router();
 
@@ -13,6 +13,35 @@ const upload = multer({
 });
 
 
+/**
+ * @swagger
+ * /api/pdf/extract-column-schedule:
+ *   post:
+ *     summary: Extract column schedule from PDF
+ *     description: Upload a Tekla column schedule PDF and extract the column schedule data.
+ *     tags:
+ *       - PDF
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - file
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: PDF file to process
+ *     responses:
+ *       200:
+ *         description: PDF processed successfully
+ *       400:
+ *         description: PDF file is missing
+ *       500:
+ *         description: PDF processing failed
+ */
 router.post(
   '/extract-column-schedule',
   upload.single('file'),
@@ -28,8 +57,13 @@ router.post(
       }
 
       console.log(
-        'Processing PDF:',
+        'PDF received:',
         req.file.originalname
+      );
+
+      console.log(
+        'Temporary path:',
+        req.file.path
       );
 
       const rows =
@@ -37,16 +71,7 @@ router.post(
           req.file.path
         );
 
-      // Remove temporary file
-      try {
-        fs.unlinkSync(req.file.path);
-      }
-      catch (deleteError) {
-        console.warn(
-          'Unable to delete temporary file:',
-          deleteError.message
-        );
-      }
+      fs.unlinkSync(req.file.path);
 
       return res.json({
         success: true,
@@ -69,6 +94,7 @@ router.post(
       });
 
     }
+
   }
 );
 
