@@ -3,7 +3,7 @@ import multer from 'multer';
 
 import {
   extractColumnSchedule
-} from './pdfScheduleParser.js';
+} from './pdf/scheduleParser.js'
 
 const router = express.Router();
 
