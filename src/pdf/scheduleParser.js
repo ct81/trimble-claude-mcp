@@ -62,6 +62,82 @@ async function extractPageItems(page) {
 
 
 // =====================================================
+// DEBUG RAW TEXT
+// =====================================================
+
+function debugRawText(page, items) {
+
+  console.log(
+    `\n====================================================`
+  );
+
+  console.log(
+    `RAW TEXT - PAGE ${page.pageNumber}`
+  );
+
+  console.log(
+    `====================================================`
+  );
+
+
+  const rawText =
+    items
+      .map(item => item.text)
+      .join(' ');
+
+
+  console.log(rawText);
+
+
+  console.log(
+    `\n========== END RAW TEXT PAGE ${page.pageNumber} ==========\n`
+  );
+
+}
+
+
+// =====================================================
+// DEBUG PAGE ITEMS WITH POSITION
+// =====================================================
+
+function debugPageItems(page) {
+
+  console.log(
+    `\n====================================================`
+  );
+
+  console.log(
+    `POSITIONED ITEMS - PAGE ${page.pageNumber}`
+  );
+
+  console.log(
+    `====================================================`
+  );
+
+
+  for (const item of page.items) {
+
+    console.log(
+
+      `[${item.x.toFixed(1)}, ${item.y.toFixed(1)}]`,
+
+      `[W:${item.width.toFixed(1)} H:${item.height.toFixed(1)}]`,
+
+      item.text
+
+    );
+
+  }
+
+
+  console.log(
+    `\n========== END PAGE ${page.pageNumber} ==========\n`
+  );
+
+}
+
+
+// =====================================================
 // EXTRACT ALL PAGES
 // =====================================================
 
@@ -72,6 +148,20 @@ async function extractPdfItems(buffer) {
 
   const pages = [];
 
+
+  console.log(
+    `\n####################################################`
+  );
+
+  console.log(
+    `[PDF] Number of pages: ${pdf.numPages}`
+  );
+
+  console.log(
+    `####################################################\n`
+  );
+
+
   for (
     let pageNumber = 1;
     pageNumber <= pdf.numPages;
@@ -81,41 +171,45 @@ async function extractPdfItems(buffer) {
     const page =
       await pdf.getPage(pageNumber);
 
+
     const items =
       await extractPageItems(page);
 
-    pages.push({
+
+    const pageData = {
 
       pageNumber,
 
       items
 
-    });
-
-  }
-
-  return pages;
-}
+    };
 
 
-// =====================================================
-// DEBUG PAGE ITEMS
-// =====================================================
+    pages.push(pageData);
 
-function debugPageItems(page) {
 
-  console.log(
-    `\n========== PAGE ${page.pageNumber} ==========`
-  );
+    // =================================================
+    // DEBUG RAW TEXT
+    // =================================================
 
-  for (const item of page.items) {
+    debugRawText(
+      page,
+      items
+    );
 
-    console.log(
-      `[${item.x.toFixed(1)}, ${item.y.toFixed(1)}]`,
-      item.text
+
+    // =================================================
+    // DEBUG POSITIONED ITEMS
+    // =================================================
+
+    debugPageItems(
+      pageData
     );
 
   }
+
+
+  return pages;
 
 }
 
@@ -129,13 +223,13 @@ function normalizeRow(row) {
   return {
 
     DetailMark:
-      row.DetailMark || "",
+      row.DetailMark || '',
 
     StartStorey:
-      row.StartStorey || "",
+      row.StartStorey || '',
 
     EndStorey:
-      row.EndStorey || "",
+      row.EndStorey || '',
 
     Width:
       Number(row.Width) || 0,
@@ -144,16 +238,16 @@ function normalizeRow(row) {
       Number(row.Breadth) || 0,
 
     BottomRebar:
-      row.BottomRebar || "",
+      row.BottomRebar || '',
 
     TopRebar:
-      row.TopRebar || "",
+      row.TopRebar || '',
 
     Stirrups:
-      row.Stirrups || "",
+      row.Stirrups || '',
 
     Method:
-      row.Method || ""
+      row.Method || ''
 
   };
 
@@ -170,33 +264,29 @@ function parseColumnSchedule(pages) {
 
 
   // ===================================================
-  // YOUR PDF PARSING LOGIC GOES HERE
+  // YOUR COLUMN SCHEDULE PARSING LOGIC
   // ===================================================
   //
-  // Example:
+  // The raw PDF items are available here:
   //
-  // for (const page of pages) {
+  // pages[n].items
   //
-  //   const items = page.items;
+  // Each item contains:
   //
-  //   ...
-  //
-  //   rows.push({
-  //     DetailMark: "...",
-  //     StartStorey: "...",
-  //     EndStorey: "...",
-  //     Width: 600,
-  //     Breadth: 800,
-  //     BottomRebar: "...",
-  //     TopRebar: "...",
-  //     Stirrups: "...",
-  //     Method: "..."
-  //   });
-  //
+  // {
+  //   text,
+  //   x,
+  //   y,
+  //   width,
+  //   height
   // }
+  //
+  // ===================================================
 
 
-  return rows.map(normalizeRow);
+  return rows.map(
+    normalizeRow
+  );
 
 }
 
@@ -208,12 +298,20 @@ function parseColumnSchedule(pages) {
 export async function extractColumnSchedule(buffer) {
 
   console.log(
-    '[PDF] Starting column schedule extraction'
+    '\n===================================================='
+  );
+
+  console.log(
+    '[PDF] START COLUMN SCHEDULE EXTRACTION'
+  );
+
+  console.log(
+    '====================================================\n'
   );
 
 
   // ===================================================
-  // EXTRACT PDF
+  // EXTRACT PDF ITEMS
   // ===================================================
 
   const pages =
@@ -221,19 +319,12 @@ export async function extractColumnSchedule(buffer) {
 
 
   console.log(
-    `[PDF] Extracted ${pages.length} page(s)`
+    `\n[PDF] Extraction complete`
   );
 
-
-  // ===================================================
-  // TEMPORARY DEBUG
-  // ===================================================
-
-  for (const page of pages) {
-
-    debugPageItems(page);
-
-  }
+  console.log(
+    `[PDF] Pages extracted: ${pages.length}`
+  );
 
 
   // ===================================================
@@ -241,16 +332,39 @@ export async function extractColumnSchedule(buffer) {
   // ===================================================
 
   const rows =
-    parseColumnSchedule(pages);
+    parseColumnSchedule(
+      pages
+    );
+
+
+  // ===================================================
+  // DEBUG FINAL ROWS
+  // ===================================================
+
+  console.log(
+    '\n===================================================='
+  );
+
+  console.log(
+    '[PDF] FINAL PARSED ROWS'
+  );
+
+  console.log(
+    '===================================================='
+  );
 
 
   console.log(
-    `[PDF] Generated ${rows.length} row(s)`
+    JSON.stringify(
+      rows,
+      null,
+      2
+    )
   );
 
 
   // ===================================================
-  // RETURN ROWS ONLY
+  // RETURN ROWS
   // ===================================================
 
   return rows;
