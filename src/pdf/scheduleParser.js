@@ -95,7 +95,6 @@ async function extractPdfItems(buffer) {
   }
 
   return pages;
-
 }
 
 
@@ -122,17 +121,108 @@ function debugPageItems(page) {
 
 
 // =====================================================
+// NORMALIZE ROW
+// =====================================================
+
+function normalizeRow(row) {
+
+  return {
+
+    DetailMark:
+      row.DetailMark || "",
+
+    StartStorey:
+      row.StartStorey || "",
+
+    EndStorey:
+      row.EndStorey || "",
+
+    Width:
+      Number(row.Width) || 0,
+
+    Breadth:
+      Number(row.Breadth) || 0,
+
+    BottomRebar:
+      row.BottomRebar || "",
+
+    TopRebar:
+      row.TopRebar || "",
+
+    Stirrups:
+      row.Stirrups || "",
+
+    Method:
+      row.Method || ""
+
+  };
+
+}
+
+
+// =====================================================
+// PARSE COLUMN SCHEDULE
+// =====================================================
+
+function parseColumnSchedule(pages) {
+
+  const rows = [];
+
+
+  // ===================================================
+  // YOUR PDF PARSING LOGIC GOES HERE
+  // ===================================================
+  //
+  // Example:
+  //
+  // for (const page of pages) {
+  //
+  //   const items = page.items;
+  //
+  //   ...
+  //
+  //   rows.push({
+  //     DetailMark: "...",
+  //     StartStorey: "...",
+  //     EndStorey: "...",
+  //     Width: 600,
+  //     Breadth: 800,
+  //     BottomRebar: "...",
+  //     TopRebar: "...",
+  //     Stirrups: "...",
+  //     Method: "..."
+  //   });
+  //
+  // }
+
+
+  return rows.map(normalizeRow);
+
+}
+
+
+// =====================================================
 // EXTRACT COLUMN SCHEDULE
 // =====================================================
 
 export async function extractColumnSchedule(buffer) {
 
+  console.log(
+    '[PDF] Starting column schedule extraction'
+  );
+
+
   // ===================================================
-  // EXTRACT PDF ITEMS
+  // EXTRACT PDF
   // ===================================================
 
   const pages =
     await extractPdfItems(buffer);
+
+
+  console.log(
+    `[PDF] Extracted ${pages.length} page(s)`
+  );
 
 
   // ===================================================
@@ -147,22 +237,194 @@ export async function extractColumnSchedule(buffer) {
 
 
   // ===================================================
-  // YOUR EXISTING JSON GENERATION CODE
-  // ===================================================
-  //
-  // Put the existing parsing logic here.
-  //
-  // Example:
-  //
-  // const rows = ...
-  //
-  // return rows;
+  // GENERATE ROWS
   // ===================================================
 
+  const rows =
+    parseColumnSchedule(pages);
 
-  return pages;
+
+  console.log(
+    `[PDF] Generated ${rows.length} row(s)`
+  );
+
+
+  // ===================================================
+  // RETURN ROWS ONLY
+  // ===================================================
+
+  return rows;
 
 }
+
+
+
+
+// import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
+
+
+// // =====================================================
+// // LOAD PDF
+// // =====================================================
+
+// async function loadPdf(buffer) {
+
+//   const loadingTask =
+//     pdfjsLib.getDocument({
+//       data: new Uint8Array(buffer)
+//     });
+
+//   return await loadingTask.promise;
+// }
+
+
+// // =====================================================
+// // EXTRACT TEXT WITH POSITION
+// // =====================================================
+
+// async function extractPageItems(page) {
+
+//   const content =
+//     await page.getTextContent();
+
+//   return content.items
+
+//     .filter(item =>
+//       item.str &&
+//       item.str.trim()
+//     )
+
+//     .map(item => {
+
+//       const transform =
+//         item.transform;
+
+//       return {
+
+//         text:
+//           item.str.trim(),
+
+//         x:
+//           transform[4],
+
+//         y:
+//           transform[5],
+
+//         width:
+//           item.width || 0,
+
+//         height:
+//           item.height || 0
+
+//       };
+
+//     });
+
+// }
+
+
+// // =====================================================
+// // EXTRACT ALL PAGES
+// // =====================================================
+
+// async function extractPdfItems(buffer) {
+
+//   const pdf =
+//     await loadPdf(buffer);
+
+//   const pages = [];
+
+//   for (
+//     let pageNumber = 1;
+//     pageNumber <= pdf.numPages;
+//     pageNumber++
+//   ) {
+
+//     const page =
+//       await pdf.getPage(pageNumber);
+
+//     const items =
+//       await extractPageItems(page);
+
+//     pages.push({
+
+//       pageNumber,
+
+//       items
+
+//     });
+
+//   }
+
+//   return pages;
+
+// }
+
+
+// // =====================================================
+// // DEBUG PAGE ITEMS
+// // =====================================================
+
+// function debugPageItems(page) {
+
+//   console.log(
+//     `\n========== PAGE ${page.pageNumber} ==========`
+//   );
+
+//   for (const item of page.items) {
+
+//     console.log(
+//       `[${item.x.toFixed(1)}, ${item.y.toFixed(1)}]`,
+//       item.text
+//     );
+
+//   }
+
+// }
+
+
+// // =====================================================
+// // EXTRACT COLUMN SCHEDULE
+// // =====================================================
+
+// export async function extractColumnSchedule(buffer) {
+
+//   // ===================================================
+//   // EXTRACT PDF ITEMS
+//   // ===================================================
+
+//   const pages =
+//     await extractPdfItems(buffer);
+
+
+//   // ===================================================
+//   // TEMPORARY DEBUG
+//   // ===================================================
+
+//   for (const page of pages) {
+
+//     debugPageItems(page);
+
+//   }
+
+
+//   // ===================================================
+//   // YOUR EXISTING JSON GENERATION CODE
+//   // ===================================================
+//   //
+//   // Put the existing parsing logic here.
+//   //
+//   // Example:
+//   //
+//   // const rows = ...
+//   //
+//   // return rows;
+//   // ===================================================
+
+
+//   return pages;
+
+// }
 
 // export function parseColumnSchedule(pdfData) {
 
