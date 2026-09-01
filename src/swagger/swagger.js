@@ -19,10 +19,6 @@ export const swaggerDocument = {
     }
   ],
 
-  apis: [
-    './src/**/*.js'
-  ],
-
   components: {
 
     securitySchemes: {
@@ -56,6 +52,168 @@ export const swaggerDocument = {
           200: {
             description:
               'Server is healthy'
+          }
+
+        }
+
+      }
+
+    },
+
+    '/api/pdf/extract-column-schedule': {
+
+      post: {
+
+        summary:
+          'Extract column schedule from PDF',
+
+        description:
+          'Upload a Tekla structural column schedule PDF and extract normalized column schedule data.',
+
+        security: [],
+
+        requestBody: {
+
+          required: true,
+
+          content: {
+
+            'multipart/form-data': {
+
+              schema: {
+
+                type: 'object',
+
+                required: [
+                  'file'
+                ],
+
+                properties: {
+
+                  file: {
+
+                    type: 'string',
+
+                    format: 'binary',
+
+                    description:
+                      'PDF file containing the column schedule'
+
+                  }
+
+                }
+
+              }
+
+            }
+
+          }
+
+        },
+
+        responses: {
+
+          200: {
+
+            description:
+              'Column schedule extracted successfully',
+
+            content: {
+
+              'application/json': {
+
+                schema: {
+
+                  type: 'object',
+
+                  properties: {
+
+                    success: {
+                      type: 'boolean'
+                    },
+
+                    file: {
+                      type: 'string'
+                    },
+
+                    count: {
+                      type: 'integer'
+                    },
+
+                    rows: {
+
+                      type: 'array',
+
+                      items: {
+
+                        type: 'object',
+
+                        properties: {
+
+                          DetailMark: {
+                            type: 'string'
+                          },
+
+                          StartStorey: {
+                            type: 'string'
+                          },
+
+                          EndStorey: {
+                            type: 'string'
+                          },
+
+                          Width: {
+                            type: 'number'
+                          },
+
+                          Breadth: {
+                            type: 'number'
+                          },
+
+                          BottomRebar: {
+                            type: 'string'
+                          },
+
+                          TopRebar: {
+                            type: 'string'
+                          },
+
+                          Stirrups: {
+                            type: 'string'
+                          },
+
+                          Method: {
+                            type: 'string'
+                          }
+
+                        }
+
+                      }
+
+                    }
+
+                  }
+
+                }
+
+              }
+
+            }
+
+          },
+
+          400: {
+
+            description:
+              'PDF file is missing'
+
+          },
+
+          500: {
+
+            description:
+              'PDF extraction failed'
+
           }
 
         }

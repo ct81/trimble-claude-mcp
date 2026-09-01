@@ -1,5 +1,5 @@
 // git add .
-// git commit -m "Start MCP with extract pdf 4"
+// git commit -m "Start MCP with extract pdf 5"
 // git push origin main
 
 
@@ -59,8 +59,6 @@ import {
   propertySet,
   topics
 } from './trimble/index.js';
-
-import pdfRoutes from './pdf/pdf.js';
 
 const app = express();
 
@@ -172,10 +170,6 @@ app.use(
             explorer: true
         }
     )
-);
-app.use(
-  '/api/pdf',
-  pdfRoutes
 );
 
 app.get('/health', (_, res) => res.json({status:'ok',service:'trimble-connect-mcp'}));
