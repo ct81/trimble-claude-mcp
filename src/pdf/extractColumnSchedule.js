@@ -2,34 +2,65 @@ import { extractPdfText } from './pdfTextExtractor.js';
 import { parseColumnSchedule } from './scheduleParser.js';
 import { normalizeColumnRows } from './normalizer.js';
 
-
 export async function extractColumnScheduleFromPdf(pdfPath) {
 
-  // ==========================================
-  // 1. Load and extract PDF
-  // ==========================================
+  console.log('[PDF] Starting extraction');
+  console.log('[PDF] File:', pdfPath);
 
-  const pdfData = await extractPdfText(pdfPath);
+  const pdfData =
+    await extractPdfText(pdfPath);
+
+  console.log(
+    '[PDF] PDF data keys:',
+    Object.keys(pdfData || {})
+  );
+
+  console.log(
+    '[PDF] Text length:',
+    pdfData?.text?.length || 0
+  );
+
+  console.log(
+    '[PDF] Pages:',
+    pdfData?.pages?.length || 0
+  );
+
+  console.log(
+    '[PDF] First 5000 characters:'
+  );
+
+  console.log(
+    pdfData?.text?.substring(0, 5000) || ''
+  );
 
 
-  // ==========================================
-  // 2. Parse column schedule
-  // ==========================================
+  // TEMPORARY DEBUG RESULT
 
-  const rows = parseColumnSchedule(pdfData);
+  return [
+    {
+      DetailMark: '__DEBUG__',
 
+      StartStorey: '',
 
-  // ==========================================
-  // 3. Normalize result
-  // ==========================================
+      EndStorey: '',
 
-  const normalizedRows =
-    normalizeColumnRows(rows);
+      Width: 0,
 
+      Breadth: 0,
 
-  // ==========================================
-  // 4. Return
-  // ==========================================
+      BottomRebar: '',
 
-  return normalizedRows;
+      TopRebar: '',
+
+      Stirrups: '',
+
+      Method: '',
+
+      ExtractedTextLength:
+        pdfData?.text?.length || 0,
+
+      ExtractedText:
+        pdfData?.text || ''
+    }
+  ];
 }
