@@ -99,6 +99,71 @@ async function extractPdfItems(buffer) {
 }
 
 
+// =====================================================
+// DEBUG PAGE ITEMS
+// =====================================================
+
+function debugPageItems(page) {
+
+  console.log(
+    `\n========== PAGE ${page.pageNumber} ==========`
+  );
+
+  for (const item of page.items) {
+
+    console.log(
+      `[${item.x.toFixed(1)}, ${item.y.toFixed(1)}]`,
+      item.text
+    );
+
+  }
+
+}
+
+
+// =====================================================
+// EXTRACT COLUMN SCHEDULE
+// =====================================================
+
+export async function extractColumnSchedule(buffer) {
+
+  // ===================================================
+  // EXTRACT PDF ITEMS
+  // ===================================================
+
+  const pages =
+    await extractPdfItems(buffer);
+
+
+  // ===================================================
+  // TEMPORARY DEBUG
+  // ===================================================
+
+  for (const page of pages) {
+
+    debugPageItems(page);
+
+  }
+
+
+  // ===================================================
+  // YOUR EXISTING JSON GENERATION CODE
+  // ===================================================
+  //
+  // Put the existing parsing logic here.
+  //
+  // Example:
+  //
+  // const rows = ...
+  //
+  // return rows;
+  // ===================================================
+
+
+  return pages;
+
+}
+
 // export function parseColumnSchedule(pdfData) {
 
 //   console.log(
