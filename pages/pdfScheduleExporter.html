@@ -109,6 +109,14 @@
       margin-top: 16px;
     }
 
+    .json-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+      margin-bottom: 12px;
+    }
+
     button {
       border: 1px solid var(--border);
       background: var(--panel-alt);
@@ -210,6 +218,10 @@
     </div>
 
     <div class="card">
+      <div class="json-actions">
+        <button id="copyJsonBtn" type="button">📋 Copy JSON</button>
+        <button id="exportJsonBtn" type="button">💾 Export JSON</button>
+      </div>
       <div class="table-wrap">
         <table>
           <thead>
@@ -243,11 +255,14 @@
     const fileStatus = document.getElementById('fileStatus');
     const uploadBtn = document.getElementById('uploadBtn');
     const clearBtn = document.getElementById('clearBtn');
+    const copyJsonBtn = document.getElementById('copyJsonBtn');
+    const exportJsonBtn = document.getElementById('exportJsonBtn');
     const uploadArea = document.getElementById('uploadArea');
     const tableBody = document.getElementById('tableBody');
     const responseBox = document.getElementById('responseBox');
 
     let selectedFile = null;
+    let currentJsonResult = null;
 
     function setStatus(message, color = '#8b949e') {
       fileStatus.textContent = message;
@@ -286,11 +301,48 @@
 
     function clearData() {
       selectedFile = null;
+      currentJsonResult = null;
       fileInput.value = '';
       uploadBtn.disabled = true;
       setStatus('No file selected');
       renderEmptyState();
       responseBox.textContent = 'Response will appear here.';
+    }
+
+    async function copyJson() {
+      if (!currentJsonResult) {
+        setStatus('No JSON response to copy yet', '#d29922');
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(JSON.stringify(currentJsonResult, null, 2));
+        setStatus('JSON copied to clipboard', '#3fb950');
+      } catch (error) {
+        console.error('Copy failed:', error);
+        setStatus('Copy failed. Please copy manually from the response area.', '#f85149');
+      }
+    }
+
+    function exportJson() {
+      if (!currentJsonResult) {
+        setStatus('No JSON response to export yet', '#d29922');
+        return;
+      }
+
+      const blob = new Blob([JSON.stringify(currentJsonResult, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const fileName = (selectedFile && selectedFile.name ? selectedFile.name.replace(/\.pdf$/i, '') : 'column-schedule') + '.json';
+
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setStatus('JSON exported successfully', '#3fb950');
     }
 
     fileInput.addEventListener('change', () => {
@@ -358,6 +410,7 @@
           throw new Error(result.error || `Request failed with status ${response.status}`);
         }
 
+        currentJsonResult = result;
         setStatus(`${result.file || selectedFile.name} processed successfully`, '#3fb950');
         responseBox.textContent = JSON.stringify(result, null, 2);
         renderRows(result.rows || []);
@@ -372,6 +425,8 @@
     });
 
     clearBtn.addEventListener('click', clearData);
+    copyJsonBtn.addEventListener('click', copyJson);
+    exportJsonBtn.addEventListener('click', exportJson);
     renderEmptyState();
   </script>
 </body>
