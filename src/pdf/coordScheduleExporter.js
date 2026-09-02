@@ -2004,27 +2004,5 @@ function getExcelColumnName(
 // ERROR HANDLING
 // ============================================================
 
-main()
-    .catch(
-        error => {
-
-            console.error("");
-            console.error(
-                "=============================================="
-            );
-
-            console.error(
-                "ERROR"
-            );
-
-            console.error(
-                "=============================================="
-            );
-
-            console.error(
-                error
-            );
-
-            process.exit(1);
-        }
-    );
+// Intentionally left blank here so the module can be imported
+// safely from MCP and other server-side callers.

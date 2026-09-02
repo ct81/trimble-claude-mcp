@@ -1,66 +1,23 @@
-import { extractPdfText } from './pdfTextExtractor.js';
-import { parseColumnSchedule } from './scheduleParser.js';
-import { normalizeColumnRows } from './normalizer.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import { extractColumnSchedule as extractColumnScheduleFromPdfjs } from './scheduleParser.js';
+
+export async function extractColumnScheduleFromBuffer(buffer) {
+  return extractColumnScheduleFromPdfjs(buffer);
+}
 
 export async function extractColumnScheduleFromPdf(pdfPath) {
+  if (!pdfPath) {
+    throw new Error('PDF path is required.');
+  }
 
-  console.log('[PDF] Starting extraction');
-  console.log('[PDF] File:', pdfPath);
+  const resolvedPath = path.resolve(pdfPath);
 
-  const pdfData =
-    await extractPdfText(pdfPath);
+  if (!fs.existsSync(resolvedPath)) {
+    throw new Error(`PDF file not found: ${resolvedPath}`);
+  }
 
-  console.log(
-    '[PDF] PDF data keys:',
-    Object.keys(pdfData || {})
-  );
+  const buffer = fs.readFileSync(resolvedPath);
 
-  console.log(
-    '[PDF] Text length:',
-    pdfData?.text?.length || 0
-  );
-
-  console.log(
-    '[PDF] Pages:',
-    pdfData?.pages?.length || 0
-  );
-
-  console.log(
-    '[PDF] First 5000 characters:'
-  );
-
-  console.log(
-    pdfData?.text?.substring(0, 5000) || ''
-  );
-
-
-  // TEMPORARY DEBUG RESULT
-
-  return [
-    {
-      DetailMark: '__DEBUG__',
-
-      StartStorey: '',
-
-      EndStorey: '',
-
-      Width: 0,
-
-      Breadth: 0,
-
-      BottomRebar: '',
-
-      TopRebar: '',
-
-      Stirrups: '',
-
-      Method: '',
-
-      ExtractedTextLength:
-        pdfData?.text?.length || 0,
-
-      ExtractedText:
-        pdfData?.text || ''
-    }
-  ];
+  return extractColumnScheduleFromPdfjs(buffer);
 }

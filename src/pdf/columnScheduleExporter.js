@@ -1,3 +1,12 @@
+// "column_schedule": [
+//   {
+//     "detail_mark": "",
+//     "rows": [
+//       {"start_storey": "", "end_storey": "", "material_grade": "", "width_mm": null, "breadth_mm": null, "main_rebar": "", "stirrups": "", "construction_method": "", "arrangement_type": null, "splice_dowels": null}
+//     ]
+//   }
+// ]
+
 (function () {
 
     'use strict';
