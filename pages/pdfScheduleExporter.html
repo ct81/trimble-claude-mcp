@@ -117,6 +117,21 @@
       margin-bottom: 12px;
     }
 
+    .output-group {
+      display: grid;
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .output-label {
+      color: var(--muted);
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+
     button {
       border: 1px solid var(--border);
       background: var(--panel-alt);
@@ -221,6 +236,8 @@
       <div class="json-actions">
         <button id="copyJsonBtn" type="button">📋 Copy JSON</button>
         <button id="exportJsonBtn" type="button">💾 Export JSON</button>
+        <button id="copyStructuredJsonBtn" type="button">📦 Copy Structured JSON</button>
+        <button id="exportStructuredJsonBtn" type="button">💾 Export Structured JSON</button>
       </div>
       <div class="table-wrap">
         <table>
@@ -237,7 +254,17 @@
         </table>
       </div>
 
-      <div class="response-box" id="responseBox">Response will appear here.</div>
+      <div class="output-group">
+        <div>
+          <div class="output-label">Raw API response</div>
+          <div class="response-box" id="responseBox">Response will appear here.</div>
+        </div>
+
+        <div>
+          <div class="output-label">Structured JSON export</div>
+          <div class="response-box" id="structuredResponseBox">Structured JSON will appear here.</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -251,10 +278,14 @@
     const uploadArea = document.getElementById('uploadArea');
     const tableBody = document.getElementById('tableBody');
     const responseBox = document.getElementById('responseBox');
+    const structuredResponseBox = document.getElementById('structuredResponseBox');
     const tableHeadRow = document.getElementById('tableHeadRow');
+    const copyStructuredJsonBtn = document.getElementById('copyStructuredJsonBtn');
+    const exportStructuredJsonBtn = document.getElementById('exportStructuredJsonBtn');
 
     let selectedFile = null;
     let currentJsonResult = null;
+    let currentStructuredJsonResult = null;
 
     function setStatus(message, color = '#8b949e') {
       fileStatus.textContent = message;
@@ -337,11 +368,131 @@
     function clearData() {
       selectedFile = null;
       currentJsonResult = null;
+      currentStructuredJsonResult = null;
       fileInput.value = '';
       uploadBtn.disabled = true;
       setStatus('No file selected');
       renderEmptyState();
       responseBox.textContent = 'Response will appear here.';
+      structuredResponseBox.textContent = 'Structured JSON will appear here.';
+    }
+
+    function normalizeJsonKey(value) {
+      if (value === null || value === undefined) return '';
+      return String(value)
+        .trim()
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        .replace(/[_\-/]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .toLowerCase()
+        .replace(/\s+(.)/g, (_, c) => c)
+        .replace(/^[a-z]/, (c) => c.toLowerCase());
+    }
+
+    function toStructuredColumnRows(rawRows) {
+      if (!Array.isArray(rawRows)) return [];
+
+      if (rawRows.some(row => row && typeof row === 'object' && (Array.isArray(row.rows) || row.detail_mark || row.detailMark || row.DetailMark))) {
+        return rawRows.map(item => {
+          const detailMark = item?.detail_mark ?? item?.detailMark ?? item?.DetailMark ?? 'UNKNOWN';
+          const rows = Array.isArray(item?.rows) ? item.rows : [];
+          return {
+            detail_mark: detailMark,
+            rows: rows.map(row => ({
+              start_storey: row?.start_storey ?? row?.StartStorey ?? row?.startStorey ?? null,
+              end_storey: row?.end_storey ?? row?.EndStorey ?? row?.endStorey ?? null,
+              material_grade: row?.material_grade ?? row?.MaterialGrade ?? row?.materialGrade ?? null,
+              width_mm: row?.width_mm ?? row?.Width ?? row?.width ?? null,
+              breadth_mm: row?.breadth_mm ?? row?.Breadth ?? row?.breadth ?? null,
+              main_rebar: row?.main_rebar ?? row?.MainRebar ?? row?.mainRebar ?? null,
+              stirrups: row?.stirrups ?? row?.Stirrups ?? row?.stirrup ?? null,
+              construction_method: row?.construction_method ?? row?.ConstructionMethod ?? row?.constructionMethod ?? null,
+              arrangement_type: row?.arrangement_type ?? row?.ArrangementType ?? row?.arrangementType ?? null,
+              splice_dowels: row?.splice_dowels ?? row?.spliceDowels ?? row?.['Splice/Dowels'] ?? null,
+              note: row?.note ?? row?.Note ?? null
+            }))
+          };
+        });
+      }
+
+      const grouped = new Map();
+
+      rawRows.forEach(row => {
+        if (!row || typeof row !== 'object') return;
+
+        const detailMark = row.detail_mark ?? row.detailMark ?? row.DetailMark ?? row['Detail Mark'] ?? 'UNKNOWN';
+        if (!grouped.has(detailMark)) {
+          grouped.set(detailMark, { detail_mark: detailMark, rows: [] });
+        }
+
+        grouped.get(detailMark).rows.push({
+          start_storey: row.start_storey ?? row.StartStorey ?? row.startStorey ?? null,
+          end_storey: row.end_storey ?? row.EndStorey ?? row.endStorey ?? null,
+          material_grade: row.material_grade ?? row.MaterialGrade ?? row.materialGrade ?? null,
+          width_mm: row.width_mm ?? row.Width ?? row.width ?? null,
+          breadth_mm: row.breadth_mm ?? row.Breadth ?? row.breadth ?? null,
+          main_rebar: row.main_rebar ?? row.MainRebar ?? row.mainRebar ?? null,
+          stirrups: row.stirrups ?? row.Stirrups ?? row.stirrup ?? null,
+          construction_method: row.construction_method ?? row.ConstructionMethod ?? row.constructionMethod ?? null,
+          arrangement_type: row.arrangement_type ?? row.ArrangementType ?? row.arrangementType ?? null,
+          splice_dowels: row.splice_dowels ?? row.spliceDowels ?? row['Splice/Dowels'] ?? null,
+          note: row.note ?? row.Note ?? null
+        });
+      });
+
+      return Array.from(grouped.values());
+    }
+
+    function buildStructuredJson(payload, fallbackFileName = 'column-schedule') {
+      if (!payload) return null;
+
+      const base = payload && typeof payload === 'object' ? payload : {};
+
+      if (base.drawing_metadata || base.general_notation_notes || base.column_schedule) {
+        return base;
+      }
+
+      const rows = getDisplayRows(base);
+      const structured = {
+        drawing_metadata: {
+          drawing_no: base.drawing_metadata?.drawing_no || base.drawing_no || fallbackFileName.replace(/\.[^.]+$/, '') || 'UNKNOWN',
+          revision: base.drawing_metadata?.revision || base.revision || 'A',
+          drawing_title: base.drawing_metadata?.drawing_title || base.drawing_title || 'COLUMN SCHEDULE',
+          project_name: base.drawing_metadata?.project_name || base.project_name || '',
+          project_title_parts: base.drawing_metadata?.project_title_parts || base.project_title_parts || [],
+          block: base.drawing_metadata?.block || base.block || '',
+          lot_no: base.drawing_metadata?.lot_no || base.lot_no || '',
+          mukim_no: base.drawing_metadata?.mukim_no || base.mukim_no || '',
+          precinct_name: base.drawing_metadata?.precinct_name || base.precinct_name || '',
+          scale: base.drawing_metadata?.scale || base.scale || '',
+          date: base.drawing_metadata?.date || base.date || '',
+          drawn_by: base.drawing_metadata?.drawn_by || base.drawn_by || '',
+          checked_by: base.drawing_metadata?.checked_by || base.checked_by || '',
+          design_engineer: base.drawing_metadata?.design_engineer || base.design_engineer || '',
+          qualified_person: base.drawing_metadata?.qualified_person || base.qualified_person || '',
+          owner: base.drawing_metadata?.owner || base.owner || '',
+          owner_address: base.drawing_metadata?.owner_address || base.owner_address || '',
+          amendment: base.drawing_metadata?.amendment || base.amendment || {
+            rev: '',
+            description: '',
+            date: '',
+            by: ''
+          },
+          copyright_note: base.drawing_metadata?.copyright_note || base.copyright_note || ''
+        },
+        general_notation_notes: {
+          reinforcement_grade: base.general_notation_notes?.reinforcement_grade || base.reinforcement_grade || 'B500B for all column/wall reinforcement',
+          column_wall_cage: base.general_notation_notes?.column_wall_cage || base.column_wall_cage || 'Cast-in-situ column/wall to use ColumnCage or equivalent prefabricated reinforcement cage',
+          stump_enlargement: base.general_notation_notes?.stump_enlargement || base.stump_enlargement || '',
+          spiral_connector_symbol: base.general_notation_notes?.spiral_connector_symbol || base.spiral_connector_symbol || "'p' denotes spiral connector; 's' denotes standard/site splice bar without spiral connector",
+          z_suffix: base.general_notation_notes?.z_suffix || base.z_suffix || 'Suffix (z) on wall/column marking denotes columns carrying water tank',
+          code_reference: base.general_notation_notes?.code_reference || base.code_reference || 'Definition of properties and reinforcement denotation follows CORENET-X code of practice'
+        },
+        extraction_caveat: base.extraction_caveat || 'Row alignment reconstructed from a flattened PDF text export. Recommend verifying rebar/stirrup values against the source drawing before construction use.',
+        column_schedule: toStructuredColumnRows(rows)
+      };
+
+      return structured;
     }
 
     async function copyJson() {
@@ -356,6 +507,21 @@
       } catch (error) {
         console.error('Copy failed:', error);
         setStatus('Copy failed. Please copy manually from the response area.', '#f85149');
+      }
+    }
+
+    async function copyStructuredJson() {
+      if (!currentStructuredJsonResult) {
+        setStatus('No structured JSON response to copy yet', '#d29922');
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(JSON.stringify(currentStructuredJsonResult, null, 2));
+        setStatus('Structured JSON copied to clipboard', '#3fb950');
+      } catch (error) {
+        console.error('Structured copy failed:', error);
+        setStatus('Structured JSON copy failed. Please copy manually from the response area.', '#f85149');
       }
     }
 
@@ -378,6 +544,27 @@
       URL.revokeObjectURL(url);
 
       setStatus('JSON exported successfully', '#3fb950');
+    }
+
+    function exportStructuredJson() {
+      if (!currentStructuredJsonResult) {
+        setStatus('No structured JSON response to export yet', '#d29922');
+        return;
+      }
+
+      const blob = new Blob([JSON.stringify(currentStructuredJsonResult, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const fileName = (selectedFile && selectedFile.name ? selectedFile.name.replace(/\.pdf$/i, '') : 'column-schedule-structured') + '.json';
+
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setStatus('Structured JSON exported successfully', '#3fb950');
     }
 
     fileInput.addEventListener('change', () => {
@@ -446,8 +633,10 @@
         }
 
         currentJsonResult = result;
+        currentStructuredJsonResult = buildStructuredJson(result, selectedFile?.name || 'column-schedule');
         setStatus(`${result.file || selectedFile.name} processed successfully`, '#3fb950');
         responseBox.textContent = JSON.stringify(result, null, 2);
+        structuredResponseBox.textContent = JSON.stringify(currentStructuredJsonResult, null, 2);
         const displayRows = getDisplayRows(result);
         renderRows(displayRows);
       } catch (error) {
@@ -463,6 +652,8 @@
     clearBtn.addEventListener('click', clearData);
     copyJsonBtn.addEventListener('click', copyJson);
     exportJsonBtn.addEventListener('click', exportJson);
+    copyStructuredJsonBtn.addEventListener('click', copyStructuredJson);
+    exportStructuredJsonBtn.addEventListener('click', exportStructuredJson);
     renderEmptyState();
   </script>
 </body>
