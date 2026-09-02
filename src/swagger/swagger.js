@@ -333,6 +333,132 @@ export const swaggerDocument = {
 
     },
 
+    '/api/pdf/coord-schedule-exporter': {
+
+      post: {
+
+        summary:
+          'Upload a PDF coordinate JSON file and export Excel',
+
+        description:
+          'Accept a JSON payload produced by a PDF coordinate extraction, reconstruct the coordinate layout into an Excel workbook, and save the generated file on the server.',
+
+        security: [],
+
+        requestBody: {
+
+          required: true,
+
+          content: {
+
+            'multipart/form-data': {
+
+              schema: {
+
+                type: 'object',
+
+                required: [
+                  'file'
+                ],
+
+                properties: {
+
+                  file: {
+
+                    type: 'string',
+
+                    format: 'binary',
+
+                    description:
+                      'JSON file containing PDF coordinate data'
+
+                  }
+
+                }
+
+              }
+
+            }
+
+          }
+
+        },
+
+        responses: {
+
+          200: {
+
+            description:
+              'Coordinate JSON processed and Excel export created successfully',
+
+            content: {
+
+              'application/json': {
+
+                schema: {
+
+                  type: 'object',
+
+                  properties: {
+
+                    success: {
+                      type: 'boolean'
+                    },
+
+                    file: {
+                      type: 'string'
+                    },
+
+                    outputFile: {
+                      type: 'string'
+                    },
+
+                    itemCount: {
+                      type: 'integer'
+                    },
+
+                    xClusterCount: {
+                      type: 'integer'
+                    },
+
+                    yRowCount: {
+                      type: 'integer'
+                    },
+
+                    data: {
+                      type: 'object'
+                    }
+
+                  }
+
+                }
+
+              }
+
+            }
+
+          },
+
+          400: {
+
+            description:
+              'JSON file is missing or invalid'
+
+          },
+
+          500: {
+
+            description:
+              'Excel export failed'
+
+          }
+
+        }
+
+      }
+
+    },
+
     '/api/v1/users/me': {
 
       get: {

@@ -5,6 +5,10 @@ import {
   extractColumnSchedule
 } from './scheduleParser.js';
 
+import {
+  generateCoordScheduleWorkbook
+} from './coordScheduleExporter.js';
+
 const router = express.Router();
 
 
