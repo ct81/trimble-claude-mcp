@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Column Schedule to Excel Exporter
+    </title>
+
+    <!-- =========================================================
+         SHEETJS
+         ========================================================= -->
+
+    <script
+        src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js">
+    </script>
+
+
+    <!-- =========================================================
+         YOUR CSS
+         ========================================================= -->
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        body {
+            background: #0d1117;
+            margin: 0;
+            min-height: 100vh;
+            padding: 1.5rem;
+            color: #e6edf3;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding: 1rem 1.5rem;
+            background: #161b22;
+            border-radius: 12px;
+            border: 1px solid #30363d;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 0;
+            color: #f0f6fc;
+        }
+
+        .subtitle {
+            color: #8b949e;
+            font-size: 0.85rem;
+            font-weight: 400;
+        }
+
+        .upload-area {
+            background: #161b22;
+            border: 2px dashed #30363d;
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-bottom: 1.5rem;
+        }
+
+        .upload-area:hover,
+        .upload-area.dragover {
+            border-color: #58a6ff;
+            background: #1c2333;
+        }
+
+        .upload-area input[type="file"] {
+            display: none;
+        }
+
+        .upload-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: #238636;
+            color: white;
+            padding: 0.7rem 2rem;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            transition: 0.15s;
+        }
+
+        .upload-label:hover {
+            background: #2ea043;
+            transform: scale(0.98);
+        }
+
+        .file-status {
+            margin-top: 0.8rem;
+            color: #8b949e;
+            font-size: 0.9rem;
+        }
+
+        .text-input-area {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .text-input-area textarea {
+            width: 100%;
+            min-height: 250px;
+            background: #0d1117;
+            color: #e6edf3;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 0.8rem;
+            font-family: 'Consolas', monospace;
+            font-size: 0.75rem;
+            resize: vertical;
+        }
+
+        .text-input-area textarea:focus {
+            outline: none;
+            border-color: #58a6ff;
+        }
+
+        .stats-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.8rem 1.2rem;
+            background: #161b22;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+            margin-bottom: 1rem;
+        }
+
+        .stat-badge {
+            background: #21262d;
+            padding: 0.3rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: #8b949e;
+        }
+
+        .stat-badge strong {
+            color: #f0f6fc;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 0.7rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.4rem 1.4rem;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.85rem;
+            cursor: pointer;
+            border: 1px solid #30363d;
+            background: #21262d;
+            color: #c9d1d9;
+            transition: 0.15s;
+        }
+
+        .btn:hover {
+            background: #30363d;
+        }
+
+        .btn-success {
+            background: #238636;
+            border-color: #238636;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #2ea043;
+        }
+
+        .btn-danger {
+            background: #da3633;
+            border-color: #da3633;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #f85149;
+        }
+
+        .btn-warning {
+            background: #d29922;
+            border-color: #d29922;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #e3b341;
+        }
+
+        .btn:disabled {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        .table-wrap {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            overflow: auto;
+            max-height: 500px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.7rem;
+            min-width: 1200px;
+        }
+
+        th {
+            background: #161b22;
+            color: #8b949e;
+            font-weight: 600;
+            padding: 0.4rem 0.5rem;
+            text-align: left;
+            border-bottom: 1px solid #30363d;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 0.3rem 0.5rem;
+            border-bottom: 1px solid #21262d;
+            color: #c9d1d9;
+            word-break: break-word;
+            font-size: 0.65rem;
+        }
+
+        .row-num {
+            color: #8b949e;
+            width: 2rem;
+            text-align: right;
+            padding-right: 0.3rem;
+        }
+
+        .empty-state {
+            padding: 2rem;
+            text-align: center;
+            color: #8b949e;
+        }
+
+        .console-output {
+            padding: 0.5rem;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', 'Consolas', monospace;
+            font-size: 0.75rem;
+            line-height: 1.6;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+        }
+
+        .console-output .log-entry {
+            padding: 0.15rem 0.3rem;
+            border-bottom: 1px solid #161b22;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .console-output .timestamp {
+            color: #8b949e;
+            margin-right: 0.5rem;
+        }
+
+        .console-output .info {
+            color: #58a6ff;
+        }
+
+        .console-output .success {
+            color: #3fb950;
+        }
+
+        .console-output .warning {
+            color: #d29922;
+        }
+
+        .console-output .error {
+            color: #f85149;
+        }
+
+        .console-output .data {
+            color: #f0883e;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+<div class="container">
+
+
+    <!-- =========================================================
+         HEADER
+         ========================================================= -->
+
+    <div class="header">
+
+        <div>
+
+            <h1>
+                📊 Column Schedule to Excel Exporter
+            </h1>
+
+            <span class="subtitle">
+                Extracts column_schedule from JSON and exports to Excel
+            </span>
+
+        </div>
+
+        <span
+            style="
+                color:#8b949e;
+                font-size:0.8rem;
+            "
+        >
+            ⚡ JSON to Excel
+        </span>
+
+    </div>
+
+
+    <!-- =========================================================
+         UPLOAD
+         ========================================================= -->
+
+    <div
+        class="upload-area"
+        id="uploadArea"
+    >
+
+        <input
+            type="file"
+            id="fileInput"
+            accept=".json,.txt"
+        >
+
+        <label
+            for="fileInput"
+            class="upload-label"
+        >
+            📤 Upload JSON or Text File
+        </label>
+
+        <div
+            class="file-status"
+            id="fileStatus"
+        >
+            Drop JSON file here or paste data below
+        </div>
+
+        <div
+            style="
+                font-size:0.75rem;
+                color:#8b949e;
+                margin-top:0.3rem;
+            "
+        >
+            Supports JSON files containing column_schedule data
+        </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         JSON INPUT
+         ========================================================= -->
+
+    <div class="text-input-area">
+
+        <div
+            style="
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+                margin-bottom:0.5rem;
+                flex-wrap:wrap;
+                gap:0.5rem;
+            "
+        >
+
+            <span
+                style="
+                    color:#8b949e;
+                    font-size:0.85rem;
+                "
+            >
+                📝 Paste JSON data:
+            </span>
+
+
+            <div
+                style="
+                    display:flex;
+                    gap:0.5rem;
+                    flex-wrap:wrap;
+                "
+            >
+
+                <button
+                    class="btn btn-warning"
+                    id="parseBtn"
+                >
+                    ▶ Process
+                </button>
+
+                <button
+                    class="btn btn-success"
+                    id="exportBtn"
+                    disabled
+                >
+                    📥 Export Excel
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <textarea
+            id="textInput"
+            placeholder='Paste your JSON data here...'
+        ></textarea>
+
+    </div>
+
+
+    <!-- =========================================================
+         STATISTICS
+         ========================================================= -->
+
+    <div class="stats-bar">
+
+        <div>
+
+            <span class="stat-badge">
+                📊
+                <strong id="rowCountBadge">0</strong>
+                records
+            </span>
+
+            <span class="stat-badge">
+                📋
+                <strong id="columnCountBadge">0</strong>
+                columns
+            </span>
+
+            <span class="stat-badge">
+                📁
+                <strong id="detailCountBadge">0</strong>
+                detail marks
+            </span>
+
+        </div>
+
+
+        <div class="btn-group">
+
+            <button
+                class="btn btn-danger"
+                id="clearBtn"
+            >
+                🗑️ Clear
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         PREVIEW
+         ========================================================= -->
+
+    <div
+        class="panel"
+        style="margin-bottom:1rem;"
+    >
+
+        <div
+            class="panel-header"
+            style="
+                padding:0.6rem 1rem;
+                background:#161b22;
+                border-bottom:1px solid #30363d;
+                font-size:0.8rem;
+                font-weight:600;
+                color:#8b949e;
+                display:flex;
+                justify-content:space-between;
+            "
+        >
+
+            <span>
+                📊 Extracted Data Preview
+            </span>
+
+            <span
+                style="
+                    color:#8b949e;
+                    font-weight:400;
+                    font-size:0.7rem;
+                "
+                id="tableCount"
+            >
+                0 rows
+            </span>
+
+        </div>
+
+
+        <div class="table-wrap">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>#</th>
+
+                        <th>DetailMark</th>
+
+                        <th>StartStorey</th>
+
+                        <th>EndStorey</th>
+
+                        <th>MaterialGrade</th>
+
+                        <th>Width</th>
+
+                        <th>Breadth</th>
+
+                        <th>MainRebar</th>
+
+                        <th>Stirrups</th>
+
+                        <th>ConstructionMethod</th>
+
+                        <th>ArrangementType</th>
+
+                        <th>Splice/Dowels</th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody id="tableBody">
+
+                    <tr>
+
+                        <td
+                            colspan="12"
+                            class="empty-state"
+                        >
+                            📤 Upload or paste JSON data
+                            to extract column schedule
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         CONSOLE
+         ========================================================= -->
+
+    <div class="panel">
+
+        <div
+            class="panel-header"
+            style="
+                padding:0.6rem 1rem;
+                background:#161b22;
+                border-bottom:1px solid #30363d;
+                font-size:0.8rem;
+                font-weight:600;
+                color:#8b949e;
+                display:flex;
+                justify-content:space-between;
+            "
+        >
+
+            <span>
+                📋 Console Log
+            </span>
+
+            <button
+                id="clearConsoleBtn"
+                style="
+                    background:none;
+                    border:none;
+                    color:#8b949e;
+                    cursor:pointer;
+                    font-size:0.75rem;
+                "
+            >
+                Clear
+            </button>
+
+        </div>
+
+
+        <div
+            class="console-output"
+            id="consoleOutput"
+        ></div>
+
+    </div>
+
+</div>
+
+
+<!-- =============================================================
+     IMPORTANT
+
+     SheetJS MUST load before the exporter JS.
+     ============================================================= -->
+
+<script
+    src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js">
+</script>
+
+
+<script
+    src="../src/pdf/columnScheduleExporter.js">
+</script>
+
+
+</body>
+
+</html>
