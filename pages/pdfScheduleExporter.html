@@ -147,7 +147,7 @@
 
     table {
       width: 100%;
-      min-width: 1000px;
+      min-width: 1200px;
       border-collapse: collapse;
       font-size: 0.72rem;
     }
@@ -225,17 +225,8 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr>
+            <tr id="tableHeadRow">
               <th>#</th>
-              <th>DetailMark</th>
-              <th>StartStorey</th>
-              <th>EndStorey</th>
-              <th>Width</th>
-              <th>Breadth</th>
-              <th>BottomRebar</th>
-              <th>TopRebar</th>
-              <th>Stirrups</th>
-              <th>Method</th>
             </tr>
           </thead>
           <tbody id="tableBody">
@@ -260,6 +251,7 @@
     const uploadArea = document.getElementById('uploadArea');
     const tableBody = document.getElementById('tableBody');
     const responseBox = document.getElementById('responseBox');
+    const tableHeadRow = document.getElementById('tableHeadRow');
 
     let selectedFile = null;
     let currentJsonResult = null;
@@ -277,26 +269,69 @@
       `;
     }
 
+    function getDisplayRows(payload) {
+      if (!payload) return [];
+
+      if (Array.isArray(payload)) {
+        return payload;
+      }
+
+      if (Array.isArray(payload.rows)) {
+        return payload.rows;
+      }
+
+      if (Array.isArray(payload.data)) {
+        return payload.data;
+      }
+
+      if (Array.isArray(payload.items)) {
+        return payload.items;
+      }
+
+      if (Array.isArray(payload.pages)) {
+        const flattened = [];
+        payload.pages.forEach(page => {
+          if (Array.isArray(page.items)) {
+            flattened.push(...page.items);
+          }
+        });
+        return flattened;
+      }
+
+      if (Array.isArray(payload.column_schedule)) {
+        return payload.column_schedule.flatMap(item => Array.isArray(item.rows) ? item.rows : [item]);
+      }
+
+      return [];
+    }
+
     function renderRows(rows) {
       if (!rows || rows.length === 0) {
+        tableHeadRow.innerHTML = '<th>#</th>';
         renderEmptyState();
         return;
       }
 
-      tableBody.innerHTML = rows.map((row, index) => `
-        <tr>
-          <td>${index + 1}</td>
-          <td>${row.DetailMark ?? ''}</td>
-          <td>${row.StartStorey ?? ''}</td>
-          <td>${row.EndStorey ?? ''}</td>
-          <td>${row.Width ?? ''}</td>
-          <td>${row.Breadth ?? ''}</td>
-          <td>${row.BottomRebar ?? ''}</td>
-          <td>${row.TopRebar ?? ''}</td>
-          <td>${row.Stirrups ?? ''}</td>
-          <td>${row.Method ?? ''}</td>
-        </tr>
-      `).join('');
+      const allKeys = new Set();
+      rows.forEach(row => {
+        if (row && typeof row === 'object') {
+          Object.keys(row).forEach(key => allKeys.add(key));
+        }
+      });
+
+      const columns = Array.from(allKeys);
+      tableHeadRow.innerHTML = ['#', ...columns].map(key => `<th>${key}</th>`).join('');
+
+      tableBody.innerHTML = rows.map((row, index) => {
+        const values = columns.map(key => {
+          const value = row && typeof row === 'object' ? row[key] : '';
+          if (value === null || value === undefined) return '';
+          if (typeof value === 'object') return JSON.stringify(value);
+          return String(value);
+        });
+
+        return `<tr><td>${index + 1}</td>${values.map(v => `<td>${v}</td>`).join('')}</tr>`;
+      }).join('');
     }
 
     function clearData() {
@@ -413,7 +448,8 @@
         currentJsonResult = result;
         setStatus(`${result.file || selectedFile.name} processed successfully`, '#3fb950');
         responseBox.textContent = JSON.stringify(result, null, 2);
-        renderRows(result.rows || []);
+        const displayRows = getDisplayRows(result);
+        renderRows(displayRows);
       } catch (error) {
         console.error(error);
         setStatus(error.message || 'Extraction failed', '#f85149');
