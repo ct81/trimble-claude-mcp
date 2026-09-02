@@ -1,5 +1,5 @@
 // git add .
-// git commit -m "Start MCP with extract pdf improve 9"
+// git commit -m "Start MCP with json extract 1"
 // git push origin main
 
 
@@ -65,97 +65,9 @@ import pdfRouter
 
 const app = express();
 
-// const swaggerDocument = {
-//     openapi: '3.0.3',
-
-//     info: {
-//         title: 'Trimble Connect MCP API',
-//         version: '1.0.0',
-//         description:
-//             'Testing API for Trimble Connect MCP tools'
-//     },
-
-//     servers: [
-//         {
-//             url:
-//                 process.env.PUBLIC_BASE_URL ||
-//                 `http://localhost:${config.port}`
-//         }
-//     ],
-
-//     components: {
-
-//         securitySchemes: {
-
-//             bearerAuth: {
-//                 type: 'http',
-//                 scheme: 'bearer',
-//                 bearerFormat: 'MCP Access Token'
-//             }
-
-//         },
-
-//         schemas: {
-
-//             Project: {
-//                 type: 'object',
-//                 additionalProperties: true
-//             },
-
-//             Error: {
-//                 type: 'object',
-
-//                 properties: {
-//                     error: {
-//                         type: 'string'
-//                     }
-//                 }
-//             }
-
-//         }
-
-//     },
-
-//     paths: {}
-// };
-
-// swaggerDocument.paths['/api/v1/projects'] = {
-//   get: {
-//     summary: 'Get Trimble Connect projects',
-
-//     description:
-//       'Returns the Trimble Connect projects available to the authenticated user.',
-
-//     security: [
-//       {
-//         bearerAuth: []
-//       }
-//     ],
-
-//     responses: {
-//       200: {
-//         description: 'Projects retrieved successfully'
-//       },
-
-//       401: {
-//         description: 'Authentication required'
-//       },
-
-//       500: {
-//         description: 'Trimble API error'
-//       }
-//     }
-//   }
-// };
-
 app.set('trust proxy', 1);
 app.use(cors({origin: config.extensionOrigin === '*' ? true : config.extensionOrigin, credentials:true}));
-// app.use(
-//   cors({
-//     origin: true,
-//     credentials: true
-//   })
-// );
+
 //app.use(express.json({limit:'2mb'}));
 app.use(express.json());
 app.use(
@@ -999,52 +911,9 @@ app.get('/auth/success', (_, res) => res.send('<h2>Trimble authentication succes
 app.get('/auth/status', requireSession, (req,res) => res.json({authenticated:true}));
 
 // =========================================================
-// TEST: GET TRIMBLE CONNECT PROJECTS
+// GET TRIMBLE CONNECT APIs
 // =========================================================
 
-// app.get(
-//   '/api/v1/projects',
-//   requireSession,
-//   async (req, res) => {
-
-//     try {
-
-//       console.log(
-//         '[Swagger] Calling Trimble Connect getProjects'
-//       );
-
-//       console.log(
-//         '[Swagger] Session ID:',
-//         req.mcpSessionId
-//           ? `${req.mcpSessionId.substring(0, 8)}...`
-//           : null
-//       );
-
-//       const result =
-//         await tools.getProjects(
-//           req.mcpSessionId
-//         );
-
-//       console.log(
-//         '[Swagger] getProjects successful'
-//       );
-
-//       return res.json(result);
-
-//     } catch (error) {
-
-//       console.error(
-//         '[Swagger] getProjects failed:',
-//         error
-//       );
-
-//       return res.status(500).json({
-//         error: error.message
-//       });
-
-//     }
-//   }
-// );
 app.get(
   '/api/v1/users/me',
   requireSession,
@@ -1218,34 +1087,6 @@ app.use(
   pdfRouter
 );
 app.post('/mcp', requireSession, handleMcp);
-// app.post(
-//   '/mcp',
-//   (req, res, next) => {
-
-//     console.log(
-//       '========== MCP REQUEST =========='
-//     );
-
-//     console.log(
-//       'Method:',
-//       req.method
-//     );
-
-//     console.log(
-//       'Headers:',
-//       req.headers
-//     );
-
-//     console.log(
-//       'Body:',
-//       req.body
-//     );
-
-//     next();
-//   },
-//   requireSession,
-//   handleMcp
-// );
 
 app.listen(config.port, () => console.log(`Trimble Claude MCP listening on ${config.port}`));
 function escapeHtml(s){return String(s).replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\\':'&#39;'}[c]));}

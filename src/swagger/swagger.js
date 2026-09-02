@@ -222,6 +222,31 @@ export const swaggerDocument = {
 
     },
 
+    '/api/pdf/column-schedule-exporter': {
+
+      get: {
+
+        summary:
+          'Open the column schedule exporter UI',
+
+        description:
+          'Browser utility that accepts JSON or exported column schedule data, normalizes field names, and exports the fixed Excel structure used for Trimble column schedules.',
+
+        security: [],
+
+        responses: {
+
+          200: {
+            description:
+              'HTML/JS UI for the column schedule exporter'
+          }
+
+        }
+
+      }
+
+    },
+
     '/api/v1/users/me': {
 
       get: {
