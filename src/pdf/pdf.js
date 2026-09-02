@@ -1,5 +1,6 @@
 import express from 'express';
 import multer from 'multer';
+import path from 'node:path';
 
 import {
   extractColumnSchedule
@@ -285,5 +286,109 @@ router.post(
 
 );
 
+// =====================================================
+// COORDINATE SCHEDULE EXPORTER JSON TO EXCEL
+// =====================================================
+
+router.post(
+
+  '/coord-schedule-exporter',
+
+  jsonUpload.single('file'),
+
+  async (req, res) => {
+
+    try {
+
+      if (!req.file) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          error:
+            'JSON file is required'
+
+        });
+
+      }
+
+      const text =
+        req.file.buffer.toString('utf8');
+
+      let data;
+
+      try {
+
+        data = JSON.parse(text);
+
+      }
+      catch (error) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          error:
+            `Invalid JSON file: ${error.message}`
+
+        });
+
+      }
+
+      const outputFile =
+        path.join(process.cwd(), `output-${Date.now()}.xlsx`);
+
+      const result =
+        await generateCoordScheduleWorkbook(
+          data,
+          outputFile
+        );
+
+      return res.json({
+
+        success: true,
+
+        file:
+          req.file.originalname,
+
+        outputFile:
+          result.outputFile,
+
+        itemCount:
+          result.itemCount,
+
+        xClusterCount:
+          result.xClusterCount,
+
+        yRowCount:
+          result.yRowCount,
+
+        data
+
+      });
+
+    }
+    catch (error) {
+
+      console.error(
+        'Coord schedule export error:',
+        error
+      );
+
+      return res.status(500).json({
+
+        success: false,
+
+        error:
+          error.message
+
+      });
+
+    }
+
+  }
+
+);
 
 export default router;
