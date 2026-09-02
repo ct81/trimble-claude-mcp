@@ -1,5 +1,5 @@
 // git add .
-// git commit -m "Start MCP with json extract 4"
+// git commit -m "Start MCP with json extract 5"
 // git push origin main
 
 
@@ -70,6 +70,7 @@ app.set('trust proxy', 1);
 app.use(cors({origin: config.extensionOrigin === '*' ? true : config.extensionOrigin, credentials:true}));
 app.use(express.static(path.join(process.cwd(), 'public')));
 app.use('/pages', express.static(path.join(process.cwd(), 'pages')));
+app.use('/src', express.static(path.join(process.cwd(), 'src')));
 
 //app.use(express.json({limit:'2mb'}));
 app.use(express.json());
