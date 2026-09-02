@@ -18,6 +18,10 @@ import {
   generateCoordScheduleWorkbook
 } from '../pdf/coordScheduleExporter.js';
 
+import {
+  processColumnSchedule
+} from '../pdf/columnScheduleExporter.js';
+
 export const definitions = [
   {
     name: 'get_projects',
@@ -87,6 +91,24 @@ export const definitions = [
         }
       },
       required: ['pdfPath']
+    }
+  },
+
+  {
+    name: 'process_column_schedule',
+    description:
+      'Normalize extracted column-schedule JSON into tabular records.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        json: {
+          description: 'JSON object or JSON string to process.'
+        },
+        jsonPath: {
+          type: 'string',
+          description: 'Optional path to a JSON file instead of passing json inline.'
+        }
+      }
     }
   },
 
@@ -179,6 +201,24 @@ export async function callTool(
       }
 
       result = await extractColumnScheduleFromPdf(pdfPath);
+      break;
+    }
+
+    case 'process_column_schedule': {
+      let jsonValue = args.json;
+
+      if (!jsonValue && args.jsonPath) {
+        const jsonFile = path.resolve(args.jsonPath);
+
+        if (!fs.existsSync(jsonFile)) {
+          throw new Error(`JSON file not found: ${jsonFile}`);
+        }
+
+        jsonValue = fs.readFileSync(jsonFile, 'utf8');
+      }
+
+      const payload = parseJsonInput(jsonValue, 'json');
+      result = processColumnSchedule(payload);
       break;
     }
 
