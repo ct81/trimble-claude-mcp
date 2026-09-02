@@ -1,3 +1,5 @@
+//Read the extracted raw data using x & y coordinates from PDF and export to excel
+
 import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";

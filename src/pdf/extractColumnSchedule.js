@@ -1,3 +1,5 @@
+//Extract from PDF
+
 import fs from 'node:fs';
 import path from 'node:path';
 import { extractColumnSchedule as extractColumnScheduleFromPdfjs } from './scheduleParser.js';
