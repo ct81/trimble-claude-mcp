@@ -51,6 +51,47 @@ const upload = multer({
 
 });
 
+const jsonUpload = multer({
+
+  storage:
+    multer.memoryStorage(),
+
+  limits: {
+
+    fileSize:
+      50 * 1024 * 1024
+
+  },
+
+  fileFilter:
+    (req, file, cb) => {
+
+      const isJsonFile =
+        file.mimetype === 'application/json' ||
+        file.mimetype === 'application/x-json' ||
+        file.originalname
+          .toLowerCase()
+          .endsWith('.json');
+
+      if (isJsonFile) {
+
+        cb(null, true);
+
+      }
+      else {
+
+        cb(
+          new Error(
+            'Only JSON files are allowed'
+          )
+        );
+
+      }
+
+    }
+
+});
+
 
 // =====================================================
 // EXTRACT COLUMN SCHEDULE
@@ -128,6 +169,104 @@ router.post(
       );
 
       return res.status(500).json({
+
+        success: false,
+
+        error:
+          error.message
+
+      });
+
+    }
+
+  }
+
+);
+
+
+// =====================================================
+// COLUMN SCHEDULE EXPORTER JSON UPLOAD
+// =====================================================
+
+router.post(
+
+  '/column-schedule-exporter',
+
+  jsonUpload.single('file'),
+
+  async (req, res) => {
+
+    try {
+
+      if (!req.file) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          error:
+            'JSON file is required'
+
+        });
+
+      }
+
+      const text =
+        req.file.buffer.toString('utf8');
+
+      let data;
+
+      try {
+
+        data =
+          JSON.parse(text);
+
+      }
+      catch (error) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          error:
+            `Invalid JSON file: ${error.message}`
+
+        });
+
+      }
+
+      const rows =
+        Array.isArray(data)
+          ? data
+          : Array.isArray(data?.column_schedule)
+            ? data.column_schedule.flatMap(item => Array.isArray(item?.rows) ? item.rows : [])
+            : [];
+
+      return res.json({
+
+        success: true,
+
+        file:
+          req.file.originalname,
+
+        count:
+          rows.length,
+
+        rows,
+
+        data
+
+      });
+
+    }
+    catch (error) {
+
+      console.error(
+        'JSON upload error:',
+        error
+      );
+
+      return res.status(400).json({
 
         success: false,
 

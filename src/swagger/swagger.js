@@ -224,21 +224,107 @@ export const swaggerDocument = {
 
     '/api/pdf/column-schedule-exporter': {
 
-      get: {
+      post: {
 
         summary:
-          'Open the column schedule exporter UI',
+          'Upload a column schedule JSON file',
 
         description:
-          'Browser utility that accepts JSON or exported column schedule data, normalizes field names, and exports the fixed Excel structure used for Trimble column schedules.',
+          'Accept a JSON file containing a column schedule payload, normalize the file content, and return the extracted row data for the exporter workflow.',
 
         security: [],
+
+        requestBody: {
+
+          required: true,
+
+          content: {
+
+            'multipart/form-data': {
+
+              schema: {
+
+                type: 'object',
+
+                required: [
+                  'file'
+                ],
+
+                properties: {
+
+                  file: {
+
+                    type: 'string',
+
+                    format: 'binary',
+
+                    description:
+                      'JSON file containing the column schedule data'
+
+                  }
+
+                }
+
+              }
+
+            }
+
+          }
+
+        },
 
         responses: {
 
           200: {
+
             description:
-              'HTML/JS UI for the column schedule exporter'
+              'JSON file accepted and processed successfully',
+
+            content: {
+
+              'application/json': {
+
+                schema: {
+
+                  type: 'object',
+
+                  properties: {
+
+                    success: {
+                      type: 'boolean'
+                    },
+
+                    file: {
+                      type: 'string'
+                    },
+
+                    count: {
+                      type: 'integer'
+                    },
+
+                    rows: {
+                      type: 'array'
+                    },
+
+                    data: {
+                      type: 'object'
+                    }
+
+                  }
+
+                }
+
+              }
+
+            }
+
+          },
+
+          400: {
+
+            description:
+              'JSON file is missing or invalid'
+
           }
 
         }
