@@ -14,6 +14,14 @@ const __dirname = path.dirname(__filename);
 const OUTPUT_FILE = path.join(__dirname, "output.xlsx");
 const OUTPUT_CSV_FILE = path.join(__dirname, "output_data.csv");
 
+// For web server responses, you can also use a temp directory
+const TEMP_DIR = path.join(__dirname, "temp");
+
+// Ensure temp directory exists
+if (!fs.existsSync(TEMP_DIR)) {
+    fs.mkdirSync(TEMP_DIR, { recursive: true });
+}
+
 const X_TOLERANCE = 4.0;
 const Y_TOLERANCE = 2.5;
 
@@ -202,11 +210,21 @@ async function main() {
         console.log(`Exporting CSV with ${processedRows.length} rows...`);
 
         try {
-            const csvPath = await exportToCsv(processedRows, OUTPUT_CSV_FILE);
-            if (csvPath) {
-                console.log(`CSV Output: ${csvPath}`);
-            } else {
-                console.log("CSV export failed - no data to export.");
+            // Generate a unique filename with timestamp
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const csvFilename = `output_data_${timestamp}.csv`;
+            const csvPath = path.join(TEMP_DIR, csvFilename);
+
+            const csvResult = await exportToCsv(processedRows, csvPath);
+
+            if (csvResult) {
+                console.log(`CSV saved to: ${csvPath}`);
+                console.log(`To download, access: /temp/${csvFilename}`);
+
+                // Also save a copy to the main output location
+                const mainCsvPath = OUTPUT_CSV_FILE;
+                fs.copyFileSync(csvPath, mainCsvPath);
+                console.log(`CSV also saved to: ${mainCsvPath}`);
             }
         } catch (error) {
             console.error("Error exporting CSV:", error.message);
@@ -221,7 +239,7 @@ async function main() {
 
 
 // ============================================================
-// EXPORT TO CSV
+// EXPORT TO CSV - Enhanced with Buffer support for downloads
 // ============================================================
 
 async function exportToCsv(rows, outputPath) {
@@ -313,6 +331,130 @@ function escapeCsvValue(value) {
     }
 
     return str;
+}
+
+
+// ============================================================
+// GET CSV AS BUFFER - For web server responses
+// ============================================================
+
+export function getCsvBuffer(rows) {
+    if (!rows || rows.length === 0) {
+        return null;
+    }
+
+    const headers = [
+        "Detail Mark",
+        "Start Storey",
+        "End Storey",
+        "Material Grade",
+        "Width (mm)",
+        "Breadth (mm)",
+        "Main Rebar",
+        "Stirrups",
+        "Construction Method",
+        "Arrangement Type",
+        "Splice/Dowels",
+        "Remark",
+        "Refer To 2D Detail"
+    ];
+
+    let csvContent = headers.join(",") + "\n";
+
+    for (const row of rows) {
+        const rowData = [
+            escapeCsvValue(row.detail_mark || ""),
+            escapeCsvValue(row.start_storey || ""),
+            escapeCsvValue(row.end_storey || ""),
+            escapeCsvValue(row.material_grade || ""),
+            row.width_mm !== null && row.width_mm !== undefined ? row.width_mm : "",
+            row.breadth_mm !== null && row.breadth_mm !== undefined ? row.breadth_mm : "",
+            escapeCsvValue(row.main_rebar || ""),
+            escapeCsvValue(row.stirrups || ""),
+            escapeCsvValue(row.construction_method || ""),
+            escapeCsvValue(row.arrangement_type || ""),
+            escapeCsvValue(row.splice_dowels || ""),
+            escapeCsvValue(row.remark || ""),
+            escapeCsvValue(row.refer_to_2d_detail || "")
+        ];
+
+        csvContent += rowData.join(",") + "\n";
+    }
+
+    return Buffer.from(csvContent, "utf8");
+}
+
+
+// ============================================================
+// GET EXCEL AS BUFFER - For web server responses
+// ============================================================
+
+export async function getExcelBuffer(json) {
+    if (!json) {
+        throw new Error("JSON input is required.");
+    }
+
+    const items = extractItems(json);
+
+    if (items.length === 0) {
+        throw new Error("No text coordinate objects were found.");
+    }
+
+    const xValues = items.map(item => item.x);
+    const yValues = items.map(item => item.y);
+    const xCenters = clusterCoordinates(xValues, X_TOLERANCE);
+    const yCenters = clusterCoordinates(yValues, Y_TOLERANCE);
+    const yDescending = [...yCenters].sort((a, b) => b - a);
+
+    const workbook = new ExcelJS.Workbook();
+
+    workbook.creator = "PDF Coordinate to Excel";
+    workbook.lastModifiedBy = "PDF Coordinate to Excel";
+    workbook.created = new Date();
+    workbook.modified = new Date();
+
+    const infoSheet = workbook.addWorksheet("Info");
+    const layoutSheet = workbook.addWorksheet("Layout");
+    const rawSheet = workbook.addWorksheet("Raw Coordinates");
+    const scheduleSheet = workbook.addWorksheet("Column Schedule");
+    const dataSheet = workbook.addWorksheet("Data");
+
+    createInfoSheet(infoSheet, items, xCenters, yDescending);
+    createLayoutSheet(layoutSheet, items, xCenters, yDescending);
+    createRawSheet(rawSheet, items, xCenters, yDescending);
+    createScheduleSheet(scheduleSheet, items);
+    const processedRows = createDataSheet(dataSheet, items, workbook);
+
+    // Get the buffer
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    return {
+        buffer,
+        processedRows,
+        itemCount: items.length,
+        xClusterCount: xCenters.length,
+        yRowCount: yDescending.length,
+        rowCount: processedRows ? processedRows.length : 0
+    };
+}
+
+
+// ============================================================
+// WEB SERVER RESPONSE HELPERS
+// ============================================================
+
+export function getCsvDownloadHeaders(filename = "output_data.csv") {
+    return {
+        "Content-Type": "text/csv",
+        "Content-Disposition": `attachment; filename="${filename}"`
+    };
+}
+
+export function getExcelDownloadHeaders(filename = "output.xlsx") {
+    return {
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": `attachment; filename="${filename}"`
+    };
 }
 
 
@@ -2764,7 +2906,7 @@ function createDataSheet(
 }
 
 // ============================================================
-// EXPORTABLE API ENTRYPOINT
+// EXPORTABLE API ENTRYPOINT - Enhanced
 // ============================================================
 
 export async function generateCoordScheduleWorkbook(json, outputPath = OUTPUT_FILE, csvPath = OUTPUT_CSV_FILE) {
@@ -2808,11 +2950,21 @@ export async function generateCoordScheduleWorkbook(json, outputPath = OUTPUT_FI
 
     // Export CSV if we have data
     let csvExported = false;
+    let csvBuffer = null;
     if (processedRows && processedRows.length > 0) {
         try {
-            const csvResult = await exportToCsv(processedRows, csvPath);
+            // Generate a unique filename with timestamp
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const csvFilename = `output_data_${timestamp}.csv`;
+            const tempCsvPath = path.join(TEMP_DIR, csvFilename);
+
+            const csvResult = await exportToCsv(processedRows, tempCsvPath);
             if (csvResult) {
                 csvExported = true;
+                // Also get the buffer for immediate download
+                csvBuffer = getCsvBuffer(processedRows);
+                // Save a copy to the main output location
+                fs.copyFileSync(tempCsvPath, csvPath);
             }
         } catch (error) {
             console.error("Error exporting CSV:", error.message);
@@ -2823,6 +2975,7 @@ export async function generateCoordScheduleWorkbook(json, outputPath = OUTPUT_FI
         success: true,
         outputFile: outputPath,
         csvFile: csvExported ? csvPath : null,
+        csvBuffer: csvBuffer,
         itemCount: items.length,
         xClusterCount: xCenters.length,
         yRowCount: yDescending.length,
