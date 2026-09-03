@@ -300,7 +300,7 @@ router.post(
 
     try {
 
-      if (!req.file) {
+      if (!req.file && !req.body) {
 
         return res.status(400).json({
 
@@ -313,14 +313,13 @@ router.post(
 
       }
 
-      const text =
-        req.file.buffer.toString('utf8');
-
       let data;
 
       try {
 
-        data = JSON.parse(text);
+        data = req.file
+          ? JSON.parse(req.file.buffer.toString('utf8'))
+          : req.body;
 
       }
       catch (error) {
@@ -344,6 +343,18 @@ router.post(
           data,
           outputFile
         );
+
+      if (req.query.download === '1') {
+        res.set({
+          'X-Coordinate-Item-Count': String(result.itemCount),
+          'X-Coordinate-X-Clusters': String(result.xClusterCount),
+          'X-Coordinate-Y-Rows': String(result.yRowCount)
+        });
+        return res.download(
+          result.outputFile,
+          'coord-schedule-output.xlsx'
+        );
+      }
 
       return res.json({
 
