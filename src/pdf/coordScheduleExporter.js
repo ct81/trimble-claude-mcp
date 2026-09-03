@@ -12,6 +12,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const OUTPUT_FILE = path.join(__dirname, "output.xlsx");
+const OUTPUT_CSV_FILE = path.join(__dirname, "output_data.csv");
 
 const X_TOLERANCE = 4.0;
 const Y_TOLERANCE = 2.5;
@@ -165,7 +166,7 @@ async function main() {
         items
     );
 
-    createDataSheet(
+    const processedRows = createDataSheet(
         dataSheet,
         items,
         workbook
@@ -192,7 +193,98 @@ async function main() {
         `Output: ${OUTPUT_FILE}`
     );
 
+    // --------------------------------------------------------
+    // EXPORT CSV
+    // --------------------------------------------------------
+
+    if (processedRows && processedRows.length > 0) {
+        console.log("");
+        console.log("Exporting CSV...");
+
+        const csvPath = await exportToCsv(processedRows, OUTPUT_CSV_FILE);
+        console.log(`CSV Output: ${csvPath}`);
+    }
+
     console.log("");
+}
+
+
+// ============================================================
+// EXPORT TO CSV
+// ============================================================
+
+async function exportToCsv(rows, outputPath) {
+
+    if (!rows || rows.length === 0) {
+        console.log("No data rows to export to CSV.");
+        return null;
+    }
+
+    // Define headers
+    const headers = [
+        "Detail Mark",
+        "Start Storey",
+        "End Storey",
+        "Material Grade",
+        "Width (mm)",
+        "Breadth (mm)",
+        "Main Rebar",
+        "Stirrups",
+        "Construction Method",
+        "Arrangement Type",
+        "Splice/Dowels",
+        "Remark",
+        "Refer To 2D Detail"
+    ];
+
+    // Build CSV content
+    let csvContent = headers.join(",") + "\n";
+
+    for (const row of rows) {
+        const rowData = [
+            escapeCsvValue(row.detail_mark || ""),
+            escapeCsvValue(row.start_storey || ""),
+            escapeCsvValue(row.end_storey || ""),
+            escapeCsvValue(row.material_grade || ""),
+            row.width_mm !== null && row.width_mm !== undefined ? row.width_mm : "",
+            row.breadth_mm !== null && row.breadth_mm !== undefined ? row.breadth_mm : "",
+            escapeCsvValue(row.main_rebar || ""),
+            escapeCsvValue(row.stirrups || ""),
+            escapeCsvValue(row.construction_method || ""),
+            escapeCsvValue(row.arrangement_type || ""),
+            escapeCsvValue(row.splice_dowels || ""),
+            escapeCsvValue(row.remark || ""),
+            escapeCsvValue(row.refer_to_2d_detail || "")
+        ];
+
+        csvContent += rowData.join(",") + "\n";
+    }
+
+    // Write to file
+    fs.writeFileSync(outputPath, csvContent, "utf8");
+
+    return outputPath;
+}
+
+
+// ============================================================
+// ESCAPE CSV VALUE
+// ============================================================
+
+function escapeCsvValue(value) {
+    if (value === null || value === undefined) {
+        return "";
+    }
+
+    const str = String(value);
+
+    // If the value contains commas, quotes, or newlines, wrap in quotes
+    if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+        // Replace double quotes with double double-quotes
+        return `"${str.replace(/"/g, '""')}"`;
+    }
+
+    return str;
 }
 
 
@@ -726,8 +818,8 @@ function clusterCoordinates(
                             sum + v,
                         0
                     )
-                    /
-                    groups[lastIndex].length;
+                /
+                groups[lastIndex].length;
 
         } else {
 
@@ -1626,31 +1718,31 @@ function createScheduleSheet(
             }
         );
 
-console.log("");
-console.log("Schedule items:");
-console.log("----------------------------------------------");
+    console.log("");
+    console.log("Schedule items:");
+    console.log("----------------------------------------------");
 
-scheduleItems.forEach(item => {
+    scheduleItems.forEach(item => {
 
-    const column =
-        findScheduleColumn(
-            item.x,
-            foundHeaders
+        const column =
+            findScheduleColumn(
+                item.x,
+                foundHeaders
+            );
+
+        const header =
+            foundHeaders[column - 1];
+
+        console.log(
+            `X=${item.x.toFixed(2)} ` +
+            `Y=${item.y.toFixed(2)} ` +
+            `COL=${column} ` +
+            `HEADER=${header ? header.name : "NONE"} ` +
+            `TEXT="${item.text}"`
         );
+    });
 
-    const header =
-        foundHeaders[column - 1];
-
-    console.log(
-        `X=${item.x.toFixed(2)} ` +
-        `Y=${item.y.toFixed(2)} ` +
-        `COL=${column} ` +
-        `HEADER=${header ? header.name : "NONE"} ` +
-        `TEXT="${item.text}"`
-    );
-});
-
-console.log("----------------------------------------------");
+    console.log("----------------------------------------------");
 
     // --------------------------------------------------------
     // SCHEDULE Y ROWS
@@ -1677,9 +1769,9 @@ console.log("----------------------------------------------");
             yValues,
             Y_TOLERANCE
         )
-        .sort(
-            (a, b) => b - a
-        );
+            .sort(
+                (a, b) => b - a
+            );
 
     // --------------------------------------------------------
     // CREATE SCHEDULE CELLS
@@ -2072,7 +2164,7 @@ function createDataSheet(
 
     if (scheduleItems.length === 0) {
         sheet.getCell("A1").value = "No schedule data found.";
-        return;
+        return [];
     }
 
     // --------------------------------------------------------
@@ -2090,12 +2182,8 @@ function createDataSheet(
     console.log("");
 
     // --------------------------------------------------------
-    // Build structured data
+    // Build structured data - group by rows first
     // --------------------------------------------------------
-    const columnSchedule = [];
-    let currentDetailMark = "";
-    let currentRows = [];
-
     const rowGroups = new Map();
     for (const item of scheduleItems) {
         const row = nearestIndex(item.y, scheduleRows);
@@ -2110,6 +2198,10 @@ function createDataSheet(
     }
 
     const sortedRows = [...scheduleRows].sort((a, b) => b - a);
+
+    // First pass: collect all rows with their data
+    const allRows = [];
+    let currentDetailMark = "";
 
     for (const rowY of sortedRows) {
         const rowIndex = nearestIndex(rowY, scheduleRows);
@@ -2126,386 +2218,401 @@ function createDataSheet(
             }
         }
 
+        // Check if this row contains a detail mark (starts with 43C or 43P)
         const detailMarkValue = rowData.get("DetailMark") || "";
-        const isDetailMarkRow = /^43[C|P]/.test(detailMarkValue) ||
-            rowData.size === 1 && detailMarkValue !== "";
+        const isDetailMarkRow = /^43[C|P]/.test(detailMarkValue);
 
         if (isDetailMarkRow) {
-            if (currentRows.length > 0) {
-                columnSchedule.push({
-                    detail_mark: currentDetailMark,
-                    rows: currentRows
-                });
-                currentRows = [];
-            }
+            // This is a detail mark row - update current detail mark
             currentDetailMark = detailMarkValue;
-            console.log(`Detail mark found: "${detailMarkValue}"`);
-        } else {
-            let materialGrade = rowData.get("MaterialGrade") || "";
-            let width = rowData.get("Width") || "";
-            let breadth = rowData.get("Breadth") || "";
-            let mainRebar = rowData.get("MainRebar") || rowData.get("Length") || "";
-            let stirrups = rowData.get("Stirrups") || rowData.get("Thickness") || "";
-            let constructionMethod = rowData.get("ConstructionMethod") || rowData.get("ArrangementType") || "";
-            let arrangementType = rowData.get("ArrangementType") || "";
-            let spliceDowels = rowData.get("Splice/Dowels") || "";
-            let remark = rowData.get("Remark") || "";
-            let startStorey = rowData.get("DetailStartStorey") || "";
-            let endStorey = rowData.get("DetailEndstorey") || "";
-
-            // ============================================================
-            // FILTER 1: Remove row with only "A"
-            // ============================================================
-            let hasOtherData = false;
+            console.log(`Detail mark found: "${currentDetailMark}" at row ${rowIndex + 1}`);
+        } else if (currentDetailMark) {
+            // This is a data row - store it with the current detail mark
+            // Check if it has any meaningful data
+            let hasData = false;
             for (const [key, value] of rowData) {
-                const trimmedValue = value.trim();
-                if (trimmedValue && trimmedValue !== "A") {
-                    hasOtherData = true;
+                if (value && value.trim() && value.trim() !== "A") {
+                    hasData = true;
                     break;
                 }
             }
 
-            if (!hasOtherData) {
-                console.log(`Filter 1: Skipping row ${rowIndex + 1} - only contains "A" values`);
-                continue;
-            }
-
-            // ============================================================
-            // FILTER 2: Remove row with first 3 columns empty
-            // ============================================================
-            const firstThreeHeaders = foundHeaders.slice(0, 3).map(h => h.name);
-            let firstThreeEmpty = true;
-
-            for (const headerName of firstThreeHeaders) {
-                const value = rowData.get(headerName) || "";
-                if (value.trim() !== "") {
-                    firstThreeEmpty = false;
-                    break;
-                }
-            }
-
-            if (firstThreeEmpty) {
-                console.log(`Filter 2: Skipping row ${rowIndex + 1} - first 3 cells are empty`);
-                continue;
-            }
-
-            // ============================================================
-            // FILTER 3: Remove row with columns 2 & 3 empty (DetailStartStorey & DetailEndstorey)
-            // ============================================================
-            const col2Header = foundHeaders.length > 1 ? foundHeaders[1].name : null;
-            const col3Header = foundHeaders.length > 2 ? foundHeaders[2].name : null;
-
-            let col2Empty = true;
-            let col3Empty = true;
-
-            if (col2Header) {
-                const value = rowData.get(col2Header) || "";
-                if (value.trim() !== "") {
-                    col2Empty = false;
-                }
-            }
-
-            if (col3Header) {
-                const value = rowData.get(col3Header) || "";
-                if (value.trim() !== "") {
-                    col3Empty = false;
-                }
-            }
-
-            if (col2Empty && col3Empty) {
-                console.log(`Filter 3: Skipping row ${rowIndex + 1} - columns 2 & 3 are empty`);
-                continue;
-            }
-
-            // Combine all text to detect patterns
-            const allText = Array.from(rowData.values()).filter(v => v).join(" ");
-            console.log(`Row ${rowIndex + 1} combined: "${allText}"`);
-
-            // ============================================================
-            // EXTRACT ARRANGEMENT TYPE
-            // ============================================================
-            const arrangementPattern = /\b(\d+)-TIER\b/i;
-            const arrangementMatch = allText.match(arrangementPattern);
-            if (arrangementMatch) {
-                arrangementType = arrangementMatch[0].toUpperCase();
-                console.log(`Found arrangement type: "${arrangementType}"`);
-            }
-
-            // ============================================================
-            // EXTRACT SPLICE/DOWELS
-            // ============================================================
-            const splicePattern = /\b\d+[A-Z]\d+\s*[\(p\)]+\b/gi;
-            const spliceMatches = allText.match(splicePattern);
-
-            if (spliceMatches && spliceMatches.length > 0) {
-                const validSplices = spliceMatches.filter(match => {
-                    const cleanMatch = match.replace(/[^A-Z0-9]/g, "");
-                    if (mainRebar && mainRebar.replace(/[^A-Z0-9]/g, "") === cleanMatch) {
-                        return false;
-                    }
-                    if (stirrups && stirrups.includes(cleanMatch)) {
-                        return false;
-                    }
-                    if (!match.includes("p") && !match.includes("s")) {
-                        return false;
-                    }
-                    return true;
+            if (hasData) {
+                allRows.push({
+                    detail_mark: currentDetailMark,
+                    rowData: rowData,
+                    rowIndex: rowIndex
                 });
-
-                if (validSplices.length > 0) {
-                    spliceDowels = validSplices[0];
-                    console.log(`Found splice/dowels: "${spliceDowels}"`);
-                }
-            }
-
-            if (!spliceDowels) {
-                const flexPattern = /\b(\d+[A-Z]\d+)\s*[\(p\)]+\b/gi;
-                const flexMatches = allText.match(flexPattern);
-                if (flexMatches && flexMatches.length > 0) {
-                    const validMatches = flexMatches.filter(m => {
-                        const cleanMatch = m.replace(/[^A-Z0-9]/g, "");
-                        if (mainRebar && mainRebar.replace(/[^A-Z0-9]/g, "") === cleanMatch) {
-                            return false;
-                        }
-                        return true;
-                    });
-                    if (validMatches.length > 0) {
-                        spliceDowels = validMatches[0];
-                        console.log(`Found splice/dowels (flex): "${spliceDowels}"`);
-                    }
-                }
-            }
-
-            if (!spliceDowels) {
-                const directSplice = rowData.get("Splice/Dowels") || "";
-                if (directSplice && /[A-Z]\d+[\(p\)]/.test(directSplice)) {
-                    spliceDowels = directSplice;
-                    console.log(`Found splice/dowels from column: "${spliceDowels}"`);
-                }
-            }
-
-            // ============================================================
-            // BREADTH EXTRACTION
-            // ============================================================
-            let breadthValue = rowData.get("Breadth") || "";
-
-            if (!breadthValue || isNaN(parseFloat(breadthValue))) {
-                console.log(`Breadth column empty or invalid: "${breadthValue}". Extracting from combined text...`);
-
-                const allNumbers = allText.match(/\b\d+\b/g);
-                console.log(`All numbers found: ${allNumbers ? allNumbers.join(", ") : "none"}`);
-
-                if (allNumbers && allNumbers.length > 0) {
-                    const dimensionNumbers = allNumbers.filter(n => {
-                        const num = parseInt(n);
-                        return num >= 100 && num <= 9999;
-                    });
-                    console.log(`Dimension numbers: ${dimensionNumbers.join(", ")}`);
-
-                    if (dimensionNumbers.length >= 2) {
-                        breadthValue = dimensionNumbers[1];
-                        console.log(`Extracted breadth as second dimension: "${breadthValue}"`);
-                    } else if (dimensionNumbers.length === 1) {
-                        if (width && !isNaN(parseFloat(width))) {
-                            breadthValue = dimensionNumbers[0];
-                            console.log(`Using single dimension as breadth: "${breadthValue}"`);
-                        }
-                    }
-                }
-
-                if (!breadthValue && mainRebar) {
-                    const rebarWithBreadth = mainRebar.match(/^(\d+)\s+([A-Z]\d+)/);
-                    if (rebarWithBreadth) {
-                        breadthValue = rebarWithBreadth[1];
-                        mainRebar = rebarWithBreadth[2];
-                        console.log(`Extracted breadth from MainRebar: "${breadthValue}", cleaned mainRebar: "${mainRebar}"`);
-                    }
-                }
-
-                if (!breadthValue) {
-                    const pattern = /(\d+)\s+(\d+)\s+([A-Z]\d+)/;
-                    const match = allText.match(pattern);
-                    if (match) {
-                        const firstNum = match[1];
-                        const secondNum = match[2];
-                        const rebar = match[3];
-
-                        if (!width || isNaN(parseFloat(width))) {
-                            width = firstNum;
-                        }
-                        breadthValue = secondNum;
-                        if (!mainRebar) {
-                            mainRebar = rebar;
-                        }
-                        console.log(`Extracted from pattern: Width="${firstNum}", Breadth="${secondNum}", MainRebar="${rebar}"`);
-                    }
-                }
-            }
-
-            if (breadthValue && breadthValue.includes(" ")) {
-                const parts = breadthValue.split(/\s+/);
-                for (const part of parts) {
-                    if (/^\d+$/.test(part) && parseInt(part) >= 100) {
-                        breadthValue = part;
-                        console.log(`Cleaned breadth from multi-part: "${breadthValue}"`);
-                        break;
-                    }
-                }
-            }
-
-            if (breadthValue && !isNaN(parseFloat(breadthValue))) {
-                breadth = breadthValue;
-            } else {
-                breadth = "";
-            }
-
-            // ============================================================
-            // MAIN REBAR AND STIRRUPS EXTRACTION
-            // ============================================================
-            if (mainRebar && /^\d{3,4}$/.test(mainRebar.trim())) {
-                console.log(`Clearing mainRebar because it contains breadth value: "${mainRebar}"`);
-                mainRebar = "";
-            }
-
-            const stirrupsPattern = /\d+[A-Z]\d+-\d+\+\d+[A-Z]\d+-\d+/g;
-            const stirrupsMatches = allText.match(stirrupsPattern);
-
-            if (stirrupsMatches && stirrupsMatches.length > 0) {
-                stirrups = stirrupsMatches[0];
-                console.log(`Found stirrups: "${stirrups}"`);
-            } else {
-                const simpleStirrupsPattern = /\d+[A-Z]\d+-\d+\+\d+[A-Z]\d+-\d+/g;
-                const simpleMatches = allText.match(simpleStirrupsPattern);
-                if (simpleMatches && simpleMatches.length > 0) {
-                    stirrups = simpleMatches[0];
-                    console.log(`Found stirrups (simple): "${stirrups}"`);
-                }
-            }
-
-            const mainRebarPattern = /\b\d{1,3}[A-Z]\d{1,3}\b/g;
-            const rebarMatches = allText.match(mainRebarPattern);
-
-            if (rebarMatches && rebarMatches.length > 0) {
-                const potentialRebars = rebarMatches.filter(match => {
-                    if (stirrups && stirrups.includes(match)) {
-                        return false;
-                    }
-                    if (spliceDowels && spliceDowels.includes(match)) {
-                        return false;
-                    }
-                    if (/^\d+$/.test(match)) {
-                        return false;
-                    }
-                    return true;
-                });
-
-                if (potentialRebars.length > 0) {
-                    mainRebar = potentialRebars[0];
-                    console.log(`Found main rebar: "${mainRebar}"`);
-                }
-            }
-
-            if (!mainRebar) {
-                const fallbackPattern = /[A-Z]\d+/g;
-                const fallbackMatches = allText.match(fallbackPattern);
-                if (fallbackMatches && fallbackMatches.length > 0) {
-                    const validMatches = fallbackMatches.filter(m => {
-                        if (stirrups && stirrups.includes(m)) return false;
-                        if (spliceDowels && spliceDowels.includes(m)) return false;
-                        return true;
-                    });
-                    if (validMatches.length > 0) {
-                        mainRebar = validMatches[0];
-                        console.log(`Found main rebar (fallback): "${mainRebar}"`);
-                    }
-                }
-            }
-
-            if (mainRebar && /^\d+\s+/.test(mainRebar)) {
-                const parts = mainRebar.split(/\s+/);
-                for (const part of parts) {
-                    if (/[A-Z]/.test(part)) {
-                        mainRebar = part;
-                        console.log(`Cleaned mainRebar: "${mainRebar}"`);
-                        break;
-                    }
-                }
-            }
-
-            if (mainRebar && /^\d{3,4}$/.test(mainRebar.trim())) {
-                console.log(`Removing breadth value from mainRebar: "${mainRebar}"`);
-                mainRebar = "";
-            }
-
-            // Split MaterialGrade and Width
-            if (materialGrade && /^[A-Z]\d+\/\d+/.test(materialGrade)) {
-                const parts = materialGrade.split(/\s+/);
-                if (parts.length >= 2) {
-                    materialGrade = parts[0];
-                    if (parts.length >= 2 && /^\d+$/.test(parts[1])) {
-                        width = parts[1];
-                    }
-                }
-            }
-
-            // Clean up values
-            materialGrade = materialGrade.replace(/\s+\d+.*$/, "").trim();
-            width = width.replace(/\s+.*$/, "").trim();
-            breadth = breadth.toString().trim();
-
-            // Debug logging
-            console.log(`Row ${rowIndex + 1} final data:`);
-            console.log(`  start_storey: "${startStorey}"`);
-            console.log(`  end_storey: "${endStorey}"`);
-            console.log(`  material_grade: "${materialGrade}"`);
-            console.log(`  width_mm: "${width}"`);
-            console.log(`  breadth_mm: "${breadth}"`);
-            console.log(`  main_rebar: "${mainRebar}"`);
-            console.log(`  stirrups: "${stirrups}"`);
-            console.log(`  construction_method: "${constructionMethod}"`);
-            console.log(`  arrangement_type: "${arrangementType}"`);
-            console.log(`  splice_dowels: "${spliceDowels}"`);
-            console.log("---");
-
-            // Build the row object
-            const row = {
-                start_storey: startStorey,
-                end_storey: endStorey,
-                material_grade: materialGrade,
-                width_mm: parseFloat(width) || null,
-                breadth_mm: parseFloat(breadth) || null,
-                main_rebar: mainRebar,
-                stirrups: stirrups,
-                construction_method: constructionMethod,
-                arrangement_type: arrangementType || null,
-                splice_dowels: spliceDowels || null,
-                remark: remark || "",
-                refer_to_2d_detail: rowData.get("ReferTo2DDetail") || ""
-            };
-
-            if (Object.values(row).some(v => v !== "" && v !== null)) {
-                currentRows.push(row);
             }
         }
     }
 
-    if (currentRows.length > 0) {
-        columnSchedule.push({
+    // --------------------------------------------------------
+    // Process each row with extraction logic
+    // --------------------------------------------------------
+    const processedRows = [];
+
+    for (const row of allRows) {
+        const rowData = row.rowData;
+        const rowIndex = row.rowIndex;
+        const currentDetailMark = row.detail_mark;
+
+        let materialGrade = rowData.get("MaterialGrade") || "";
+        let width = rowData.get("Width") || "";
+        let breadth = rowData.get("Breadth") || "";
+        let mainRebar = rowData.get("MainRebar") || rowData.get("Length") || "";
+        let stirrups = rowData.get("Stirrups") || rowData.get("Thickness") || "";
+        let constructionMethod = rowData.get("ConstructionMethod") || rowData.get("ArrangementType") || "";
+        let arrangementType = rowData.get("ArrangementType") || "";
+        let spliceDowels = rowData.get("Splice/Dowels") || "";
+        let remark = rowData.get("Remark") || "";
+        let startStorey = rowData.get("DetailStartStorey") || "";
+        let endStorey = rowData.get("DetailEndstorey") || "";
+
+        // ============================================================
+        // FILTER 1: Remove row with only "A"
+        // ============================================================
+        let hasOtherData = false;
+        for (const [key, value] of rowData) {
+            const trimmedValue = value.trim();
+            if (trimmedValue && trimmedValue !== "A") {
+                hasOtherData = true;
+                break;
+            }
+        }
+
+        if (!hasOtherData) {
+            console.log(`Filter 1: Skipping row ${rowIndex + 1} - only contains "A" values`);
+            continue;
+        }
+
+        // ============================================================
+        // FILTER 2: Remove row with first 3 columns empty
+        // ============================================================
+        const firstThreeHeaders = foundHeaders.slice(0, 3).map(h => h.name);
+        let firstThreeEmpty = true;
+
+        for (const headerName of firstThreeHeaders) {
+            const value = rowData.get(headerName) || "";
+            if (value.trim() !== "") {
+                firstThreeEmpty = false;
+                break;
+            }
+        }
+
+        if (firstThreeEmpty) {
+            console.log(`Filter 2: Skipping row ${rowIndex + 1} - first 3 cells are empty`);
+            continue;
+        }
+
+        // ============================================================
+        // FILTER 3: Remove row with columns 2 & 3 empty (DetailStartStorey & DetailEndstorey)
+        // ============================================================
+        const col2Header = foundHeaders.length > 1 ? foundHeaders[1].name : null;
+        const col3Header = foundHeaders.length > 2 ? foundHeaders[2].name : null;
+
+        let col2Empty = true;
+        let col3Empty = true;
+
+        if (col2Header) {
+            const value = rowData.get(col2Header) || "";
+            if (value.trim() !== "") {
+                col2Empty = false;
+            }
+        }
+
+        if (col3Header) {
+            const value = rowData.get(col3Header) || "";
+            if (value.trim() !== "") {
+                col3Empty = false;
+            }
+        }
+
+        if (col2Empty && col3Empty) {
+            console.log(`Filter 3: Skipping row ${rowIndex + 1} - columns 2 & 3 are empty`);
+            continue;
+        }
+
+        // Combine all text to detect patterns
+        const allText = Array.from(rowData.values()).filter(v => v).join(" ");
+        console.log(`Row ${rowIndex + 1} combined: "${allText}"`);
+
+        // ============================================================
+        // EXTRACT ARRANGEMENT TYPE
+        // ============================================================
+        const arrangementPattern = /\b(\d+)-TIER\b/i;
+        const arrangementMatch = allText.match(arrangementPattern);
+        if (arrangementMatch) {
+            arrangementType = arrangementMatch[0].toUpperCase();
+            console.log(`Found arrangement type: "${arrangementType}"`);
+        }
+
+        // ============================================================
+        // EXTRACT SPLICE/DOWELS
+        // ============================================================
+        const splicePattern = /\b\d+[A-Z]\d+\s*[\(p\)]+\b/gi;
+        const spliceMatches = allText.match(splicePattern);
+
+        if (spliceMatches && spliceMatches.length > 0) {
+            const validSplices = spliceMatches.filter(match => {
+                const cleanMatch = match.replace(/[^A-Z0-9]/g, "");
+                if (mainRebar && mainRebar.replace(/[^A-Z0-9]/g, "") === cleanMatch) {
+                    return false;
+                }
+                if (stirrups && stirrups.includes(cleanMatch)) {
+                    return false;
+                }
+                if (!match.includes("p") && !match.includes("s")) {
+                    return false;
+                }
+                return true;
+            });
+
+            if (validSplices.length > 0) {
+                spliceDowels = validSplices[0];
+                console.log(`Found splice/dowels: "${spliceDowels}"`);
+            }
+        }
+
+        if (!spliceDowels) {
+            const flexPattern = /\b(\d+[A-Z]\d+)\s*[\(p\)]+\b/gi;
+            const flexMatches = allText.match(flexPattern);
+            if (flexMatches && flexMatches.length > 0) {
+                const validMatches = flexMatches.filter(m => {
+                    const cleanMatch = m.replace(/[^A-Z0-9]/g, "");
+                    if (mainRebar && mainRebar.replace(/[^A-Z0-9]/g, "") === cleanMatch) {
+                        return false;
+                    }
+                    return true;
+                });
+                if (validMatches.length > 0) {
+                    spliceDowels = validMatches[0];
+                    console.log(`Found splice/dowels (flex): "${spliceDowels}"`);
+                }
+            }
+        }
+
+        if (!spliceDowels) {
+            const directSplice = rowData.get("Splice/Dowels") || "";
+            if (directSplice && /[A-Z]\d+[\(p\)]/.test(directSplice)) {
+                spliceDowels = directSplice;
+                console.log(`Found splice/dowels from column: "${spliceDowels}"`);
+            }
+        }
+
+        // ============================================================
+        // BREADTH EXTRACTION
+        // ============================================================
+        let breadthValue = rowData.get("Breadth") || "";
+
+        if (!breadthValue || isNaN(parseFloat(breadthValue))) {
+            console.log(`Breadth column empty or invalid: "${breadthValue}". Extracting from combined text...`);
+
+            const allNumbers = allText.match(/\b\d+\b/g);
+            console.log(`All numbers found: ${allNumbers ? allNumbers.join(", ") : "none"}`);
+
+            if (allNumbers && allNumbers.length > 0) {
+                const dimensionNumbers = allNumbers.filter(n => {
+                    const num = parseInt(n);
+                    return num >= 100 && num <= 9999;
+                });
+                console.log(`Dimension numbers: ${dimensionNumbers.join(", ")}`);
+
+                if (dimensionNumbers.length >= 2) {
+                    breadthValue = dimensionNumbers[1];
+                    console.log(`Extracted breadth as second dimension: "${breadthValue}"`);
+                } else if (dimensionNumbers.length === 1) {
+                    if (width && !isNaN(parseFloat(width))) {
+                        breadthValue = dimensionNumbers[0];
+                        console.log(`Using single dimension as breadth: "${breadthValue}"`);
+                    }
+                }
+            }
+
+            if (!breadthValue && mainRebar) {
+                const rebarWithBreadth = mainRebar.match(/^(\d+)\s+([A-Z]\d+)/);
+                if (rebarWithBreadth) {
+                    breadthValue = rebarWithBreadth[1];
+                    mainRebar = rebarWithBreadth[2];
+                    console.log(`Extracted breadth from MainRebar: "${breadthValue}", cleaned mainRebar: "${mainRebar}"`);
+                }
+            }
+
+            if (!breadthValue) {
+                const pattern = /(\d+)\s+(\d+)\s+([A-Z]\d+)/;
+                const match = allText.match(pattern);
+                if (match) {
+                    const firstNum = match[1];
+                    const secondNum = match[2];
+                    const rebar = match[3];
+
+                    if (!width || isNaN(parseFloat(width))) {
+                        width = firstNum;
+                    }
+                    breadthValue = secondNum;
+                    if (!mainRebar) {
+                        mainRebar = rebar;
+                    }
+                    console.log(`Extracted from pattern: Width="${firstNum}", Breadth="${secondNum}", MainRebar="${rebar}"`);
+                }
+            }
+        }
+
+        if (breadthValue && breadthValue.includes(" ")) {
+            const parts = breadthValue.split(/\s+/);
+            for (const part of parts) {
+                if (/^\d+$/.test(part) && parseInt(part) >= 100) {
+                    breadthValue = part;
+                    console.log(`Cleaned breadth from multi-part: "${breadthValue}"`);
+                    break;
+                }
+            }
+        }
+
+        if (breadthValue && !isNaN(parseFloat(breadthValue))) {
+            breadth = breadthValue;
+        } else {
+            breadth = "";
+        }
+
+        // ============================================================
+        // MAIN REBAR AND STIRRUPS EXTRACTION
+        // ============================================================
+        if (mainRebar && /^\d{3,4}$/.test(mainRebar.trim())) {
+            console.log(`Clearing mainRebar because it contains breadth value: "${mainRebar}"`);
+            mainRebar = "";
+        }
+
+        const stirrupsPattern = /\d+[A-Z]\d+-\d+\+\d+[A-Z]\d+-\d+/g;
+        const stirrupsMatches = allText.match(stirrupsPattern);
+
+        if (stirrupsMatches && stirrupsMatches.length > 0) {
+            stirrups = stirrupsMatches[0];
+            console.log(`Found stirrups: "${stirrups}"`);
+        } else {
+            const simpleStirrupsPattern = /\d+[A-Z]\d+-\d+\+\d+[A-Z]\d+-\d+/g;
+            const simpleMatches = allText.match(simpleStirrupsPattern);
+            if (simpleMatches && simpleMatches.length > 0) {
+                stirrups = simpleMatches[0];
+                console.log(`Found stirrups (simple): "${stirrups}"`);
+            }
+        }
+
+        const mainRebarPattern = /\b\d{1,3}[A-Z]\d{1,3}\b/g;
+        const rebarMatches = allText.match(mainRebarPattern);
+
+        if (rebarMatches && rebarMatches.length > 0) {
+            const potentialRebars = rebarMatches.filter(match => {
+                if (stirrups && stirrups.includes(match)) {
+                    return false;
+                }
+                if (spliceDowels && spliceDowels.includes(match)) {
+                    return false;
+                }
+                if (/^\d+$/.test(match)) {
+                    return false;
+                }
+                return true;
+            });
+
+            if (potentialRebars.length > 0) {
+                mainRebar = potentialRebars[0];
+                console.log(`Found main rebar: "${mainRebar}"`);
+            }
+        }
+
+        if (!mainRebar) {
+            const fallbackPattern = /[A-Z]\d+/g;
+            const fallbackMatches = allText.match(fallbackPattern);
+            if (fallbackMatches && fallbackMatches.length > 0) {
+                const validMatches = fallbackMatches.filter(m => {
+                    if (stirrups && stirrups.includes(m)) return false;
+                    if (spliceDowels && spliceDowels.includes(m)) return false;
+                    return true;
+                });
+                if (validMatches.length > 0) {
+                    mainRebar = validMatches[0];
+                    console.log(`Found main rebar (fallback): "${mainRebar}"`);
+                }
+            }
+        }
+
+        if (mainRebar && /^\d+\s+/.test(mainRebar)) {
+            const parts = mainRebar.split(/\s+/);
+            for (const part of parts) {
+                if (/[A-Z]/.test(part)) {
+                    mainRebar = part;
+                    console.log(`Cleaned mainRebar: "${mainRebar}"`);
+                    break;
+                }
+            }
+        }
+
+        if (mainRebar && /^\d{3,4}$/.test(mainRebar.trim())) {
+            console.log(`Removing breadth value from mainRebar: "${mainRebar}"`);
+            mainRebar = "";
+        }
+
+        // Split MaterialGrade and Width
+        if (materialGrade && /^[A-Z]\d+\/\d+/.test(materialGrade)) {
+            const parts = materialGrade.split(/\s+/);
+            if (parts.length >= 2) {
+                materialGrade = parts[0];
+                if (parts.length >= 2 && /^\d+$/.test(parts[1])) {
+                    width = parts[1];
+                }
+            }
+        }
+
+        // Clean up values
+        materialGrade = materialGrade.replace(/\s+\d+.*$/, "").trim();
+        width = width.replace(/\s+.*$/, "").trim();
+        breadth = breadth.toString().trim();
+
+        // Debug logging
+        console.log(`Row ${rowIndex + 1} final data:`);
+        console.log(`  detail_mark: "${currentDetailMark}"`);
+        console.log(`  start_storey: "${startStorey}"`);
+        console.log(`  end_storey: "${endStorey}"`);
+        console.log(`  material_grade: "${materialGrade}"`);
+        console.log(`  width_mm: "${width}"`);
+        console.log(`  breadth_mm: "${breadth}"`);
+        console.log(`  main_rebar: "${mainRebar}"`);
+        console.log(`  stirrups: "${stirrups}"`);
+        console.log(`  construction_method: "${constructionMethod}"`);
+        console.log(`  arrangement_type: "${arrangementType}"`);
+        console.log(`  splice_dowels: "${spliceDowels}"`);
+        console.log("---");
+
+        // Build the row object
+        const rowObj = {
             detail_mark: currentDetailMark,
-            rows: currentRows
-        });
+            start_storey: startStorey,
+            end_storey: endStorey,
+            material_grade: materialGrade,
+            width_mm: parseFloat(width) || null,
+            breadth_mm: parseFloat(breadth) || null,
+            main_rebar: mainRebar,
+            stirrups: stirrups,
+            construction_method: constructionMethod,
+            arrangement_type: arrangementType || null,
+            splice_dowels: spliceDowels || null,
+            remark: remark || "",
+            refer_to_2d_detail: rowData.get("ReferTo2DDetail") || ""
+        };
+
+        processedRows.push(rowObj);
     }
 
     console.log("");
-    console.log(`Total detail marks: ${columnSchedule.length}`);
-    console.log(`Total data rows: ${columnSchedule.reduce((sum, group) => sum + group.rows.length, 0)}`);
+    console.log(`Total processed rows: ${processedRows.length}`);
     console.log("");
 
     // --------------------------------------------------------
     // Write JSON to sheet
     // --------------------------------------------------------
     const jsonData = {
-        column_schedule: columnSchedule
+        column_schedule: processedRows
     };
 
     const jsonString = JSON.stringify(jsonData, null, 2);
@@ -2529,12 +2636,11 @@ function createDataSheet(
 
     const summaryRow = lines.length + 2;
     sheet.getCell(summaryRow, 1).value = "==========================================";
-    sheet.getCell(summaryRow + 1, 1).value = `Total Detail Marks: ${columnSchedule.length}`;
-    sheet.getCell(summaryRow + 2, 1).value = `Total Data Rows: ${columnSchedule.reduce((sum, group) => sum + group.rows.length, 0)}`;
-    sheet.getCell(summaryRow + 3, 1).value = "==========================================";
+    sheet.getCell(summaryRow + 1, 1).value = `Total Rows: ${processedRows.length}`;
+    sheet.getCell(summaryRow + 2, 1).value = "==========================================";
 
     // --------------------------------------------------------
-    // Add Data Table sheet
+    // Add Data Table sheet - each row has detail mark
     // --------------------------------------------------------
     const dataTableSheet = workbook.addWorksheet("Data Table");
 
@@ -2571,52 +2677,38 @@ function createDataSheet(
     });
 
     let rowNum = 2;
-    for (const group of columnSchedule) {
-        if (group.detail_mark) {
-            const detailCell = dataTableSheet.getCell(rowNum, 1);
-            detailCell.value = group.detail_mark;
-            detailCell.font = { bold: true };
-            detailCell.alignment = {
-                horizontal: "left",
+    for (const row of processedRows) {
+        const dataRow = [
+            row.detail_mark || "",
+            row.start_storey,
+            row.end_storey,
+            row.material_grade,
+            row.width_mm,
+            row.breadth_mm,
+            row.main_rebar,
+            row.stirrups,
+            row.construction_method,
+            row.arrangement_type,
+            row.splice_dowels,
+            row.remark,
+            row.refer_to_2d_detail
+        ];
+
+        dataRow.forEach((value, index) => {
+            const cell = dataTableSheet.getCell(rowNum, index + 1);
+            cell.value = value !== null && value !== undefined ? value : "";
+            cell.alignment = {
+                horizontal: "center",
                 vertical: "center"
             };
-            dataTableSheet.mergeCells(rowNum, 1, rowNum, tableHeaders.length);
-            rowNum++;
-        }
-
-        for (const row of group.rows) {
-            const dataRow = [
-                "",
-                row.start_storey,
-                row.end_storey,
-                row.material_grade,
-                row.width_mm,
-                row.breadth_mm,
-                row.main_rebar,
-                row.stirrups,
-                row.construction_method,
-                row.arrangement_type,
-                row.splice_dowels,
-                row.remark,
-                row.refer_to_2d_detail
-            ];
-
-            dataRow.forEach((value, index) => {
-                const cell = dataTableSheet.getCell(rowNum, index + 1);
-                cell.value = value !== null ? value : "";
-                cell.alignment = {
-                    horizontal: "center",
-                    vertical: "center"
-                };
-                cell.border = {
-                    top: { style: "thin" },
-                    left: { style: "thin" },
-                    bottom: { style: "thin" },
-                    right: { style: "thin" }
-                };
-            });
-            rowNum++;
-        }
+            cell.border = {
+                top: { style: "thin" },
+                left: { style: "thin" },
+                bottom: { style: "thin" },
+                right: { style: "thin" }
+            };
+        });
+        rowNum++;
     }
 
     const tableWidths = [25, 18, 18, 16, 14, 14, 20, 20, 20, 16, 16, 20, 20];
@@ -2638,15 +2730,16 @@ function createDataSheet(
 
     const summaryRowTable = dataTableSheet.rowCount + 2;
     dataTableSheet.getCell(summaryRowTable, 1).value = "Summary:";
-    dataTableSheet.getCell(summaryRowTable + 1, 1).value = `Total Detail Marks: ${columnSchedule.length}`;
-    dataTableSheet.getCell(summaryRowTable + 2, 1).value = `Total Rows: ${columnSchedule.reduce((sum, group) => sum + group.rows.length, 0)}`;
+    dataTableSheet.getCell(summaryRowTable + 1, 1).value = `Total Rows: ${processedRows.length}`;
+
+    return processedRows;
 }
 
 // ============================================================
 // EXPORTABLE API ENTRYPOINT
 // ============================================================
 
-export async function generateCoordScheduleWorkbook(json, outputPath = OUTPUT_FILE) {
+export async function generateCoordScheduleWorkbook(json, outputPath = OUTPUT_FILE, csvPath = OUTPUT_CSV_FILE) {
 
     if (!json) {
         throw new Error("JSON input is required.");
@@ -2681,16 +2774,27 @@ export async function generateCoordScheduleWorkbook(json, outputPath = OUTPUT_FI
     createLayoutSheet(layoutSheet, items, xCenters, yDescending);
     createRawSheet(rawSheet, items, xCenters, yDescending);
     createScheduleSheet(scheduleSheet, items);
-    createDataSheet(dataSheet, items, workbook);
+    const processedRows = createDataSheet(dataSheet, items, workbook);
 
     await workbook.xlsx.writeFile(outputPath);
+
+    // Export CSV if we have data
+    let csvExported = false;
+    if (processedRows && processedRows.length > 0) {
+        const csvResult = await exportToCsv(processedRows, csvPath);
+        if (csvResult) {
+            csvExported = true;
+        }
+    }
 
     return {
         success: true,
         outputFile: outputPath,
+        csvFile: csvExported ? csvPath : null,
         itemCount: items.length,
         xClusterCount: xCenters.length,
-        yRowCount: yDescending.length
+        yRowCount: yDescending.length,
+        rowCount: processedRows ? processedRows.length : 0
     };
 }
 
