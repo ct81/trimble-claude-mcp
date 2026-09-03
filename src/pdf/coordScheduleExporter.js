@@ -3,6 +3,8 @@ import path from "node:path";
 import readline from "node:readline";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import ExcelJS from "exceljs";
+import express from "express";
+import cors from "cors";
 
 // ============================================================
 // CONFIGURATION
@@ -27,7 +29,7 @@ const Y_TOLERANCE = 2.5;
 
 
 // ============================================================
-// MAIN
+// MAIN - CLI Version
 // ============================================================
 
 async function main() {
@@ -335,10 +337,71 @@ function escapeCsvValue(value) {
 
 
 // ============================================================
-// GET CSV AS BUFFER - For web server responses
+// GENERATE FILES - For Web Server
 // ============================================================
 
-export function getCsvBuffer(rows) {
+export async function generateFiles(json) {
+    if (!json) {
+        throw new Error("JSON input is required.");
+    }
+
+    const items = extractItems(json);
+
+    if (items.length === 0) {
+        throw new Error("No text coordinate objects were found.");
+    }
+
+    const xValues = items.map(item => item.x);
+    const yValues = items.map(item => item.y);
+    const xCenters = clusterCoordinates(xValues, X_TOLERANCE);
+    const yCenters = clusterCoordinates(yValues, Y_TOLERANCE);
+    const yDescending = [...yCenters].sort((a, b) => b - a);
+
+    const workbook = new ExcelJS.Workbook();
+
+    workbook.creator = "PDF Coordinate to Excel";
+    workbook.lastModifiedBy = "PDF Coordinate to Excel";
+    workbook.created = new Date();
+    workbook.modified = new Date();
+
+    const infoSheet = workbook.addWorksheet("Info");
+    const layoutSheet = workbook.addWorksheet("Layout");
+    const rawSheet = workbook.addWorksheet("Raw Coordinates");
+    const scheduleSheet = workbook.addWorksheet("Column Schedule");
+    const dataSheet = workbook.addWorksheet("Data");
+
+    createInfoSheet(infoSheet, items, xCenters, yDescending);
+    createLayoutSheet(layoutSheet, items, xCenters, yDescending);
+    createRawSheet(rawSheet, items, xCenters, yDescending);
+    createScheduleSheet(scheduleSheet, items);
+    const processedRows = createDataSheet(dataSheet, items, workbook);
+
+    // Get Excel buffer
+    const excelBuffer = await workbook.xlsx.writeBuffer();
+
+    // Generate CSV
+    let csvBuffer = null;
+    if (processedRows && processedRows.length > 0) {
+        csvBuffer = generateCsvBuffer(processedRows);
+    }
+
+    return {
+        excelBuffer,
+        csvBuffer,
+        processedRows,
+        itemCount: items.length,
+        xClusterCount: xCenters.length,
+        yRowCount: yDescending.length,
+        rowCount: processedRows ? processedRows.length : 0
+    };
+}
+
+
+// ============================================================
+// GENERATE CSV BUFFER
+// ============================================================
+
+export function generateCsvBuffer(rows) {
     if (!rows || rows.length === 0) {
         return null;
     }
@@ -386,80 +449,107 @@ export function getCsvBuffer(rows) {
 
 
 // ============================================================
-// GET EXCEL AS BUFFER - For web server responses
+// EXPRESS SERVER
 // ============================================================
 
-export async function getExcelBuffer(json) {
-    if (!json) {
-        throw new Error("JSON input is required.");
+const app = express();
+app.use(cors());
+app.use(express.json({ limit: '50mb' }));
+
+// Health check
+app.get('/', (req, res) => {
+    res.json({ 
+        status: 'ok', 
+        message: 'PDF to Excel/CSV Converter API',
+        endpoints: [
+            'POST /convert/excel - Download Excel file',
+            'POST /convert/csv - Download CSV file',
+            'POST /convert/both - Download both files as base64'
+        ]
+    });
+});
+
+// Download Excel
+app.post('/convert/excel', async (req, res) => {
+    try {
+        const result = await generateFiles(req.body);
+        
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename="output.xlsx"');
+        res.setHeader('Content-Length', result.excelBuffer.length);
+        res.send(result.excelBuffer);
+    } catch (error) {
+        console.error('Error generating Excel:', error);
+        res.status(500).json({ error: error.message });
     }
+});
 
-    const items = extractItems(json);
-
-    if (items.length === 0) {
-        throw new Error("No text coordinate objects were found.");
+// Download CSV
+app.post('/convert/csv', async (req, res) => {
+    try {
+        const result = await generateFiles(req.body);
+        
+        if (!result.csvBuffer) {
+            return res.status(404).json({ error: 'No data to export to CSV' });
+        }
+        
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename="output_data.csv"');
+        res.setHeader('Content-Length', result.csvBuffer.length);
+        res.send(result.csvBuffer);
+    } catch (error) {
+        console.error('Error generating CSV:', error);
+        res.status(500).json({ error: error.message });
     }
+});
 
-    const xValues = items.map(item => item.x);
-    const yValues = items.map(item => item.y);
-    const xCenters = clusterCoordinates(xValues, X_TOLERANCE);
-    const yCenters = clusterCoordinates(yValues, Y_TOLERANCE);
-    const yDescending = [...yCenters].sort((a, b) => b - a);
+// Download both as base64 (for frontend to handle)
+app.post('/convert/both', async (req, res) => {
+    try {
+        const result = await generateFiles(req.body);
+        
+        res.json({
+            success: true,
+            excel: result.excelBuffer.toString('base64'),
+            csv: result.csvBuffer ? result.csvBuffer.toString('base64') : null,
+            rowCount: result.rowCount,
+            itemCount: result.itemCount
+        });
+    } catch (error) {
+        console.error('Error generating files:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
 
-    const workbook = new ExcelJS.Workbook();
+// Serve temp files (for debugging)
+app.get('/temp/:filename', (req, res) => {
+    const filePath = path.join(TEMP_DIR, req.params.filename);
+    if (fs.existsSync(filePath)) {
+        res.download(filePath);
+    } else {
+        res.status(404).json({ error: 'File not found' });
+    }
+});
 
-    workbook.creator = "PDF Coordinate to Excel";
-    workbook.lastModifiedBy = "PDF Coordinate to Excel";
-    workbook.created = new Date();
-    workbook.modified = new Date();
 
-    const infoSheet = workbook.addWorksheet("Info");
-    const layoutSheet = workbook.addWorksheet("Layout");
-    const rawSheet = workbook.addWorksheet("Raw Coordinates");
-    const scheduleSheet = workbook.addWorksheet("Column Schedule");
-    const dataSheet = workbook.addWorksheet("Data");
+// ============================================================
+// START SERVER
+// ============================================================
 
-    createInfoSheet(infoSheet, items, xCenters, yDescending);
-    createLayoutSheet(layoutSheet, items, xCenters, yDescending);
-    createRawSheet(rawSheet, items, xCenters, yDescending);
-    createScheduleSheet(scheduleSheet, items);
-    const processedRows = createDataSheet(dataSheet, items, workbook);
+const PORT = process.env.PORT || 3000;
 
-    // Get the buffer
-    const buffer = await workbook.xlsx.writeBuffer();
-
-    return {
-        buffer,
-        processedRows,
-        itemCount: items.length,
-        xClusterCount: xCenters.length,
-        yRowCount: yDescending.length,
-        rowCount: processedRows ? processedRows.length : 0
-    };
+export function startServer() {
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`🚀 Server running on port ${PORT}`);
+        console.log(`📊 Excel endpoint: POST http://localhost:${PORT}/convert/excel`);
+        console.log(`📄 CSV endpoint: POST http://localhost:${PORT}/convert/csv`);
+        console.log(`📦 Both files: POST http://localhost:${PORT}/convert/both`);
+    });
 }
 
 
 // ============================================================
-// WEB SERVER RESPONSE HELPERS
-// ============================================================
-
-export function getCsvDownloadHeaders(filename = "output_data.csv") {
-    return {
-        "Content-Type": "text/csv",
-        "Content-Disposition": `attachment; filename="${filename}"`
-    };
-}
-
-export function getExcelDownloadHeaders(filename = "output.xlsx") {
-    return {
-        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="${filename}"`
-    };
-}
-
-
-// ============================================================
-// INPUT MENU
+// INPUT MENU (CLI)
 // ============================================================
 
 async function getInputJson() {
@@ -2962,7 +3052,7 @@ export async function generateCoordScheduleWorkbook(json, outputPath = OUTPUT_FI
             if (csvResult) {
                 csvExported = true;
                 // Also get the buffer for immediate download
-                csvBuffer = getCsvBuffer(processedRows);
+                csvBuffer = generateCsvBuffer(processedRows);
                 // Save a copy to the main output location
                 fs.copyFileSync(tempCsvPath, csvPath);
             }
@@ -2987,7 +3077,12 @@ export async function generateCoordScheduleWorkbook(json, outputPath = OUTPUT_FI
 // CLI ENTRYPOINT
 // ============================================================
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+// Check if --server flag is passed
+const isServerMode = process.argv.includes('--server');
+
+if (isServerMode) {
+    startServer();
+} else if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
     main().catch(error => {
         console.error("\nCoord schedule exporter failed:");
         console.error(error);
