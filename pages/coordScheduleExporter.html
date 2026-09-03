@@ -76,6 +76,7 @@
 				<textarea id="jsonInput" placeholder="Or paste coordinate JSON here..."></textarea>
 				<div class="actions">
 					<button id="exportButton" type="button">Generate Excel</button>
+					<button id="csvButton" class="secondary" type="button">Generate CSV</button>
 					<button id="clearButton" class="secondary" type="button">Clear</button>
 				</div>
 				<div class="status" id="status" role="status" aria-live="polite"></div>
@@ -100,6 +101,7 @@
 		const fileStatus = document.getElementById('fileStatus');
 		const status = document.getElementById('status');
 		const exportButton = document.getElementById('exportButton');
+		const csvButton = document.getElementById('csvButton');
 		const clearButton = document.getElementById('clearButton');
 
 		function setStatus(message, type = '') {
@@ -130,7 +132,7 @@
 		}));
 		dropzone.addEventListener('drop', event => selectFile(event.dataTransfer.files[0]));
 
-		exportButton.addEventListener('click', async () => {
+		async function downloadExport(format) {
 			const text = jsonInput.value.trim();
 			if (!text) {
 				setStatus('Choose a JSON file or paste JSON before generating.', 'error');
@@ -145,9 +147,11 @@
 			}
 
 			exportButton.disabled = true;
-			setStatus('Generating workbook...');
+			csvButton.disabled = true;
+			const isCsv = format === 'csv';
+			setStatus(`Generating ${isCsv ? 'CSV' : 'workbook'}...`);
 			try {
-				const response = await fetch('/api/pdf/coord-schedule-exporter?download=1', {
+				const response = await fetch(`/api/pdf/coord-schedule-exporter?download=${isCsv ? 'csv' : '1'}`, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: text
@@ -158,19 +162,23 @@
 				document.getElementById('xClusterCount').textContent = response.headers.get('X-Coordinate-X-Clusters') || '-';
 				document.getElementById('yRowCount').textContent = response.headers.get('X-Coordinate-Y-Rows') || '-';
 				const disposition = response.headers.get('Content-Disposition') || '';
-				const filename = disposition.match(/filename="?([^";]+)"?/i)?.[1] || 'coord-schedule-output.xlsx';
+				const filename = disposition.match(/filename="?([^";]+)"?/i)?.[1] || `coord-schedule-output.${isCsv ? 'csv' : 'xlsx'}`;
 				const link = document.createElement('a');
 				link.href = URL.createObjectURL(blob);
 				link.download = filename;
 				link.click();
 				URL.revokeObjectURL(link.href);
-				setStatus('Workbook generated and downloaded.', 'success');
+				setStatus(`${isCsv ? 'CSV' : 'Workbook'} generated and downloaded.`, 'success');
 			} catch (error) {
 				setStatus(error.message, 'error');
 			} finally {
 				exportButton.disabled = false;
+				csvButton.disabled = false;
 			}
-		});
+		}
+
+		exportButton.addEventListener('click', () => downloadExport('xlsx'));
+		csvButton.addEventListener('click', () => downloadExport('csv'));
 
 		clearButton.addEventListener('click', () => {
 			fileInput.value = '';

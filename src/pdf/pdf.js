@@ -344,6 +344,24 @@ router.post(
           outputFile
         );
 
+      if (req.query.download === 'csv') {
+        if (!result.csvBuffer) {
+          return res.status(422).json({
+            success: false,
+            error: 'No CSV rows were generated'
+          });
+        }
+
+        res.set({
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': 'attachment; filename="coord-schedule-output.csv"',
+          'X-Coordinate-Item-Count': String(result.itemCount),
+          'X-Coordinate-X-Clusters': String(result.xClusterCount),
+          'X-Coordinate-Y-Rows': String(result.yRowCount)
+        });
+        return res.send(result.csvBuffer);
+      }
+
       if (req.query.download === '1') {
         res.set({
           'X-Coordinate-Item-Count': String(result.itemCount),
