@@ -11,7 +11,8 @@ import {
 } from '../trimble/index.js';
 
 import {
-  extractColumnScheduleFromPdf
+  extractColumnScheduleFromPdf,
+  extractColumnScheduleFromBuffer
 } from '../pdf/extractColumnSchedule.js';
 
 import {
@@ -87,10 +88,17 @@ export const definitions = [
       properties: {
         pdfPath: {
           type: 'string',
-          description: 'Absolute or relative path to the PDF file.'
+          description: 'Absolute or relative path to a PDF file on the MCP server.'
+        },
+        pdfBase64: {
+          type: 'string',
+          description: 'Base64-encoded PDF contents. Use this when the PDF is on the client.'
         }
       },
-      required: ['pdfPath']
+      oneOf: [
+        { required: ['pdfPath'] },
+        { required: ['pdfBase64'] }
+      ]
     }
   },
 
@@ -195,12 +203,17 @@ export async function callTool(
 
     case 'extract_column_schedule': {
       const pdfPath = args.pdfPath;
+      const pdfBase64 = args.pdfBase64;
 
-      if (!pdfPath) {
-        throw new Error('pdfPath is required.');
+      if (!pdfPath && !pdfBase64) {
+        throw new Error('Either pdfPath or pdfBase64 is required.');
       }
 
-      result = await extractColumnScheduleFromPdf(pdfPath);
+      result = pdfBase64
+        ? await extractColumnScheduleFromBuffer(
+            Buffer.from(pdfBase64, 'base64')
+          )
+        : await extractColumnScheduleFromPdf(pdfPath);
       break;
     }
 
@@ -242,6 +255,11 @@ export async function callTool(
 
       fs.mkdirSync(path.dirname(outputPath), { recursive: true });
       result = await generateCoordScheduleWorkbook(payload, outputPath);
+
+      result = {
+        ...result,
+        csvBuffer: undefined
+      };
       break;
     }
 

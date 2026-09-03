@@ -20,6 +20,10 @@ export function handleMcp(
   if (
     body.method === 'initialize'
   ) {
+    if (sessionId) {
+      res.setHeader('Mcp-Session-Id', sessionId);
+    }
+
     return res.json({
       jsonrpc: '2.0',
 
@@ -113,7 +117,7 @@ export function handleMcp(
           error
         );
 
-        return res.status(500).json({
+        return res.status(200).json({
           jsonrpc: '2.0',
 
           id: body.id,
