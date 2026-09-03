@@ -199,10 +199,21 @@ async function main() {
 
     if (processedRows && processedRows.length > 0) {
         console.log("");
-        console.log("Exporting CSV...");
+        console.log(`Exporting CSV with ${processedRows.length} rows...`);
 
-        const csvPath = await exportToCsv(processedRows, OUTPUT_CSV_FILE);
-        console.log(`CSV Output: ${csvPath}`);
+        try {
+            const csvPath = await exportToCsv(processedRows, OUTPUT_CSV_FILE);
+            if (csvPath) {
+                console.log(`CSV Output: ${csvPath}`);
+            } else {
+                console.log("CSV export failed - no data to export.");
+            }
+        } catch (error) {
+            console.error("Error exporting CSV:", error.message);
+        }
+    } else {
+        console.log("");
+        console.log("No data rows to export to CSV.");
     }
 
     console.log("");
@@ -219,6 +230,8 @@ async function exportToCsv(rows, outputPath) {
         console.log("No data rows to export to CSV.");
         return null;
     }
+
+    console.log(`Preparing to export ${rows.length} rows to CSV...`);
 
     // Define headers
     const headers = [
@@ -240,7 +253,13 @@ async function exportToCsv(rows, outputPath) {
     // Build CSV content
     let csvContent = headers.join(",") + "\n";
 
+    let exportedCount = 0;
     for (const row of rows) {
+        // Debug: log the first row to see what we have
+        if (exportedCount === 0) {
+            console.log("Sample row data:", JSON.stringify(row, null, 2));
+        }
+
         const rowData = [
             escapeCsvValue(row.detail_mark || ""),
             escapeCsvValue(row.start_storey || ""),
@@ -258,12 +277,21 @@ async function exportToCsv(rows, outputPath) {
         ];
 
         csvContent += rowData.join(",") + "\n";
+        exportedCount++;
     }
 
-    // Write to file
-    fs.writeFileSync(outputPath, csvContent, "utf8");
+    console.log(`Built CSV with ${exportedCount} rows.`);
 
-    return outputPath;
+    // Write to file
+    try {
+        fs.writeFileSync(outputPath, csvContent, "utf8");
+        console.log(`CSV file written to: ${outputPath}`);
+        console.log(`File size: ${fs.statSync(outputPath).size} bytes`);
+        return outputPath;
+    } catch (error) {
+        console.error(`Error writing CSV file: ${error.message}`);
+        throw error;
+    }
 }
 
 
@@ -2781,9 +2809,13 @@ export async function generateCoordScheduleWorkbook(json, outputPath = OUTPUT_FI
     // Export CSV if we have data
     let csvExported = false;
     if (processedRows && processedRows.length > 0) {
-        const csvResult = await exportToCsv(processedRows, csvPath);
-        if (csvResult) {
-            csvExported = true;
+        try {
+            const csvResult = await exportToCsv(processedRows, csvPath);
+            if (csvResult) {
+                csvExported = true;
+            }
+        } catch (error) {
+            console.error("Error exporting CSV:", error.message);
         }
     }
 
