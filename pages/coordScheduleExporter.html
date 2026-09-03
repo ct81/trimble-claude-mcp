@@ -147,7 +147,7 @@
 			exportButton.disabled = true;
 			setStatus('Generating workbook...');
 			try {
-				const response = await fetch('/pdf/coord-schedule-exporter?download=1', {
+				const response = await fetch('/api/pdf/coord-schedule-exporter?download=1', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: text
