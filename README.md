@@ -25,6 +25,22 @@ npm start
 ```
 Open `http://localhost:3000/health`.
 
+## Extract a client-side PDF
+The `extract_column_schedule` MCP tool accepts either a server-visible `pdfPath` or
+the PDF contents as `pdfBase64` when the file exists on the client:
+
+```json
+{
+	"name": "extract_column_schedule",
+	"arguments": {
+		"pdfBase64": "JVBERi0x..."
+	}
+}
+```
+
+The base64 value may also be a `data:application/pdf;base64,...` value. Do not
+send both `pdfPath` and `pdfBase64` in the same request.
+
 ## GitHub
 ```bash
 git init

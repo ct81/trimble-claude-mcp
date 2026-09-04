@@ -165,6 +165,26 @@ function parseJsonInput(value, label) {
   return value;
 }
 
+function decodePdfBase64(value) {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new Error('pdfBase64 must be a non-empty base64 string.');
+  }
+
+  const base64 = value.trim().replace(/^data:application\/pdf;base64,/, '');
+
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(base64) || base64.length % 4 === 1) {
+    throw new Error('pdfBase64 is not valid base64.');
+  }
+
+  const buffer = Buffer.from(base64, 'base64');
+
+  if (!buffer.length) {
+    throw new Error('pdfBase64 must contain PDF data.');
+  }
+
+  return buffer;
+}
+
 export async function callTool(
   sessionId,
   name,
@@ -209,9 +229,13 @@ export async function callTool(
         throw new Error('Either pdfPath or pdfBase64 is required.');
       }
 
+      if (pdfPath && pdfBase64) {
+        throw new Error('Provide either pdfPath or pdfBase64, not both.');
+      }
+
       result = pdfBase64
         ? await extractColumnScheduleFromBuffer(
-            Buffer.from(pdfBase64, 'base64')
+            decodePdfBase64(pdfBase64)
           )
         : await extractColumnScheduleFromPdf(pdfPath);
       break;
