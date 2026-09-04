@@ -41,6 +41,22 @@ the PDF contents as `pdfBase64` when the file exists on the client:
 The base64 value may also be a `data:application/pdf;base64,...` value. Do not
 send both `pdfPath` and `pdfBase64` in the same request.
 
+For a browser, Swagger, or another upload client, first POST the PDF as the
+`file` field to `/api/pdf/uploads`. The response contains a temporary `uploadId`
+that can be passed to the MCP tool:
+
+```json
+{
+	"name": "extract_column_schedule",
+	"arguments": {
+		"uploadId": "returned-upload-id"
+	}
+}
+```
+
+The existing `/api/pdf/extract-column-schedule` endpoint remains available for
+the HTML exporter and extracts the uploaded file directly in the same request.
+
 ## GitHub
 ```bash
 git init

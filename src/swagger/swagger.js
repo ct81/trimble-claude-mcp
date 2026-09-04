@@ -39,6 +39,79 @@ export const swaggerDocument = {
 
   paths: {
 
+    '/api/pdf/uploads': {
+
+      post: {
+
+        summary:
+          'Create a temporary PDF upload for MCP extraction',
+
+        description:
+          'Upload a PDF and receive an uploadId. Pass that uploadId to the extract_column_schedule MCP tool. Uploads expire after 15 minutes.',
+
+        security: [],
+
+        requestBody: {
+
+          required: true,
+
+          content: {
+
+            'multipart/form-data': {
+
+              schema: {
+
+                type: 'object',
+
+                required: [
+                  'file'
+                ],
+
+                properties: {
+
+                  file: {
+
+                    type: 'string',
+
+                    format: 'binary',
+
+                    description:
+                      'PDF file to make temporarily available to MCP'
+
+                  }
+
+                }
+
+              }
+
+            }
+
+          }
+
+        },
+
+        responses: {
+
+          201: {
+
+            description:
+              'PDF uploaded successfully; use the returned uploadId with MCP'
+
+          },
+
+          400: {
+
+            description:
+              'PDF file is missing or invalid'
+
+          }
+
+        }
+
+      }
+
+    },
+
     '/health': {
 
       get: {

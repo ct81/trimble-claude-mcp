@@ -1,5 +1,6 @@
 import express from 'express';
 import multer from 'multer';
+import crypto from 'node:crypto';
 import path from 'node:path';
 
 import {
@@ -9,6 +10,42 @@ import {
 import {
   generateCoordScheduleWorkbook
 } from './coordScheduleExporter.js';
+
+const uploadedPdfs = new Map();
+const uploadLifetimeMs = 15 * 60 * 1000;
+const uploadCleanup = setInterval(() => {
+  const now = Date.now();
+
+  for (const [uploadId, upload] of uploadedPdfs) {
+    if (upload.expiresAt <= now) {
+      uploadedPdfs.delete(uploadId);
+    }
+  }
+}, 60 * 1000);
+uploadCleanup.unref();
+
+export function createPdfUpload(buffer, originalname) {
+  const uploadId = crypto.randomUUID();
+
+  uploadedPdfs.set(uploadId, {
+    buffer,
+    originalname,
+    expiresAt: Date.now() + uploadLifetimeMs
+  });
+
+  return uploadId;
+}
+
+export function getPdfUpload(uploadId) {
+  const upload = uploadedPdfs.get(uploadId);
+
+  if (!upload || upload.expiresAt <= Date.now()) {
+    uploadedPdfs.delete(uploadId);
+    throw new Error('PDF upload not found or expired.');
+  }
+
+  return upload;
+}
 
 const router = express.Router();
 
@@ -184,6 +221,35 @@ router.post(
 
     }
 
+  }
+
+);
+
+router.post(
+
+  '/uploads',
+
+  upload.single('file'),
+
+  (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'PDF file is required'
+      });
+    }
+
+    const uploadId = createPdfUpload(
+      req.file.buffer,
+      req.file.originalname
+    );
+
+    return res.status(201).json({
+      success: true,
+      uploadId,
+      file: req.file.originalname,
+      expiresInSeconds: uploadLifetimeMs / 1000
+    });
   }
 
 );

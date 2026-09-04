@@ -23,6 +23,10 @@ import {
   processColumnSchedule
 } from '../pdf/columnScheduleExporter.js';
 
+import {
+  getPdfUpload
+} from '../pdf/pdf.js';
+
 export const definitions = [
   {
     name: 'get_projects',
@@ -86,6 +90,10 @@ export const definitions = [
     inputSchema: {
       type: 'object',
       properties: {
+        uploadId: {
+          type: 'string',
+          description: 'Temporary PDF upload ID returned by POST /api/pdf/uploads.'
+        },
         pdfPath: {
           type: 'string',
           description: 'Absolute or relative path to a PDF file on the MCP server.'
@@ -96,6 +104,7 @@ export const definitions = [
         }
       },
       oneOf: [
+        { required: ['uploadId'] },
         { required: ['pdfPath'] },
         { required: ['pdfBase64'] }
       ]
@@ -222,18 +231,23 @@ export async function callTool(
       break;
 
     case 'extract_column_schedule': {
+      const uploadId = args.uploadId;
       const pdfPath = args.pdfPath;
       const pdfBase64 = args.pdfBase64;
 
-      if (!pdfPath && !pdfBase64) {
-        throw new Error('Either pdfPath or pdfBase64 is required.');
+      if (!uploadId && !pdfPath && !pdfBase64) {
+        throw new Error('Either uploadId, pdfPath, or pdfBase64 is required.');
       }
 
-      if (pdfPath && pdfBase64) {
-        throw new Error('Provide either pdfPath or pdfBase64, not both.');
+      if ([uploadId, pdfPath, pdfBase64].filter(Boolean).length > 1) {
+        throw new Error('Provide only one of uploadId, pdfPath, or pdfBase64.');
       }
 
-      result = pdfBase64
+      result = uploadId
+        ? await extractColumnScheduleFromBuffer(
+            getPdfUpload(uploadId).buffer
+          )
+        : pdfBase64
         ? await extractColumnScheduleFromBuffer(
             decodePdfBase64(pdfBase64)
           )
