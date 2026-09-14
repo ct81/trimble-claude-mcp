@@ -132,7 +132,7 @@ export const definitions = [
   {
     name: 'export_coord_schedule_excel',
     description:
-      'Convert coordinate-based JSON into an Excel workbook.',
+      'Convert coordinate-based JSON into an Excel workbook and CSV. Returns download URLs for both files.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -290,13 +290,40 @@ export async function callTool(
       const outputPath = args.outputPath
         ? path.resolve(args.outputPath)
         : path.join(process.cwd(), 'coord-schedule-output.xlsx');
+      const csvFilename = `coord-schedule-${Date.now()}.csv`;
+      const excelFilename = `coord-schedule-${Date.now()}.xlsx`;
+      const downloadDirectory = path.join(
+        process.cwd(),
+        'src',
+        'pdf',
+        'temp'
+      );
+      const csvPath = path.join(
+        downloadDirectory,
+        csvFilename
+      );
+      const excelDownloadPath = path.join(
+        downloadDirectory,
+        excelFilename
+      );
 
       fs.mkdirSync(path.dirname(outputPath), { recursive: true });
-      result = await generateCoordScheduleWorkbook(payload, outputPath);
+      fs.mkdirSync(downloadDirectory, { recursive: true });
+      result = await generateCoordScheduleWorkbook(
+        payload,
+        outputPath,
+        csvPath
+      );
+      fs.copyFileSync(outputPath, excelDownloadPath);
+      const publicBaseUrl = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
 
       result = {
         ...result,
-        csvBuffer: undefined
+        csvBuffer: undefined,
+        csvDownloadUrl: result.csvFile
+          ? `${publicBaseUrl}/api/pdf/downloads/${csvFilename}`
+          : null,
+        excelDownloadUrl: `${publicBaseUrl}/api/pdf/downloads/${excelFilename}`
       };
       break;
     }

@@ -1,6 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
 import path from 'node:path';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getStorage } from 'firebase-admin/storage';
@@ -99,6 +100,26 @@ export async function getPdfUpload(uploadId) {
 }
 
 const router = express.Router();
+
+router.get('/downloads/:filename', (req, res) => {
+  const filename = path.basename(req.params.filename);
+  const filePath = path.join(
+    process.cwd(),
+    'src',
+    'pdf',
+    'temp',
+    filename
+  );
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({
+      success: false,
+      error: 'Download not found or expired'
+    });
+  }
+
+  return res.download(filePath, filename);
+});
 
 
 // =====================================================

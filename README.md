@@ -13,10 +13,11 @@ Starter production-oriented architecture for a Trimble Connect MCP server and Fi
 ## Important production notes
 1. The included session store is intentionally in-memory for development. Replace it with Firestore, Redis, or PostgreSQL before multi-instance production.
 2. Set `FIREBASE_STORAGE_BUCKET` in Render to enable shared temporary PDF uploads across restarts and instances. Uploads expire after 15 minutes.
-3. Verify the exact Trimble OAuth endpoints/scopes for your registered Trimble application before deployment.
-4. Do not commit `.env` or secrets.
-5. The MCP HTTP implementation is a minimal starter transport. For Claude remote MCP compatibility, align it with the current MCP Streamable HTTP/auth requirements and SDK version you deploy.
-6. The Firebase UI is a starter shell. Replace `YOUR-RENDER-NAME` and wire the chat orchestration to your desired Claude/MCP flow.
+3. Set `PUBLIC_BASE_URL` to the deployed HTTPS origin so MCP export results contain working download URLs.
+4. Verify the exact Trimble OAuth endpoints/scopes for your registered Trimble application before deployment.
+5. Do not commit `.env` or secrets.
+6. The MCP HTTP implementation is a minimal starter transport. For Claude remote MCP compatibility, align it with the current MCP Streamable HTTP/auth requirements and SDK version you deploy.
+7. The Firebase UI is a starter shell. Replace `YOUR-RENDER-NAME` and wire the chat orchestration to your desired Claude/MCP flow.
 
 ## Local run
 ```bash
