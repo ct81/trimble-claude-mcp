@@ -1,0 +1,182 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Trimble Connect User Profile</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f5f7;
+            margin: 0;
+            padding: 40px;
+        }
+
+        .profile-card {
+            width: 320px;
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .profile-image {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #e0e0e0;
+            background: #f0f0f0;
+        }
+
+        .profile-name {
+            margin-top: 15px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .profile-email {
+            color: #666;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .status {
+            margin-top: 15px;
+            font-size: 13px;
+            color: #777;
+        }
+
+        .error {
+            color: #d32f2f;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="profile-card">
+
+        <img
+            id="userThumbnail"
+            class="profile-image"
+            alt="User Profile"
+            width="100"
+            height="100"
+        />
+
+        <div id="userName" class="profile-name">
+            Loading...
+        </div>
+
+        <div id="userEmail" class="profile-email"></div>
+
+        <div id="status" class="status">
+            Loading profile...
+        </div>
+
+    </div>
+
+    <script>
+
+        // ==========================================
+        // 1. Trimble Connect user JSON
+        // ==========================================
+
+        const userData = {
+            status: "ACTIVE",
+            id: "7r1f54BNESo",
+            tiduuid: "53ca4a42-d61a-4541-af25-2a8f1a21164c",
+
+            email: "chester.tan@trimble.com",
+
+            firstName: "Chester",
+            lastName: "Tan",
+
+            hasImage: true,
+
+            thumbnail:
+                "https://app31.connect.trimble.com/tc/api/2.0/data/_uA0qAFmQT1bia9tTLoasNdS-4JhIYo0ulqWoq14MWLQD5ChiSZ0dio_CY7a7A4Ew0R00LmykaLv6IgeMcuq8GHnm8TgGNdoNnphy3hAC6RPOzpfJZtzvLtKKVz0r-oRw8DPtE6PAPlVjiV-4wrCp-w4zfIW0plzMTAMMLijsfYEDx22mlvphdmLDeEpMXMnwqs47qJ0zf4VWo2oZKQqBsvBnVO9dS1dNKdwOilp6EwwhOMhVVOy-WHYswnfKaqLYLhbuJtszynXMiYoUBQ6lI9NVOYMPAI35xqEqRLuxxKSuztaUEqhCfK0Xit5RVlAUd5qe7MWubitsCekVipSuZjeF3RBBn54zSiColRCc_hlA9pTkn5gG9CiC3e8v5Mn-EUrC0ie_AkFlaEiwVAtzayKSSd1ntAeOtwetjJCf2PdDGRBAOzQVomrZsw5zgOz9V6yYuzeigOMDl7KR7ohZ3MXAu0hT4UvRRa1db53ZzzL2UdvdnLo1fteO3xSh8tRgXeqRfUISaToYnJ7c2iE3Iv5t9QEV6qXclvwKVb5yZ6fz_N963f8P99wtg2UUzQb/Z-Ogjjhti3aODT-BHtzD_R0JDu7y-uj8IXlgxeAy29k"
+        };
+
+
+        // ==========================================
+        // 2. Get HTML elements
+        // ==========================================
+
+        const userThumbnail =
+            document.getElementById("userThumbnail");
+
+        const userName =
+            document.getElementById("userName");
+
+        const userEmail =
+            document.getElementById("userEmail");
+
+        const status =
+            document.getElementById("status");
+
+
+        // ==========================================
+        // 3. Display user information
+        // ==========================================
+
+        userName.textContent =
+            `${userData.firstName} ${userData.lastName}`;
+
+        userEmail.textContent =
+            userData.email;
+
+
+        // ==========================================
+        // 4. Display Trimble Connect thumbnail
+        // ==========================================
+
+        if (
+            userData.hasImage &&
+            userData.thumbnail
+        ) {
+
+            userThumbnail.src =
+                userData.thumbnail;
+
+            userThumbnail.onload = function () {
+
+                status.textContent =
+                    "Profile image loaded successfully.";
+
+                status.classList.remove("error");
+
+            };
+
+            userThumbnail.onerror = function () {
+
+                status.textContent =
+                    "Unable to load profile image.";
+
+                status.classList.add("error");
+
+                // Hide broken image
+                userThumbnail.style.display =
+                    "none";
+
+            };
+
+        } else {
+
+            status.textContent =
+                "No profile image available.";
+
+            userThumbnail.style.display =
+                "none";
+
+        }
+
+    </script>
+
+</body>
+</html>
