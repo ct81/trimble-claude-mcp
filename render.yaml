@@ -32,6 +32,8 @@ services:
         sync: false
       - key: FIREBASE_PRIVATE_KEY
         sync: false
+      - key: FIREBASE_STORAGE_BUCKET
+        sync: false
       - key: EXTENSION_ORIGIN
         sync: false
       - key: TRIMBLE_API_BASE_URL

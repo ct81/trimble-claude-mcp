@@ -245,7 +245,7 @@ export async function callTool(
 
       result = uploadId
         ? await extractColumnScheduleFromBuffer(
-            getPdfUpload(uploadId).buffer
+            (await getPdfUpload(uploadId)).buffer
           )
         : pdfBase64
         ? await extractColumnScheduleFromBuffer(

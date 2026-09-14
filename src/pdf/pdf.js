@@ -2,6 +2,9 @@ import express from 'express';
 import multer from 'multer';
 import crypto from 'node:crypto';
 import path from 'node:path';
+import { cert, getApps, initializeApp } from 'firebase-admin/app';
+import { getStorage } from 'firebase-admin/storage';
+import { config } from '../config.js';
 
 import {
   extractColumnSchedule
@@ -13,6 +16,21 @@ import {
 
 const uploadedPdfs = new Map();
 const uploadLifetimeMs = 15 * 60 * 1000;
+const firebaseStorage = config.firebase.projectId &&
+  config.firebase.clientEmail &&
+  config.firebase.privateKey &&
+  config.firebase.storageBucket
+  ? getStorage(
+      getApps()[0] || initializeApp({
+        credential: cert({
+          projectId: config.firebase.projectId,
+          clientEmail: config.firebase.clientEmail,
+          privateKey: config.firebase.privateKey
+        }),
+        storageBucket: config.firebase.storageBucket
+      })
+    ).bucket()
+  : null;
 const uploadCleanup = setInterval(() => {
   const now = Date.now();
 
@@ -24,19 +42,52 @@ const uploadCleanup = setInterval(() => {
 }, 60 * 1000);
 uploadCleanup.unref();
 
-export function createPdfUpload(buffer, originalname) {
+export async function createPdfUpload(buffer, originalname) {
   const uploadId = crypto.randomUUID();
+  const expiresAt = Date.now() + uploadLifetimeMs;
+
+  if (firebaseStorage) {
+    await firebaseStorage.file(`mcp-pdf-uploads/${uploadId}`).save(buffer, {
+      metadata: {
+        contentType: 'application/pdf',
+        metadata: {
+          originalname,
+          expiresAt: String(expiresAt)
+        }
+      }
+    });
+
+    return uploadId;
+  }
 
   uploadedPdfs.set(uploadId, {
     buffer,
     originalname,
-    expiresAt: Date.now() + uploadLifetimeMs
+    expiresAt
   });
 
   return uploadId;
 }
 
-export function getPdfUpload(uploadId) {
+export async function getPdfUpload(uploadId) {
+  if (firebaseStorage) {
+    const file = firebaseStorage.file(`mcp-pdf-uploads/${uploadId}`);
+    const [metadata] = await file.getMetadata().catch(() => [null]);
+    const expiresAt = Number(metadata?.metadata?.expiresAt);
+
+    if (!metadata || !expiresAt || expiresAt <= Date.now()) {
+      await file.delete().catch(() => {});
+      throw new Error('PDF upload not found or expired.');
+    }
+
+    const [buffer] = await file.download();
+    return {
+      buffer,
+      originalname: metadata.metadata?.originalname || 'upload.pdf',
+      expiresAt
+    };
+  }
+
   const upload = uploadedPdfs.get(uploadId);
 
   if (!upload || upload.expiresAt <= Date.now()) {
@@ -231,7 +282,7 @@ router.post(
 
   upload.single('file'),
 
-  (req, res) => {
+  async (req, res) => {
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -239,7 +290,7 @@ router.post(
       });
     }
 
-    const uploadId = createPdfUpload(
+    const uploadId = await createPdfUpload(
       req.file.buffer,
       req.file.originalname
     );
