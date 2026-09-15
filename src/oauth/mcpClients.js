@@ -2,6 +2,10 @@ import crypto from 'crypto';
 
 const clients = new Map();
 
+const defaultBaseUrl =
+  process.env.PUBLIC_BASE_URL ||
+  `http://localhost:${process.env.PORT || 3000}`;
+
 export function registerClient(data) {
 
   const clientId =
@@ -16,6 +20,10 @@ export function registerClient(data) {
 
     redirectUris:
       data.redirect_uris || [],
+
+    logoUri:
+      data.logo_uri ||
+      `${defaultBaseUrl}/trimble-mcp-icon.svg`,
 
     grantTypes:
       data.grant_types || [

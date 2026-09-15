@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Trimble MCP connector icon</title>
+  <desc id="desc">Trimble Connect styled icon for the Claude MCP connector</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0b5bd3"/>
+      <stop offset="100%" stop-color="#0a2a5f"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#7dd3fc"/>
+      <stop offset="100%" stop-color="#dbeafe"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="52" fill="url(#bg)"/>
+  <path d="M64 58h128a16 16 0 0 1 16 16v22H48V74a16 16 0 0 1 16-16Z" fill="#ffffff" opacity="0.92"/>
+  <path d="M82 104h92v22H82zm0 40h92v22H82zm0 40h126v22H82z" fill="url(#accent)"/>
+  <path d="M54 84h148v18H54zm0 40h148v18H54zm0 40h148v18H54z" fill="#e0f2fe" opacity="0.35"/>
+  <path d="M96 58h64l-18 64h-28l-18-64Z" fill="#ffffff" opacity="0.22"/>
+  <circle cx="184" cy="174" r="22" fill="#7dd3fc" opacity="0.9"/>
+  <path d="M184 152v44M162 174h44" stroke="#0a2a5f" stroke-width="8" stroke-linecap="round"/>
+</svg>

@@ -1,5 +1,5 @@
 // git add . 
-// git commit -m "Start MCP, Swagger & UI 29"
+// git commit -m "Start MCP, Swagger & UI 30"
 // git push origin main
 
 
@@ -622,6 +622,7 @@ app.post(
       const {
         client_name,
         redirect_uris,
+        logo_uri,
         grant_types,
         response_types,
         token_endpoint_auth_method,
@@ -655,6 +656,8 @@ app.post(
 
           redirect_uris,
 
+          logo_uri,
+
           grant_types,
 
           response_types,
@@ -674,6 +677,9 @@ app.post(
 
         redirect_uris:
           client.redirectUris,
+
+        logo_uri:
+          client.logoUri,
 
         grant_types:
           client.grantTypes,
