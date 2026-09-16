@@ -17,7 +17,11 @@ document.addEventListener('DOMContentLoaded', async (event) => {
 
                     if (obj == 'submenu_1_clicked') {
                         console.log("=====GET1: " + obj);
-                        window.open(locationParent + '/index.html?accessToken=' + document.getElementById('hdnAccessTokenDetail').value + '&projectId=' + document.getElementById('hdnProjectDetail').value + '&modelId=nil' + '&userId=' + document.getElementById('hdnUserId').value + '&userEmail=' + encodeURIComponent(document.getElementById('hdnUserEmail').value), '_self');
+                        window.open(locationParent + '/pdfScheduleExporter.html?accessToken=' + document.getElementById('hdnAccessTokenDetail').value + '&projectId=' + document.getElementById('hdnProjectDetail').value + '&modelId=nil' + '&userId=' + document.getElementById('hdnUserId').value + '&userEmail=' + encodeURIComponent(document.getElementById('hdnUserEmail').value), '_self');
+                    }
+                    if (obj == 'submenu_2_clicked') {
+                        console.log("=====GET2: " + obj);
+                        window.open(locationParent + '/coordScheduleExporter.html?accessToken=' + document.getElementById('hdnAccessTokenDetail').value + '&projectId=' + document.getElementById('hdnProjectDetail').value + '&modelId=nil' + '&userId=' + document.getElementById('hdnUserId').value + '&userEmail=' + encodeURIComponent(document.getElementById('hdnUserEmail').value), '_self');
                     }
                     break;
                 case "extension.accessToken":
@@ -33,14 +37,19 @@ document.addEventListener('DOMContentLoaded', async (event) => {
         });
 
         API_Ext.ui.setMenu({
-            title: "Business Leads"
-            , icon: "https://api.iconify.design/tabler/scan.svg?color=%23FFFFFF"
+            title: "PDF Schedule Extractor"
+            , icon: "https://api.iconify.design/tabler/file-type-pdf.svg?color=%23FFFFFF"
             , command: "main_nav_menu_clicked"
             , subMenus: [
                 {
-                    title: "Capture",
-                    icon: "https://cdn.jsdelivr.net/npm/@tabler/icons@latest/icons/scan.svg",
+                    title: "Upload PDF",
+                    icon: "https://cdn.jsdelivr.net/npm/@tabler/icons@latest/icons/file-type-pdf.svg",
                     command: "submenu_1_clicked",
+                }
+                ,{
+                    title: "Upload Json",
+                    icon: "https://cdn.jsdelivr.net/npm/@tabler/icons@latest/icons/file-search.svg",
+                    command: "submenu_2_clicked",
                 }
                 // , {
                 //     title: "Auth",
