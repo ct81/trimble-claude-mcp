@@ -2,8 +2,10 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 	<title>Coordinate Column to Excel Exporter</title>
+    <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
+    <script src="../master.js" type="module" defer></script>
 	<style>
 		:root {
 			--ink: #17221d;
@@ -55,6 +57,18 @@
 	</style>
 </head>
 <body>
+	<div>
+        <input type="hidden" id="hdnProjectDetail" />
+        <input type="hidden" id="hdnProjectName" />
+        <input type="hidden" id="hdnUserId" />
+        <input type="hidden" id="hdnUserEmail" />
+        <input type="hidden" id="hdnUserFirstName" />
+        <input type="hidden" id="hdnUserLastName" />
+        <input type="hidden" id="hdnUserDetail" />
+        <input type="hidden" id="hdnAccessTokenDetail" />
+        <input type="hidden" id="hdnLicenseJson" />
+        <input type="hidden" ID="hdnDefaultModel" />
+    </div>
 	<main>
 		<!-- <header>
 			<div> -->
