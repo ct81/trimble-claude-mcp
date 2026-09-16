@@ -1,0 +1,8 @@
+{
+"icon": "https://api.iconify.design/tabler/file-type-pdf.svg?color=%23FFFFFF",
+"title": "PDF Extractor",
+"url": "https://trimble-claude-mcp-g86i.onrender.com/pages/pdfScheduleExporter.html",
+"description": "Extracts a column from a PDF schedule and exports it to Excel.",
+"configCommand": "do_config",
+"enabled": true
+}
