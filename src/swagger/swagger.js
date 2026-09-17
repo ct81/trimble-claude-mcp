@@ -416,6 +416,33 @@ export const swaggerDocument = {
       }
     },
 
+    '/api/v1/property-set/psets/changeset/{changesetId}': {
+
+      get: {
+
+        tags: ['Property Set'],
+        security: [{ bearerAuth: [] }],
+
+        summary: 'Get the status of a Property Set changeset.',
+
+        parameters: [{
+          in: 'path',
+          name: 'changesetId',
+          required: true,
+          schema: { type: 'string' }
+        }],
+
+        responses: {
+          200: {
+            description: 'Changeset status response.'
+          },
+          404: {
+            description: 'Changeset was not found.'
+          }
+        }
+      }
+    },
+
     '/health': {
 
       get: {
