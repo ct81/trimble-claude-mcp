@@ -27,7 +27,7 @@ import {
   getPdfUpload
 } from '../pdf/pdf.js';
 
-export const definitions = [
+const baseDefinitions = [
   {
     name: 'get_projects',
     description:
@@ -510,6 +510,21 @@ export const definitions = [
     }
   }
 ];
+
+export const definitions = baseDefinitions.map((tool) => {
+  const name = tool.name || '';
+  const group = name.includes('property_set') || name.includes('property-set')
+    ? 'Property Set'
+    : name.includes('column_schedule') || name.includes('coord_schedule') || name.includes('pdf')
+      ? 'PDF'
+      : 'Trimble Connect';
+
+  return {
+    ...tool,
+    tags: [group],
+    category: group
+  };
+});
 
 function parseJsonInput(value, label) {
   if (value === undefined || value === null || value === '') {

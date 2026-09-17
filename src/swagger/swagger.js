@@ -19,6 +19,21 @@ export const swaggerDocument = {
     }
   ],
 
+  tags: [
+    {
+      name: 'Property Set',
+      description: 'Property Set library, definition, and instance operations.'
+    },
+    {
+      name: 'PDF',
+      description: 'Schedule extraction and PDF processing utilities.'
+    },
+    {
+      name: 'Health',
+      description: 'Service health and diagnostics.'
+    }
+  ],
+
   components: {
 
     securitySchemes: {
@@ -116,6 +131,7 @@ export const swaggerDocument = {
 
       get: {
 
+        tags: ['Property Set'],
         security: [{ bearerAuth: [] }],
 
         summary: 'Get the current authenticated property-set user.',
@@ -132,6 +148,7 @@ export const swaggerDocument = {
 
       get: {
 
+        tags: ['Property Set'],
         security: [{ bearerAuth: [] }],
 
         summary: 'List property-set libraries.',
@@ -145,6 +162,7 @@ export const swaggerDocument = {
 
       post: {
 
+        tags: ['Property Set'],
         security: [{ bearerAuth: [] }],
 
         summary: 'Create a property-set library.',
@@ -170,6 +188,7 @@ export const swaggerDocument = {
 
       get: {
 
+        tags: ['Property Set'],
         security: [{ bearerAuth: [] }],
 
         summary: 'Get a property-set library.',
@@ -190,6 +209,7 @@ export const swaggerDocument = {
 
       patch: {
 
+        tags: ['Property Set'],
         security: [{ bearerAuth: [] }],
 
         summary: 'Update a property-set library.',
@@ -219,6 +239,7 @@ export const swaggerDocument = {
 
       delete: {
 
+        tags: ['Property Set'],
         security: [{ bearerAuth: [] }],
 
         summary: 'Delete a property-set library.',
@@ -242,6 +263,7 @@ export const swaggerDocument = {
 
       get: {
 
+        tags: ['Property Set'],
         security: [{ bearerAuth: [] }],
 
         summary: 'List property-set definitions for a library.',
@@ -262,6 +284,7 @@ export const swaggerDocument = {
 
       post: {
 
+        tags: ['Property Set'],
         security: [{ bearerAuth: [] }],
 
         summary: 'Create a property-set definition.',
@@ -294,6 +317,7 @@ export const swaggerDocument = {
 
       get: {
 
+        tags: ['Property Set'],
         security: [{ bearerAuth: [] }],
 
         summary: 'Get a property set instance for a link.',
@@ -313,6 +337,7 @@ export const swaggerDocument = {
 
       patch: {
 
+        tags: ['Property Set'],
         security: [{ bearerAuth: [] }],
 
         summary: 'Update a property set instance.',
@@ -341,6 +366,7 @@ export const swaggerDocument = {
 
       delete: {
 
+        tags: ['Property Set'],
         security: [{ bearerAuth: [] }],
 
         summary: 'Delete a property set instance.',
@@ -363,6 +389,7 @@ export const swaggerDocument = {
 
       post: {
 
+        tags: ['Property Set'],
         security: [{ bearerAuth: [] }],
 
         summary: 'Apply a property-set changeset.',
@@ -388,6 +415,7 @@ export const swaggerDocument = {
 
       get: {
 
+        tags: ['Health'],
         security: [],
 
         summary: 'Health check',
@@ -409,6 +437,7 @@ export const swaggerDocument = {
 
       post: {
 
+        tags: ['PDF'],
         summary:
           'Extract column schedule from PDF',
 
