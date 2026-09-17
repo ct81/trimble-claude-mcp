@@ -112,6 +112,278 @@ export const swaggerDocument = {
 
     },
 
+    '/api/v1/property-set/me': {
+
+      get: {
+
+        security: [{ bearerAuth: [] }],
+
+        summary: 'Get the current authenticated property-set user.',
+
+        responses: {
+          200: {
+            description: 'Current user details from the Property Set service.'
+          }
+        }
+      }
+    },
+
+    '/api/v1/property-set/libs': {
+
+      get: {
+
+        security: [{ bearerAuth: [] }],
+
+        summary: 'List property-set libraries.',
+
+        responses: {
+          200: {
+            description: 'Property set library list.'
+          }
+        }
+      },
+
+      post: {
+
+        security: [{ bearerAuth: [] }],
+
+        summary: 'Create a property-set library.',
+
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { type: 'object' }
+            }
+          }
+        },
+
+        responses: {
+          201: {
+            description: 'Library created.'
+          }
+        }
+      }
+    },
+
+    '/api/v1/property-set/libs/{libId}': {
+
+      get: {
+
+        security: [{ bearerAuth: [] }],
+
+        summary: 'Get a property-set library.',
+
+        parameters: [{
+          in: 'path',
+          name: 'libId',
+          required: true,
+          schema: { type: 'string' }
+        }],
+
+        responses: {
+          200: {
+            description: 'Library details.'
+          }
+        }
+      },
+
+      patch: {
+
+        security: [{ bearerAuth: [] }],
+
+        summary: 'Update a property-set library.',
+
+        parameters: [{
+          in: 'path',
+          name: 'libId',
+          required: true,
+          schema: { type: 'string' }
+        }],
+
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { type: 'object' }
+            }
+          }
+        },
+
+        responses: {
+          200: {
+            description: 'Library updated.'
+          }
+        }
+      },
+
+      delete: {
+
+        security: [{ bearerAuth: [] }],
+
+        summary: 'Delete a property-set library.',
+
+        parameters: [{
+          in: 'path',
+          name: 'libId',
+          required: true,
+          schema: { type: 'string' }
+        }],
+
+        responses: {
+          200: {
+            description: 'Library deleted.'
+          }
+        }
+      }
+    },
+
+    '/api/v1/property-set/libs/{libId}/defs': {
+
+      get: {
+
+        security: [{ bearerAuth: [] }],
+
+        summary: 'List property-set definitions for a library.',
+
+        parameters: [{
+          in: 'path',
+          name: 'libId',
+          required: true,
+          schema: { type: 'string' }
+        }],
+
+        responses: {
+          200: {
+            description: 'Definition collection.'
+          }
+        }
+      },
+
+      post: {
+
+        security: [{ bearerAuth: [] }],
+
+        summary: 'Create a property-set definition.',
+
+        parameters: [{
+          in: 'path',
+          name: 'libId',
+          required: true,
+          schema: { type: 'string' }
+        }],
+
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { type: 'object' }
+            }
+          }
+        },
+
+        responses: {
+          201: {
+            description: 'Definition created.'
+          }
+        }
+      }
+    },
+
+    '/api/v1/property-set/psets/{link}/{libId}/{defId}': {
+
+      get: {
+
+        security: [{ bearerAuth: [] }],
+
+        summary: 'Get a property set instance for a link.',
+
+        parameters: [
+          { in: 'path', name: 'link', required: true, schema: { type: 'string' } },
+          { in: 'path', name: 'libId', required: true, schema: { type: 'string' } },
+          { in: 'path', name: 'defId', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: {
+            description: 'Property set instance.'
+          }
+        }
+      },
+
+      patch: {
+
+        security: [{ bearerAuth: [] }],
+
+        summary: 'Update a property set instance.',
+
+        parameters: [
+          { in: 'path', name: 'link', required: true, schema: { type: 'string' } },
+          { in: 'path', name: 'libId', required: true, schema: { type: 'string' } },
+          { in: 'path', name: 'defId', required: true, schema: { type: 'string' } }
+        ],
+
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { type: 'object' }
+            }
+          }
+        },
+
+        responses: {
+          200: {
+            description: 'Property set updated.'
+          }
+        }
+      },
+
+      delete: {
+
+        security: [{ bearerAuth: [] }],
+
+        summary: 'Delete a property set instance.',
+
+        parameters: [
+          { in: 'path', name: 'link', required: true, schema: { type: 'string' } },
+          { in: 'path', name: 'libId', required: true, schema: { type: 'string' } },
+          { in: 'path', name: 'defId', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: {
+            description: 'Property set deleted.'
+          }
+        }
+      }
+    },
+
+    '/api/v1/property-set/psets/changeset': {
+
+      post: {
+
+        security: [{ bearerAuth: [] }],
+
+        summary: 'Apply a property-set changeset.',
+
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { type: 'object' }
+            }
+          }
+        },
+
+        responses: {
+          200: {
+            description: 'Changeset response.'
+          }
+        }
+      }
+    },
+
     '/health': {
 
       get: {

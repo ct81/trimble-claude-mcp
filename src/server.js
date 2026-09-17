@@ -1,5 +1,5 @@
 // git add . 
-// git commit -m "Start MCP, Swagger, UI & TC Workspace API 6"
+// git commit -m "Start MCP, Swagger, UI, TC Workspace API and Property Set API #1"
 // git push origin main
 
 
@@ -1092,6 +1092,401 @@ app.get(
     }
   }
 );
+
+app.get(
+  '/api/v1/property-set/me',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await propertySet.getCurrentUser(req.mcpSessionId);
+      return res.json(result);
+    } catch (e) {
+      console.error('GET /api/v1/property-set/me:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.get(
+  '/api/v1/property-set/libs',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await propertySet.getLibraries(req.mcpSessionId, req.query);
+      return res.json(result);
+    } catch (e) {
+      console.error('GET /api/v1/property-set/libs:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.post(
+  '/api/v1/property-set/libs',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await propertySet.createLibrary(req.mcpSessionId, req.body);
+      return res.status(201).json(result);
+    } catch (e) {
+      console.error('POST /api/v1/property-set/libs:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.get(
+  '/api/v1/property-set/libs/:libId',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await propertySet.getLibrary(req.mcpSessionId, req.params.libId);
+      return res.json(result);
+    } catch (e) {
+      console.error('GET /api/v1/property-set/libs/:libId:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.patch(
+  '/api/v1/property-set/libs/:libId',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await propertySet.updateLibrary(req.mcpSessionId, req.params.libId, req.body);
+      return res.json(result);
+    } catch (e) {
+      console.error('PATCH /api/v1/property-set/libs/:libId:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.delete(
+  '/api/v1/property-set/libs/:libId',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await propertySet.deleteLibrary(req.mcpSessionId, req.params.libId);
+      return res.json(result);
+    } catch (e) {
+      console.error('DELETE /api/v1/property-set/libs/:libId:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.get(
+  '/api/v1/property-set/libs/:libId/policy',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await propertySet.getLibraryPolicy(req.mcpSessionId, req.params.libId);
+      return res.json(result);
+    } catch (e) {
+      console.error('GET /api/v1/property-set/libs/:libId/policy:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.put(
+  '/api/v1/property-set/libs/:libId/policy',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await propertySet.setLibraryPolicy(req.mcpSessionId, req.params.libId, req.body);
+      return res.json(result);
+    } catch (e) {
+      console.error('PUT /api/v1/property-set/libs/:libId/policy:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.get(
+  '/api/v1/property-set/libs/:libId/defs',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await propertySet.listDefinitions(req.mcpSessionId, req.params.libId, req.query);
+      return res.json(result);
+    } catch (e) {
+      console.error('GET /api/v1/property-set/libs/:libId/defs:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.post(
+  '/api/v1/property-set/libs/:libId/defs',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await propertySet.createDefinition(req.mcpSessionId, req.params.libId, req.body);
+      return res.status(201).json(result);
+    } catch (e) {
+      console.error('POST /api/v1/property-set/libs/:libId/defs:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.get(
+  '/api/v1/property-set/libs/:libId/defs/:defId',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await propertySet.getDefinition(req.mcpSessionId, req.params.libId, req.params.defId);
+      return res.json(result);
+    } catch (e) {
+      console.error('GET /api/v1/property-set/libs/:libId/defs/:defId:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.patch(
+  '/api/v1/property-set/libs/:libId/defs/:defId',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await propertySet.updateDefinition(req.mcpSessionId, req.params.libId, req.params.defId, req.body);
+      return res.json(result);
+    } catch (e) {
+      console.error('PATCH /api/v1/property-set/libs/:libId/defs/:defId:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.delete(
+  '/api/v1/property-set/libs/:libId/defs/:defId',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await propertySet.deleteDefinition(req.mcpSessionId, req.params.libId, req.params.defId);
+      return res.json(result);
+    } catch (e) {
+      console.error('DELETE /api/v1/property-set/libs/:libId/defs/:defId:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.get(
+  '/api/v1/property-set/libs/:libId/defs/:defId/versions',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await propertySet.getDefinitionVersions(req.mcpSessionId, req.params.libId, req.params.defId);
+      return res.json(result);
+    } catch (e) {
+      console.error('GET /api/v1/property-set/libs/:libId/defs/:defId/versions:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.get(
+  '/api/v1/property-set/libs/:libId/defs/:defId/versions/:version',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await propertySet.getDefinitionVersion(req.mcpSessionId, req.params.libId, req.params.defId, req.params.version);
+      return res.json(result);
+    } catch (e) {
+      console.error('GET /api/v1/property-set/libs/:libId/defs/:defId/versions/:version:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.get(
+  '/api/v1/property-set/libs/:libId/defs/:defId/schema/:version',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await propertySet.getDefinitionSchema(req.mcpSessionId, req.params.libId, req.params.defId, req.params.version);
+      return res.json(result);
+    } catch (e) {
+      console.error('GET /api/v1/property-set/libs/:libId/defs/:defId/schema/:version:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.post(
+  '/api/v1/property-set/libs/:libId/defs/:defId/validate',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await propertySet.validateValues(req.mcpSessionId, req.params.libId, req.params.defId, req.body);
+      return res.json(result);
+    } catch (e) {
+      console.error('POST /api/v1/property-set/libs/:libId/defs/:defId/validate:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.get(
+  '/api/v1/property-set/libs/:libId/defs/:defId/psets',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await propertySet.listPsetsByDefinition(req.mcpSessionId, req.params.libId, req.params.defId);
+      return res.json(result);
+    } catch (e) {
+      console.error('GET /api/v1/property-set/libs/:libId/defs/:defId/psets:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.get(
+  '/api/v1/property-set/psets/:link',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await propertySet.listPsetsForLink(req.mcpSessionId, req.params.link, req.query);
+      return res.json(result);
+    } catch (e) {
+      console.error('GET /api/v1/property-set/psets/:link:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.get(
+  '/api/v1/property-set/psets/:link/:libId/:defId',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await propertySet.getPset(req.mcpSessionId, req.params.link, req.params.libId, req.params.defId);
+      return res.json(result);
+    } catch (e) {
+      console.error('GET /api/v1/property-set/psets/:link/:libId/:defId:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.patch(
+  '/api/v1/property-set/psets/:link/:libId/:defId',
+  requireSession,
+  async (req, res) => {
+    try {
+      const props = req.body?.props ?? req.body;
+      const result = await propertySet.updatePset(req.mcpSessionId, req.params.link, req.params.libId, req.params.defId, props);
+      return res.json(result);
+    } catch (e) {
+      console.error('PATCH /api/v1/property-set/psets/:link/:libId/:defId:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.delete(
+  '/api/v1/property-set/psets/:link/:libId/:defId',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await propertySet.deletePset(req.mcpSessionId, req.params.link, req.params.libId, req.params.defId);
+      return res.json(result);
+    } catch (e) {
+      console.error('DELETE /api/v1/property-set/psets/:link/:libId/:defId:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.get(
+  '/api/v1/property-set/psets/:link/:libId/:defId/versions',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await propertySet.getPsetVersions(req.mcpSessionId, req.params.link, req.params.libId, req.params.defId);
+      return res.json(result);
+    } catch (e) {
+      console.error('GET /api/v1/property-set/psets/:link/:libId/:defId/versions:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.get(
+  '/api/v1/property-set/psets/:link/:libId/:defId/versions/:version',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await propertySet.getPsetVersion(req.mcpSessionId, req.params.link, req.params.libId, req.params.defId, req.params.version);
+      return res.json(result);
+    } catch (e) {
+      console.error('GET /api/v1/property-set/psets/:link/:libId/:defId/versions/:version:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.post(
+  '/api/v1/property-set/batch-get',
+  requireSession,
+  async (req, res) => {
+    try {
+      const payload = req.body?.psets ?? req.body;
+      const result = await propertySet.batchGetPsets(req.mcpSessionId, payload);
+      return res.json(result);
+    } catch (e) {
+      console.error('POST /api/v1/property-set/batch-get:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.post(
+  '/api/v1/property-set/psets/changeset',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await propertySet.applyChangeset(req.mcpSessionId, req.body);
+      return res.json(result);
+    } catch (e) {
+      console.error('POST /api/v1/property-set/psets/changeset:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.post(
+  '/api/v1/property-set/psets/changeset-async',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await propertySet.applyChangesetAsync(req.mcpSessionId, req.body);
+      return res.json(result);
+    } catch (e) {
+      console.error('POST /api/v1/property-set/psets/changeset-async:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.get(
+  '/api/v1/property-set/psets/changeset/:changesetId',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await propertySet.getChangesetStatus(req.mcpSessionId, req.params.changesetId);
+      return res.json(result);
+    } catch (e) {
+      console.error('GET /api/v1/property-set/psets/changeset/:changesetId:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
 app.use(
   '/api/pdf',
   pdfRouter
