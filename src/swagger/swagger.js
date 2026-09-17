@@ -21,6 +21,10 @@ export const swaggerDocument = {
 
   tags: [
     {
+      name: 'Core',
+      description: 'Core Trimble Connect workspace and service operations.'
+    },
+    {
       name: 'Property Set',
       description: 'Property Set library, definition, and instance operations.'
     },
@@ -58,6 +62,7 @@ export const swaggerDocument = {
 
       post: {
 
+        tags: ['PDF'],
         summary:
           'Create a temporary PDF upload for MCP extraction',
 
@@ -600,6 +605,7 @@ export const swaggerDocument = {
 
       post: {
 
+        tags: ['PDF'],
         summary:
           'Upload a column schedule JSON file',
 
@@ -711,6 +717,7 @@ export const swaggerDocument = {
 
       post: {
 
+        tags: ['PDF'],
         summary:
           'Upload a PDF coordinate JSON file and export Excel',
 
