@@ -4,7 +4,7 @@ import { trimbleRequest } from './client.js';
 // Property Set Service base URL (regional — verify for your tenant)
 const PSET_BASE_URL =
   process.env.TRIMBLE_PSET_BASE_URL ||
-  'https://pset-api.connect.trimble.com/v1';
+  'https://pset-api.ap-southeast-1.connect.trimble.com/v1/';
 
 // Wrapper that injects the PSet base URL override
 function psetRequest(sessionId, path, options = {}) {

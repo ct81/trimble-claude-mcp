@@ -19,7 +19,7 @@ export async function trimbleRequest(
     throw new Error('No Trimble access token');
   }
 
-  const baseUrl = config.trimble.apiBaseUrl;
+  const baseUrl = options.baseUrl || config.trimble.apiBaseUrl;
   const url = joinUrl(baseUrl, path);
 
   console.log('[Trimble API] Base URL:', baseUrl);
