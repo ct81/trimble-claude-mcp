@@ -84,6 +84,365 @@ export const definitions = [
   },
 
   {
+    name: 'get_property_set_current_user',
+    description:
+      'Get the current authenticated Property Set user.',
+    inputSchema: {
+      type: 'object',
+      properties: {}
+    }
+  },
+
+  {
+    name: 'list_property_set_libraries',
+    description:
+      'List property set libraries available to the authenticated user.',
+    inputSchema: {
+      type: 'object',
+      properties: {}
+    }
+  },
+
+  {
+    name: 'create_property_set_library',
+    description:
+      'Create a new property set library.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        library: {
+          description: 'Library payload for the Property Set API.'
+        }
+      },
+      required: ['library']
+    }
+  },
+
+  {
+    name: 'get_property_set_library',
+    description:
+      'Get a single property set library by id.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        libId: {
+          type: 'string'
+        }
+      },
+      required: ['libId']
+    }
+  },
+
+  {
+    name: 'update_property_set_library',
+    description:
+      'Update an existing property set library.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        libId: {
+          type: 'string'
+        },
+        updates: {
+          description: 'Partial library update payload.'
+        }
+      },
+      required: ['libId', 'updates']
+    }
+  },
+
+  {
+    name: 'delete_property_set_library',
+    description:
+      'Delete a property set library.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        libId: {
+          type: 'string'
+        }
+      },
+      required: ['libId']
+    }
+  },
+
+  {
+    name: 'list_property_set_definitions',
+    description:
+      'List definition entries in a property set library.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        libId: {
+          type: 'string'
+        },
+        query: {
+          description: 'Optional query parameters such as top, skiptoken, prefix.'
+        }
+      },
+      required: ['libId']
+    }
+  },
+
+  {
+    name: 'create_property_set_definition',
+    description:
+      'Create a new property set definition.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        libId: {
+          type: 'string'
+        },
+        definition: {
+          description: 'Definition payload.'
+        }
+      },
+      required: ['libId', 'definition']
+    }
+  },
+
+  {
+    name: 'get_property_set_definition',
+    description:
+      'Get a property set definition by id.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        libId: {
+          type: 'string'
+        },
+        defId: {
+          type: 'string'
+        }
+      },
+      required: ['libId', 'defId']
+    }
+  },
+
+  {
+    name: 'update_property_set_definition',
+    description:
+      'Update a property set definition.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        libId: {
+          type: 'string'
+        },
+        defId: {
+          type: 'string'
+        },
+        updates: {
+          description: 'Patch payload for the definition.'
+        }
+      },
+      required: ['libId', 'defId', 'updates']
+    }
+  },
+
+  {
+    name: 'delete_property_set_definition',
+    description:
+      'Delete a property set definition.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        libId: {
+          type: 'string'
+        },
+        defId: {
+          type: 'string'
+        }
+      },
+      required: ['libId', 'defId']
+    }
+  },
+
+  {
+    name: 'validate_property_set_values',
+    description:
+      'Validate property values against a property set definition schema.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        libId: {
+          type: 'string'
+        },
+        defId: {
+          type: 'string'
+        },
+        values: {
+          description: 'Values payload to validate.'
+        }
+      },
+      required: ['libId', 'defId', 'values']
+    }
+  },
+
+  {
+    name: 'list_property_set_instances_by_definition',
+    description:
+      'List property set instances attached to a definition.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        libId: {
+          type: 'string'
+        },
+        defId: {
+          type: 'string'
+        }
+      },
+      required: ['libId', 'defId']
+    }
+  },
+
+  {
+    name: 'list_property_set_instances_for_link',
+    description:
+      'List property set instances for a specific link id.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        link: {
+          type: 'string'
+        },
+        query: {
+          description: 'Optional query parameters such as top and skiptoken.'
+        }
+      },
+      required: ['link']
+    }
+  },
+
+  {
+    name: 'get_property_set_instance',
+    description:
+      'Get a property set instance by link, library, and definition ids.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        link: {
+          type: 'string'
+        },
+        libId: {
+          type: 'string'
+        },
+        defId: {
+          type: 'string'
+        }
+      },
+      required: ['link', 'libId', 'defId']
+    }
+  },
+
+  {
+    name: 'update_property_set_instance',
+    description:
+      'Update a property set instance with new property values.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        link: {
+          type: 'string'
+        },
+        libId: {
+          type: 'string'
+        },
+        defId: {
+          type: 'string'
+        },
+        props: {
+          description: 'Property map to write.'
+        }
+      },
+      required: ['link', 'libId', 'defId', 'props']
+    }
+  },
+
+  {
+    name: 'delete_property_set_instance',
+    description:
+      'Delete a property set instance by link, library, and definition ids.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        link: {
+          type: 'string'
+        },
+        libId: {
+          type: 'string'
+        },
+        defId: {
+          type: 'string'
+        }
+      },
+      required: ['link', 'libId', 'defId']
+    }
+  },
+
+  {
+    name: 'batch_get_property_sets',
+    description:
+      'Fetch multiple property sets in one request.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        psets: {
+          description: 'Array of property set references to request.'
+        }
+      },
+      required: ['psets']
+    }
+  },
+
+  {
+    name: 'apply_property_set_changeset',
+    description:
+      'Apply a Property Set changeset payload.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        changeset: {
+          description: 'Changeset payload to apply.'
+        }
+      },
+      required: ['changeset']
+    }
+  },
+
+  {
+    name: 'apply_property_set_changeset_async',
+    description:
+      'Apply a Property Set changeset asynchronously and poll for status.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        changeset: {
+          description: 'Changeset payload to apply asynchronously.'
+        }
+      },
+      required: ['changeset']
+    }
+  },
+
+  {
+    name: 'get_property_set_changeset_status',
+    description:
+      'Get the status of a Property Set changeset by id.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        changesetId: {
+          type: 'string'
+        }
+      },
+      required: ['changesetId']
+    }
+  },
+
+  {
     name: 'extract_column_schedule',
     description:
       'Extract raw PDF column-schedule items from a PDF file path on the server.',
@@ -228,6 +587,90 @@ export async function callTool(
         sessionId,
         args.projectId
       );
+      break;
+
+    case 'get_property_set_current_user':
+      result = await propertySet.getCurrentUser(sessionId);
+      break;
+
+    case 'list_property_set_libraries':
+      result = await propertySet.getLibraries(sessionId);
+      break;
+
+    case 'create_property_set_library':
+      result = await propertySet.createLibrary(sessionId, args.library);
+      break;
+
+    case 'get_property_set_library':
+      result = await propertySet.getLibrary(sessionId, args.libId);
+      break;
+
+    case 'update_property_set_library':
+      result = await propertySet.updateLibrary(sessionId, args.libId, args.updates);
+      break;
+
+    case 'delete_property_set_library':
+      result = await propertySet.deleteLibrary(sessionId, args.libId);
+      break;
+
+    case 'list_property_set_definitions':
+      result = await propertySet.listDefinitions(sessionId, args.libId, args.query || {});
+      break;
+
+    case 'create_property_set_definition':
+      result = await propertySet.createDefinition(sessionId, args.libId, args.definition);
+      break;
+
+    case 'get_property_set_definition':
+      result = await propertySet.getDefinition(sessionId, args.libId, args.defId);
+      break;
+
+    case 'update_property_set_definition':
+      result = await propertySet.updateDefinition(sessionId, args.libId, args.defId, args.updates);
+      break;
+
+    case 'delete_property_set_definition':
+      result = await propertySet.deleteDefinition(sessionId, args.libId, args.defId);
+      break;
+
+    case 'validate_property_set_values':
+      result = await propertySet.validateValues(sessionId, args.libId, args.defId, args.values);
+      break;
+
+    case 'list_property_set_instances_by_definition':
+      result = await propertySet.listPsetsByDefinition(sessionId, args.libId, args.defId);
+      break;
+
+    case 'list_property_set_instances_for_link':
+      result = await propertySet.listPsetsForLink(sessionId, args.link, args.query || {});
+      break;
+
+    case 'get_property_set_instance':
+      result = await propertySet.getPset(sessionId, args.link, args.libId, args.defId);
+      break;
+
+    case 'update_property_set_instance':
+      result = await propertySet.updatePset(sessionId, args.link, args.libId, args.defId, args.props);
+      break;
+
+    case 'delete_property_set_instance':
+      result = await propertySet.deletePset(sessionId, args.link, args.libId, args.defId);
+      break;
+
+    case 'batch_get_property_sets':
+      result = await propertySet.batchGetPsets(sessionId, args.psets);
+      break;
+
+    case 'apply_property_set_changeset':
+      result = await propertySet.applyChangeset(sessionId, args.changeset);
+      break;
+
+    case 'apply_property_set_changeset_async':
+      result = await propertySet.applyChangesetAsync(sessionId, args.changeset);
+      break;
+
+    case 'get_property_set_changeset_status':
+      result = await propertySet.getChangesetStatus(sessionId, args.changesetId);
       break;
 
     case 'extract_column_schedule': {
