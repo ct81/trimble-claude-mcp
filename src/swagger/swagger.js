@@ -844,6 +844,7 @@ export const swaggerDocument = {
 
       get: {
 
+        tags: ['Core'],
         summary:
           'Get current Trimble Connect user',
 
@@ -880,6 +881,7 @@ export const swaggerDocument = {
 
       get: {
 
+        tags: ['Core'],
         summary:
           'Get Trimble Connect regions',
 
@@ -911,6 +913,7 @@ export const swaggerDocument = {
 
       get: {
 
+        tags: ['Core'],
         summary:
           'Get Trimble Connect projects',
 
@@ -966,6 +969,7 @@ export const swaggerDocument = {
 
       get: {
 
+        tags: ['Core'],
         summary:
           'Get a Trimble Connect project',
 
@@ -1021,6 +1025,7 @@ export const swaggerDocument = {
 
       get: {
 
+        tags: ['Core'],
         summary:
           'Get project folders',
 
@@ -1066,6 +1071,7 @@ export const swaggerDocument = {
 
       get: {
 
+        tags: ['Core'],
         summary:
           'Get project files',
 
