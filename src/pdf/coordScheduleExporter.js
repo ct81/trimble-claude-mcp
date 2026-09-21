@@ -260,6 +260,8 @@ async function exportToCsv(rows, outputPath) {
         "Width (mm)",
         "Breadth (mm)",
         "Main Rebar",
+        "Vertical Rebar",
+        "Horizontal Rebar",
         "Stirrups",
         "Construction Method",
         "Arrangement Type",
@@ -279,13 +281,15 @@ async function exportToCsv(rows, outputPath) {
         }
 
         const rowData = [
-            escapeCsvValue(row.detail_mark || ""),
+            escapeCsvValue(row.detail_mark || row.mark || ""),
             escapeCsvValue(row.start_storey || ""),
             escapeCsvValue(row.end_storey || ""),
             escapeCsvValue(row.material_grade || ""),
             row.width_mm !== null && row.width_mm !== undefined ? row.width_mm : "",
             row.breadth_mm !== null && row.breadth_mm !== undefined ? row.breadth_mm : "",
             escapeCsvValue(row.main_rebar || ""),
+            escapeCsvValue(row.vertical_rebar || ""),
+            escapeCsvValue(row.horizontal_rebar || ""),
             escapeCsvValue(row.stirrups || ""),
             escapeCsvValue(row.construction_method || ""),
             escapeCsvValue(row.arrangement_type || ""),
@@ -351,6 +355,8 @@ export function getCsvBuffer(rows) {
         "Width (mm)",
         "Breadth (mm)",
         "Main Rebar",
+        "Vertical Rebar",
+        "Horizontal Rebar",
         "Stirrups",
         "Construction Method",
         "Arrangement Type",
@@ -363,13 +369,15 @@ export function getCsvBuffer(rows) {
 
     for (const row of rows) {
         const rowData = [
-            escapeCsvValue(row.detail_mark || ""),
+            escapeCsvValue(row.detail_mark || row.mark || ""),
             escapeCsvValue(row.start_storey || ""),
             escapeCsvValue(row.end_storey || ""),
             escapeCsvValue(row.material_grade || ""),
             row.width_mm !== null && row.width_mm !== undefined ? row.width_mm : "",
             row.breadth_mm !== null && row.breadth_mm !== undefined ? row.breadth_mm : "",
             escapeCsvValue(row.main_rebar || ""),
+            escapeCsvValue(row.vertical_rebar || ""),
+            escapeCsvValue(row.horizontal_rebar || ""),
             escapeCsvValue(row.stirrups || ""),
             escapeCsvValue(row.construction_method || ""),
             escapeCsvValue(row.arrangement_type || ""),
@@ -1562,7 +1570,9 @@ const headerAliases = {
 
     "DetailMark": [
         "DetailMark",
-        "Detail Mark"
+        "Detail Mark",
+        "Mark",
+        "mark"
     ],
 
     "DetailStartStorey": [
@@ -1596,6 +1606,37 @@ const headerAliases = {
 
     "Thickness": [
         "Thickness"
+    ],
+
+    "MainRebar": [
+        "MainRebar",
+        "Main Rebar",
+        "Length"
+    ],
+
+    "VerticalRebar": [
+        "VerticalRebar",
+        "Vertical Rebar",
+        "V-Rebar",
+        "V Rebar"
+    ],
+
+    "HorizontalRebar": [
+        "HorizontalRebar",
+        "Horizontal Rebar",
+        "H-Rebar",
+        "H Rebar"
+    ],
+
+    "Stirrups": [
+        "Stirrups",
+        "Thickness"
+    ],
+
+    "ConstructionMethod": [
+        "ConstructionMethod",
+        "Construction Method",
+        "ArrangementType"
     ],
 
     "ArrangementType": [
@@ -1679,6 +1720,10 @@ function createScheduleSheet(
         "Length",
         "Width",
         "Thickness",
+        "MainRebar",
+        "VerticalRebar",
+        "HorizontalRebar",
+        "Stirrups",
         "ArrangementType",
         "Splice/Dowels",
         "Remark",
@@ -2060,6 +2105,10 @@ function createScheduleSheet(
         14, // Length
         14, // Width
         14, // Thickness
+        20, // MainRebar
+        20, // VerticalRebar
+        20, // HorizontalRebar
+        20, // Stirrups
         24, // ArrangementType
         24, // Splice/Dowels
         30, // Remark
@@ -2193,6 +2242,8 @@ function createDataSheet(
         "Width",
         "Breadth",
         "MainRebar",
+        "VerticalRebar",
+        "HorizontalRebar",
         "Stirrups",
         "ConstructionMethod",
         "ArrangementType",
@@ -2207,6 +2258,20 @@ function createDataSheet(
         "MainRebar",
         "Main Rebar",
         "Length"
+    ];
+
+    headerAliases["VerticalRebar"] = [
+        "VerticalRebar",
+        "Vertical Rebar",
+        "V-Rebar",
+        "V Rebar"
+    ];
+
+    headerAliases["HorizontalRebar"] = [
+        "HorizontalRebar",
+        "Horizontal Rebar",
+        "H-Rebar",
+        "H Rebar"
     ];
 
     headerAliases["Stirrups"] = [
@@ -2389,7 +2454,7 @@ function createDataSheet(
         }
 
         // Check if this row contains a detail mark (starts with 43C or 43P)
-        const detailMarkValue = rowData.get("DetailMark") || "";
+        const detailMarkValue = rowData.get("DetailMark") || rowData.get("Mark") || "";
         const isDetailMarkRow = /^43[C|P]/.test(detailMarkValue);
 
         if (isDetailMarkRow) {
@@ -2431,6 +2496,8 @@ function createDataSheet(
         let width = rowData.get("Width") || "";
         let breadth = rowData.get("Breadth") || "";
         let mainRebar = rowData.get("MainRebar") || rowData.get("Length") || "";
+        let verticalRebar = rowData.get("VerticalRebar") || "";
+        let horizontalRebar = rowData.get("HorizontalRebar") || "";
         let stirrups = rowData.get("Stirrups") || rowData.get("Thickness") || "";
         let constructionMethod = rowData.get("ConstructionMethod") || rowData.get("ArrangementType") || "";
         let arrangementType = rowData.get("ArrangementType") || "";
@@ -2748,6 +2815,8 @@ function createDataSheet(
         console.log(`  width_mm: "${width}"`);
         console.log(`  breadth_mm: "${breadth}"`);
         console.log(`  main_rebar: "${mainRebar}"`);
+        console.log(`  vertical_rebar: "${verticalRebar}"`);
+        console.log(`  horizontal_rebar: "${horizontalRebar}"`);
         console.log(`  stirrups: "${stirrups}"`);
         console.log(`  construction_method: "${constructionMethod}"`);
         console.log(`  arrangement_type: "${arrangementType}"`);
@@ -2756,13 +2825,15 @@ function createDataSheet(
 
         // Build the row object
         const rowObj = {
-            detail_mark: currentDetailMark,
+            detail_mark: currentDetailMark || rowData.get("Mark") || "",
             start_storey: startStorey,
             end_storey: endStorey,
             material_grade: materialGrade,
             width_mm: parseFloat(width) || null,
             breadth_mm: parseFloat(breadth) || null,
             main_rebar: mainRebar,
+            vertical_rebar: verticalRebar || null,
+            horizontal_rebar: horizontalRebar || null,
             stirrups: stirrups,
             construction_method: constructionMethod,
             arrangement_type: arrangementType || null,
@@ -2822,6 +2893,8 @@ function createDataSheet(
         "Width (mm)",
         "Breadth (mm)",
         "Main Rebar",
+        "Vertical Rebar",
+        "Horizontal Rebar",
         "Stirrups",
         "Construction Method",
         "Arrangement Type",
@@ -2856,6 +2929,8 @@ function createDataSheet(
             row.width_mm,
             row.breadth_mm,
             row.main_rebar,
+            row.vertical_rebar,
+            row.horizontal_rebar,
             row.stirrups,
             row.construction_method,
             row.arrangement_type,
@@ -2881,7 +2956,7 @@ function createDataSheet(
         rowNum++;
     }
 
-    const tableWidths = [25, 18, 18, 16, 14, 14, 20, 20, 20, 16, 16, 20, 20];
+    const tableWidths = [25, 18, 18, 16, 14, 14, 20, 20, 20, 20, 20, 16, 16, 20, 20];
     tableWidths.forEach((width, index) => {
         dataTableSheet.getColumn(index + 1).width = width;
     });
