@@ -35,7 +35,8 @@ const HEADER_STYLE = "friendly";
 // ============================================================
 
 const COLUMNS = [
-    { key: "DetailMark",         friendly: "Mark",               internal: "DetailMark",         prop: "detail_mark",         required: true  },
+    { key: "DetailMark",         friendly: "Detail Mark / Mark",               internal: "DetailMark",         prop: "detail_mark",         required: true  },
+    { key: "DetailSpanType",     friendly: "Detail Span Type",          internal: "DetailSpanType",     prop: "span_type" },
     { key: "DetailStartStorey",  friendly: "Start Storey",        internal: "DetailStartStorey",  prop: "start_storey" },
     { key: "DetailEndstorey",    friendly: "End Storey",          internal: "DetailEndstorey",    prop: "end_storey" },
     { key: "MaterialGrade",      friendly: "Material Grade",      internal: "MaterialGrade",      prop: "material_grade" },
@@ -912,6 +913,7 @@ function normalizeHeaderText(text) {
 
 const headerAliases = {
     "DetailMark": ["DetailMark", "Detail Mark", "Mark", "mark"],
+    "DetailSpanType": ["DetailSpanType", "Detail Span Type", "SpanType", "Span Type", "Span"],
     "DetailStartStorey": ["DetailStartStorey", "Detail Start Storey"],
     "DetailEndstorey": ["DetailEndstorey", "DetailEndStorey", "Detail End Storey"],
     "MaterialGrade": ["MaterialGrade", "Material Grade"],
@@ -1312,6 +1314,7 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         const rowIndex = row.rowIndex;
         const currentDetailMark = row.detail_mark;
 
+        let spanType = rowData.get("DetailSpanType") || rowData.get("SpanType") || "";
         let materialGrade = rowData.get("MaterialGrade") || "";
         let width = rowData.get("Thickness") || rowData.get("Width") || "";
         let breadth = rowData.get("Length") || rowData.get("Breadth") || "";
@@ -1524,6 +1527,7 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
 
         const valuesByProp = {
             detail_mark: currentDetailMark || rowData.get("Mark") || "",
+            span_type: spanType, 
             start_storey: startStorey,
             end_storey: endStorey,
             material_grade: materialGrade,
