@@ -35,31 +35,20 @@ const HEADER_STYLE = "friendly";
 
 // ============================================================
 // CANONICAL COLUMN DEFINITIONS
-// Each column: { key, friendly, internal, prop, required?, aliases? }
-//   key      : stable internal id (used for PDF header matching)
-//   friendly : label for "friendly" style
-//   internal : label for "internal" style
-//   prop     : JSON property name on the row object
-//   required : if true, always include even if not detected
-//   aliases  : extra keys that also count as this column being present
-//              (used for detection OR-grouping, e.g. Breadth <-> Length)
 // ============================================================
 
 const COLUMNS = [
-    { key: "DetailMark",         friendly: "Detail Mark",         internal: "DetailMark",         prop: "detail_mark",         required: true  },
+    { key: "DetailMark",         friendly: "Detail Mark",         internal: "DetailMark",         prop: "detail_mark",         required: true },
     { key: "DetailStartStorey",  friendly: "Start Storey",        internal: "DetailStartStorey",  prop: "start_storey" },
     { key: "DetailEndstorey",    friendly: "End Storey",          internal: "DetailEndstorey",    prop: "end_storey" },
     { key: "MaterialGrade",      friendly: "Material Grade",      internal: "MaterialGrade",      prop: "material_grade" },
 
-    // Thickness and Width are the same physical column
-    { key: "Thickness",          friendly: "Width (mm)",          internal: "Thickness",          prop: "width_mm",
-      aliases: ["Width"] },
+    { key: "Thickness",          friendly: "Width (mm)",          internal: "Thickness",          prop: "width_mm" },
+    { key: "Length",             friendly: "Breadth (mm)",        internal: "Length",             prop: "breadth_mm" },
 
-    // Length and Breadth are the same physical column
-    { key: "Length",             friendly: "Breadth (mm)",        internal: "Length",             prop: "breadth_mm",
-      aliases: ["Breadth"] },
-
+    // Optional — only appears if PDF has a Main Rebar column
     { key: "MainRebar",          friendly: "Main Rebar",          internal: "MainRebar",          prop: "main_rebar" },
+
     { key: "VerticalRebar",      friendly: "Vertical Rebar",      internal: "VerticalRebar",      prop: "vertical_rebar" },
     { key: "HorizontalRebar",    friendly: "Horizontal Rebar",    internal: "HorizontalRebar",    prop: "horizontal_rebar" },
     { key: "Stirrups",           friendly: "Stirrups",            internal: "Stirrups",           prop: "stirrups" },
@@ -130,9 +119,6 @@ async function main() {
     createLayoutSheet(layoutSheet, items, xCenters, yDescending);
     createRawSheet(rawSheet, items, xCenters, yDescending);
 
-    // ------------------------------------------------
-    // Resolve which columns actually exist on the PDF
-    // ------------------------------------------------
     const detection = detectActiveColumns(items);
     const activeColumns = detection.activeColumns;
 
@@ -188,15 +174,6 @@ async function main() {
 
 // ============================================================
 // COLUMN DETECTION
-// ------------------------------------------------------------
-// Returns { activeColumns, foundHeaders }
-// activeColumns = COLUMNS entries actually detected on the PDF
-// (plus any with required: true)
-//
-// A column is considered present if EITHER its key OR any of
-// its aliases match a header on the PDF. This is what lets
-// "Breadth" keep the "Length" column alive (and vice versa),
-// and "Width" keep "Thickness" alive.
 // ============================================================
 
 function detectActiveColumns(items) {
@@ -204,40 +181,37 @@ function detectActiveColumns(items) {
     const foundHeaders = [];
 
     for (const col of COLUMNS) {
-        const keysToTry = [col.key, ...(col.aliases || [])];
 
-        // Try the canonical key + aliases
-        let matches = [];
-        let matchedViaKey = null;
+        const matches = findHeaderMatches(items, col.key);
 
-        for (const k of keysToTry) {
-            const m = findHeaderMatches(items, k);
-            if (m.length > 0) {
-                matches = m;
-                matchedViaKey = k;
-                break;
-            }
+        if (matches.length === 0) continue;
+
+        const selected = matches.reduce((best, current) =>
+            current.y > best.y ? current : best
+        );
+
+        // Dedupe: skip if another column already claimed this X
+        const alreadyClaimed = foundHeaders.some(h =>
+            Math.abs(h.x - selected.x) <= X_TOLERANCE
+        );
+
+        if (alreadyClaimed) {
+            console.log(`  Duplicate header skipped: ${col.key} at X=${selected.x}`);
+            continue;
         }
 
-        if (matches.length > 0) {
-            const selected = matches.reduce((best, current) =>
-                current.y > best.y ? current : best
-            );
-
-            foundHeaders.push({
-                key: col.key,
-                matchedVia: matchedViaKey,
-                col,
-                x: selected.x,
-                y: selected.y,
-                width: selected.width,
-                height: selected.height,
-                text: selected.text
-            });
-        }
+        foundHeaders.push({
+            key: col.key,
+            col,
+            x: selected.x,
+            y: selected.y,
+            width: selected.width,
+            height: selected.height,
+            text: selected.text
+        });
     }
 
-    // Position-based fallback only if we found very few headers
+    // Position-based fallback only if nothing detected
     if (foundHeaders.length === 0) {
         console.log("No headers detected by name. Using position-based fallback...");
 
@@ -263,50 +237,39 @@ function detectActiveColumns(items) {
             const normalizedText = normalizeHeaderText(text);
 
             for (const col of COLUMNS) {
-                const keysToTry = [col.key, ...(col.aliases || [])];
-                for (const k of keysToTry) {
-                    const aliases = headerAliases[k] || [k];
-                    for (const alias of aliases) {
-                        const normalizedAlias = normalizeHeaderText(alias);
-                        if (normalizedText.includes(normalizedAlias) ||
-                            normalizedAlias.includes(normalizedText)) {
-                            matchedCol = col;
-                            break;
-                        }
+                const aliases = headerAliases[col.key] || [col.key];
+                for (const alias of aliases) {
+                    const normalizedAlias = normalizeHeaderText(alias);
+                    if (normalizedText.includes(normalizedAlias) ||
+                        normalizedAlias.includes(normalizedText)) {
+                        matchedCol = col;
+                        break;
                     }
-                    if (matchedCol) break;
                 }
                 if (matchedCol) break;
             }
 
             if (!matchedCol) matchedCol = COLUMNS[i];
 
-            foundHeaders.push({
-                key: matchedCol.key,
-                matchedVia: matchedCol.key,
-                col: matchedCol,
-                x: avgX,
-                y: headerY,
-                width: 0,
-                height: 0,
-                text: text
-            });
+            if (!foundHeaders.some(h => Math.abs(h.x - avgX) <= X_TOLERANCE)) {
+                foundHeaders.push({
+                    key: matchedCol.key,
+                    col: matchedCol,
+                    x: avgX,
+                    y: headerY,
+                    width: 0,
+                    height: 0,
+                    text: text
+                });
+            }
         }
     }
 
-    // Build active column set
-    const seen = new Set();
-    const activeColumns = [];
-
-    for (const col of COLUMNS) {
-        const isFound = foundHeaders.some(h => h.key === col.key);
-        const isRequired = col.required === true;
-
-        if ((isFound || isRequired) && !seen.has(col.key)) {
-            activeColumns.push(col);
-            seen.add(col.key);
-        }
-    }
+    // Build active column set in COLUMNS order
+    const activeKeys = new Set(foundHeaders.map(h => h.key));
+    const activeColumns = COLUMNS.filter(col => {
+        return col.required === true || activeKeys.has(col.key);
+    });
 
     return { activeColumns, foundHeaders };
 }
@@ -909,26 +872,37 @@ function normalizeHeaderText(text) {
 
 // ============================================================
 // HEADER ALIASES
+// No cross-column collisions:
+//   - "Thickness" only belongs to Thickness
+//   - "ArrangementType" only belongs to ArrangementType
 // ============================================================
 
 const headerAliases = {
-    "DetailMark": ["DetailMark", "Detail Mark", "Mark", "mark"],
-    "DetailStartStorey": ["DetailStartStorey", "Detail Start Storey"],
-    "DetailEndstorey": ["DetailEndstorey", "DetailEndStorey", "Detail End Storey"],
-    "MaterialGrade": ["MaterialGrade", "Material Grade"],
-    "Breadth": ["Breadth"],
-    "Length": ["Length"],
-    "Width": ["Width"],
-    "Thickness": ["Thickness"],
-    "MainRebar": ["MainRebar", "Main Rebar"],
-    "VerticalRebar": ["VerticalRebar", "Vertical Rebar", "V-Rebar", "V Rebar"],
-    "HorizontalRebar": ["HorizontalRebar", "Horizontal Rebar", "H-Rebar", "H Rebar"],
-    "Stirrups": ["Stirrups"],
-    "ConstructionMethod": ["ConstructionMethod", "Construction Method", "ArrangementType"],
-    "ArrangementType": ["ArrangementType", "Arrangement Type"],
-    "Splice/Dowels": ["Splice/Dowels", "Splice / Dowels", "SpliceDowels", "Splice Dowels"],
-    "Remark": ["Remark"],
-    "ReferTo2DDetail": ["ReferTo2DDetail", "Refer To 2D Detail", "ReferTo2D Details", "Refer To 2D Details"]
+    "DetailMark":         ["DetailMark", "Detail Mark", "Mark", "mark"],
+    "DetailStartStorey":  ["DetailStartStorey", "Detail Start Storey"],
+    "DetailEndstorey":    ["DetailEndstorey", "DetailEndStorey", "Detail End Storey"],
+    "MaterialGrade":      ["MaterialGrade", "Material Grade"],
+
+    "Thickness":          ["Thickness", "Width"],
+    "Length":             ["Length", "Breadth"],
+
+    "MainRebar":          ["MainRebar", "Main Rebar"],
+    "VerticalRebar":      ["VerticalRebar", "Vertical Rebar", "V-Rebar", "V Rebar"],
+    "HorizontalRebar":    ["HorizontalRebar", "Horizontal Rebar", "H-Rebar", "H Rebar"],
+    "Stirrups":           ["Stirrups"],
+
+    "ConstructionMethod": ["ConstructionMethod", "Construction Method"],
+    "ArrangementType":    ["ArrangementType", "Arrangement Type"],
+    "Splice/Dowels":      ["Splice/Dowels", "Splice / Dowels", "SpliceDowels", "Splice Dowels", "Splice/dowels"],
+    "Remark":             ["Remark", "Remarks", "Note", "Notes"],
+    "ReferTo2DDetail":    [
+        "ReferTo2DDetail",
+        "Refer To 2D Detail",
+        "Refer To 2D Details",
+        "ReferTo2D Details",
+        "2D Detail",
+        "2D Details"
+    ]
 };
 
 
@@ -957,29 +931,28 @@ function createScheduleSheet(sheet, items, activeColumns) {
     const foundHeaders = [];
 
     for (const col of activeColumns) {
-        const keysToTry = [col.key, ...(col.aliases || [])];
+        const matches = findHeaderMatches(items, col.key);
 
-        let matches = [];
-        for (const k of keysToTry) {
-            const m = findHeaderMatches(items, k);
-            if (m.length > 0) { matches = m; break; }
+        if (matches.length === 0) continue;
+
+        const selected = matches.reduce((best, current) =>
+            current.y > best.y ? current : best
+        );
+
+        // Dedupe by X position
+        if (foundHeaders.some(h => Math.abs(h.x - selected.x) <= X_TOLERANCE)) {
+            continue;
         }
 
-        if (matches.length > 0) {
-            const selected = matches.reduce((best, current) =>
-                current.y > best.y ? current : best
-            );
-
-            foundHeaders.push({
-                key: col.key,
-                col,
-                x: selected.x,
-                y: selected.y,
-                width: selected.width,
-                height: selected.height,
-                text: selected.text
-            });
-        }
+        foundHeaders.push({
+            key: col.key,
+            col,
+            x: selected.x,
+            y: selected.y,
+            width: selected.width,
+            height: selected.height,
+            text: selected.text
+        });
     }
 
     console.log("");
@@ -1115,26 +1088,19 @@ function findScheduleColumn(x, headers) {
 function createDataSheet(sheet, items, workbook, activeColumns) {
 
     const headerKeys = activeColumns.map(c => c.key);
+    const hasMainRebarColumn = activeColumns.some(c => c.key === "MainRebar");
 
     let foundHeaders = [];
 
-    for (const col of activeColumns) {
-        const keysToTry = [col.key, ...(col.aliases || [])];
-
-        let matches = [];
-        let matchedViaKey = col.key;
-        for (const k of keysToTry) {
-            const m = findHeaderMatches(items, k);
-            if (m.length > 0) { matches = m; matchedViaKey = k; break; }
-        }
-
+    for (const headerKey of headerKeys) {
+        const matches = findHeaderMatches(items, headerKey);
         if (matches.length > 0) {
             const selected = matches.reduce((best, current) =>
                 current.y > best.y ? current : best
             );
+            if (foundHeaders.some(h => Math.abs(h.x - selected.x) <= X_TOLERANCE)) continue;
             foundHeaders.push({
-                key: col.key,
-                matchedVia: matchedViaKey,
+                key: headerKey,
                 x: selected.x,
                 y: selected.y,
                 text: selected.text
@@ -1186,12 +1152,14 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
 
             if (matchedHeader) {
                 const avgX = itemsAtX.reduce((sum, i) => sum + i.x, 0) / itemsAtX.length;
-                detectedHeaders.push({
-                    key: matchedHeader,
-                    x: avgX,
-                    y: headerY,
-                    text: text
-                });
+                if (!detectedHeaders.some(h => Math.abs(h.x - avgX) <= X_TOLERANCE)) {
+                    detectedHeaders.push({
+                        key: matchedHeader,
+                        x: avgX,
+                        y: headerY,
+                        text: text
+                    });
+                }
             }
         }
 
@@ -1269,11 +1237,14 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
             }
         }
 
+        // Debug: log the keys available on this row
+        console.log(`  Row ${rowIndex + 1} keys: ${Array.from(rowData.keys()).join(", ")}`);
+
         const detailMarkValue =
             rowData.get("DetailMark") ||
             rowData.get("Mark") ||
             "";
-        const isDetailMarkRow = /^43[C|P]/.test(detailMarkValue);
+        const isDetailMarkRow = /^43[C|P]/i.test(detailMarkValue);
 
         if (isDetailMarkRow) {
             currentDetailMark = detailMarkValue;
@@ -1303,20 +1274,19 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         const rowIndex = row.rowIndex;
         const currentDetailMark = row.detail_mark;
 
-        // Read from canonical keys, but also allow alias keys
-        let materialGrade = rowData.get("MaterialGrade") || "";
-        let width = rowData.get("Thickness") || rowData.get("Width") || "";
-        let breadth = rowData.get("Length") || rowData.get("Breadth") || "";
-        let mainRebar = rowData.get("MainRebar") || "";
-        let verticalRebar = rowData.get("VerticalRebar") || "";
-        let horizontalRebar = rowData.get("HorizontalRebar") || "";
-        let stirrups = rowData.get("Stirrups") || "";
-        let constructionMethod = rowData.get("ConstructionMethod") || rowData.get("ArrangementType") || "";
-        let arrangementType = rowData.get("ArrangementType") || "";
-        let spliceDowels = rowData.get("Splice/Dowels") || "";
-        let remark = rowData.get("Remark") || "";
-        let startStorey = rowData.get("DetailStartStorey") || "";
-        let endStorey = rowData.get("DetailEndstorey") || "";
+        let materialGrade      = rowData.get("MaterialGrade")      || "";
+        let width              = rowData.get("Thickness")          || rowData.get("Width")   || "";
+        let breadth            = rowData.get("Length")             || rowData.get("Breadth") || "";
+        let mainRebar          = rowData.get("MainRebar")          || "";
+        let verticalRebar      = rowData.get("VerticalRebar")      || "";
+        let horizontalRebar    = rowData.get("HorizontalRebar")    || "";
+        let stirrups           = rowData.get("Stirrups")           || "";
+        let constructionMethod = rowData.get("ConstructionMethod") || "";
+        let arrangementType    = rowData.get("ArrangementType")    || "";
+        let spliceDowels       = rowData.get("Splice/Dowels")      || "";
+        let remark             = rowData.get("Remark")             || "";
+        let startStorey        = rowData.get("DetailStartStorey")  || "";
+        let endStorey          = rowData.get("DetailEndstorey")    || "";
 
         // FILTER 1
         let hasOtherData = false;
@@ -1370,44 +1340,26 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         const allText = Array.from(rowData.values()).filter(v => v).join(" ");
         console.log(`Row ${rowIndex + 1} combined: "${allText}"`);
 
-        // Arrangement type
-        const arrangementPattern = /\b(\d+)-TIER\b/i;
-        const arrangementMatch = allText.match(arrangementPattern);
-        if (arrangementMatch) {
-            arrangementType = arrangementMatch[0].toUpperCase();
+        // Arrangement type — fallback only
+        if (!arrangementType) {
+            const m = allText.match(/\b(\d+)-TIER\b/i);
+            if (m) arrangementType = m[0].toUpperCase();
         }
 
-        // Splice/dowels
-        const splicePattern = /\b\d+[A-Z]\d+\s*[\(p\)]+\b/gi;
-        const spliceMatches = allText.match(splicePattern);
-        if (spliceMatches && spliceMatches.length > 0) {
-            const validSplices = spliceMatches.filter(match => {
-                const cleanMatch = match.replace(/[^A-Z0-9]/g, "");
-                if (mainRebar && mainRebar.replace(/[^A-Z0-9]/g, "") === cleanMatch) return false;
-                if (stirrups && stirrups.includes(cleanMatch)) return false;
-                if (!match.includes("p") && !match.includes("s")) return false;
-                return true;
-            });
-            if (validSplices.length > 0) spliceDowels = validSplices[0];
-        }
-
+        // Splice/dowels — fallback only, supports (p), (s), (d)
         if (!spliceDowels) {
-            const flexPattern = /\b(\d+[A-Z]\d+)\s*[\(p\)]+\b/gi;
-            const flexMatches = allText.match(flexPattern);
-            if (flexMatches && flexMatches.length > 0) {
-                const validMatches = flexMatches.filter(m => {
-                    const cleanMatch = m.replace(/[^A-Z0-9]/g, "");
-                    if (mainRebar && mainRebar.replace(/[^A-Z0-9]/g, "") === cleanMatch) return false;
+            const splicePattern = /\b\d+[A-Z]\d+\s*\([psd]\)/gi;
+            const spliceMatches = allText.match(splicePattern);
+            if (spliceMatches && spliceMatches.length > 0) {
+                const valid = spliceMatches.filter(match => {
+                    const clean = match.replace(/[^A-Z0-9]/g, "");
+                    if (stirrups && stirrups.includes(clean)) return false;
+                    if (verticalRebar && verticalRebar.includes(clean)) return false;
+                    if (horizontalRebar && horizontalRebar.includes(clean)) return false;
+                    if (mainRebar && mainRebar.replace(/[^A-Z0-9]/g, "") === clean) return false;
                     return true;
                 });
-                if (validMatches.length > 0) spliceDowels = validMatches[0];
-            }
-        }
-
-        if (!spliceDowels) {
-            const directSplice = rowData.get("Splice/Dowels") || "";
-            if (directSplice && /[A-Z]\d+[\(p\)]/.test(directSplice)) {
-                spliceDowels = directSplice;
+                if (valid.length > 0) spliceDowels = valid[0];
             }
         }
 
@@ -1450,6 +1402,13 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
             }
         }
 
+        // Handle comma-separated breadth values like "3250, 9050"
+        if (breadthValue && breadthValue.includes(",")) {
+            const firstPart = breadthValue.split(",")[0].trim();
+            console.log(`Cleaned comma-separated breadth "${breadthValue}" -> "${firstPart}"`);
+            breadthValue = firstPart;
+        }
+
         if (breadthValue && breadthValue.includes(" ")) {
             const parts = breadthValue.split(/\s+/);
             for (const part of parts) {
@@ -1466,49 +1425,63 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
             breadth = "";
         }
 
-        // Main rebar and stirrups
-        if (mainRebar && /^\d{3,4}$/.test(mainRebar.trim())) mainRebar = "";
-
-        const stirrupsPattern = /\d+[A-Z]\d+-\d+\+\d+[A-Z]\d+-\d+/g;
-        const stirrupsMatches = allText.match(stirrupsPattern);
-        if (stirrupsMatches && stirrupsMatches.length > 0) {
-            stirrups = stirrupsMatches[0];
+        // Main rebar — only run regex if the column exists
+        if (hasMainRebarColumn && mainRebar && /^\d{3,4}$/.test(mainRebar.trim())) {
+            mainRebar = "";
         }
 
-        const mainRebarPattern = /\b\d{1,3}[A-Z]\d{1,3}\b/g;
-        const rebarMatches = allText.match(mainRebarPattern);
-        if (rebarMatches && rebarMatches.length > 0) {
-            const potentialRebars = rebarMatches.filter(match => {
-                if (stirrups && stirrups.includes(match)) return false;
-                if (spliceDowels && spliceDowels.includes(match)) return false;
-                if (/^\d+$/.test(match)) return false;
-                return true;
-            });
-            if (potentialRebars.length > 0) mainRebar = potentialRebars[0];
+        // Stirrups — fallback regex only
+        if (!stirrups) {
+            const stirrupsPattern = /\d+[A-Z]\d+-\d+(?:\+\d+[A-Z]\d+-\d+)?/g;
+            const stirrupsMatches = allText.match(stirrupsPattern);
+            if (stirrupsMatches && stirrupsMatches.length > 0) {
+                stirrups = stirrupsMatches[0];
+            }
         }
 
-        if (!mainRebar) {
+        if (hasMainRebarColumn && !mainRebar) {
+            const mainRebarPattern = /\b\d{1,3}[A-Z]\d{1,3}\b/g;
+            const rebarMatches = allText.match(mainRebarPattern);
+            if (rebarMatches && rebarMatches.length > 0) {
+                const potentialRebars = rebarMatches.filter(match => {
+                    if (stirrups && stirrups.includes(match)) return false;
+                    if (spliceDowels && spliceDowels.includes(match)) return false;
+                    if (verticalRebar && verticalRebar.includes(match)) return false;
+                    if (horizontalRebar && horizontalRebar.includes(match)) return false;
+                    if (/^\d+$/.test(match)) return false;
+                    return true;
+                });
+                if (potentialRebars.length > 0) mainRebar = potentialRebars[0];
+            }
+        }
+
+        if (hasMainRebarColumn && !mainRebar) {
             const fallbackPattern = /[A-Z]\d+/g;
             const fallbackMatches = allText.match(fallbackPattern);
             if (fallbackMatches && fallbackMatches.length > 0) {
                 const validMatches = fallbackMatches.filter(m => {
                     if (stirrups && stirrups.includes(m)) return false;
                     if (spliceDowels && spliceDowels.includes(m)) return false;
+                    if (verticalRebar && verticalRebar.includes(m)) return false;
+                    if (horizontalRebar && horizontalRebar.includes(m)) return false;
                     return true;
                 });
                 if (validMatches.length > 0) mainRebar = validMatches[0];
             }
         }
 
-        if (mainRebar && /^\d+\s+/.test(mainRebar)) {
+        if (hasMainRebarColumn && mainRebar && /^\d+\s+/.test(mainRebar)) {
             const parts = mainRebar.split(/\s+/);
             for (const part of parts) {
                 if (/[A-Z]/.test(part)) { mainRebar = part; break; }
             }
         }
 
-        if (mainRebar && /^\d{3,4}$/.test(mainRebar.trim())) mainRebar = "";
+        if (hasMainRebarColumn && mainRebar && /^\d{3,4}$/.test(mainRebar.trim())) {
+            mainRebar = "";
+        }
 
+        // Split MaterialGrade and Width
         if (materialGrade && /^[A-Z]\d+\/\d+/.test(materialGrade)) {
             const parts = materialGrade.split(/\s+/);
             if (parts.length >= 2) {
