@@ -27,6 +27,59 @@ const Y_TOLERANCE = 2.5;
 
 
 // ============================================================
+// HEADER STYLE SWITCH
+// ------------------------------------------------------------
+// Change HEADER_STYLE to one of:
+//   "friendly"  -> human-readable labels, e.g. "Detail Mark", "Width (mm)"
+//   "internal"  -> internal canonical keys, e.g. "DetailMark", "Thickness"
+//
+// Both styles resolve to the SAME columns and the SAME row-object
+// properties. This flag only changes how headers are displayed in
+// the Column Schedule sheet, the Data Table sheet, and the CSV.
+// ============================================================
+
+const HEADER_STYLE = "friendly"; // <-- change to "internal" if you prefer
+
+// ------------------------------------------------------------
+// Canonical column order (drives everything)
+// Each entry: { key, friendly, internal, prop }
+//   key       : stable identifier used internally
+//   friendly  : header label for "friendly" style
+//   internal  : header label for "internal" style
+//   prop      : property name on the processed row object
+// ------------------------------------------------------------
+
+const COLUMNS = [
+    { key: "DetailMark",          friendly: "Detail Mark",        internal: "DetailMark",          prop: "detail_mark" },
+    { key: "DetailStartStorey",   friendly: "Start Storey",       internal: "DetailStartStorey",   prop: "start_storey" },
+    { key: "DetailEndstorey",     friendly: "End Storey",         internal: "DetailEndstorey",     prop: "end_storey" },
+    { key: "MaterialGrade",       friendly: "Material Grade",     internal: "MaterialGrade",       prop: "material_grade" },
+    { key: "Thickness",           friendly: "Width (mm)",         internal: "Thickness",           prop: "width_mm" },
+    { key: "Length",              friendly: "Breadth (mm)",       internal: "Length",              prop: "breadth_mm" },
+    { key: "MainRebar",           friendly: "Main Rebar",         internal: "MainRebar",           prop: "main_rebar" },
+    { key: "VerticalRebar",       friendly: "Vertical Rebar",     internal: "VerticalRebar",       prop: "vertical_rebar" },
+    { key: "HorizontalRebar",     friendly: "Horizontal Rebar",   internal: "HorizontalRebar",     prop: "horizontal_rebar" },
+    { key: "Stirrups",            friendly: "Stirrups",           internal: "Stirrups",            prop: "stirrups" },
+    { key: "ConstructionMethod",  friendly: "Construction Method",internal: "ConstructionMethod",  prop: "construction_method" },
+    { key: "ArrangementType",     friendly: "Arrangement Type",   internal: "ArrangementType",     prop: "arrangement_type" },
+    { key: "Splice/Dowels",       friendly: "Splice/Dowels",      internal: "Splice/Dowels",       prop: "splice_dowels" },
+    { key: "Remark",              friendly: "Remark",             internal: "Remark",              prop: "remark" },
+    { key: "ReferTo2DDetail",     friendly: "Refer To 2D Detail", internal: "ReferTo2DDetail",     prop: "refer_to_2d_detail" }
+];
+
+// Convenience: the header label to show for each column, based on HEADER_STYLE
+function headerLabel(col) {
+    return HEADER_STYLE === "internal" ? col.internal : col.friendly;
+}
+
+// Header keys used by the PDF header-matching logic (always use internal keys)
+const LAYOUT_HEADER_KEYS = COLUMNS.map(c => c.key);
+
+// Header labels used for output (Column Schedule, Data Table, CSV)
+const LAYOUT_HEADER_LABELS = COLUMNS.map(headerLabel);
+
+
+// ============================================================
 // MAIN
 // ============================================================
 
@@ -38,179 +91,68 @@ async function main() {
     console.log("==============================================");
     console.log("");
 
-    // --------------------------------------------------------
-    // GET INPUT
-    // --------------------------------------------------------
-
     const json = await getInputJson();
 
     if (!json) {
-
         console.error("");
         console.error("No valid JSON input.");
         process.exit(1);
     }
 
-    // --------------------------------------------------------
-    // EXTRACT ITEMS
-    // --------------------------------------------------------
-
     const items = extractItems(json);
 
     console.log("");
-    console.log(
-        `Coordinate objects found: ${items.length}`
-    );
+    console.log(`Coordinate objects found: ${items.length}`);
 
     if (items.length === 0) {
-
-        console.error(
-            "No text coordinate objects were found."
-        );
-
+        console.error("No text coordinate objects were found.");
         process.exit(1);
     }
 
-    // --------------------------------------------------------
-    // CLUSTER COORDINATES
-    // --------------------------------------------------------
+    const xValues = items.map(item => item.x);
+    const yValues = items.map(item => item.y);
+    const xCenters = clusterCoordinates(xValues, X_TOLERANCE);
+    const yCenters = clusterCoordinates(yValues, Y_TOLERANCE);
+    const yDescending = [...yCenters].sort((a, b) => b - a);
 
-    const xValues = items.map(
-        item => item.x
-    );
-
-    const yValues = items.map(
-        item => item.y
-    );
-
-    const xCenters = clusterCoordinates(
-        xValues,
-        X_TOLERANCE
-    );
-
-    const yCenters = clusterCoordinates(
-        yValues,
-        Y_TOLERANCE
-    );
-
-    // PDF Y coordinates increase upward.
-    // Reverse them for Excel top-to-bottom layout.
-
-    const yDescending = [...yCenters]
-        .sort((a, b) => b - a);
-
-    console.log(
-        `X coordinate clusters: ${xCenters.length}`
-    );
-
-    console.log(
-        `Y coordinate rows: ${yDescending.length}`
-    );
-
-    // --------------------------------------------------------
-    // CREATE WORKBOOK
-    // --------------------------------------------------------
+    console.log(`X coordinate clusters: ${xCenters.length}`);
+    console.log(`Y coordinate rows: ${yDescending.length}`);
 
     const workbook = new ExcelJS.Workbook();
+    workbook.creator = "PDF Coordinate to Excel";
+    workbook.lastModifiedBy = "PDF Coordinate to Excel";
+    workbook.created = new Date();
+    workbook.modified = new Date();
 
-    workbook.creator =
-        "PDF Coordinate to Excel";
+    const infoSheet = workbook.addWorksheet("Info");
+    const layoutSheet = workbook.addWorksheet("Layout");
+    const rawSheet = workbook.addWorksheet("Raw Coordinates");
+    const scheduleSheet = workbook.addWorksheet("Column Schedule");
+    const dataSheet = workbook.addWorksheet("Data");
 
-    workbook.lastModifiedBy =
-        "PDF Coordinate to Excel";
-
-    workbook.created =
-        new Date();
-
-    workbook.modified =
-        new Date();
-
-    // --------------------------------------------------------
-    // CREATE WORKSHEETS
-    // --------------------------------------------------------
-
-    const infoSheet =
-        workbook.addWorksheet("Info");
-
-    const layoutSheet =
-        workbook.addWorksheet("Layout");
-
-    const rawSheet =
-        workbook.addWorksheet("Raw Coordinates");
-
-    const scheduleSheet =
-        workbook.addWorksheet("Column Schedule");
-
-    const dataSheet =
-        workbook.addWorksheet("Data");
-
-    // --------------------------------------------------------
-    // CREATE CONTENT
-    // --------------------------------------------------------
-
-    createInfoSheet(
-        infoSheet,
-        items,
-        xCenters,
-        yDescending
-    );
-
-    createLayoutSheet(
-        layoutSheet,
-        items,
-        xCenters,
-        yDescending
-    );
-
-    createRawSheet(
-        rawSheet,
-        items,
-        xCenters,
-        yDescending
-    );
-
-    createScheduleSheet(
-        scheduleSheet,
-        items
-    );
-
-    const processedRows = createDataSheet(
-        dataSheet,
-        items,
-        workbook
-    );
-
-    // --------------------------------------------------------
-    // SAVE EXCEL
-    // --------------------------------------------------------
+    createInfoSheet(infoSheet, items, xCenters, yDescending);
+    createLayoutSheet(layoutSheet, items, xCenters, yDescending);
+    createRawSheet(rawSheet, items, xCenters, yDescending);
+    createScheduleSheet(scheduleSheet, items);
+    const processedRows = createDataSheet(dataSheet, items, workbook);
 
     console.log("");
     console.log("Saving Excel...");
 
-    await workbook.xlsx.writeFile(
-        OUTPUT_FILE
-    );
+    await workbook.xlsx.writeFile(OUTPUT_FILE);
 
     console.log("");
     console.log("==============================================");
     console.log(" COMPLETE");
     console.log("==============================================");
     console.log("");
-
-    console.log(
-        `Output: ${OUTPUT_FILE}`
-    );
-
-    // --------------------------------------------------------
-    // EXPORT CSV
-    // --------------------------------------------------------
+    console.log(`Output: ${OUTPUT_FILE}`);
 
     if (processedRows && processedRows.length > 0) {
         console.log("");
         console.log(`Exporting CSV with ${processedRows.length} rows...`);
 
         try {
-            // Generate a unique filename with timestamp
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
             const csvFilename = `output_data_${timestamp}.csv`;
             const csvPath = path.join(TEMP_DIR, csvFilename);
@@ -221,10 +163,8 @@ async function main() {
                 console.log(`CSV saved to: ${csvPath}`);
                 console.log(`To download, access: /temp/${csvFilename}`);
 
-                // Also save a copy to the main output location
-                const mainCsvPath = OUTPUT_CSV_FILE;
-                fs.copyFileSync(csvPath, mainCsvPath);
-                console.log(`CSV also saved to: ${mainCsvPath}`);
+                fs.copyFileSync(csvPath, OUTPUT_CSV_FILE);
+                console.log(`CSV also saved to: ${OUTPUT_CSV_FILE}`);
             }
         } catch (error) {
             console.error("Error exporting CSV:", error.message);
@@ -239,7 +179,7 @@ async function main() {
 
 
 // ============================================================
-// EXPORT TO CSV - Enhanced with Buffer support for downloads
+// EXPORT TO CSV
 // ============================================================
 
 async function exportToCsv(rows, outputPath) {
@@ -251,52 +191,20 @@ async function exportToCsv(rows, outputPath) {
 
     console.log(`Preparing to export ${rows.length} rows to CSV...`);
 
-    // Define headers
-    const headers = [
-        "Detail Mark",
-        "Start Storey",
-        "End Storey",
-        "Material Grade",
-        "Width (mm)",
-        "Breadth (mm)",
-        "Main Rebar",
-        "Vertical Rebar",
-        "Horizontal Rebar",
-        "Stirrups",
-        "Construction Method",
-        "Arrangement Type",
-        "Splice/Dowels",
-        "Remark",
-        "Refer To 2D Detail"
-    ];
+    const headers = LAYOUT_HEADER_LABELS;
 
-    // Build CSV content
-    let csvContent = headers.join(",") + "\n";
+    let csvContent = headers.map(escapeCsvValue).join(",") + "\n";
 
     let exportedCount = 0;
     for (const row of rows) {
-        // Debug: log the first row to see what we have
         if (exportedCount === 0) {
             console.log("Sample row data:", JSON.stringify(row, null, 2));
         }
 
-        const rowData = [
-            escapeCsvValue(row.detail_mark || row.mark || ""),
-            escapeCsvValue(row.start_storey || ""),
-            escapeCsvValue(row.end_storey || ""),
-            escapeCsvValue(row.material_grade || ""),
-            row.width_mm !== null && row.width_mm !== undefined ? row.width_mm : "",
-            row.breadth_mm !== null && row.breadth_mm !== undefined ? row.breadth_mm : "",
-            escapeCsvValue(row.main_rebar || ""),
-            escapeCsvValue(row.vertical_rebar || ""),
-            escapeCsvValue(row.horizontal_rebar || ""),
-            escapeCsvValue(row.stirrups || ""),
-            escapeCsvValue(row.construction_method || ""),
-            escapeCsvValue(row.arrangement_type || ""),
-            escapeCsvValue(row.splice_dowels || ""),
-            escapeCsvValue(row.remark || ""),
-            escapeCsvValue(row.refer_to_2d_detail || "")
-        ];
+        const rowData = COLUMNS.map(col => {
+            const value = row[col.prop];
+            return value !== null && value !== undefined ? escapeCsvValue(value) : "";
+        });
 
         csvContent += rowData.join(",") + "\n";
         exportedCount++;
@@ -304,7 +212,6 @@ async function exportToCsv(rows, outputPath) {
 
     console.log(`Built CSV with ${exportedCount} rows.`);
 
-    // Write to file
     try {
         fs.writeFileSync(outputPath, csvContent, "utf8");
         console.log(`CSV file written to: ${outputPath}`);
@@ -328,9 +235,7 @@ function escapeCsvValue(value) {
 
     const str = String(value);
 
-    // If the value contains commas, quotes, or newlines, wrap in quotes
     if (str.includes(",") || str.includes('"') || str.includes("\n")) {
-        // Replace double quotes with double double-quotes
         return `"${str.replace(/"/g, '""')}"`;
     }
 
@@ -339,7 +244,7 @@ function escapeCsvValue(value) {
 
 
 // ============================================================
-// GET CSV AS BUFFER - For web server responses
+// GET CSV AS BUFFER
 // ============================================================
 
 export function getCsvBuffer(rows) {
@@ -347,45 +252,15 @@ export function getCsvBuffer(rows) {
         return null;
     }
 
-    const headers = [
-        "Detail Mark",
-        "Start Storey",
-        "End Storey",
-        "Material Grade",
-        "Width (mm)",
-        "Breadth (mm)",
-        "Main Rebar",
-        "Vertical Rebar",
-        "Horizontal Rebar",
-        "Stirrups",
-        "Construction Method",
-        "Arrangement Type",
-        "Splice/Dowels",
-        "Remark",
-        "Refer To 2D Detail"
-    ];
+    const headers = LAYOUT_HEADER_LABELS;
 
-    let csvContent = headers.join(",") + "\n";
+    let csvContent = headers.map(escapeCsvValue).join(",") + "\n";
 
     for (const row of rows) {
-        const rowData = [
-            escapeCsvValue(row.detail_mark || row.mark || ""),
-            escapeCsvValue(row.start_storey || ""),
-            escapeCsvValue(row.end_storey || ""),
-            escapeCsvValue(row.material_grade || ""),
-            row.width_mm !== null && row.width_mm !== undefined ? row.width_mm : "",
-            row.breadth_mm !== null && row.breadth_mm !== undefined ? row.breadth_mm : "",
-            escapeCsvValue(row.main_rebar || ""),
-            escapeCsvValue(row.vertical_rebar || ""),
-            escapeCsvValue(row.horizontal_rebar || ""),
-            escapeCsvValue(row.stirrups || ""),
-            escapeCsvValue(row.construction_method || ""),
-            escapeCsvValue(row.arrangement_type || ""),
-            escapeCsvValue(row.splice_dowels || ""),
-            escapeCsvValue(row.remark || ""),
-            escapeCsvValue(row.refer_to_2d_detail || "")
-        ];
-
+        const rowData = COLUMNS.map(col => {
+            const value = row[col.prop];
+            return value !== null && value !== undefined ? escapeCsvValue(value) : "";
+        });
         csvContent += rowData.join(",") + "\n";
     }
 
@@ -394,7 +269,7 @@ export function getCsvBuffer(rows) {
 
 
 // ============================================================
-// GET EXCEL AS BUFFER - For web server responses
+// GET EXCEL AS BUFFER
 // ============================================================
 
 export async function getExcelBuffer(json) {
@@ -433,7 +308,6 @@ export async function getExcelBuffer(json) {
     createScheduleSheet(scheduleSheet, items);
     const processedRows = createDataSheet(dataSheet, items, workbook);
 
-    // Get the buffer
     const buffer = await workbook.xlsx.writeBuffer();
 
     return {
@@ -471,311 +345,136 @@ export function getExcelDownloadHeaders(filename = "output.xlsx") {
 // ============================================================
 
 async function getInputJson() {
-
     console.log("Select input method:");
     console.log("");
-
     console.log("1. TXT file");
     console.log("2. JSON file");
     console.log("3. Direct JSON string");
-
     console.log("");
 
-    const choice =
-        await askQuestion(
-            "Enter 1, 2 or 3: "
-        );
+    const choice = await askQuestion("Enter 1, 2 or 3: ");
 
     switch (choice.trim()) {
-
-        case "1":
-            return await readTextFile();
-
-        case "2":
-            return await readJsonFile();
-
-        case "3":
-            return await readDirectJson();
-
+        case "1": return await readTextFile();
+        case "2": return await readJsonFile();
+        case "3": return await readDirectJson();
         default:
-
             console.error("");
-            console.error(
-                "Invalid selection."
-            );
-
+            console.error("Invalid selection.");
             return null;
     }
 }
 
-
-// ============================================================
-// READ TXT FILE
-// ============================================================
-
 async function readTextFile() {
+    const filePath = await askQuestion("Enter TXT file path: ");
+    const resolvedPath = resolveFilePath(filePath);
 
-    const filePath =
-        await askQuestion(
-            "Enter TXT file path: "
-        );
-
-    const resolvedPath =
-        resolveFilePath(filePath);
-
-    if (
-        !fs.existsSync(resolvedPath)
-    ) {
-
+    if (!fs.existsSync(resolvedPath)) {
         console.error("");
-        console.error(
-            "File not found:"
-        );
-
-        console.error(
-            resolvedPath
-        );
-
+        console.error("File not found:");
+        console.error(resolvedPath);
         return null;
     }
 
     console.log("");
-    console.log(
-        `Reading TXT: ${resolvedPath}`
-    );
+    console.log(`Reading TXT: ${resolvedPath}`);
 
-    const raw =
-        fs.readFileSync(
-            resolvedPath,
-            "utf8"
-        );
-
+    const raw = fs.readFileSync(resolvedPath, "utf8");
     return parseJsonText(raw);
 }
-
-
-// ============================================================
-// READ JSON FILE
-// ============================================================
 
 async function readJsonFile() {
+    const filePath = await askQuestion("Enter JSON file path: ");
+    const resolvedPath = resolveFilePath(filePath);
 
-    const filePath =
-        await askQuestion(
-            "Enter JSON file path: "
-        );
-
-    const resolvedPath =
-        resolveFilePath(filePath);
-
-    if (
-        !fs.existsSync(resolvedPath)
-    ) {
-
+    if (!fs.existsSync(resolvedPath)) {
         console.error("");
-        console.error(
-            "File not found:"
-        );
-
-        console.error(
-            resolvedPath
-        );
-
+        console.error("File not found:");
+        console.error(resolvedPath);
         return null;
     }
 
     console.log("");
-    console.log(
-        `Reading JSON: ${resolvedPath}`
-    );
+    console.log(`Reading JSON: ${resolvedPath}`);
 
-    const raw =
-        fs.readFileSync(
-            resolvedPath,
-            "utf8"
-        );
-
+    const raw = fs.readFileSync(resolvedPath, "utf8");
     return parseJsonText(raw);
 }
 
-
-// ============================================================
-// READ DIRECT JSON
-// ============================================================
-
 async function readDirectJson() {
-
     console.log("");
     console.log("Paste your JSON below.");
     console.log("");
-
-    console.log(
-        "Press ENTER on an empty line when finished."
-    );
-
+    console.log("Press ENTER on an empty line when finished.");
     console.log("");
 
     const lines = [];
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
 
-    const rl =
-        readline.createInterface({
-            input: process.stdin,
-            output: process.stdout
+    return new Promise(resolve => {
+        rl.on("line", line => {
+            if (line.trim() === "") {
+                rl.close();
+                const raw = lines.join("\n");
+                resolve(parseJsonText(raw));
+                return;
+            }
+            lines.push(line);
         });
-
-    return new Promise(
-        resolve => {
-
-            rl.on(
-                "line",
-                line => {
-
-                    if (
-                        line.trim() === ""
-                    ) {
-
-                        rl.close();
-
-                        const raw =
-                            lines.join("\n");
-
-                        resolve(
-                            parseJsonText(raw)
-                        );
-
-                        return;
-                    }
-
-                    lines.push(line);
-                }
-            );
-        }
-    );
+    });
 }
 
-
-// ============================================================
-// PARSE JSON
-// ============================================================
-
 function parseJsonText(raw) {
-
-    if (
-        !raw ||
-        !raw.trim()
-    ) {
-
-        console.error(
-            "JSON input is empty."
-        );
-
+    if (!raw || !raw.trim()) {
+        console.error("JSON input is empty.");
         return null;
     }
 
     try {
-
         return JSON.parse(raw);
-
     } catch (error) {
-
         console.error("");
-        console.error(
-            "=============================================="
-        );
-
-        console.error(
-            "INVALID JSON"
-        );
-
-        console.error(
-            "=============================================="
-        );
-
-        console.error(
-            error.message
-        );
-
+        console.error("==============================================");
+        console.error("INVALID JSON");
+        console.error("==============================================");
+        console.error(error.message);
         console.error("");
-
         return null;
     }
 }
 
-
-// ============================================================
-// RESOLVE FILE PATH
-// ============================================================
-
 function resolveFilePath(filePath) {
-
-    let cleanPath =
-        filePath.trim();
-
-    // Remove surrounding quotes.
+    let cleanPath = filePath.trim();
 
     if (
-        (
-            cleanPath.startsWith('"') &&
-            cleanPath.endsWith('"')
-        )
-        ||
-        (
-            cleanPath.startsWith("'") &&
-            cleanPath.endsWith("'")
-        )
+        (cleanPath.startsWith('"') && cleanPath.endsWith('"')) ||
+        (cleanPath.startsWith("'") && cleanPath.endsWith("'"))
     ) {
-
-        cleanPath =
-            cleanPath.substring(
-                1,
-                cleanPath.length - 1
-            );
+        cleanPath = cleanPath.substring(1, cleanPath.length - 1);
     }
 
-    // Absolute path.
-
-    if (
-        path.isAbsolute(cleanPath)
-    ) {
-
+    if (path.isAbsolute(cleanPath)) {
         return cleanPath;
     }
 
-    // Relative path.
-
-    return path.join(
-        __dirname,
-        cleanPath
-    );
+    return path.join(__dirname, cleanPath);
 }
 
-
-// ============================================================
-// ASK QUESTION
-// ============================================================
-
 function askQuestion(question) {
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
 
-    const rl =
-        readline.createInterface({
-            input: process.stdin,
-            output: process.stdout
+    return new Promise(resolve => {
+        rl.question(question, answer => {
+            rl.close();
+            resolve(answer);
         });
-
-    return new Promise(
-        resolve => {
-
-            rl.question(
-                question,
-                answer => {
-
-                    rl.close();
-
-                    resolve(answer);
-                }
-            );
-        }
-    );
+    });
 }
 
 
@@ -784,103 +483,27 @@ function askQuestion(question) {
 // ============================================================
 
 function extractItems(json) {
-
     const result = [];
 
-    // --------------------------------------------------------
-    // FORMAT:
-    //
-    // {
-    //   "rows": [
-    //     {
-    //       "pageNumber": 1,
-    //       "items": [...]
-    //     }
-    //   ]
-    // }
-    // --------------------------------------------------------
-
-    if (
-        json &&
-        Array.isArray(json.rows)
-    ) {
-
-        for (
-            const page of json.rows
-        ) {
-
-            const pageNumber =
-                page.pageNumber ?? 1;
-
-            if (
-                !Array.isArray(page.items)
-            ) {
-
-                continue;
-            }
-
-            for (
-                const item of page.items
-            ) {
-
-                addItem(
-                    result,
-                    item,
-                    pageNumber
-                );
-            }
+    if (json && Array.isArray(json.rows)) {
+        for (const page of json.rows) {
+            const pageNumber = page.pageNumber ?? 1;
+            if (!Array.isArray(page.items)) continue;
+            for (const item of page.items) addItem(result, item, pageNumber);
         }
-
         return result;
     }
 
-    // --------------------------------------------------------
-    // FORMAT:
-    //
-    // [
-    //   {
-    //     text: "...",
-    //     x: 123,
-    //     y: 456
-    //   }
-    // ]
-    // --------------------------------------------------------
-
-    if (
-        Array.isArray(json)
-    ) {
-
-        for (
-            const item of json
-        ) {
-
-            addItem(
-                result,
-                item,
-                1
-            );
-        }
-
+    if (Array.isArray(json)) {
+        for (const item of json) addItem(result, item, 1);
         return result;
     }
 
     return result;
 }
 
-
-// ============================================================
-// ADD ITEM
-// ============================================================
-
-function addItem(
-    result,
-    item,
-    pageNumber
-) {
-
-    if (!item) {
-        return;
-    }
+function addItem(result, item, pageNumber) {
+    if (!item) return;
 
     if (
         item.text === undefined ||
@@ -888,52 +511,24 @@ function addItem(
         item.y === undefined ||
         item.width === undefined ||
         item.height === undefined
-    ) {
+    ) return;
 
-        return;
-    }
-
-    const x =
-        Number(item.x);
-
-    const y =
-        Number(item.y);
-
-    const width =
-        Number(item.width);
-
-    const height =
-        Number(item.height);
+    const x = Number(item.x);
+    const y = Number(item.y);
+    const width = Number(item.width);
+    const height = Number(item.height);
 
     if (
         !Number.isFinite(x) ||
         !Number.isFinite(y) ||
         !Number.isFinite(width) ||
         !Number.isFinite(height)
-    ) {
-
-        return;
-    }
+    ) return;
 
     result.push({
-
-        page:
-            pageNumber,
-
-        text:
-            String(item.text),
-
-        x:
-            x,
-
-        y:
-            y,
-
-        width:
-            width,
-
-        height:
-            height
+        page: pageNumber,
+        text: String(item.text),
+        x, y, width, height
     });
 }
 
@@ -942,70 +537,29 @@ function addItem(
 // CLUSTER COORDINATES
 // ============================================================
 
-function clusterCoordinates(
-    values,
-    tolerance
-) {
-
-    const sorted =
-        [...values].sort(
-            (a, b) => a - b
-        );
-
+function clusterCoordinates(values, tolerance) {
+    const sorted = [...values].sort((a, b) => a - b);
     const centers = [];
     const groups = [];
 
-    for (
-        const value of sorted
-    ) {
-
-        if (
-            centers.length === 0
-        ) {
-
+    for (const value of sorted) {
+        if (centers.length === 0) {
             centers.push(value);
-
-            groups.push([
-                value
-            ]);
-
+            groups.push([value]);
             continue;
         }
 
-        const lastIndex =
-            centers.length - 1;
+        const lastIndex = centers.length - 1;
+        const distance = Math.abs(value - centers[lastIndex]);
 
-        const distance =
-            Math.abs(
-                value -
-                centers[lastIndex]
-            );
-
-        if (
-            distance <= tolerance
-        ) {
-
-            groups[lastIndex].push(
-                value
-            );
-
+        if (distance <= tolerance) {
+            groups[lastIndex].push(value);
             centers[lastIndex] =
-                groups[lastIndex]
-                    .reduce(
-                        (sum, v) =>
-                            sum + v,
-                        0
-                    )
-                /
+                groups[lastIndex].reduce((sum, v) => sum + v, 0) /
                 groups[lastIndex].length;
-
         } else {
-
             centers.push(value);
-
-            groups.push([
-                value
-            ]);
+            groups.push([value]);
         }
     }
 
@@ -1017,38 +571,15 @@ function clusterCoordinates(
 // FIND NEAREST CENTER
 // ============================================================
 
-function nearestIndex(
-    value,
-    centers
-) {
-
+function nearestIndex(value, centers) {
     let bestIndex = 0;
+    let bestDistance = Number.POSITIVE_INFINITY;
 
-    let bestDistance =
-        Number.POSITIVE_INFINITY;
-
-    for (
-        let i = 0;
-        i < centers.length;
-        i++
-    ) {
-
-        const distance =
-            Math.abs(
-                value -
-                centers[i]
-            );
-
-        if (
-            distance <
-            bestDistance
-        ) {
-
-            bestDistance =
-                distance;
-
-            bestIndex =
-                i;
+    for (let i = 0; i < centers.length; i++) {
+        const distance = Math.abs(value - centers[i]);
+        if (distance < bestDistance) {
+            bestDistance = distance;
+            bestIndex = i;
         }
     }
 
@@ -1060,29 +591,12 @@ function nearestIndex(
 // INFO SHEET
 // ============================================================
 
-function createInfoSheet(
-    sheet,
-    items,
-    xCenters,
-    yCenters
-) {
-
+function createInfoSheet(sheet, items, xCenters, yCenters) {
     sheet.mergeCells("A1:B1");
+    sheet.getCell("A1").value = "PDF JSON → Excel Coordinate Reconstruction";
+    sheet.getCell("A1").font = { bold: true, size: 16 };
 
-    sheet.getCell("A1").value =
-        "PDF JSON → Excel Coordinate Reconstruction";
-
-    sheet.getCell("A1").font = {
-        bold: true,
-        size: 16
-    };
-
-    const pageSet =
-        new Set(
-            items.map(
-                item => item.page
-            )
-        );
+    const pageSet = new Set(items.map(item => item.page));
 
     const data = [
         ["Pages", pageSet.size],
@@ -1091,64 +605,24 @@ function createInfoSheet(
         ["Y Coordinate Rows", yCenters.length]
     ];
 
-    data.forEach(
-        (row, index) => {
+    data.forEach((row, index) => {
+        const rowNumber = index + 3;
+        sheet.getCell(rowNumber, 1).value = row[0];
+        sheet.getCell(rowNumber, 2).value = row[1];
+        sheet.getCell(rowNumber, 1).font = { bold: true };
+    });
 
-            const rowNumber =
-                index + 3;
+    sheet.getCell("A8").value = "Processing";
+    sheet.getCell("B8").value = "X coordinates determine Excel columns. Y coordinates determine Excel rows.";
 
-            sheet.getCell(
-                rowNumber,
-                1
-            ).value =
-                row[0];
+    sheet.getCell("A9").value = "Y Direction";
+    sheet.getCell("B9").value = "PDF Y coordinates are reversed to produce top-to-bottom Excel rows.";
 
-            sheet.getCell(
-                rowNumber,
-                2
-            ).value =
-                row[1];
+    sheet.getColumn(1).width = 28;
+    sheet.getColumn(2).width = 100;
 
-            sheet.getCell(
-                rowNumber,
-                1
-            ).font = {
-                bold: true
-            };
-        }
-    );
-
-    sheet.getCell("A8").value =
-        "Processing";
-
-    sheet.getCell("B8").value =
-        "X coordinates determine Excel columns. Y coordinates determine Excel rows.";
-
-    sheet.getCell("A9").value =
-        "Y Direction";
-
-    sheet.getCell("B9").value =
-        "PDF Y coordinates are reversed to produce top-to-bottom Excel rows.";
-
-    sheet.getColumn(1).width =
-        28;
-
-    sheet.getColumn(2).width =
-        100;
-
-    for (
-        let row = 3;
-        row <= 9;
-        row++
-    ) {
-
-        sheet.getCell(
-            row,
-            2
-        ).alignment = {
-            vertical: "top",
-            wrapText: true
-        };
+    for (let row = 3; row <= 9; row++) {
+        sheet.getCell(row, 2).alignment = { vertical: "top", wrapText: true };
     }
 }
 
@@ -1157,178 +631,53 @@ function createInfoSheet(
 // LAYOUT SHEET
 // ============================================================
 
-function createLayoutSheet(
-    sheet,
-    items,
-    xCenters,
-    yCenters
-) {
+function createLayoutSheet(sheet, items, xCenters, yCenters) {
+    const cells = new Map();
 
-    const cells =
-        new Map();
+    for (const item of items) {
+        const row = nearestIndex(item.y, yCenters) + 1;
+        const column = nearestIndex(item.x, xCenters) + 1;
+        const key = `${row}:${column}`;
 
-    for (
-        const item of items
-    ) {
-
-        const row =
-            nearestIndex(
-                item.y,
-                yCenters
-            ) + 1;
-
-        const column =
-            nearestIndex(
-                item.x,
-                xCenters
-            ) + 1;
-
-        const key =
-            `${row}:${column}`;
-
-        if (
-            !cells.has(key)
-        ) {
-
-            cells.set(
-                key,
-                []
-            );
-        }
-
-        cells.get(key).push(
-            item
-        );
+        if (!cells.has(key)) cells.set(key, []);
+        cells.get(key).push(item);
     }
 
-    for (
-        const [key, objects]
-        of cells
-    ) {
+    for (const [key, objects] of cells) {
+        const [row, column] = key.split(":").map(Number);
 
-        const [
-            row,
-            column
-        ] =
-            key
-                .split(":")
-                .map(Number);
+        objects.sort((a, b) => a.x - b.x);
 
-        objects.sort(
-            (a, b) =>
-                a.x - b.x
-        );
+        const text = combineText(objects);
+        const cell = sheet.getCell(row, column);
 
-        const text =
-            combineText(objects);
-
-        const cell =
-            sheet.getCell(
-                row,
-                column
-            );
-
-        cell.value =
-            text;
-
-        cell.alignment = {
-            vertical: "center",
-            horizontal: "left",
-            wrapText: false
-        };
-
+        cell.value = text;
+        cell.alignment = { vertical: "center", horizontal: "left", wrapText: false };
         cell.border = {
-            top: {
-                style: "thin"
-            },
-            left: {
-                style: "thin"
-            },
-            bottom: {
-                style: "thin"
-            },
-            right: {
-                style: "thin"
-            }
+            top: { style: "thin" },
+            left: { style: "thin" },
+            bottom: { style: "thin" },
+            right: { style: "thin" }
         };
     }
 
-    // --------------------------------------------------------
-    // COLUMN WIDTHS
-    // --------------------------------------------------------
-
-    for (
-        let i = 0;
-        i < xCenters.length;
-        i++
-    ) {
-
+    for (let i = 0; i < xCenters.length; i++) {
         let spacing = 12;
-
-        if (
-            i < xCenters.length - 1
-        ) {
-
-            spacing =
-                Math.abs(
-                    xCenters[i + 1] -
-                    xCenters[i]
-                );
+        if (i < xCenters.length - 1) {
+            spacing = Math.abs(xCenters[i + 1] - xCenters[i]);
         }
-
-        sheet.getColumn(
-            i + 1
-        ).width =
-            Math.max(
-                3,
-                Math.min(
-                    32,
-                    spacing / 5
-                )
-            );
+        sheet.getColumn(i + 1).width = Math.max(3, Math.min(32, spacing / 5));
     }
 
-    // --------------------------------------------------------
-    // ROW HEIGHTS
-    // --------------------------------------------------------
-
-    for (
-        let i = 0;
-        i < yCenters.length;
-        i++
-    ) {
-
+    for (let i = 0; i < yCenters.length; i++) {
         let spacing = 12;
-
-        if (
-            i < yCenters.length - 1
-        ) {
-
-            spacing =
-                Math.abs(
-                    yCenters[i] -
-                    yCenters[i + 1]
-                );
+        if (i < yCenters.length - 1) {
+            spacing = Math.abs(yCenters[i] - yCenters[i + 1]);
         }
-
-        sheet.getRow(
-            i + 1
-        ).height =
-            Math.max(
-                12,
-                Math.min(
-                    32,
-                    spacing * 0.8
-                )
-            );
+        sheet.getRow(i + 1).height = Math.max(12, Math.min(32, spacing * 0.8));
     }
 
-    sheet.views = [
-        {
-            state: "frozen",
-            ySplit: 1
-        }
-    ];
+    sheet.views = [{ state: "frozen", ySplit: 1 }];
 }
 
 
@@ -1337,28 +686,12 @@ function createLayoutSheet(
 // ============================================================
 
 function combineText(objects) {
-
     const values = [];
 
-    for (
-        const object of objects
-    ) {
-
-        const text =
-            object.text.trim();
-
-        if (!text) {
-            continue;
-        }
-
-        // Prevent duplicate text
-
-        if (
-            !values.includes(text)
-        ) {
-
-            values.push(text);
-        }
+    for (const object of objects) {
+        const text = object.text.trim();
+        if (!text) continue;
+        if (!values.includes(text)) values.push(text);
     }
 
     return values.join(" ");
@@ -1369,132 +702,43 @@ function combineText(objects) {
 // RAW COORDINATES
 // ============================================================
 
-function createRawSheet(
-    sheet,
-    items,
-    xCenters,
-    yCenters
-) {
-
+function createRawSheet(sheet, items, xCenters, yCenters) {
     const headers = [
-        "Page",
-        "Text",
-        "X",
-        "Y",
-        "Width",
-        "Height",
-        "Excel Row",
-        "Excel Column"
+        "Page", "Text", "X", "Y", "Width", "Height", "Excel Row", "Excel Column"
     ];
 
     sheet.addRow(headers);
 
-    sheet.getRow(1).font = {
-        bold: true
-    };
+    sheet.getRow(1).font = { bold: true };
+    sheet.getRow(1).alignment = { horizontal: "center", vertical: "center" };
 
-    sheet.getRow(1).alignment = {
-        horizontal: "center",
-        vertical: "center"
-    };
-
-    for (
-        const item of items
-    ) {
-
-        const excelRow =
-            nearestIndex(
-                item.y,
-                yCenters
-            ) + 1;
-
-        const excelColumn =
-            nearestIndex(
-                item.x,
-                xCenters
-            ) + 1;
+    for (const item of items) {
+        const excelRow = nearestIndex(item.y, yCenters) + 1;
+        const excelColumn = nearestIndex(item.x, xCenters) + 1;
 
         sheet.addRow([
-            item.page,
-            item.text,
-            item.x,
-            item.y,
-            item.width,
-            item.height,
-            excelRow,
-            excelColumn
+            item.page, item.text, item.x, item.y,
+            item.width, item.height, excelRow, excelColumn
         ]);
     }
 
-    // --------------------------------------------------------
-    // AUTOFILTER
-    // --------------------------------------------------------
-
     if (sheet.rowCount > 1) {
-
         sheet.autoFilter = {
             from: "A1",
             to: `${getExcelColumnName(headers.length)}${sheet.rowCount}`
         };
     }
 
-    // --------------------------------------------------------
-    // FREEZE HEADER
-    // --------------------------------------------------------
+    sheet.views = [{ state: "frozen", ySplit: 1 }];
 
-    sheet.views = [
-        {
-            state: "frozen",
-            ySplit: 1
-        }
-    ];
+    const widths = [10, 50, 16, 16, 16, 16, 14, 16];
+    widths.forEach((width, index) => {
+        sheet.getColumn(index + 1).width = width;
+    });
 
-    // --------------------------------------------------------
-    // COLUMN WIDTHS
-    // --------------------------------------------------------
-
-    const widths = [
-        10,
-        50,
-        16,
-        16,
-        16,
-        16,
-        14,
-        16
-    ];
-
-    widths.forEach(
-        (width, index) => {
-
-            sheet.getColumn(
-                index + 1
-            ).width =
-                width;
-        }
-    );
-
-    // --------------------------------------------------------
-    // NUMBER FORMAT
-    // --------------------------------------------------------
-
-    for (
-        let row = 2;
-        row <= sheet.rowCount;
-        row++
-    ) {
-
-        for (
-            let column = 3;
-            column <= 6;
-            column++
-        ) {
-
-            sheet.getCell(
-                row,
-                column
-            ).numFmt =
-                "0.000";
+    for (let row = 2; row <= sheet.rowCount; row++) {
+        for (let column = 3; column <= 6; column++) {
+            sheet.getCell(row, column).numFmt = "0.000";
         }
     }
 }
@@ -1505,58 +749,16 @@ function createRawSheet(
 // ============================================================
 
 function normalizeHeaderText(text) {
+    let value = String(text || "").trim().toLowerCase();
 
-    let value =
-        String(text || "")
-            .trim()
-            .toLowerCase();
+    value = value.replace(/\s+/g, "");
+    value = value.replace(/\\/g, "/");
+    value = value.replace(/[,.:;'"`]/g, "");
 
-    // Remove whitespace
-    value =
-        value.replace(/\s+/g, "");
-
-    // Normalize slash
-    value =
-        value.replace(/\\/g, "/");
-
-    // Remove punctuation except slash
-    value =
-        value.replace(/[,.:;'"`]/g, "");
-
-    // --------------------------------------------------------
-    // Fix duplicated words caused by PDF extraction
-    //
-    // Example:
-    // SpliceSplice/Dowels
-    //       ↓
-    // Splice/Dowels
-    // --------------------------------------------------------
-
-    value =
-        value.replace(
-            /^splicesplice\//,
-            "splice/"
-        );
-
-    value =
-        value.replace(
-            /^splicesplicedowels$/,
-            "splicedowels"
-        );
-
-    // Arrangement Type
-    value =
-        value.replace(
-            /^arrangementarrangementtype$/,
-            "arrangementtype"
-        );
-
-    // Refer To 2D Detail variations
-    value =
-        value.replace(
-            /^refertorefer2ddetail$/,
-            "refer2ddetail"
-        );
+    value = value.replace(/^splicesplice\//, "splice/");
+    value = value.replace(/^splicesplicedowels$/, "splicedowels");
+    value = value.replace(/^arrangementarrangementtype$/, "arrangementtype");
+    value = value.replace(/^refertorefer2ddetail$/, "refer2ddetail");
 
     return value;
 }
@@ -1567,100 +769,23 @@ function normalizeHeaderText(text) {
 // ============================================================
 
 const headerAliases = {
-
-    "DetailMark": [
-        "DetailMark",
-        "Detail Mark",
-        "Mark",
-        "mark"
-    ],
-
-    "DetailStartStorey": [
-        "DetailStartStorey",
-        "Detail Start Storey",
-        "DetailStartStorey"
-    ],
-
-    "DetailEndstorey": [
-        "DetailEndstorey",
-        "DetailEndStorey",
-        "Detail End Storey"
-    ],
-
-    "MaterialGrade": [
-        "MaterialGrade",
-        "Material Grade"
-    ],
-
-    "Breadth": [
-        "Breadth"
-    ],
-
-    "Length": [
-        "Length"
-    ],
-
-    "Width": [
-        "Width"
-    ],
-
-    "Thickness": [
-        "Thickness"
-    ],
-
-    "MainRebar": [
-        "MainRebar",
-        "Main Rebar",
-        "Length"
-    ],
-
-    "VerticalRebar": [
-        "VerticalRebar",
-        "Vertical Rebar",
-        "V-Rebar",
-        "V Rebar"
-    ],
-
-    "HorizontalRebar": [
-        "HorizontalRebar",
-        "Horizontal Rebar",
-        "H-Rebar",
-        "H Rebar"
-    ],
-
-    "Stirrups": [
-        "Stirrups",
-        "Thickness"
-    ],
-
-    "ConstructionMethod": [
-        "ConstructionMethod",
-        "Construction Method",
-        "ArrangementType"
-    ],
-
-    "ArrangementType": [
-        "ArrangementType",
-        "Arrangement Type"
-    ],
-
-    "Splice/Dowels": [
-        "Splice/Dowels",
-        "Splice / Dowels",
-        "SpliceDowels",
-        "Splice Dowels"
-    ],
-
-    "Remark": [
-        "Remark"
-    ],
-
-    "ReferTo2DDetail": [
-        "ReferTo2DDetail",
-        "Refer To 2D Detail",
-        "ReferTo2D Details",
-        "Refer To 2D Details"
-    ]
+    "DetailMark": ["DetailMark", "Detail Mark", "Mark", "mark"],
+    "DetailStartStorey": ["DetailStartStorey", "Detail Start Storey"],
+    "DetailEndstorey": ["DetailEndstorey", "DetailEndStorey", "Detail End Storey"],
+    "MaterialGrade": ["MaterialGrade", "Material Grade"],
+    "Breadth": ["Breadth"],
+    "Length": ["Length"],
+    "Width": ["Width"],
+    "Thickness": ["Thickness"],
+    "MainRebar": ["MainRebar", "Main Rebar", "Length"],
+    "VerticalRebar": ["VerticalRebar", "Vertical Rebar", "V-Rebar", "V Rebar"],
+    "HorizontalRebar": ["HorizontalRebar", "Horizontal Rebar", "H-Rebar", "H Rebar"],
+    "Stirrups": ["Stirrups", "Thickness"],
+    "ConstructionMethod": ["ConstructionMethod", "Construction Method", "ArrangementType"],
+    "ArrangementType": ["ArrangementType", "Arrangement Type"],
+    "Splice/Dowels": ["Splice/Dowels", "Splice / Dowels", "SpliceDowels", "Splice Dowels"],
+    "Remark": ["Remark"],
+    "ReferTo2DDetail": ["ReferTo2DDetail", "Refer To 2D Detail", "ReferTo2D Details", "Refer To 2D Details"]
 };
 
 
@@ -1668,488 +793,149 @@ const headerAliases = {
 // FIND HEADER MATCHES
 // ============================================================
 
-function findHeaderMatches(
-    items,
-    headerName
-) {
+function findHeaderMatches(items, headerName) {
+    const aliases = headerAliases[headerName] || [headerName];
 
-    const aliases =
-        headerAliases[headerName] ||
-        [headerName];
+    const normalizedAliases = aliases.map(alias => normalizeHeaderText(alias));
 
-    const normalizedAliases =
-        aliases.map(
-            alias =>
-                normalizeHeaderText(alias)
-        );
-
-    return items.filter(
-        item => {
-
-            const text =
-                normalizeHeaderText(
-                    item.text
-                );
-
-            return normalizedAliases.includes(
-                text
-            );
-        }
-    );
+    return items.filter(item => {
+        const text = normalizeHeaderText(item.text);
+        return normalizedAliases.includes(text);
+    });
 }
+
 
 // ============================================================
 // COLUMN SCHEDULE
 // ============================================================
 
-function createScheduleSheet(
-    sheet,
-    items
-) {
+function createScheduleSheet(sheet, items) {
 
-    // --------------------------------------------------------
-    // ALL SCHEDULE HEADERS
-    // --------------------------------------------------------
-
-    const headerNames = [
-        "DetailMark",
-        "DetailStartStorey",
-        "DetailEndstorey",
-        "MaterialGrade",
-        "Breadth",
-        "Length",
-        "Width",
-        "Thickness",
-        "MainRebar",
-        "VerticalRebar",
-        "HorizontalRebar",
-        "Stirrups",
-        "ArrangementType",
-        "Splice/Dowels",
-        "Remark",
-        "ReferTo2DDetail"
-    ];
+    // We always match against internal keys on the PDF
+    const headerKeys = LAYOUT_HEADER_KEYS;
+    const headerLabels = LAYOUT_HEADER_LABELS;
 
     const foundHeaders = [];
 
-    // --------------------------------------------------------
-    // FIND HEADERS
-    // --------------------------------------------------------
+    for (const headerKey of headerKeys) {
+        const matches = findHeaderMatches(items, headerKey);
 
-    for (
-        const headerName
-        of headerNames
-    ) {
-
-        const matches =
-            findHeaderMatches(
-                items,
-                headerName
+        if (matches.length > 0) {
+            const selected = matches.reduce((best, current) =>
+                current.y > best.y ? current : best
             );
 
-        if (
-            matches.length > 0
-        ) {
-
-            // ------------------------------------------------
-            // Select the upper-most occurrence.
-            // In PDF coordinates, larger Y is higher.
-            // ------------------------------------------------
-
-            const selected =
-                matches.reduce(
-                    (best, current) =>
-                        current.y > best.y
-                            ? current
-                            : best
-                );
-
             foundHeaders.push({
-
-                name:
-                    headerName,
-
-                x:
-                    selected.x,
-
-                y:
-                    selected.y,
-
-                width:
-                    selected.width,
-
-                height:
-                    selected.height,
-
-                text:
-                    selected.text
+                key: headerKey,
+                label: headerLabels[headerKeys.indexOf(headerKey)],
+                x: selected.x,
+                y: selected.y,
+                width: selected.width,
+                height: selected.height,
+                text: selected.text
             });
         }
     }
 
-    // --------------------------------------------------------
-    // DEBUG HEADER INFORMATION
-    // --------------------------------------------------------
-
     console.log("");
-    console.log(
-        "Detected schedule headers:"
-    );
-
-    if (
-        foundHeaders.length === 0
-    ) {
-
-        console.log(
-            "  NONE"
-        );
-
+    console.log("Detected schedule headers:");
+    if (foundHeaders.length === 0) {
+        console.log("  NONE");
     } else {
-
-        foundHeaders.forEach(
-            header => {
-
-                console.log(
-                    `  ${header.name} -> X=${header.x}, Y=${header.y}, text="${header.text}"`
-                );
-            }
-        );
+        foundHeaders.forEach(header => {
+            console.log(`  ${header.key} -> X=${header.x}, Y=${header.y}, text="${header.text}"`);
+        });
     }
-
     console.log("");
 
-    // --------------------------------------------------------
-    // NO HEADERS
-    // --------------------------------------------------------
-
-    if (
-        foundHeaders.length === 0
-    ) {
-
-        sheet.getCell(
-            "A1"
-        ).value =
-            "No schedule headers detected.";
-
+    if (foundHeaders.length === 0) {
+        sheet.getCell("A1").value = "No schedule headers detected.";
         return;
     }
 
-    // --------------------------------------------------------
-    // SORT HEADERS LEFT TO RIGHT
-    // --------------------------------------------------------
+    foundHeaders.sort((a, b) => a.x - b.x);
 
-    foundHeaders.sort(
-        (a, b) =>
-            a.x - b.x
-    );
-
-    // --------------------------------------------------------
-    // WRITE HEADERS
-    // --------------------------------------------------------
-
-    foundHeaders.forEach(
-        (header, index) => {
-
-            const cell =
-                sheet.getCell(
-                    1,
-                    index + 1
-                );
-
-            cell.value =
-                header.name;
-
-            cell.font = {
-                bold: true
-            };
-
-            cell.alignment = {
-                horizontal: "center",
-                vertical: "center",
-                wrapText: true
-            };
-
-            cell.border = {
-                top: {
-                    style: "thin"
-                },
-                left: {
-                    style: "thin"
-                },
-                bottom: {
-                    style: "thin"
-                },
-                right: {
-                    style: "thin"
-                }
-            };
-        }
-    );
-
-    sheet.getRow(1).height =
-        30;
-
-    // --------------------------------------------------------
-    // HEADER Y
-    // --------------------------------------------------------
-
-    const headerY =
-        Math.max(
-            ...foundHeaders.map(
-                h => h.y
-            )
-        );
-
-    // --------------------------------------------------------
-    // FILTER SCHEDULE ITEMS
-    // --------------------------------------------------------
-
-    const scheduleItems =
-        items.filter(
-            item => {
-
-                // Items below the header
-                // in PDF coordinate direction.
-
-                if (
-                    item.y >
-                    headerY + 2
-                ) {
-
-                    return false;
-                }
-
-                // Limit to schedule area.
-
-                if (
-                    item.x < 60 ||
-                    item.x > 800
-                ) {
-
-                    return false;
-                }
-
-                return true;
-            }
-        );
-
-    console.log("");
-    console.log("Schedule items:");
-    console.log("----------------------------------------------");
-
-    scheduleItems.forEach(item => {
-
-        const column =
-            findScheduleColumn(
-                item.x,
-                foundHeaders
-            );
-
-        const header =
-            foundHeaders[column - 1];
-
-        console.log(
-            `X=${item.x.toFixed(2)} ` +
-            `Y=${item.y.toFixed(2)} ` +
-            `COL=${column} ` +
-            `HEADER=${header ? header.name : "NONE"} ` +
-            `TEXT="${item.text}"`
-        );
+    foundHeaders.forEach((header, index) => {
+        const cell = sheet.getCell(1, index + 1);
+        cell.value = header.label;
+        cell.font = { bold: true };
+        cell.alignment = { horizontal: "center", vertical: "center", wrapText: true };
+        cell.border = {
+            top: { style: "thin" },
+            left: { style: "thin" },
+            bottom: { style: "thin" },
+            right: { style: "thin" }
+        };
     });
 
-    console.log("----------------------------------------------");
+    sheet.getRow(1).height = 30;
 
-    // --------------------------------------------------------
-    // SCHEDULE Y ROWS
-    // --------------------------------------------------------
+    const headerY = Math.max(...foundHeaders.map(h => h.y));
 
-    const yValues =
-        scheduleItems.map(
-            item => item.y
-        );
+    const scheduleItems = items.filter(item => {
+        if (item.y > headerY + 2) return false;
+        if (item.x < 60 || item.x > 800) return false;
+        return true;
+    });
 
-    if (
-        yValues.length === 0
-    ) {
+    const yValues = scheduleItems.map(item => item.y);
 
-        console.log(
-            "No schedule data rows detected."
-        );
-
+    if (yValues.length === 0) {
+        console.log("No schedule data rows detected.");
         return;
     }
 
-    const scheduleRows =
-        clusterCoordinates(
-            yValues,
-            Y_TOLERANCE
-        )
-            .sort(
-                (a, b) => b - a
-            );
+    const scheduleRows = clusterCoordinates(yValues, Y_TOLERANCE).sort((a, b) => b - a);
 
-    // --------------------------------------------------------
-    // CREATE SCHEDULE CELLS
-    // --------------------------------------------------------
+    const scheduleCells = new Map();
 
-    const scheduleCells =
-        new Map();
+    for (const item of scheduleItems) {
+        const row = nearestIndex(item.y, scheduleRows) + 2;
+        const column = findScheduleColumn(item.x, foundHeaders);
 
-    for (
-        const item of scheduleItems
-    ) {
+        if (column < 1) continue;
 
-        const row =
-            nearestIndex(
-                item.y,
-                scheduleRows
-            ) + 2;
-
-        const column =
-            findScheduleColumn(
-                item.x,
-                foundHeaders
-            );
-
-        if (
-            column < 1
-        ) {
-
-            continue;
-        }
-
-        const key =
-            `${row}:${column}`;
-
-        if (
-            !scheduleCells.has(key)
-        ) {
-
-            scheduleCells.set(
-                key,
-                []
-            );
-        }
-
-        scheduleCells
-            .get(key)
-            .push(item);
+        const key = `${row}:${column}`;
+        if (!scheduleCells.has(key)) scheduleCells.set(key, []);
+        scheduleCells.get(key).push(item);
     }
 
-    // --------------------------------------------------------
-    // WRITE SCHEDULE CELLS
-    // --------------------------------------------------------
+    for (const [key, objects] of scheduleCells) {
+        const [row, column] = key.split(":").map(Number);
 
-    for (
-        const [key, objects]
-        of scheduleCells
-    ) {
+        objects.sort((a, b) => a.x - b.x);
 
-        const [
-            row,
-            column
-        ] =
-            key
-                .split(":")
-                .map(Number);
+        const text = combineText(objects);
+        const cell = sheet.getCell(row, column);
 
-        objects.sort(
-            (a, b) =>
-                a.x - b.x
-        );
-
-        const text =
-            combineText(objects);
-
-        const cell =
-            sheet.getCell(
-                row,
-                column
-            );
-
-        cell.value =
-            text;
-
-        cell.alignment = {
-            vertical: "center",
-            horizontal: "center",
-            wrapText: true
-        };
-
+        cell.value = text;
+        cell.alignment = { vertical: "center", horizontal: "center", wrapText: true };
         cell.border = {
-            top: {
-                style: "thin"
-            },
-            left: {
-                style: "thin"
-            },
-            bottom: {
-                style: "thin"
-            },
-            right: {
-                style: "thin"
-            }
+            top: { style: "thin" },
+            left: { style: "thin" },
+            bottom: { style: "thin" },
+            right: { style: "thin" }
         };
     }
 
-    // --------------------------------------------------------
-    // COLUMN WIDTHS
-    // --------------------------------------------------------
+    const widths = {
+        DetailMark: 25, DetailStartStorey: 20, DetailEndstorey: 20,
+        MaterialGrade: 16, Thickness: 14, Length: 14, Width: 14, Breadth: 14,
+        MainRebar: 20, VerticalRebar: 20, HorizontalRebar: 20, Stirrups: 20,
+        ConstructionMethod: 20, ArrangementType: 20, "Splice/Dowels": 18,
+        Remark: 22, ReferTo2DDetail: 22
+    };
 
-    const widths = [
-        25, // DetailMark
-        22, // DetailStartStorey
-        22, // DetailEndstorey
-        18, // MaterialGrade
-        14, // Breadth
-        14, // Length
-        14, // Width
-        14, // Thickness
-        20, // MainRebar
-        20, // VerticalRebar
-        20, // HorizontalRebar
-        20, // Stirrups
-        24, // ArrangementType
-        24, // Splice/Dowels
-        30, // Remark
-        24  // ReferTo2DDetail
-    ];
-
-    for (
-        let i = 0;
-        i < foundHeaders.length;
-        i++
-    ) {
-
-        sheet.getColumn(
-            i + 1
-        ).width =
-            widths[i] || 15;
+    for (let i = 0; i < foundHeaders.length; i++) {
+        sheet.getColumn(i + 1).width = widths[foundHeaders[i].key] || 15;
     }
 
-    // --------------------------------------------------------
-    // FREEZE HEADER
-    // --------------------------------------------------------
+    sheet.views = [{ state: "frozen", ySplit: 1 }];
 
-    sheet.views = [
-        {
-            state: "frozen",
-            ySplit: 1
-        }
-    ];
-
-    // --------------------------------------------------------
-    // AUTOFILTER
-    // --------------------------------------------------------
-
-    if (
-        sheet.rowCount > 1
-    ) {
-
+    if (sheet.rowCount > 1) {
         sheet.autoFilter = {
             from: "A1",
-            to:
-                `${getExcelColumnName(foundHeaders.length)}${sheet.rowCount}`
+            to: `${getExcelColumnName(foundHeaders.length)}${sheet.rowCount}`
         };
     }
 }
@@ -2159,145 +945,43 @@ function createScheduleSheet(
 // FIND SCHEDULE COLUMN
 // ============================================================
 
-function findScheduleColumn(
-    x,
-    headers
-) {
+function findScheduleColumn(x, headers) {
+    if (!headers || headers.length === 0) return -1;
 
-    if (
-        !headers ||
-        headers.length === 0
-    ) {
-        return -1;
+    for (let i = 0; i < headers.length - 1; i++) {
+        const current = headers[i];
+        const next = headers[i + 1];
+
+        const currentCenter = current.x + (Number(current.width || 0) / 2);
+        const nextCenter = next.x + (Number(next.width || 0) / 2);
+        const boundary = (currentCenter + nextCenter) / 2;
+
+        if (x < boundary) return i + 1;
     }
-
-    // --------------------------------------------------------
-    // Headers are already sorted left -> right.
-    // Determine the boundary between each pair of columns.
-    // --------------------------------------------------------
-
-    for (
-        let i = 0;
-        i < headers.length - 1;
-        i++
-    ) {
-
-        const current =
-            headers[i];
-
-        const next =
-            headers[i + 1];
-
-        const currentCenter =
-            current.x +
-            (
-                Number(current.width || 0) /
-                2
-            );
-
-        const nextCenter =
-            next.x +
-            (
-                Number(next.width || 0) /
-                2
-            );
-
-        const boundary =
-            (
-                currentCenter +
-                nextCenter
-            ) / 2;
-
-        if (
-            x < boundary
-        ) {
-
-            return i + 1;
-        }
-    }
-
-    // Everything to the right of the
-    // last boundary belongs to last column.
 
     return headers.length;
 }
 
+
 // ============================================================
-// DATA SHEET - WITH MULTI-LEVEL ROW FILTERING
+// DATA SHEET
 // ============================================================
 
-function createDataSheet(
-    sheet,
-    items,
-    workbook
-) {
-    // --------------------------------------------------------
-    // Define headers in the exact order they appear in your data
-    // --------------------------------------------------------
-    const headerNames = [
-        "DetailMark",
-        "DetailStartStorey",
-        "DetailEndstorey",
-        "MaterialGrade",
-        "Width",
-        "Breadth",
-        "MainRebar",
-        "VerticalRebar",
-        "HorizontalRebar",
-        "Stirrups",
-        "ConstructionMethod",
-        "ArrangementType",
-        "Splice/Dowels",
-        "Remark"
-    ];
+function createDataSheet(sheet, items, workbook) {
 
-    // --------------------------------------------------------
-    // Update header aliases
-    // --------------------------------------------------------
-    headerAliases["MainRebar"] = [
-        "MainRebar",
-        "Main Rebar",
-        "Length"
-    ];
+    // Use internal keys for PDF header matching
+    const headerKeys = LAYOUT_HEADER_KEYS;
 
-    headerAliases["VerticalRebar"] = [
-        "VerticalRebar",
-        "Vertical Rebar",
-        "V-Rebar",
-        "V Rebar"
-    ];
-
-    headerAliases["HorizontalRebar"] = [
-        "HorizontalRebar",
-        "Horizontal Rebar",
-        "H-Rebar",
-        "H Rebar"
-    ];
-
-    headerAliases["Stirrups"] = [
-        "Stirrups",
-        "Thickness"
-    ];
-
-    headerAliases["ConstructionMethod"] = [
-        "ConstructionMethod",
-        "Construction Method",
-        "ArrangementType"
-    ];
-
-    // --------------------------------------------------------
-    // Find headers in the data
-    // --------------------------------------------------------
     let foundHeaders = [];
 
-    for (const headerName of headerNames) {
-        const matches = findHeaderMatches(items, headerName);
+    for (const headerKey of headerKeys) {
+        const matches = findHeaderMatches(items, headerKey);
         if (matches.length > 0) {
             const selected = matches.reduce((best, current) =>
                 current.y > best.y ? current : best
             );
             foundHeaders.push({
-                name: headerName,
+                key: headerKey,
                 x: selected.x,
                 y: selected.y,
                 text: selected.text
@@ -2305,8 +989,8 @@ function createDataSheet(
         }
     }
 
-    // If not all headers found, use position-based detection
-    if (foundHeaders.length < 8) {
+    // Position-based fallback
+    if (foundHeaders.length < headerKeys.length) {
         console.log("Not all headers found. Using position-based detection...");
 
         const headerY = Math.max(...items.map(item => item.y));
@@ -2315,9 +999,7 @@ function createDataSheet(
         const xGroups = new Map();
         for (const item of headerItems) {
             const xKey = Math.round(item.x / 2) * 2;
-            if (!xGroups.has(xKey)) {
-                xGroups.set(xKey, []);
-            }
+            if (!xGroups.has(xKey)) xGroups.set(xKey, []);
             xGroups.get(xKey).push(item);
         }
 
@@ -2331,7 +1013,7 @@ function createDataSheet(
             let matchedHeader = null;
             const normalizedText = normalizeHeaderText(text);
 
-            for (const h of headerNames) {
+            for (const h of headerKeys) {
                 const aliases = headerAliases[h] || [h];
                 for (const alias of aliases) {
                     const normalizedAlias = normalizeHeaderText(alias);
@@ -2346,15 +1028,13 @@ function createDataSheet(
 
             if (!matchedHeader) {
                 const idx = detectedHeaders.length;
-                if (idx < headerNames.length) {
-                    matchedHeader = headerNames[idx];
-                }
+                if (idx < headerKeys.length) matchedHeader = headerKeys[idx];
             }
 
             if (matchedHeader) {
                 const avgX = itemsAtX.reduce((sum, i) => sum + i.x, 0) / itemsAtX.length;
                 detectedHeaders.push({
-                    name: matchedHeader,
+                    key: matchedHeader,
                     x: avgX,
                     y: headerY,
                     text: text
@@ -2367,7 +1047,6 @@ function createDataSheet(
         }
     }
 
-    // Sort headers by X position
     foundHeaders.sort((a, b) => a.x - b.x);
 
     if (foundHeaders.length === 0) {
@@ -2376,21 +1055,17 @@ function createDataSheet(
         const xSorted = [...xCenters].sort((a, b) => a - b);
 
         xSorted.forEach((x, index) => {
-            const headerName = headerNames[index] || `Column${index + 1}`;
-            foundHeaders.push({
-                name: headerName,
-                x: x,
-                y: 0,
-                text: headerName
-            });
+            const headerKey = headerKeys[index] || `Column${index + 1}`;
+            foundHeaders.push({ key: headerKey, x: x, y: 0, text: headerKey });
         });
     }
 
-    const headerY = foundHeaders.length > 0 ? Math.max(...foundHeaders.map(h => h.y)) : 0;
+    const xSortedHeaders = [...foundHeaders].sort((a, b) => a.x - b.x);
 
-    // --------------------------------------------------------
-    // Filter schedule items
-    // --------------------------------------------------------
+    const headerY = xSortedHeaders.length > 0
+        ? Math.max(...xSortedHeaders.map(h => h.y))
+        : 0;
+
     const scheduleItems = items.filter(item => {
         if (item.y > headerY + 2) return false;
         if (item.x < 60 || item.x > 800) return false;
@@ -2402,39 +1077,29 @@ function createDataSheet(
         return [];
     }
 
-    // --------------------------------------------------------
-    // Group items by Y position (rows)
-    // --------------------------------------------------------
     const yValues = scheduleItems.map(item => item.y);
-    const scheduleRows = clusterCoordinates(yValues, Y_TOLERANCE)
-        .sort((a, b) => b - a);
+    const scheduleRows = clusterCoordinates(yValues, Y_TOLERANCE).sort((a, b) => b - a);
 
     console.log("");
-    console.log("Found headers with positions:");
-    foundHeaders.forEach((h, i) => {
-        console.log(`  ${i + 1}. ${h.name} -> X=${h.x.toFixed(2)}`);
+    console.log("Found headers with positions (X-sorted):");
+    xSortedHeaders.forEach((h, i) => {
+        console.log(`  ${i + 1}. ${h.key} -> X=${h.x.toFixed(2)}`);
     });
     console.log("");
 
-    // --------------------------------------------------------
-    // Build structured data - group by rows first
-    // --------------------------------------------------------
     const rowGroups = new Map();
     for (const item of scheduleItems) {
         const row = nearestIndex(item.y, scheduleRows);
-        const col = findScheduleColumn(item.x, foundHeaders);
+        const col = findScheduleColumn(item.x, xSortedHeaders);
         if (col < 1) continue;
 
         const key = `${row}:${col}`;
-        if (!rowGroups.has(key)) {
-            rowGroups.set(key, []);
-        }
+        if (!rowGroups.has(key)) rowGroups.set(key, []);
         rowGroups.get(key).push(item);
     }
 
     const sortedRows = [...scheduleRows].sort((a, b) => b - a);
 
-    // First pass: collect all rows with their data
     const allRows = [];
     let currentDetailMark = "";
 
@@ -2446,32 +1111,28 @@ function createDataSheet(
             const [r, c] = key.split(":").map(Number);
             if (r === rowIndex + 1) {
                 const text = combineText(objects);
-                const header = foundHeaders[c - 1];
-                if (header) {
-                    rowData.set(header.name, text);
-                }
+                const header = xSortedHeaders[c - 1];
+                if (header) rowData.set(header.key, text);
             }
         }
 
-        // Check if this row contains a detail mark (starts with 43C or 43P)
-        const detailMarkValue = rowData.get("DetailMark") || rowData.get("Mark") || "";
+        const detailMarkValue =
+            rowData.get("DetailMark") ||
+            rowData.get("Mark") ||
+            "";
         const isDetailMarkRow = /^43[C|P]/.test(detailMarkValue);
 
         if (isDetailMarkRow) {
-            // This is a detail mark row - update current detail mark
             currentDetailMark = detailMarkValue;
             console.log(`Detail mark found: "${currentDetailMark}" at row ${rowIndex + 1}`);
         } else if (currentDetailMark) {
-            // This is a data row - store it with the current detail mark
-            // Check if it has any meaningful data
             let hasData = false;
-            for (const [key, value] of rowData) {
+            for (const [, value] of rowData) {
                 if (value && value.trim() && value.trim() !== "A") {
                     hasData = true;
                     break;
                 }
             }
-
             if (hasData) {
                 allRows.push({
                     detail_mark: currentDetailMark,
@@ -2482,9 +1143,6 @@ function createDataSheet(
         }
     }
 
-    // --------------------------------------------------------
-    // Process each row with extraction logic
-    // --------------------------------------------------------
     const processedRows = [];
 
     for (const row of allRows) {
@@ -2493,8 +1151,8 @@ function createDataSheet(
         const currentDetailMark = row.detail_mark;
 
         let materialGrade = rowData.get("MaterialGrade") || "";
-        let width = rowData.get("Width") || "";
-        let breadth = rowData.get("Breadth") || "";
+        let width = rowData.get("Width") || rowData.get("Thickness") || "";
+        let breadth = rowData.get("Breadth") || rowData.get("Length") || "";
         let mainRebar = rowData.get("MainRebar") || rowData.get("Length") || "";
         let verticalRebar = rowData.get("VerticalRebar") || "";
         let horizontalRebar = rowData.get("HorizontalRebar") || "";
@@ -2506,77 +1164,59 @@ function createDataSheet(
         let startStorey = rowData.get("DetailStartStorey") || "";
         let endStorey = rowData.get("DetailEndstorey") || "";
 
-        // ============================================================
-        // FILTER 1: Remove row with only "A"
-        // ============================================================
+        // FILTER 1
         let hasOtherData = false;
-        for (const [key, value] of rowData) {
+        for (const [, value] of rowData) {
             const trimmedValue = value.trim();
             if (trimmedValue && trimmedValue !== "A") {
                 hasOtherData = true;
                 break;
             }
         }
-
         if (!hasOtherData) {
             console.log(`Filter 1: Skipping row ${rowIndex + 1} - only contains "A" values`);
             continue;
         }
 
-        // ============================================================
-        // FILTER 2: Remove row with first 3 columns empty
-        // ============================================================
-        const firstThreeHeaders = foundHeaders.slice(0, 3).map(h => h.name);
+        // FILTER 2
+        const firstThreeKeys = xSortedHeaders.slice(0, 3).map(h => h.key);
         let firstThreeEmpty = true;
-
-        for (const headerName of firstThreeHeaders) {
-            const value = rowData.get(headerName) || "";
+        for (const headerKey of firstThreeKeys) {
+            const value = rowData.get(headerKey) || "";
             if (value.trim() !== "") {
                 firstThreeEmpty = false;
                 break;
             }
         }
-
         if (firstThreeEmpty) {
             console.log(`Filter 2: Skipping row ${rowIndex + 1} - first 3 cells are empty`);
             continue;
         }
 
-        // ============================================================
-        // FILTER 3: Remove row with columns 2 & 3 empty (DetailStartStorey & DetailEndstorey)
-        // ============================================================
-        const col2Header = foundHeaders.length > 1 ? foundHeaders[1].name : null;
-        const col3Header = foundHeaders.length > 2 ? foundHeaders[2].name : null;
+        // FILTER 3
+        const col2Key = xSortedHeaders.length > 1 ? xSortedHeaders[1].key : null;
+        const col3Key = xSortedHeaders.length > 2 ? xSortedHeaders[2].key : null;
 
         let col2Empty = true;
         let col3Empty = true;
 
-        if (col2Header) {
-            const value = rowData.get(col2Header) || "";
-            if (value.trim() !== "") {
-                col2Empty = false;
-            }
+        if (col2Key) {
+            const value = rowData.get(col2Key) || "";
+            if (value.trim() !== "") col2Empty = false;
         }
-
-        if (col3Header) {
-            const value = rowData.get(col3Header) || "";
-            if (value.trim() !== "") {
-                col3Empty = false;
-            }
+        if (col3Key) {
+            const value = rowData.get(col3Key) || "";
+            if (value.trim() !== "") col3Empty = false;
         }
-
         if (col2Empty && col3Empty) {
             console.log(`Filter 3: Skipping row ${rowIndex + 1} - columns 2 & 3 are empty`);
             continue;
         }
 
-        // Combine all text to detect patterns
         const allText = Array.from(rowData.values()).filter(v => v).join(" ");
         console.log(`Row ${rowIndex + 1} combined: "${allText}"`);
 
-        // ============================================================
-        // EXTRACT ARRANGEMENT TYPE
-        // ============================================================
+        // Arrangement type
         const arrangementPattern = /\b(\d+)-TIER\b/i;
         const arrangementMatch = allText.match(arrangementPattern);
         if (arrangementMatch) {
@@ -2584,27 +1224,17 @@ function createDataSheet(
             console.log(`Found arrangement type: "${arrangementType}"`);
         }
 
-        // ============================================================
-        // EXTRACT SPLICE/DOWELS
-        // ============================================================
+        // Splice/dowels
         const splicePattern = /\b\d+[A-Z]\d+\s*[\(p\)]+\b/gi;
         const spliceMatches = allText.match(splicePattern);
-
         if (spliceMatches && spliceMatches.length > 0) {
             const validSplices = spliceMatches.filter(match => {
                 const cleanMatch = match.replace(/[^A-Z0-9]/g, "");
-                if (mainRebar && mainRebar.replace(/[^A-Z0-9]/g, "") === cleanMatch) {
-                    return false;
-                }
-                if (stirrups && stirrups.includes(cleanMatch)) {
-                    return false;
-                }
-                if (!match.includes("p") && !match.includes("s")) {
-                    return false;
-                }
+                if (mainRebar && mainRebar.replace(/[^A-Z0-9]/g, "") === cleanMatch) return false;
+                if (stirrups && stirrups.includes(cleanMatch)) return false;
+                if (!match.includes("p") && !match.includes("s")) return false;
                 return true;
             });
-
             if (validSplices.length > 0) {
                 spliceDowels = validSplices[0];
                 console.log(`Found splice/dowels: "${spliceDowels}"`);
@@ -2617,9 +1247,7 @@ function createDataSheet(
             if (flexMatches && flexMatches.length > 0) {
                 const validMatches = flexMatches.filter(m => {
                     const cleanMatch = m.replace(/[^A-Z0-9]/g, "");
-                    if (mainRebar && mainRebar.replace(/[^A-Z0-9]/g, "") === cleanMatch) {
-                        return false;
-                    }
+                    if (mainRebar && mainRebar.replace(/[^A-Z0-9]/g, "") === cleanMatch) return false;
                     return true;
                 });
                 if (validMatches.length > 0) {
@@ -2637,31 +1265,21 @@ function createDataSheet(
             }
         }
 
-        // ============================================================
-        // BREADTH EXTRACTION
-        // ============================================================
-        let breadthValue = rowData.get("Breadth") || "";
+        // Breadth extraction
+        let breadthValue = rowData.get("Breadth") || rowData.get("Length") || "";
 
         if (!breadthValue || isNaN(parseFloat(breadthValue))) {
-            console.log(`Breadth column empty or invalid: "${breadthValue}". Extracting from combined text...`);
-
             const allNumbers = allText.match(/\b\d+\b/g);
-            console.log(`All numbers found: ${allNumbers ? allNumbers.join(", ") : "none"}`);
-
             if (allNumbers && allNumbers.length > 0) {
                 const dimensionNumbers = allNumbers.filter(n => {
                     const num = parseInt(n);
                     return num >= 100 && num <= 9999;
                 });
-                console.log(`Dimension numbers: ${dimensionNumbers.join(", ")}`);
-
                 if (dimensionNumbers.length >= 2) {
                     breadthValue = dimensionNumbers[1];
-                    console.log(`Extracted breadth as second dimension: "${breadthValue}"`);
                 } else if (dimensionNumbers.length === 1) {
                     if (width && !isNaN(parseFloat(width))) {
                         breadthValue = dimensionNumbers[0];
-                        console.log(`Using single dimension as breadth: "${breadthValue}"`);
                     }
                 }
             }
@@ -2671,7 +1289,6 @@ function createDataSheet(
                 if (rebarWithBreadth) {
                     breadthValue = rebarWithBreadth[1];
                     mainRebar = rebarWithBreadth[2];
-                    console.log(`Extracted breadth from MainRebar: "${breadthValue}", cleaned mainRebar: "${mainRebar}"`);
                 }
             }
 
@@ -2682,15 +1299,9 @@ function createDataSheet(
                     const firstNum = match[1];
                     const secondNum = match[2];
                     const rebar = match[3];
-
-                    if (!width || isNaN(parseFloat(width))) {
-                        width = firstNum;
-                    }
+                    if (!width || isNaN(parseFloat(width))) width = firstNum;
                     breadthValue = secondNum;
-                    if (!mainRebar) {
-                        mainRebar = rebar;
-                    }
-                    console.log(`Extracted from pattern: Width="${firstNum}", Breadth="${secondNum}", MainRebar="${rebar}"`);
+                    if (!mainRebar) mainRebar = rebar;
                 }
             }
         }
@@ -2700,7 +1311,6 @@ function createDataSheet(
             for (const part of parts) {
                 if (/^\d+$/.test(part) && parseInt(part) >= 100) {
                     breadthValue = part;
-                    console.log(`Cleaned breadth from multi-part: "${breadthValue}"`);
                     break;
                 }
             }
@@ -2712,50 +1322,25 @@ function createDataSheet(
             breadth = "";
         }
 
-        // ============================================================
-        // MAIN REBAR AND STIRRUPS EXTRACTION
-        // ============================================================
-        if (mainRebar && /^\d{3,4}$/.test(mainRebar.trim())) {
-            console.log(`Clearing mainRebar because it contains breadth value: "${mainRebar}"`);
-            mainRebar = "";
-        }
+        // Main rebar and stirrups
+        if (mainRebar && /^\d{3,4}$/.test(mainRebar.trim())) mainRebar = "";
 
         const stirrupsPattern = /\d+[A-Z]\d+-\d+\+\d+[A-Z]\d+-\d+/g;
         const stirrupsMatches = allText.match(stirrupsPattern);
-
         if (stirrupsMatches && stirrupsMatches.length > 0) {
             stirrups = stirrupsMatches[0];
-            console.log(`Found stirrups: "${stirrups}"`);
-        } else {
-            const simpleStirrupsPattern = /\d+[A-Z]\d+-\d+\+\d+[A-Z]\d+-\d+/g;
-            const simpleMatches = allText.match(simpleStirrupsPattern);
-            if (simpleMatches && simpleMatches.length > 0) {
-                stirrups = simpleMatches[0];
-                console.log(`Found stirrups (simple): "${stirrups}"`);
-            }
         }
 
         const mainRebarPattern = /\b\d{1,3}[A-Z]\d{1,3}\b/g;
         const rebarMatches = allText.match(mainRebarPattern);
-
         if (rebarMatches && rebarMatches.length > 0) {
             const potentialRebars = rebarMatches.filter(match => {
-                if (stirrups && stirrups.includes(match)) {
-                    return false;
-                }
-                if (spliceDowels && spliceDowels.includes(match)) {
-                    return false;
-                }
-                if (/^\d+$/.test(match)) {
-                    return false;
-                }
+                if (stirrups && stirrups.includes(match)) return false;
+                if (spliceDowels && spliceDowels.includes(match)) return false;
+                if (/^\d+$/.test(match)) return false;
                 return true;
             });
-
-            if (potentialRebars.length > 0) {
-                mainRebar = potentialRebars[0];
-                console.log(`Found main rebar: "${mainRebar}"`);
-            }
+            if (potentialRebars.length > 0) mainRebar = potentialRebars[0];
         }
 
         if (!mainRebar) {
@@ -2767,53 +1352,38 @@ function createDataSheet(
                     if (spliceDowels && spliceDowels.includes(m)) return false;
                     return true;
                 });
-                if (validMatches.length > 0) {
-                    mainRebar = validMatches[0];
-                    console.log(`Found main rebar (fallback): "${mainRebar}"`);
-                }
+                if (validMatches.length > 0) mainRebar = validMatches[0];
             }
         }
 
         if (mainRebar && /^\d+\s+/.test(mainRebar)) {
             const parts = mainRebar.split(/\s+/);
             for (const part of parts) {
-                if (/[A-Z]/.test(part)) {
-                    mainRebar = part;
-                    console.log(`Cleaned mainRebar: "${mainRebar}"`);
-                    break;
-                }
+                if (/[A-Z]/.test(part)) { mainRebar = part; break; }
             }
         }
 
-        if (mainRebar && /^\d{3,4}$/.test(mainRebar.trim())) {
-            console.log(`Removing breadth value from mainRebar: "${mainRebar}"`);
-            mainRebar = "";
-        }
+        if (mainRebar && /^\d{3,4}$/.test(mainRebar.trim())) mainRebar = "";
 
-        // Split MaterialGrade and Width
         if (materialGrade && /^[A-Z]\d+\/\d+/.test(materialGrade)) {
             const parts = materialGrade.split(/\s+/);
             if (parts.length >= 2) {
                 materialGrade = parts[0];
-                if (parts.length >= 2 && /^\d+$/.test(parts[1])) {
-                    width = parts[1];
-                }
+                if (parts.length >= 2 && /^\d+$/.test(parts[1])) width = parts[1];
             }
         }
 
-        // Clean up values
         materialGrade = materialGrade.replace(/\s+\d+.*$/, "").trim();
         width = width.replace(/\s+.*$/, "").trim();
         breadth = breadth.toString().trim();
 
-        // Debug logging
         console.log(`Row ${rowIndex + 1} final data:`);
         console.log(`  detail_mark: "${currentDetailMark}"`);
         console.log(`  start_storey: "${startStorey}"`);
         console.log(`  end_storey: "${endStorey}"`);
         console.log(`  material_grade: "${materialGrade}"`);
-        console.log(`  width_mm: "${width}"`);
-        console.log(`  breadth_mm: "${breadth}"`);
+        console.log(`  width_mm (Thickness): "${width}"`);
+        console.log(`  breadth_mm (Length): "${breadth}"`);
         console.log(`  main_rebar: "${mainRebar}"`);
         console.log(`  vertical_rebar: "${verticalRebar}"`);
         console.log(`  horizontal_rebar: "${horizontalRebar}"`);
@@ -2823,7 +1393,6 @@ function createDataSheet(
         console.log(`  splice_dowels: "${spliceDowels}"`);
         console.log("---");
 
-        // Build the row object
         const rowObj = {
             detail_mark: currentDetailMark || rowData.get("Mark") || "",
             start_storey: startStorey,
@@ -2850,27 +1419,17 @@ function createDataSheet(
     console.log("");
 
     // --------------------------------------------------------
-    // Write JSON to sheet
+    // Write JSON to Data sheet
     // --------------------------------------------------------
-    const jsonData = {
-        column_schedule: processedRows
-    };
-
+    const jsonData = { column_schedule: processedRows };
     const jsonString = JSON.stringify(jsonData, null, 2);
     const lines = jsonString.split('\n');
 
     lines.forEach((line, index) => {
         const cell = sheet.getCell(index + 1, 1);
         cell.value = line;
-        cell.alignment = {
-            vertical: "top",
-            horizontal: "left",
-            wrapText: false
-        };
-        cell.font = {
-            name: "Courier New",
-            size: 10
-        };
+        cell.alignment = { vertical: "top", horizontal: "left", wrapText: false };
+        cell.font = { name: "Courier New", size: 10 };
     });
 
     sheet.getColumn(1).width = 80;
@@ -2881,36 +1440,15 @@ function createDataSheet(
     sheet.getCell(summaryRow + 2, 1).value = "==========================================";
 
     // --------------------------------------------------------
-    // Add Data Table sheet - each row has detail mark
+    // Data Table sheet - headers and body driven by COLUMNS
     // --------------------------------------------------------
     const dataTableSheet = workbook.addWorksheet("Data Table");
 
-    const tableHeaders = [
-        "Detail Mark",
-        "Start Storey",
-        "End Storey",
-        "Material Grade",
-        "Width (mm)",
-        "Breadth (mm)",
-        "Main Rebar",
-        "Vertical Rebar",
-        "Horizontal Rebar",
-        "Stirrups",
-        "Construction Method",
-        "Arrangement Type",
-        "Splice/Dowels",
-        "Remark",
-        "Refer To 2D Detail"
-    ];
-
-    tableHeaders.forEach((header, index) => {
+    LAYOUT_HEADER_LABELS.forEach((label, index) => {
         const cell = dataTableSheet.getCell(1, index + 1);
-        cell.value = header;
+        cell.value = label;
         cell.font = { bold: true };
-        cell.alignment = {
-            horizontal: "center",
-            vertical: "center"
-        };
+        cell.alignment = { horizontal: "center", vertical: "center" };
         cell.border = {
             top: { style: "medium" },
             left: { style: "medium" },
@@ -2921,31 +1459,11 @@ function createDataSheet(
 
     let rowNum = 2;
     for (const row of processedRows) {
-        const dataRow = [
-            row.detail_mark || "",
-            row.start_storey,
-            row.end_storey,
-            row.material_grade,
-            row.width_mm,
-            row.breadth_mm,
-            row.main_rebar,
-            row.vertical_rebar,
-            row.horizontal_rebar,
-            row.stirrups,
-            row.construction_method,
-            row.arrangement_type,
-            row.splice_dowels,
-            row.remark,
-            row.refer_to_2d_detail
-        ];
-
-        dataRow.forEach((value, index) => {
-            const cell = dataTableSheet.getCell(rowNum, index + 1);
+        COLUMNS.forEach((col, colIndex) => {
+            const value = row[col.prop];
+            const cell = dataTableSheet.getCell(rowNum, colIndex + 1);
             cell.value = value !== null && value !== undefined ? value : "";
-            cell.alignment = {
-                horizontal: "center",
-                vertical: "center"
-            };
+            cell.alignment = { horizontal: "center", vertical: "center" };
             cell.border = {
                 top: { style: "thin" },
                 left: { style: "thin" },
@@ -2956,20 +1474,24 @@ function createDataSheet(
         rowNum++;
     }
 
-    const tableWidths = [25, 18, 18, 16, 14, 14, 20, 20, 20, 20, 20, 16, 16, 20, 20];
-    tableWidths.forEach((width, index) => {
-        dataTableSheet.getColumn(index + 1).width = width;
+    const layoutWidths = {
+        DetailMark: 25, DetailStartStorey: 20, DetailEndstorey: 20,
+        MaterialGrade: 16, Thickness: 14, Length: 14,
+        MainRebar: 20, VerticalRebar: 20, HorizontalRebar: 20, Stirrups: 20,
+        ConstructionMethod: 20, ArrangementType: 18, "Splice/Dowels": 18,
+        Remark: 22, ReferTo2DDetail: 22
+    };
+
+    COLUMNS.forEach((col, index) => {
+        dataTableSheet.getColumn(index + 1).width = layoutWidths[col.key] || 16;
     });
 
-    dataTableSheet.views = [{
-        state: "frozen",
-        ySplit: 1
-    }];
+    dataTableSheet.views = [{ state: "frozen", ySplit: 1 }];
 
     if (dataTableSheet.rowCount > 1) {
         dataTableSheet.autoFilter = {
             from: "A1",
-            to: `${getExcelColumnName(tableHeaders.length)}${dataTableSheet.rowCount}`
+            to: `${getExcelColumnName(COLUMNS.length)}${dataTableSheet.rowCount}`
         };
     }
 
@@ -2980,8 +1502,9 @@ function createDataSheet(
     return processedRows;
 }
 
+
 // ============================================================
-// EXPORTABLE API ENTRYPOINT - Enhanced
+// EXPORTABLE API ENTRYPOINT
 // ============================================================
 
 export async function generateCoordScheduleWorkbook(json, outputPath = OUTPUT_FILE, csvPath = OUTPUT_CSV_FILE) {
@@ -3023,12 +1546,11 @@ export async function generateCoordScheduleWorkbook(json, outputPath = OUTPUT_FI
 
     await workbook.xlsx.writeFile(outputPath);
 
-    // Export CSV if we have data
     let csvExported = false;
     let csvBuffer = null;
+
     if (processedRows && processedRows.length > 0) {
         try {
-            // Generate a unique filename with timestamp
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
             const csvFilename = `output_data_${timestamp}.csv`;
             const tempCsvPath = path.join(TEMP_DIR, csvFilename);
@@ -3036,9 +1558,7 @@ export async function generateCoordScheduleWorkbook(json, outputPath = OUTPUT_FI
             const csvResult = await exportToCsv(processedRows, tempCsvPath);
             if (csvResult) {
                 csvExported = true;
-                // Also get the buffer for immediate download
                 csvBuffer = getCsvBuffer(processedRows);
-                // Save a copy to the main output location
                 fs.copyFileSync(tempCsvPath, csvPath);
             }
         } catch (error) {
@@ -3058,6 +1578,7 @@ export async function generateCoordScheduleWorkbook(json, outputPath = OUTPUT_FI
     };
 }
 
+
 // ============================================================
 // CLI ENTRYPOINT
 // ============================================================
@@ -3070,36 +1591,19 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     });
 }
 
+
 // ============================================================
 // EXCEL COLUMN NAME
 // ============================================================
 
-function getExcelColumnName(
-    columnNumber
-) {
-
+function getExcelColumnName(columnNumber) {
     let result = "";
+    let number = columnNumber;
 
-    let number =
-        columnNumber;
-
-    while (
-        number > 0
-    ) {
-
-        const remainder =
-            (number - 1) % 26;
-
-        result =
-            String.fromCharCode(
-                65 + remainder
-            ) +
-            result;
-
-        number =
-            Math.floor(
-                (number - 1) / 26
-            );
+    while (number > 0) {
+        const remainder = (number - 1) % 26;
+        result = String.fromCharCode(65 + remainder) + result;
+        number = Math.floor((number - 1) / 26);
     }
 
     return result;
