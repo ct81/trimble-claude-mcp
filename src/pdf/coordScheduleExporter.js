@@ -35,12 +35,14 @@ const HEADER_STYLE = "friendly";
 
 // ============================================================
 // CANONICAL COLUMN DEFINITIONS
-// Each column: { key, friendly, internal, prop, required? }
+// Each column: { key, friendly, internal, prop, required?, aliases? }
 //   key      : stable internal id (used for PDF header matching)
 //   friendly : label for "friendly" style
 //   internal : label for "internal" style
 //   prop     : JSON property name on the row object
 //   required : if true, always include even if not detected
+//   aliases  : extra keys that also count as this column being present
+//              (used for detection OR-grouping, e.g. Breadth <-> Length)
 // ============================================================
 
 const COLUMNS = [
@@ -48,8 +50,15 @@ const COLUMNS = [
     { key: "DetailStartStorey",  friendly: "Start Storey",        internal: "DetailStartStorey",  prop: "start_storey" },
     { key: "DetailEndstorey",    friendly: "End Storey",          internal: "DetailEndstorey",    prop: "end_storey" },
     { key: "MaterialGrade",      friendly: "Material Grade",      internal: "MaterialGrade",      prop: "material_grade" },
-    { key: "Thickness",          friendly: "Width (mm)",          internal: "Thickness",          prop: "width_mm" },
-    { key: "Length",             friendly: "Breadth (mm)",        internal: "Length",             prop: "breadth_mm" },
+
+    // Thickness and Width are the same physical column
+    { key: "Thickness",          friendly: "Width (mm)",          internal: "Thickness",          prop: "width_mm",
+      aliases: ["Width"] },
+
+    // Length and Breadth are the same physical column
+    { key: "Length",             friendly: "Breadth (mm)",        internal: "Length",             prop: "breadth_mm",
+      aliases: ["Breadth"] },
+
     { key: "MainRebar",          friendly: "Main Rebar",          internal: "MainRebar",          prop: "main_rebar" },
     { key: "VerticalRebar",      friendly: "Vertical Rebar",      internal: "VerticalRebar",      prop: "vertical_rebar" },
     { key: "HorizontalRebar",    friendly: "Horizontal Rebar",    internal: "HorizontalRebar",    prop: "horizontal_rebar" },
@@ -183,6 +192,11 @@ async function main() {
 // Returns { activeColumns, foundHeaders }
 // activeColumns = COLUMNS entries actually detected on the PDF
 // (plus any with required: true)
+//
+// A column is considered present if EITHER its key OR any of
+// its aliases match a header on the PDF. This is what lets
+// "Breadth" keep the "Length" column alive (and vice versa),
+// and "Width" keep "Thickness" alive.
 // ============================================================
 
 function detectActiveColumns(items) {
@@ -190,7 +204,20 @@ function detectActiveColumns(items) {
     const foundHeaders = [];
 
     for (const col of COLUMNS) {
-        const matches = findHeaderMatches(items, col.key);
+        const keysToTry = [col.key, ...(col.aliases || [])];
+
+        // Try the canonical key + aliases
+        let matches = [];
+        let matchedViaKey = null;
+
+        for (const k of keysToTry) {
+            const m = findHeaderMatches(items, k);
+            if (m.length > 0) {
+                matches = m;
+                matchedViaKey = k;
+                break;
+            }
+        }
 
         if (matches.length > 0) {
             const selected = matches.reduce((best, current) =>
@@ -199,6 +226,7 @@ function detectActiveColumns(items) {
 
             foundHeaders.push({
                 key: col.key,
+                matchedVia: matchedViaKey,
                 col,
                 x: selected.x,
                 y: selected.y,
@@ -231,28 +259,31 @@ function detectActiveColumns(items) {
             const text = itemsAtX.map(it => it.text.trim()).join(" ");
             const avgX = itemsAtX.reduce((sum, it) => sum + it.x, 0) / itemsAtX.length;
 
-            // Try to match by name first
             let matchedCol = null;
             const normalizedText = normalizeHeaderText(text);
 
             for (const col of COLUMNS) {
-                const aliases = headerAliases[col.key] || [col.key];
-                for (const alias of aliases) {
-                    const normalizedAlias = normalizeHeaderText(alias);
-                    if (normalizedText.includes(normalizedAlias) ||
-                        normalizedAlias.includes(normalizedText)) {
-                        matchedCol = col;
-                        break;
+                const keysToTry = [col.key, ...(col.aliases || [])];
+                for (const k of keysToTry) {
+                    const aliases = headerAliases[k] || [k];
+                    for (const alias of aliases) {
+                        const normalizedAlias = normalizeHeaderText(alias);
+                        if (normalizedText.includes(normalizedAlias) ||
+                            normalizedAlias.includes(normalizedText)) {
+                            matchedCol = col;
+                            break;
+                        }
                     }
+                    if (matchedCol) break;
                 }
                 if (matchedCol) break;
             }
 
-            // Otherwise fall back to positional column
             if (!matchedCol) matchedCol = COLUMNS[i];
 
             foundHeaders.push({
                 key: matchedCol.key,
+                matchedVia: matchedCol.key,
                 col: matchedCol,
                 x: avgX,
                 y: headerY,
@@ -926,7 +957,13 @@ function createScheduleSheet(sheet, items, activeColumns) {
     const foundHeaders = [];
 
     for (const col of activeColumns) {
-        const matches = findHeaderMatches(items, col.key);
+        const keysToTry = [col.key, ...(col.aliases || [])];
+
+        let matches = [];
+        for (const k of keysToTry) {
+            const m = findHeaderMatches(items, k);
+            if (m.length > 0) { matches = m; break; }
+        }
 
         if (matches.length > 0) {
             const selected = matches.reduce((best, current) =>
@@ -1081,14 +1118,23 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
 
     let foundHeaders = [];
 
-    for (const headerKey of headerKeys) {
-        const matches = findHeaderMatches(items, headerKey);
+    for (const col of activeColumns) {
+        const keysToTry = [col.key, ...(col.aliases || [])];
+
+        let matches = [];
+        let matchedViaKey = col.key;
+        for (const k of keysToTry) {
+            const m = findHeaderMatches(items, k);
+            if (m.length > 0) { matches = m; matchedViaKey = k; break; }
+        }
+
         if (matches.length > 0) {
             const selected = matches.reduce((best, current) =>
                 current.y > best.y ? current : best
             );
             foundHeaders.push({
-                key: headerKey,
+                key: col.key,
+                matchedVia: matchedViaKey,
                 x: selected.x,
                 y: selected.y,
                 text: selected.text
@@ -1257,13 +1303,14 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         const rowIndex = row.rowIndex;
         const currentDetailMark = row.detail_mark;
 
+        // Read from canonical keys, but also allow alias keys
         let materialGrade = rowData.get("MaterialGrade") || "";
-        let width = rowData.get("Width") || rowData.get("Thickness") || "";
-        let breadth = rowData.get("Breadth") || rowData.get("Length") || "";
+        let width = rowData.get("Thickness") || rowData.get("Width") || "";
+        let breadth = rowData.get("Length") || rowData.get("Breadth") || "";
         let mainRebar = rowData.get("MainRebar") || "";
         let verticalRebar = rowData.get("VerticalRebar") || "";
         let horizontalRebar = rowData.get("HorizontalRebar") || "";
-        let stirrups = rowData.get("Stirrups") || rowData.get("Thickness") || "";
+        let stirrups = rowData.get("Stirrups") || "";
         let constructionMethod = rowData.get("ConstructionMethod") || rowData.get("ArrangementType") || "";
         let arrangementType = rowData.get("ArrangementType") || "";
         let spliceDowels = rowData.get("Splice/Dowels") || "";
@@ -1365,7 +1412,7 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         }
 
         // Breadth extraction
-        let breadthValue = rowData.get("Breadth") || rowData.get("Length") || "";
+        let breadthValue = rowData.get("Length") || rowData.get("Breadth") || "";
 
         if (!breadthValue || isNaN(parseFloat(breadthValue))) {
             const allNumbers = allText.match(/\b\d+\b/g);
@@ -1474,10 +1521,7 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         width = width.replace(/\s+.*$/, "").trim();
         breadth = breadth.toString().trim();
 
-        // ----------------------------------------------------
         // Build the row object dynamically from activeColumns
-        // so absent columns are absent from the JSON.
-        // ----------------------------------------------------
         const valuesByProp = {
             detail_mark: currentDetailMark || rowData.get("Mark") || "",
             start_storey: startStorey,
@@ -1508,9 +1552,7 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
     console.log(`Total processed rows: ${processedRows.length}`);
     console.log("");
 
-    // --------------------------------------------------------
     // Write JSON to Data sheet
-    // --------------------------------------------------------
     const jsonData = { column_schedule: processedRows };
     const jsonString = JSON.stringify(jsonData, null, 2);
     const lines = jsonString.split('\n');
@@ -1529,9 +1571,7 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
     sheet.getCell(summaryRow + 1, 1).value = `Total Rows: ${processedRows.length}`;
     sheet.getCell(summaryRow + 2, 1).value = "==========================================";
 
-    // --------------------------------------------------------
-    // Data Table sheet - headers and body driven by activeColumns
-    // --------------------------------------------------------
+    // Data Table sheet
     const dataTableSheet = workbook.addWorksheet("Data Table");
 
     activeColumns.forEach((col, index) => {
