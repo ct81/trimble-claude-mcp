@@ -422,59 +422,112 @@
         .replace(/^[a-z]/, (c) => c.toLowerCase());
     }
 
+    // function toStructuredColumnRows(rawRows) {
+    //   if (!Array.isArray(rawRows)) return [];
+
+    //   if (rawRows.some(row => row && typeof row === 'object' && (Array.isArray(row.rows) || row.detail_mark || row.detailMark || row.DetailMark))) {
+    //     return rawRows.map(item => {
+    //       const detailMark = item?.detail_mark ?? item?.detailMark ?? item?.DetailMark ?? 'UNKNOWN';
+    //       const rows = Array.isArray(item?.rows) ? item.rows : [];
+    //       return {
+    //         detail_mark: detailMark,
+    //         rows: rows.map(row => ({
+    //           start_storey: row?.start_storey ?? row?.StartStorey ?? row?.startStorey ?? null,
+    //           end_storey: row?.end_storey ?? row?.EndStorey ?? row?.endStorey ?? null,
+    //           material_grade: row?.material_grade ?? row?.MaterialGrade ?? row?.materialGrade ?? null,
+    //           width_mm: row?.width_mm ?? row?.Width ?? row?.width ?? null,
+    //           breadth_mm: row?.breadth_mm ?? row?.Breadth ?? row?.breadth ?? null,
+    //           main_rebar: row?.main_rebar ?? row?.MainRebar ?? row?.mainRebar ?? null,
+    //           stirrups: row?.stirrups ?? row?.Stirrups ?? row?.stirrup ?? null,
+    //           construction_method: row?.construction_method ?? row?.ConstructionMethod ?? row?.constructionMethod ?? null,
+    //           arrangement_type: row?.arrangement_type ?? row?.ArrangementType ?? row?.arrangementType ?? null,
+    //           splice_dowels: row?.splice_dowels ?? row?.spliceDowels ?? row?.['Splice/Dowels'] ?? null,
+    //           note: row?.note ?? row?.Note ?? null
+    //         }))
+    //       };
+    //     });
+    //   }
+
+    //   const grouped = new Map();
+
+    //   rawRows.forEach(row => {
+    //     if (!row || typeof row !== 'object') return;
+
+    //     const detailMark = row.detail_mark ?? row.detailMark ?? row.DetailMark ?? row['Detail Mark'] ?? 'UNKNOWN';
+    //     if (!grouped.has(detailMark)) {
+    //       grouped.set(detailMark, { detail_mark: detailMark, rows: [] });
+    //     }
+
+    //     grouped.get(detailMark).rows.push({
+    //       start_storey: row.start_storey ?? row.StartStorey ?? row.startStorey ?? null,
+    //       end_storey: row.end_storey ?? row.EndStorey ?? row.endStorey ?? null,
+    //       material_grade: row.material_grade ?? row.MaterialGrade ?? row.materialGrade ?? null,
+    //       width_mm: row.width_mm ?? row.Width ?? row.width ?? null,
+    //       breadth_mm: row.breadth_mm ?? row.Breadth ?? row.breadth ?? null,
+    //       main_rebar: row.main_rebar ?? row.MainRebar ?? row.mainRebar ?? null,
+    //       stirrups: row.stirrups ?? row.Stirrups ?? row.stirrup ?? null,
+    //       construction_method: row.construction_method ?? row.ConstructionMethod ?? row.constructionMethod ?? null,
+    //       arrangement_type: row.arrangement_type ?? row.ArrangementType ?? row.arrangementType ?? null,
+    //       splice_dowels: row.splice_dowels ?? row.spliceDowels ?? row['Splice/Dowels'] ?? null,
+    //       note: row.note ?? row.Note ?? null
+    //     });
+    //   });
+
+    //   return Array.from(grouped.values());
+    // }
     function toStructuredColumnRows(rawRows) {
-      if (!Array.isArray(rawRows)) return [];
+  if (!Array.isArray(rawRows)) return [];
 
-      if (rawRows.some(row => row && typeof row === 'object' && (Array.isArray(row.rows) || row.detail_mark || row.detailMark || row.DetailMark))) {
-        return rawRows.map(item => {
-          const detailMark = item?.detail_mark ?? item?.detailMark ?? item?.DetailMark ?? 'UNKNOWN';
-          const rows = Array.isArray(item?.rows) ? item.rows : [];
-          return {
-            detail_mark: detailMark,
-            rows: rows.map(row => ({
-              start_storey: row?.start_storey ?? row?.StartStorey ?? row?.startStorey ?? null,
-              end_storey: row?.end_storey ?? row?.EndStorey ?? row?.endStorey ?? null,
-              material_grade: row?.material_grade ?? row?.MaterialGrade ?? row?.materialGrade ?? null,
-              width_mm: row?.width_mm ?? row?.Width ?? row?.width ?? null,
-              breadth_mm: row?.breadth_mm ?? row?.Breadth ?? row?.breadth ?? null,
-              main_rebar: row?.main_rebar ?? row?.MainRebar ?? row?.mainRebar ?? null,
-              stirrups: row?.stirrups ?? row?.Stirrups ?? row?.stirrup ?? null,
-              construction_method: row?.construction_method ?? row?.ConstructionMethod ?? row?.constructionMethod ?? null,
-              arrangement_type: row?.arrangement_type ?? row?.ArrangementType ?? row?.arrangementType ?? null,
-              splice_dowels: row?.splice_dowels ?? row?.spliceDowels ?? row?.['Splice/Dowels'] ?? null,
-              note: row?.note ?? row?.Note ?? null
-            }))
-          };
-        });
-      }
+  if (rawRows.some(row => row && typeof row === 'object' && (Array.isArray(row.rows) || row.detail_mark || row.detailMark || row.DetailMark))) {
+    return rawRows.map(item => {
+      const detailMark = item?.detail_mark ?? item?.detailMark ?? item?.DetailMark ?? 'UNKNOWN';
+      const rows = Array.isArray(item?.rows) ? item.rows : [];
+      return {
+        detail_mark: detailMark,
+        rows: rows.map(row => ({
+          start_storey: row?.start_storey ?? row?.StartStorey ?? row?.startStorey ?? null,
+          end_storey: row?.end_storey ?? row?.EndStorey ?? row?.endStorey ?? null,
+          material_grade: row?.material_grade ?? row?.MaterialGrade ?? row?.materialGrade ?? null,
+          width_mm: row?.width_mm ?? row?.Width ?? row?.width ?? row?.Thickness ?? row?.thickness ?? null,
+          breadth_mm: row?.breadth_mm ?? row?.Breadth ?? row?.breadth ?? row?.Length ?? row?.length ?? null,
+          main_rebar: row?.main_rebar ?? row?.MainRebar ?? row?.mainRebar ?? null,
+          stirrups: row?.stirrups ?? row?.Stirrups ?? row?.stirrup ?? null,
+          construction_method: row?.construction_method ?? row?.ConstructionMethod ?? row?.constructionMethod ?? null,
+          arrangement_type: row?.arrangement_type ?? row?.ArrangementType ?? row?.arrangementType ?? null,
+          splice_dowels: row?.splice_dowels ?? row?.spliceDowels ?? row?.['Splice/Dowels'] ?? null,
+          note: row?.note ?? row?.Note ?? null
+        }))
+      };
+    });
+  }
 
-      const grouped = new Map();
+  const grouped = new Map();
 
-      rawRows.forEach(row => {
-        if (!row || typeof row !== 'object') return;
+  rawRows.forEach(row => {
+    if (!row || typeof row !== 'object') return;
 
-        const detailMark = row.detail_mark ?? row.detailMark ?? row.DetailMark ?? row['Detail Mark'] ?? 'UNKNOWN';
-        if (!grouped.has(detailMark)) {
-          grouped.set(detailMark, { detail_mark: detailMark, rows: [] });
-        }
-
-        grouped.get(detailMark).rows.push({
-          start_storey: row.start_storey ?? row.StartStorey ?? row.startStorey ?? null,
-          end_storey: row.end_storey ?? row.EndStorey ?? row.endStorey ?? null,
-          material_grade: row.material_grade ?? row.MaterialGrade ?? row.materialGrade ?? null,
-          width_mm: row.width_mm ?? row.Width ?? row.width ?? null,
-          breadth_mm: row.breadth_mm ?? row.Breadth ?? row.breadth ?? null,
-          main_rebar: row.main_rebar ?? row.MainRebar ?? row.mainRebar ?? null,
-          stirrups: row.stirrups ?? row.Stirrups ?? row.stirrup ?? null,
-          construction_method: row.construction_method ?? row.ConstructionMethod ?? row.constructionMethod ?? null,
-          arrangement_type: row.arrangement_type ?? row.ArrangementType ?? row.arrangementType ?? null,
-          splice_dowels: row.splice_dowels ?? row.spliceDowels ?? row['Splice/Dowels'] ?? null,
-          note: row.note ?? row.Note ?? null
-        });
-      });
-
-      return Array.from(grouped.values());
+    const detailMark = row.detail_mark ?? row.detailMark ?? row.DetailMark ?? row['Detail Mark'] ?? 'UNKNOWN';
+    if (!grouped.has(detailMark)) {
+      grouped.set(detailMark, { detail_mark: detailMark, rows: [] });
     }
+
+    grouped.get(detailMark).rows.push({
+      start_storey: row.start_storey ?? row.StartStorey ?? row.startStorey ?? null,
+      end_storey: row.end_storey ?? row.EndStorey ?? row.endStorey ?? null,
+      material_grade: row.material_grade ?? row.MaterialGrade ?? row.materialGrade ?? null,
+      width_mm: row.width_mm ?? row.Width ?? row.width ?? row.Thickness ?? row.thickness ?? null,
+      breadth_mm: row.breadth_mm ?? row.Breadth ?? row.breadth ?? row.Length ?? row.length ?? null,
+      main_rebar: row.main_rebar ?? row.MainRebar ?? row.mainRebar ?? null,
+      stirrups: row.stirrups ?? row.Stirrups ?? row.stirrup ?? null,
+      construction_method: row.construction_method ?? row.ConstructionMethod ?? row.constructionMethod ?? null,
+      arrangement_type: row.arrangement_type ?? row.ArrangementType ?? row.arrangementType ?? null,
+      splice_dowels: row.splice_dowels ?? row.spliceDowels ?? row['Splice/Dowels'] ?? null,
+      note: row.note ?? row.Note ?? null
+    });
+  });
+
+  return Array.from(grouped.values());
+}
 
     function buildStructuredJson(payload, fallbackFileName = 'column-schedule') {
       if (!payload) return null;
