@@ -923,7 +923,7 @@ const headerAliases = {
     "MainRebar": ["MainRebar", "Main Rebar"],
     "VerticalRebar": ["VerticalRebar", "Vertical Rebar", "V-Rebar", "V Rebar"],
     "HorizontalRebar": ["HorizontalRebar", "Horizontal Rebar", "H-Rebar", "H Rebar"],
-    "Stirrups": ["Stirrups", "Thickness"],
+    "Stirrups": ["Stirrups"],
     "ConstructionMethod": ["ConstructionMethod", "Construction Method", "ArrangementType"],
     "ArrangementType": ["ArrangementType", "Arrangement Type"],
     "Splice/Dowels": ["Splice/Dowels", "Splice / Dowels", "SpliceDowels", "Splice Dowels"],
