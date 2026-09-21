@@ -143,6 +143,12 @@ async function main() {
     console.log("");
     console.log("Saving Excel...");
 
+    // Ensure output dir exists
+    const outputDir = path.dirname(outputFile);
+    if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+    }
+
     await workbook.xlsx.writeFile(outputFile);
 
     console.log("");
@@ -165,6 +171,11 @@ async function main() {
             if (csvResult) {
                 console.log(`CSV saved to: ${csvPath}`);
                 console.log(`To download, access: /temp/${csvFilename}`);
+
+                const csvOutDir = path.dirname(outputCsvFile);
+                if (!fs.existsSync(csvOutDir)) {
+                    fs.mkdirSync(csvOutDir, { recursive: true });
+                }
 
                 fs.copyFileSync(csvPath, outputCsvFile);
                 console.log(`CSV also saved to: ${outputCsvFile}`);
@@ -1645,22 +1656,41 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
 
 // ============================================================
 // EXPORTABLE API ENTRYPOINT
+// ------------------------------------------------------------
+// Signature (backward compatible):
+//   generateCoordScheduleWorkbook(json, outputPath?, csvPath?, sourceName?)
+//
+// - outputPath   : full path to .xlsx (optional — derived from sourceName)
+// - csvPath      : full path to .csv  (optional — derived from sourceName)
+// - sourceName   : base filename (optional — derived from outputPath)
+//
+// Accepts both call shapes:
+//   A) (json, "/path/out.xlsx")
+//   B) (json, "/path/out.xlsx", "/path/out.csv")
+//   C) (json, "/path/out.xlsx", "/path/out.csv", "my-source-name")
 // ============================================================
 
 export async function generateCoordScheduleWorkbook(
     json,
-    sourceName = "output",
     outputPath = null,
-    csvPath = null
+    csvPath = null,
+    sourceName = null
 ) {
 
     if (!json) {
         throw new Error("JSON input is required.");
     }
 
-    // Fall back to sourceName-derived paths when not explicitly provided
-    const finalOutputPath = outputPath || path.join(__dirname, `${sourceName}.xlsx`);
-    const finalCsvPath    = csvPath    || path.join(__dirname, `${sourceName}.csv`);
+    // Derive sourceName from outputPath if not provided
+    const resolvedSourceName =
+        sourceName ||
+        (outputPath ? path.parse(outputPath).name : "output");
+
+    const finalOutputPath =
+        outputPath || path.join(__dirname, `${resolvedSourceName}.xlsx`);
+
+    const finalCsvPath =
+        csvPath || path.join(__dirname, `${resolvedSourceName}.csv`);
 
     const items = extractItems(json);
 
@@ -1697,6 +1727,12 @@ export async function generateCoordScheduleWorkbook(
     createScheduleSheet(scheduleSheet, items, activeColumns);
     const processedRows = createDataSheet(dataSheet, items, workbook, activeColumns);
 
+    // Make sure parent dir exists before writing
+    const outputDir = path.dirname(finalOutputPath);
+    if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+    }
+
     await workbook.xlsx.writeFile(finalOutputPath);
 
     let csvExported = false;
@@ -1704,13 +1740,19 @@ export async function generateCoordScheduleWorkbook(
 
     if (processedRows && processedRows.length > 0) {
         try {
-            const csvFilename = `${sourceName}.csv`;
+            const csvFilename = `${resolvedSourceName}.csv`;
             const tempCsvPath = path.join(TEMP_DIR, csvFilename);
 
             const csvResult = await exportToCsv(processedRows, tempCsvPath, activeColumns);
             if (csvResult) {
                 csvExported = true;
                 csvBuffer = getCsvBuffer(processedRows, activeColumns);
+
+                const csvDir = path.dirname(finalCsvPath);
+                if (!fs.existsSync(csvDir)) {
+                    fs.mkdirSync(csvDir, { recursive: true });
+                }
+
                 fs.copyFileSync(tempCsvPath, finalCsvPath);
             }
         } catch (error) {
@@ -1723,7 +1765,7 @@ export async function generateCoordScheduleWorkbook(
         outputFile: finalOutputPath,
         csvFile: csvExported ? finalCsvPath : null,
         csvBuffer: csvBuffer,
-        sourceName: sourceName,
+        sourceName: resolvedSourceName,
         activeColumns: activeColumns.map(c => c.key),
         itemCount: items.length,
         xClusterCount: xCenters.length,
