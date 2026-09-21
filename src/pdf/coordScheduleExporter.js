@@ -1660,14 +1660,15 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
 // Signature (backward compatible):
 //   generateCoordScheduleWorkbook(json, outputPath?, csvPath?, sourceName?)
 //
-// - outputPath   : full path to .xlsx (optional — derived from sourceName)
-// - csvPath      : full path to .csv  (optional — derived from sourceName)
-// - sourceName   : base filename (optional — derived from outputPath)
+// New behaviour:
+//   1. Workbook + CSV are first written to  coord-schedule-output.xlsx / .csv
+//      (in the same directory as the final target, or __dirname).
+//   2. After processing, they are renamed to `<sourceName>.xlsx` / `.csv`.
 //
-// Accepts both call shapes:
-//   A) (json, "/path/out.xlsx")
-//   B) (json, "/path/out.xlsx", "/path/out.csv")
-//   C) (json, "/path/out.xlsx", "/path/out.csv", "my-source-name")
+// sourceName may be passed as:
+//   - 2nd arg (a bare name, no path separators)  → preferred new shape
+//   - 4th arg (explicit override)
+//   - omitted → derived from outputPath basename, else "coord-schedule-output"
 // ============================================================
 
 export async function generateCoordScheduleWorkbook(
@@ -1681,17 +1682,48 @@ export async function generateCoordScheduleWorkbook(
         throw new Error("JSON input is required.");
     }
 
-    // Derive sourceName from outputPath if not provided
-    const resolvedSourceName =
-        sourceName ||
-        (outputPath ? path.parse(outputPath).name : "output");
+    // ---- 1. Normalise arguments -------------------------------------------
+    // If the 2nd arg looks like a bare filename (no slashes, no drive letter),
+    // treat it as `sourceName` and derive the target directory from __dirname.
+    const looksLikeBareName =
+        typeof outputPath === "string" &&
+        outputPath.length > 0 &&
+        !outputPath.includes("/") &&
+        !outputPath.includes("\\") &&
+        !/^[A-Za-z]:/.test(outputPath);
 
-    const finalOutputPath =
-        outputPath || path.join(__dirname, `${resolvedSourceName}.xlsx`);
+    let resolvedSourceName;
+    let targetDir;
 
-    const finalCsvPath =
-        csvPath || path.join(__dirname, `${resolvedSourceName}.csv`);
+    if (looksLikeBareName) {
+        resolvedSourceName = stripExtension(outputPath);
+        targetDir = __dirname;
+    } else {
+        resolvedSourceName =
+            sourceName ||
+            (outputPath ? path.parse(outputPath).name : null) ||
+            "coord-schedule-output";
+        targetDir = outputPath
+            ? path.dirname(outputPath)
+            : __dirname;
+    }
 
+    // If the caller passed sourceName explicitly (4th arg), it wins
+    if (sourceName) {
+        resolvedSourceName = stripExtension(sourceName);
+    }
+
+    if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+    }
+
+    // ---- 2. Write to the working filename first ---------------------------
+    const WORKING_NAME = "coord-schedule-output";
+
+    const workingXlsxPath = path.join(targetDir, `${WORKING_NAME}.xlsx`);
+    const workingCsvPath  = path.join(targetDir, `${WORKING_NAME}.csv`);
+
+    // ---- 3. Build the workbook (unchanged logic) --------------------------
     const items = extractItems(json);
 
     if (items.length === 0) {
@@ -1727,42 +1759,46 @@ export async function generateCoordScheduleWorkbook(
     createScheduleSheet(scheduleSheet, items, activeColumns);
     const processedRows = createDataSheet(dataSheet, items, workbook, activeColumns);
 
-    // Make sure parent dir exists before writing
-    const outputDir = path.dirname(finalOutputPath);
-    if (!fs.existsSync(outputDir)) {
-        fs.mkdirSync(outputDir, { recursive: true });
-    }
+    await workbook.xlsx.writeFile(workingXlsxPath);
 
-    await workbook.xlsx.writeFile(finalOutputPath);
-
+    // ---- 4. Write CSV to working filename --------------------------------
     let csvExported = false;
     let csvBuffer = null;
 
     if (processedRows && processedRows.length > 0) {
         try {
-            const csvFilename = `${resolvedSourceName}.csv`;
-            const tempCsvPath = path.join(TEMP_DIR, csvFilename);
-
-            const csvResult = await exportToCsv(processedRows, tempCsvPath, activeColumns);
+            const csvResult = await exportToCsv(
+                processedRows,
+                workingCsvPath,
+                activeColumns
+            );
             if (csvResult) {
                 csvExported = true;
                 csvBuffer = getCsvBuffer(processedRows, activeColumns);
-
-                const csvDir = path.dirname(finalCsvPath);
-                if (!fs.existsSync(csvDir)) {
-                    fs.mkdirSync(csvDir, { recursive: true });
-                }
-
-                fs.copyFileSync(tempCsvPath, finalCsvPath);
             }
         } catch (error) {
             console.error("Error exporting CSV:", error.message);
         }
     }
 
+    // ---- 5. Rename to the uploaded JSON filename --------------------------
+    const finalXlsxPath = path.join(targetDir, `${resolvedSourceName}.xlsx`);
+    const finalCsvPath  = path.join(targetDir, `${resolvedSourceName}.csv`);
+
+    // Remove existing targets (rename fails on Windows if target exists)
+    if (fs.existsSync(finalXlsxPath)) fs.unlinkSync(finalXlsxPath);
+    if (csvExported && fs.existsSync(finalCsvPath)) fs.unlinkSync(finalCsvPath);
+
+    fs.renameSync(workingXlsxPath, finalXlsxPath);
+
+    if (csvExported) {
+        fs.renameSync(workingCsvPath, finalCsvPath);
+    }
+
+    // ---- 6. Return the final paths ---------------------------------------
     return {
         success: true,
-        outputFile: finalOutputPath,
+        outputFile: finalXlsxPath,
         csvFile: csvExported ? finalCsvPath : null,
         csvBuffer: csvBuffer,
         sourceName: resolvedSourceName,
@@ -1772,6 +1808,13 @@ export async function generateCoordScheduleWorkbook(
         yRowCount: yDescending.length,
         rowCount: processedRows ? processedRows.length : 0
     };
+}
+
+
+// Helper: strip .json / .txt / .xlsx / .csv extension
+function stripExtension(name) {
+    if (!name) return "coord-schedule-output";
+    return name.replace(/\.(json|txt|xlsx|csv)$/i, "");
 }
 
 
