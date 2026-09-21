@@ -46,7 +46,7 @@ const COLUMNS = [
     { key: "Thickness",          friendly: "Width (mm)",          internal: "Thickness",          prop: "width_mm" },
     { key: "Length",             friendly: "Breadth (mm)",        internal: "Length",             prop: "breadth_mm" },
 
-    // Optional — only appears if PDF has a Main Rebar column
+    // Optional — only present if PDF has a Main Rebar column
     { key: "MainRebar",          friendly: "Main Rebar",          internal: "MainRebar",          prop: "main_rebar" },
 
     { key: "VerticalRebar",      friendly: "Vertical Rebar",      internal: "VerticalRebar",      prop: "vertical_rebar" },
@@ -190,7 +190,6 @@ function detectActiveColumns(items) {
             current.y > best.y ? current : best
         );
 
-        // Dedupe: skip if another column already claimed this X
         const alreadyClaimed = foundHeaders.some(h =>
             Math.abs(h.x - selected.x) <= X_TOLERANCE
         );
@@ -265,7 +264,6 @@ function detectActiveColumns(items) {
         }
     }
 
-    // Build active column set in COLUMNS order
     const activeKeys = new Set(foundHeaders.map(h => h.key));
     const activeColumns = COLUMNS.filter(col => {
         return col.required === true || activeKeys.has(col.key);
@@ -872,9 +870,7 @@ function normalizeHeaderText(text) {
 
 // ============================================================
 // HEADER ALIASES
-// No cross-column collisions:
-//   - "Thickness" only belongs to Thickness
-//   - "ArrangementType" only belongs to ArrangementType
+// No cross-column collisions.
 // ============================================================
 
 const headerAliases = {
@@ -939,7 +935,6 @@ function createScheduleSheet(sheet, items, activeColumns) {
             current.y > best.y ? current : best
         );
 
-        // Dedupe by X position
         if (foundHeaders.some(h => Math.abs(h.x - selected.x) <= X_TOLERANCE)) {
             continue;
         }
@@ -1092,20 +1087,27 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
 
     let foundHeaders = [];
 
-    for (const headerKey of headerKeys) {
-        const matches = findHeaderMatches(items, headerKey);
-        if (matches.length > 0) {
-            const selected = matches.reduce((best, current) =>
-                current.y > best.y ? current : best
-            );
-            if (foundHeaders.some(h => Math.abs(h.x - selected.x) <= X_TOLERANCE)) continue;
-            foundHeaders.push({
-                key: headerKey,
-                x: selected.x,
-                y: selected.y,
-                text: selected.text
-            });
+    for (const col of activeColumns) {
+        const matches = findHeaderMatches(items, col.key);
+
+        if (matches.length === 0) continue;
+
+        const selected = matches.reduce((best, current) =>
+            current.y > best.y ? current : best
+        );
+
+        if (foundHeaders.some(h => Math.abs(h.x - selected.x) <= X_TOLERANCE)) {
+            continue;
         }
+
+        foundHeaders.push({
+            key: col.key,
+            x: selected.x,
+            y: selected.y,
+            width: selected.width || 0,
+            height: selected.height || 0,
+            text: selected.text
+        });
     }
 
     // Position-based fallback
@@ -1168,8 +1170,6 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         }
     }
 
-    foundHeaders.sort((a, b) => a.x - b.x);
-
     if (foundHeaders.length === 0) {
         const xValues = items.map(item => item.x);
         const xCenters = clusterCoordinates(xValues, X_TOLERANCE);
@@ -1177,7 +1177,7 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
 
         xSorted.forEach((x, index) => {
             const headerKey = headerKeys[index] || `Column${index + 1}`;
-            foundHeaders.push({ key: headerKey, x: x, y: 0, text: headerKey });
+            foundHeaders.push({ key: headerKey, x: x, y: 0, width: 0, height: 0, text: headerKey });
         });
     }
 
@@ -1237,17 +1237,18 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
             }
         }
 
-        // Debug: log the keys available on this row
         console.log(`  Row ${rowIndex + 1} keys: ${Array.from(rowData.keys()).join(", ")}`);
 
         const detailMarkValue =
             rowData.get("DetailMark") ||
             rowData.get("Mark") ||
             "";
-        const isDetailMarkRow = /^43[C|P]/i.test(detailMarkValue);
+
+        // FIXED: accept 43LW, 43PW, 43C, etc.
+        const isDetailMarkRow = /^43[A-Z]/i.test(detailMarkValue.trim());
 
         if (isDetailMarkRow) {
-            currentDetailMark = detailMarkValue;
+            currentDetailMark = detailMarkValue.trim();
             console.log(`Detail mark found: "${currentDetailMark}" at row ${rowIndex + 1}`);
         } else if (currentDetailMark) {
             let hasData = false;
@@ -1266,6 +1267,9 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
             }
         }
     }
+
+    console.log("");
+    console.log(`Collected ${allRows.length} data rows after detail-mark grouping.`);
 
     const processedRows = [];
 
@@ -1287,55 +1291,6 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         let remark             = rowData.get("Remark")             || "";
         let startStorey        = rowData.get("DetailStartStorey")  || "";
         let endStorey          = rowData.get("DetailEndstorey")    || "";
-
-        // FILTER 1
-        let hasOtherData = false;
-        for (const [, value] of rowData) {
-            const trimmedValue = value.trim();
-            if (trimmedValue && trimmedValue !== "A") {
-                hasOtherData = true;
-                break;
-            }
-        }
-        if (!hasOtherData) {
-            console.log(`Filter 1: Skipping row ${rowIndex + 1} - only contains "A" values`);
-            continue;
-        }
-
-        // FILTER 2
-        const firstThreeKeys = xSortedHeaders.slice(0, 3).map(h => h.key);
-        let firstThreeEmpty = true;
-        for (const headerKey of firstThreeKeys) {
-            const value = rowData.get(headerKey) || "";
-            if (value.trim() !== "") {
-                firstThreeEmpty = false;
-                break;
-            }
-        }
-        if (firstThreeEmpty) {
-            console.log(`Filter 2: Skipping row ${rowIndex + 1} - first 3 cells are empty`);
-            continue;
-        }
-
-        // FILTER 3
-        const col2Key = xSortedHeaders.length > 1 ? xSortedHeaders[1].key : null;
-        const col3Key = xSortedHeaders.length > 2 ? xSortedHeaders[2].key : null;
-
-        let col2Empty = true;
-        let col3Empty = true;
-
-        if (col2Key) {
-            const value = rowData.get(col2Key) || "";
-            if (value.trim() !== "") col2Empty = false;
-        }
-        if (col3Key) {
-            const value = rowData.get(col3Key) || "";
-            if (value.trim() !== "") col3Empty = false;
-        }
-        if (col2Empty && col3Empty) {
-            console.log(`Filter 3: Skipping row ${rowIndex + 1} - columns 2 & 3 are empty`);
-            continue;
-        }
 
         const allText = Array.from(rowData.values()).filter(v => v).join(" ");
         console.log(`Row ${rowIndex + 1} combined: "${allText}"`);
@@ -1379,30 +1334,9 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
                     if (width && !isNaN(parseFloat(width))) breadthValue = dimensionNumbers[0];
                 }
             }
-
-            if (!breadthValue && mainRebar) {
-                const rebarWithBreadth = mainRebar.match(/^(\d+)\s+([A-Z]\d+)/);
-                if (rebarWithBreadth) {
-                    breadthValue = rebarWithBreadth[1];
-                    mainRebar = rebarWithBreadth[2];
-                }
-            }
-
-            if (!breadthValue) {
-                const pattern = /(\d+)\s+(\d+)\s+([A-Z]\d+)/;
-                const match = allText.match(pattern);
-                if (match) {
-                    const firstNum = match[1];
-                    const secondNum = match[2];
-                    const rebar = match[3];
-                    if (!width || isNaN(parseFloat(width))) width = firstNum;
-                    breadthValue = secondNum;
-                    if (!mainRebar) mainRebar = rebar;
-                }
-            }
         }
 
-        // Handle comma-separated breadth values like "3250, 9050"
+        // Handle comma-separated breadth values ("3250, 9050" -> "3250")
         if (breadthValue && breadthValue.includes(",")) {
             const firstPart = breadthValue.split(",")[0].trim();
             console.log(`Cleaned comma-separated breadth "${breadthValue}" -> "${firstPart}"`);
@@ -1421,16 +1355,11 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
 
         if (breadthValue && !isNaN(parseFloat(breadthValue))) {
             breadth = breadthValue;
-        } else {
+        } else if (!breadth) {
             breadth = "";
         }
 
-        // Main rebar — only run regex if the column exists
-        if (hasMainRebarColumn && mainRebar && /^\d{3,4}$/.test(mainRebar.trim())) {
-            mainRebar = "";
-        }
-
-        // Stirrups — fallback regex only
+        // Stirrups fallback
         if (!stirrups) {
             const stirrupsPattern = /\d+[A-Z]\d+-\d+(?:\+\d+[A-Z]\d+-\d+)?/g;
             const stirrupsMatches = allText.match(stirrupsPattern);
@@ -1439,6 +1368,7 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
             }
         }
 
+        // Main rebar — only if the column exists
         if (hasMainRebarColumn && !mainRebar) {
             const mainRebarPattern = /\b\d{1,3}[A-Z]\d{1,3}\b/g;
             const rebarMatches = allText.match(mainRebarPattern);
@@ -1448,45 +1378,9 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
                     if (spliceDowels && spliceDowels.includes(match)) return false;
                     if (verticalRebar && verticalRebar.includes(match)) return false;
                     if (horizontalRebar && horizontalRebar.includes(match)) return false;
-                    if (/^\d+$/.test(match)) return false;
                     return true;
                 });
                 if (potentialRebars.length > 0) mainRebar = potentialRebars[0];
-            }
-        }
-
-        if (hasMainRebarColumn && !mainRebar) {
-            const fallbackPattern = /[A-Z]\d+/g;
-            const fallbackMatches = allText.match(fallbackPattern);
-            if (fallbackMatches && fallbackMatches.length > 0) {
-                const validMatches = fallbackMatches.filter(m => {
-                    if (stirrups && stirrups.includes(m)) return false;
-                    if (spliceDowels && spliceDowels.includes(m)) return false;
-                    if (verticalRebar && verticalRebar.includes(m)) return false;
-                    if (horizontalRebar && horizontalRebar.includes(m)) return false;
-                    return true;
-                });
-                if (validMatches.length > 0) mainRebar = validMatches[0];
-            }
-        }
-
-        if (hasMainRebarColumn && mainRebar && /^\d+\s+/.test(mainRebar)) {
-            const parts = mainRebar.split(/\s+/);
-            for (const part of parts) {
-                if (/[A-Z]/.test(part)) { mainRebar = part; break; }
-            }
-        }
-
-        if (hasMainRebarColumn && mainRebar && /^\d{3,4}$/.test(mainRebar.trim())) {
-            mainRebar = "";
-        }
-
-        // Split MaterialGrade and Width
-        if (materialGrade && /^[A-Z]\d+\/\d+/.test(materialGrade)) {
-            const parts = materialGrade.split(/\s+/);
-            if (parts.length >= 2) {
-                materialGrade = parts[0];
-                if (parts.length >= 2 && /^\d+$/.test(parts[1])) width = parts[1];
             }
         }
 
@@ -1494,9 +1388,8 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         width = width.replace(/\s+.*$/, "").trim();
         breadth = breadth.toString().trim();
 
-        // Build the row object dynamically from activeColumns
         const valuesByProp = {
-            detail_mark: currentDetailMark || rowData.get("Mark") || "",
+            detail_mark: currentDetailMark || "",
             start_storey: startStorey,
             end_storey: endStorey,
             material_grade: materialGrade,
