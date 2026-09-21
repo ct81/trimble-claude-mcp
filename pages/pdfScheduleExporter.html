@@ -7,27 +7,15 @@
   <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
   <script src="master.js" type="module" defer></script>
   <style>
-    /* :root {
-      --bg: #0d1117;
-      --panel: #161b22;
-      --panel-alt: #21262d;
-      --border: #30363d;
-      --text: #e6edf3;
-      --muted: #8b949e;
-      --accent: #58a6ff;
-      --success: #3fb950;
-      --warning: #d29922;
-      --danger: #f85149;
-    } */
-     :root {
-			--ink: #17221d;
-			--muted: #66736b;
-			--paper: #f4f1e8;
-			--panel: #fffdf7;
-			--line: #d9d4c7;
-			--accent: #bd4b2f;
-			--accent-dark: #883522;
-			--green: #32644b;
+    :root {
+      --ink: #17221d;
+      --muted: #66736b;
+      --paper: #f4f1e8;
+      --panel: #fffdf7;
+      --line: #d9d4c7;
+      --accent: #bd4b2f;
+      --accent-dark: #883522;
+      --green: #32644b;
       --bg: var(--paper);
       --panel-alt: var(--line);
       --border: var(--line);
@@ -35,7 +23,7 @@
       --success: var(--green);
       --warning: var(--accent);
       --danger: var(--accent-dark);
-		}
+    }
 
     * { box-sizing: border-box; }
 
@@ -245,11 +233,6 @@
         <input type="hidden" ID="hdnDefaultModel" />
     </div>
   <div class="container">
-    <!-- <div class="header">
-      <h1>📄 PDF Column Extractor</h1>
-      <div class="subtitle">Upload a Tekla column schedule PDF and call the server extraction endpoint.</div>
-    </div> -->
-
     <div class="card">
       <div id="uploadArea" class="upload-box">
         <input id="fileInput" type="file" accept="application/pdf" />
@@ -422,107 +405,54 @@
         .replace(/^[a-z]/, (c) => c.toLowerCase());
     }
 
-    // function toStructuredColumnRows(rawRows) {
-    //   if (!Array.isArray(rawRows)) return [];
-
-    //   if (rawRows.some(row => row && typeof row === 'object' && (Array.isArray(row.rows) || row.detail_mark || row.detailMark || row.DetailMark))) {
-    //     return rawRows.map(item => {
-    //       const detailMark = item?.detail_mark ?? item?.detailMark ?? item?.DetailMark ?? 'UNKNOWN';
-    //       const rows = Array.isArray(item?.rows) ? item.rows : [];
-    //       return {
-    //         detail_mark: detailMark,
-    //         rows: rows.map(row => ({
-    //           start_storey: row?.start_storey ?? row?.StartStorey ?? row?.startStorey ?? null,
-    //           end_storey: row?.end_storey ?? row?.EndStorey ?? row?.endStorey ?? null,
-    //           material_grade: row?.material_grade ?? row?.MaterialGrade ?? row?.materialGrade ?? null,
-    //           width_mm: row?.width_mm ?? row?.Width ?? row?.width ?? null,
-    //           breadth_mm: row?.breadth_mm ?? row?.Breadth ?? row?.breadth ?? null,
-    //           main_rebar: row?.main_rebar ?? row?.MainRebar ?? row?.mainRebar ?? null,
-    //           stirrups: row?.stirrups ?? row?.Stirrups ?? row?.stirrup ?? null,
-    //           construction_method: row?.construction_method ?? row?.ConstructionMethod ?? row?.constructionMethod ?? null,
-    //           arrangement_type: row?.arrangement_type ?? row?.ArrangementType ?? row?.arrangementType ?? null,
-    //           splice_dowels: row?.splice_dowels ?? row?.spliceDowels ?? row?.['Splice/Dowels'] ?? null,
-    //           note: row?.note ?? row?.Note ?? null
-    //         }))
-    //       };
-    //     });
-    //   }
-
-    //   const grouped = new Map();
-
-    //   rawRows.forEach(row => {
-    //     if (!row || typeof row !== 'object') return;
-
-    //     const detailMark = row.detail_mark ?? row.detailMark ?? row.DetailMark ?? row['Detail Mark'] ?? 'UNKNOWN';
-    //     if (!grouped.has(detailMark)) {
-    //       grouped.set(detailMark, { detail_mark: detailMark, rows: [] });
-    //     }
-
-    //     grouped.get(detailMark).rows.push({
-    //       start_storey: row.start_storey ?? row.StartStorey ?? row.startStorey ?? null,
-    //       end_storey: row.end_storey ?? row.EndStorey ?? row.endStorey ?? null,
-    //       material_grade: row.material_grade ?? row.MaterialGrade ?? row.materialGrade ?? null,
-    //       width_mm: row.width_mm ?? row.Width ?? row.width ?? null,
-    //       breadth_mm: row.breadth_mm ?? row.Breadth ?? row.breadth ?? null,
-    //       main_rebar: row.main_rebar ?? row.MainRebar ?? row.mainRebar ?? null,
-    //       stirrups: row.stirrups ?? row.Stirrups ?? row.stirrup ?? null,
-    //       construction_method: row.construction_method ?? row.ConstructionMethod ?? row.constructionMethod ?? null,
-    //       arrangement_type: row.arrangement_type ?? row.ArrangementType ?? row.arrangementType ?? null,
-    //       splice_dowels: row.splice_dowels ?? row.spliceDowels ?? row['Splice/Dowels'] ?? null,
-    //       note: row.note ?? row.Note ?? null
-    //     });
-    //   });
-
-    //   return Array.from(grouped.values());
-    // }
     function toStructuredColumnRows(rawRows) {
-  if (!Array.isArray(rawRows)) return [];
+      if (!Array.isArray(rawRows)) return [];
 
-  const flatRows = [];
+      const flatRows = [];
 
-  rawRows.forEach(item => {
-    if (!item || typeof item !== 'object') return;
+      rawRows.forEach(item => {
+        if (!item || typeof item !== 'object') return;
 
-    const parentDetailMark =
-      item.detail_mark ?? item.detailMark ?? item.DetailMark ??
-      item['Detail Mark'] ?? item.Mark ?? item.mark ?? 'UNKNOWN';
+        const parentDetailMark =
+          item.detail_mark ?? item.detailMark ?? item.DetailMark ??
+          item['Detail Mark'] ?? item.Mark ?? item.mark ?? 'UNKNOWN';
 
-    const nested = Array.isArray(item.rows) ? item.rows : null;
+        const nested = Array.isArray(item.rows) ? item.rows : null;
 
-    if (nested) {
-      nested.forEach(row => {
-        if (!row || typeof row !== 'object') return;
-        flatRows.push({ row, inheritedMark: parentDetailMark });
+        if (nested) {
+          nested.forEach(row => {
+            if (!row || typeof row !== 'object') return;
+            flatRows.push({ row, inheritedMark: parentDetailMark });
+          });
+        } else {
+          flatRows.push({ row: item, inheritedMark: null });
+        }
       });
-    } else {
-      flatRows.push({ row: item, inheritedMark: null });
-    }
-  });
 
-  return flatRows.map(({ row, inheritedMark }) => ({
-    detail_mark:
-      row.detail_mark ?? row.detailMark ?? row.DetailMark ??
-      row['Detail Mark'] ?? row.Mark ?? row.mark ??
-      inheritedMark ?? 'UNKNOWN',
-    start_storey: row.start_storey ?? row.StartStorey ?? row.startStorey ?? null,
-    end_storey: row.end_storey ?? row.EndStorey ?? row.endStorey ?? null,
-    material_grade: row.material_grade ?? row.MaterialGrade ?? row.materialGrade ?? null,
-    width_mm: row.width_mm ?? row.Width ?? row.width ?? row.Thickness ?? row.thickness ?? null,
-    breadth_mm: row.breadth_mm ?? row.Breadth ?? row.breadth ?? row.Length ?? row.length ?? null,
-    main_rebar: row.main_rebar ?? row.MainRebar ?? row.mainRebar ?? null,
-    vertical_rebar: row.vertical_rebar ?? row.VerticalRebar ?? row.verticalRebar ?? null,
-    horizontal_rebar: row.horizontal_rebar ?? row.HorizontalRebar ?? row.horizontalRebar ?? null,
-    stirrups: row.stirrups ?? row.Stirrups ?? row.stirrup ?? null,
-    construction_method: row.construction_method ?? row.ConstructionMethod ?? row.constructionMethod ?? null,
-    arrangement_type: row.arrangement_type ?? row.ArrangementType ?? row.arrangementType ?? null,
-    splice_dowels: row.splice_dowels ?? row.spliceDowels ?? row['Splice/Dowels'] ?? null,
-    remark: row.remark ?? row.Remark ?? null,
-    refer_to_2d_detail:
-      row.refer_to_2d_detail ?? row.ReferTo2dDetail ?? row.referTo2dDetail ??
-      row['Refer to 2D Detail'] ?? null,
-    note: row.note ?? row.Note ?? null
-  }));
-}
+      return flatRows.map(({ row, inheritedMark }) => ({
+        detail_mark:
+          row.detail_mark ?? row.detailMark ?? row.DetailMark ??
+          row['Detail Mark'] ?? row.Mark ?? row.mark ??
+          inheritedMark ?? 'UNKNOWN',
+        start_storey: row.start_storey ?? row.StartStorey ?? row.startStorey ?? null,
+        end_storey: row.end_storey ?? row.EndStorey ?? row.endStorey ?? null,
+        material_grade: row.material_grade ?? row.MaterialGrade ?? row.materialGrade ?? null,
+        width_mm: row.width_mm ?? row.Width ?? row.width ?? row.Thickness ?? row.thickness ?? null,
+        breadth_mm: row.breadth_mm ?? row.Breadth ?? row.breadth ?? row.Length ?? row.length ?? null,
+        main_rebar: row.main_rebar ?? row.MainRebar ?? row.mainRebar ?? null,
+        vertical_rebar: row.vertical_rebar ?? row.VerticalRebar ?? row.verticalRebar ?? null,
+        horizontal_rebar: row.horizontal_rebar ?? row.HorizontalRebar ?? row.horizontalRebar ?? null,
+        stirrups: row.stirrups ?? row.Stirrups ?? row.stirrup ?? null,
+        construction_method: row.construction_method ?? row.ConstructionMethod ?? row.constructionMethod ?? null,
+        arrangement_type: row.arrangement_type ?? row.ArrangementType ?? row.arrangementType ?? null,
+        splice_dowels: row.splice_dowels ?? row.spliceDowels ?? row['Splice/Dowels'] ?? null,
+        remark: row.remark ?? row.Remark ?? null,
+        refer_to_2d_detail:
+          row.refer_to_2d_detail ?? row.ReferTo2dDetail ?? row.referTo2dDetail ??
+          row['Refer to 2D Detail'] ?? null,
+        note: row.note ?? row.Note ?? null
+      }));
+    }
 
     function buildStructuredJson(payload, fallbackFileName = 'column-schedule') {
       if (!payload) return null;
