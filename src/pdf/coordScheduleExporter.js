@@ -1273,7 +1273,8 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
             rowData.get("DetailMark") ||
             rowData.get("Mark") ||
             "";
-        const isDetailMarkRow = /^43[C|P]/.test(detailMarkValue);
+        //const isDetailMarkRow = /^43[C|P]/.test(detailMarkValue);
+        const isDetailMarkRow = /^\d{2}[A-Z]/i.test(detailMarkValue);
 
         if (isDetailMarkRow) {
             currentDetailMark = detailMarkValue;
