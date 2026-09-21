@@ -478,9 +478,9 @@
     function toStructuredColumnRows(rawRows) {
   if (!Array.isArray(rawRows)) return [];
 
-  if (rawRows.some(row => row && typeof row === 'object' && (Array.isArray(row.rows) || row.detail_mark || row.detailMark || row.DetailMark))) {
+  if (rawRows.some(row => row && typeof row === 'object' && (Array.isArray(row.rows) || row.detail_mark || row.detailMark || row.DetailMark || row.Mark))) {
     return rawRows.map(item => {
-      const detailMark = item?.detail_mark ?? item?.detailMark ?? item?.DetailMark ?? 'UNKNOWN';
+      const detailMark = item?.detail_mark ?? item?.detailMark ?? item?.DetailMark ?? item?.Mark ?? 'UNKNOWN';
       const rows = Array.isArray(item?.rows) ? item.rows : [];
       return {
         detail_mark: detailMark,
@@ -506,14 +506,14 @@
   rawRows.forEach(row => {
     if (!row || typeof row !== 'object') return;
 
-    const detailMark = row.detail_mark ?? row.detailMark ?? row.DetailMark ?? row['Detail Mark'] ?? 'UNKNOWN';
+    const detailMark = row.detail_mark ?? row.detailMark ?? row.DetailMark ?? row['Detail Mark'] ?? row.Mark ?? row.mark ?? 'UNKNOWN';
     if (!grouped.has(detailMark)) {
       grouped.set(detailMark, { detail_mark: detailMark, rows: [] });
     }
 
     grouped.get(detailMark).rows.push({
       start_storey: row.start_storey ?? row.StartStorey ?? row.startStorey ?? null,
-      end_storey: row.end_storey ?? row.EndStorey ?? row.endStorey ?? null,
+      end_storey: row.end_storey ?? row.EndStorey ?? row.end_storey ?? null,
       material_grade: row.material_grade ?? row.MaterialGrade ?? row.materialGrade ?? null,
       width_mm: row.width_mm ?? row.Width ?? row.width ?? row.Thickness ?? row.thickness ?? null,
       breadth_mm: row.breadth_mm ?? row.Breadth ?? row.breadth ?? row.Length ?? row.length ?? null,
