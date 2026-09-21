@@ -14,10 +14,8 @@ const __dirname = path.dirname(__filename);
 const OUTPUT_FILE = path.join(__dirname, "output.xlsx");
 const OUTPUT_CSV_FILE = path.join(__dirname, "output_data.csv");
 
-// For web server responses, you can also use a temp directory
 const TEMP_DIR = path.join(__dirname, "temp");
 
-// Ensure temp directory exists
 if (!fs.existsSync(TEMP_DIR)) {
     fs.mkdirSync(TEMP_DIR, { recursive: true });
 }
@@ -28,55 +26,44 @@ const Y_TOLERANCE = 2.5;
 
 // ============================================================
 // HEADER STYLE SWITCH
-// ------------------------------------------------------------
-// Change HEADER_STYLE to one of:
-//   "friendly"  -> human-readable labels, e.g. "Detail Mark", "Width (mm)"
-//   "internal"  -> internal canonical keys, e.g. "DetailMark", "Thickness"
-//
-// Both styles resolve to the SAME columns and the SAME row-object
-// properties. This flag only changes how headers are displayed in
-// the Column Schedule sheet, the Data Table sheet, and the CSV.
+//   "friendly" -> "Detail Mark", "Width (mm)", ...
+//   "internal" -> "DetailMark",  "Thickness", ...
 // ============================================================
 
-const HEADER_STYLE = "friendly"; // <-- change to "internal" if you prefer
+const HEADER_STYLE = "friendly";
 
-// ------------------------------------------------------------
-// Canonical column order (drives everything)
-// Each entry: { key, friendly, internal, prop }
-//   key       : stable identifier used internally
-//   friendly  : header label for "friendly" style
-//   internal  : header label for "internal" style
-//   prop      : property name on the processed row object
-// ------------------------------------------------------------
+
+// ============================================================
+// CANONICAL COLUMN DEFINITIONS
+// Each column: { key, friendly, internal, prop, required? }
+//   key      : stable internal id (used for PDF header matching)
+//   friendly : label for "friendly" style
+//   internal : label for "internal" style
+//   prop     : JSON property name on the row object
+//   required : if true, always include even if not detected
+// ============================================================
 
 const COLUMNS = [
-    { key: "DetailMark",          friendly: "Detail Mark",        internal: "DetailMark",          prop: "detail_mark" },
-    { key: "DetailStartStorey",   friendly: "Start Storey",       internal: "DetailStartStorey",   prop: "start_storey" },
-    { key: "DetailEndstorey",     friendly: "End Storey",         internal: "DetailEndstorey",     prop: "end_storey" },
-    { key: "MaterialGrade",       friendly: "Material Grade",     internal: "MaterialGrade",       prop: "material_grade" },
-    { key: "Thickness",           friendly: "Width (mm)",         internal: "Thickness",           prop: "width_mm" },
-    { key: "Length",              friendly: "Breadth (mm)",       internal: "Length",              prop: "breadth_mm" },
-    { key: "MainRebar",           friendly: "Main Rebar",         internal: "MainRebar",           prop: "main_rebar" },
-    { key: "VerticalRebar",       friendly: "Vertical Rebar",     internal: "VerticalRebar",       prop: "vertical_rebar" },
-    { key: "HorizontalRebar",     friendly: "Horizontal Rebar",   internal: "HorizontalRebar",     prop: "horizontal_rebar" },
-    { key: "Stirrups",            friendly: "Stirrups",           internal: "Stirrups",            prop: "stirrups" },
-    { key: "ConstructionMethod",  friendly: "Construction Method",internal: "ConstructionMethod",  prop: "construction_method" },
-    { key: "ArrangementType",     friendly: "Arrangement Type",   internal: "ArrangementType",     prop: "arrangement_type" },
-    { key: "Splice/Dowels",       friendly: "Splice/Dowels",      internal: "Splice/Dowels",       prop: "splice_dowels" },
-    { key: "Remark",              friendly: "Remark",             internal: "Remark",              prop: "remark" },
-    { key: "ReferTo2DDetail",     friendly: "Refer To 2D Detail", internal: "ReferTo2DDetail",     prop: "refer_to_2d_detail" }
+    { key: "DetailMark",         friendly: "Detail Mark",         internal: "DetailMark",         prop: "detail_mark",         required: true  },
+    { key: "DetailStartStorey",  friendly: "Start Storey",        internal: "DetailStartStorey",  prop: "start_storey" },
+    { key: "DetailEndstorey",    friendly: "End Storey",          internal: "DetailEndstorey",    prop: "end_storey" },
+    { key: "MaterialGrade",      friendly: "Material Grade",      internal: "MaterialGrade",      prop: "material_grade" },
+    { key: "Thickness",          friendly: "Width (mm)",          internal: "Thickness",          prop: "width_mm" },
+    { key: "Length",             friendly: "Breadth (mm)",        internal: "Length",             prop: "breadth_mm" },
+    { key: "MainRebar",          friendly: "Main Rebar",          internal: "MainRebar",          prop: "main_rebar" },
+    { key: "VerticalRebar",      friendly: "Vertical Rebar",      internal: "VerticalRebar",      prop: "vertical_rebar" },
+    { key: "HorizontalRebar",    friendly: "Horizontal Rebar",    internal: "HorizontalRebar",    prop: "horizontal_rebar" },
+    { key: "Stirrups",           friendly: "Stirrups",            internal: "Stirrups",           prop: "stirrups" },
+    { key: "ConstructionMethod", friendly: "Construction Method", internal: "ConstructionMethod", prop: "construction_method" },
+    { key: "ArrangementType",    friendly: "Arrangement Type",    internal: "ArrangementType",    prop: "arrangement_type" },
+    { key: "Splice/Dowels",      friendly: "Splice/Dowels",       internal: "Splice/Dowels",      prop: "splice_dowels" },
+    { key: "Remark",             friendly: "Remark",              internal: "Remark",             prop: "remark" },
+    { key: "ReferTo2DDetail",    friendly: "Refer To 2D Detail",  internal: "ReferTo2DDetail",    prop: "refer_to_2d_detail" }
 ];
 
-// Convenience: the header label to show for each column, based on HEADER_STYLE
 function headerLabel(col) {
     return HEADER_STYLE === "internal" ? col.internal : col.friendly;
 }
-
-// Header keys used by the PDF header-matching logic (always use internal keys)
-const LAYOUT_HEADER_KEYS = COLUMNS.map(c => c.key);
-
-// Header labels used for output (Column Schedule, Data Table, CSV)
-const LAYOUT_HEADER_LABELS = COLUMNS.map(headerLabel);
 
 
 // ============================================================
@@ -133,8 +120,20 @@ async function main() {
     createInfoSheet(infoSheet, items, xCenters, yDescending);
     createLayoutSheet(layoutSheet, items, xCenters, yDescending);
     createRawSheet(rawSheet, items, xCenters, yDescending);
-    createScheduleSheet(scheduleSheet, items);
-    const processedRows = createDataSheet(dataSheet, items, workbook);
+
+    // ------------------------------------------------
+    // Resolve which columns actually exist on the PDF
+    // ------------------------------------------------
+    const detection = detectActiveColumns(items);
+    const activeColumns = detection.activeColumns;
+
+    console.log("");
+    console.log("Active columns (present on PDF):");
+    activeColumns.forEach(c => console.log(`  - ${c.key} (${headerLabel(c)})`));
+    console.log("");
+
+    createScheduleSheet(scheduleSheet, items, activeColumns);
+    const processedRows = createDataSheet(dataSheet, items, workbook, activeColumns);
 
     console.log("");
     console.log("Saving Excel...");
@@ -157,7 +156,7 @@ async function main() {
             const csvFilename = `output_data_${timestamp}.csv`;
             const csvPath = path.join(TEMP_DIR, csvFilename);
 
-            const csvResult = await exportToCsv(processedRows, csvPath);
+            const csvResult = await exportToCsv(processedRows, csvPath, activeColumns);
 
             if (csvResult) {
                 console.log(`CSV saved to: ${csvPath}`);
@@ -179,10 +178,114 @@ async function main() {
 
 
 // ============================================================
+// COLUMN DETECTION
+// ------------------------------------------------------------
+// Returns { activeColumns, foundHeaders }
+// activeColumns = COLUMNS entries actually detected on the PDF
+// (plus any with required: true)
+// ============================================================
+
+function detectActiveColumns(items) {
+
+    const foundHeaders = [];
+
+    for (const col of COLUMNS) {
+        const matches = findHeaderMatches(items, col.key);
+
+        if (matches.length > 0) {
+            const selected = matches.reduce((best, current) =>
+                current.y > best.y ? current : best
+            );
+
+            foundHeaders.push({
+                key: col.key,
+                col,
+                x: selected.x,
+                y: selected.y,
+                width: selected.width,
+                height: selected.height,
+                text: selected.text
+            });
+        }
+    }
+
+    // Position-based fallback only if we found very few headers
+    if (foundHeaders.length === 0) {
+        console.log("No headers detected by name. Using position-based fallback...");
+
+        const headerY = Math.max(...items.map(item => item.y));
+        const headerItems = items.filter(item => Math.abs(item.y - headerY) < 5);
+
+        const xGroups = new Map();
+        for (const item of headerItems) {
+            const xKey = Math.round(item.x / 2) * 2;
+            if (!xGroups.has(xKey)) xGroups.set(xKey, []);
+            xGroups.get(xKey).push(item);
+        }
+
+        const sortedX = Array.from(xGroups.keys()).sort((a, b) => a - b);
+
+        for (let i = 0; i < sortedX.length && i < COLUMNS.length; i++) {
+            const xKey = sortedX[i];
+            const itemsAtX = xGroups.get(xKey);
+            const text = itemsAtX.map(it => it.text.trim()).join(" ");
+            const avgX = itemsAtX.reduce((sum, it) => sum + it.x, 0) / itemsAtX.length;
+
+            // Try to match by name first
+            let matchedCol = null;
+            const normalizedText = normalizeHeaderText(text);
+
+            for (const col of COLUMNS) {
+                const aliases = headerAliases[col.key] || [col.key];
+                for (const alias of aliases) {
+                    const normalizedAlias = normalizeHeaderText(alias);
+                    if (normalizedText.includes(normalizedAlias) ||
+                        normalizedAlias.includes(normalizedText)) {
+                        matchedCol = col;
+                        break;
+                    }
+                }
+                if (matchedCol) break;
+            }
+
+            // Otherwise fall back to positional column
+            if (!matchedCol) matchedCol = COLUMNS[i];
+
+            foundHeaders.push({
+                key: matchedCol.key,
+                col: matchedCol,
+                x: avgX,
+                y: headerY,
+                width: 0,
+                height: 0,
+                text: text
+            });
+        }
+    }
+
+    // Build active column set
+    const seen = new Set();
+    const activeColumns = [];
+
+    for (const col of COLUMNS) {
+        const isFound = foundHeaders.some(h => h.key === col.key);
+        const isRequired = col.required === true;
+
+        if ((isFound || isRequired) && !seen.has(col.key)) {
+            activeColumns.push(col);
+            seen.add(col.key);
+        }
+    }
+
+    return { activeColumns, foundHeaders };
+}
+
+
+// ============================================================
 // EXPORT TO CSV
 // ============================================================
 
-async function exportToCsv(rows, outputPath) {
+async function exportToCsv(rows, outputPath, activeColumns) {
 
     if (!rows || rows.length === 0) {
         console.log("No data rows to export to CSV.");
@@ -191,7 +294,7 @@ async function exportToCsv(rows, outputPath) {
 
     console.log(`Preparing to export ${rows.length} rows to CSV...`);
 
-    const headers = LAYOUT_HEADER_LABELS;
+    const headers = activeColumns.map(headerLabel);
 
     let csvContent = headers.map(escapeCsvValue).join(",") + "\n";
 
@@ -201,7 +304,7 @@ async function exportToCsv(rows, outputPath) {
             console.log("Sample row data:", JSON.stringify(row, null, 2));
         }
 
-        const rowData = COLUMNS.map(col => {
+        const rowData = activeColumns.map(col => {
             const value = row[col.prop];
             return value !== null && value !== undefined ? escapeCsvValue(value) : "";
         });
@@ -247,17 +350,21 @@ function escapeCsvValue(value) {
 // GET CSV AS BUFFER
 // ============================================================
 
-export function getCsvBuffer(rows) {
+export function getCsvBuffer(rows, activeColumns) {
     if (!rows || rows.length === 0) {
         return null;
     }
 
-    const headers = LAYOUT_HEADER_LABELS;
+    const cols = activeColumns && activeColumns.length > 0
+        ? activeColumns
+        : COLUMNS;
+
+    const headers = cols.map(headerLabel);
 
     let csvContent = headers.map(escapeCsvValue).join(",") + "\n";
 
     for (const row of rows) {
-        const rowData = COLUMNS.map(col => {
+        const rowData = cols.map(col => {
             const value = row[col.prop];
             return value !== null && value !== undefined ? escapeCsvValue(value) : "";
         });
@@ -305,14 +412,19 @@ export async function getExcelBuffer(json) {
     createInfoSheet(infoSheet, items, xCenters, yDescending);
     createLayoutSheet(layoutSheet, items, xCenters, yDescending);
     createRawSheet(rawSheet, items, xCenters, yDescending);
-    createScheduleSheet(scheduleSheet, items);
-    const processedRows = createDataSheet(dataSheet, items, workbook);
+
+    const detection = detectActiveColumns(items);
+    const activeColumns = detection.activeColumns;
+
+    createScheduleSheet(scheduleSheet, items, activeColumns);
+    const processedRows = createDataSheet(dataSheet, items, workbook, activeColumns);
 
     const buffer = await workbook.xlsx.writeBuffer();
 
     return {
         buffer,
         processedRows,
+        activeColumns: activeColumns.map(c => c.key),
         itemCount: items.length,
         xClusterCount: xCenters.length,
         yRowCount: yDescending.length,
@@ -809,16 +921,12 @@ function findHeaderMatches(items, headerName) {
 // COLUMN SCHEDULE
 // ============================================================
 
-function createScheduleSheet(sheet, items) {
-
-    // We always match against internal keys on the PDF
-    const headerKeys = LAYOUT_HEADER_KEYS;
-    const headerLabels = LAYOUT_HEADER_LABELS;
+function createScheduleSheet(sheet, items, activeColumns) {
 
     const foundHeaders = [];
 
-    for (const headerKey of headerKeys) {
-        const matches = findHeaderMatches(items, headerKey);
+    for (const col of activeColumns) {
+        const matches = findHeaderMatches(items, col.key);
 
         if (matches.length > 0) {
             const selected = matches.reduce((best, current) =>
@@ -826,8 +934,8 @@ function createScheduleSheet(sheet, items) {
             );
 
             foundHeaders.push({
-                key: headerKey,
-                label: headerLabels[headerKeys.indexOf(headerKey)],
+                key: col.key,
+                col,
                 x: selected.x,
                 y: selected.y,
                 width: selected.width,
@@ -857,7 +965,7 @@ function createScheduleSheet(sheet, items) {
 
     foundHeaders.forEach((header, index) => {
         const cell = sheet.getCell(1, index + 1);
-        cell.value = header.label;
+        cell.value = headerLabel(header.col);
         cell.font = { bold: true };
         cell.alignment = { horizontal: "center", vertical: "center", wrapText: true };
         cell.border = {
@@ -967,10 +1075,9 @@ function findScheduleColumn(x, headers) {
 // DATA SHEET
 // ============================================================
 
-function createDataSheet(sheet, items, workbook) {
+function createDataSheet(sheet, items, workbook, activeColumns) {
 
-    // Use internal keys for PDF header matching
-    const headerKeys = LAYOUT_HEADER_KEYS;
+    const headerKeys = activeColumns.map(c => c.key);
 
     let foundHeaders = [];
 
@@ -1221,7 +1328,6 @@ function createDataSheet(sheet, items, workbook) {
         const arrangementMatch = allText.match(arrangementPattern);
         if (arrangementMatch) {
             arrangementType = arrangementMatch[0].toUpperCase();
-            console.log(`Found arrangement type: "${arrangementType}"`);
         }
 
         // Splice/dowels
@@ -1235,10 +1341,7 @@ function createDataSheet(sheet, items, workbook) {
                 if (!match.includes("p") && !match.includes("s")) return false;
                 return true;
             });
-            if (validSplices.length > 0) {
-                spliceDowels = validSplices[0];
-                console.log(`Found splice/dowels: "${spliceDowels}"`);
-            }
+            if (validSplices.length > 0) spliceDowels = validSplices[0];
         }
 
         if (!spliceDowels) {
@@ -1250,10 +1353,7 @@ function createDataSheet(sheet, items, workbook) {
                     if (mainRebar && mainRebar.replace(/[^A-Z0-9]/g, "") === cleanMatch) return false;
                     return true;
                 });
-                if (validMatches.length > 0) {
-                    spliceDowels = validMatches[0];
-                    console.log(`Found splice/dowels (flex): "${spliceDowels}"`);
-                }
+                if (validMatches.length > 0) spliceDowels = validMatches[0];
             }
         }
 
@@ -1261,7 +1361,6 @@ function createDataSheet(sheet, items, workbook) {
             const directSplice = rowData.get("Splice/Dowels") || "";
             if (directSplice && /[A-Z]\d+[\(p\)]/.test(directSplice)) {
                 spliceDowels = directSplice;
-                console.log(`Found splice/dowels from column: "${spliceDowels}"`);
             }
         }
 
@@ -1278,9 +1377,7 @@ function createDataSheet(sheet, items, workbook) {
                 if (dimensionNumbers.length >= 2) {
                     breadthValue = dimensionNumbers[1];
                 } else if (dimensionNumbers.length === 1) {
-                    if (width && !isNaN(parseFloat(width))) {
-                        breadthValue = dimensionNumbers[0];
-                    }
+                    if (width && !isNaN(parseFloat(width))) breadthValue = dimensionNumbers[0];
                 }
             }
 
@@ -1377,39 +1474,32 @@ function createDataSheet(sheet, items, workbook) {
         width = width.replace(/\s+.*$/, "").trim();
         breadth = breadth.toString().trim();
 
-        console.log(`Row ${rowIndex + 1} final data:`);
-        console.log(`  detail_mark: "${currentDetailMark}"`);
-        console.log(`  start_storey: "${startStorey}"`);
-        console.log(`  end_storey: "${endStorey}"`);
-        console.log(`  material_grade: "${materialGrade}"`);
-        console.log(`  width_mm (Thickness): "${width}"`);
-        console.log(`  breadth_mm (Length): "${breadth}"`);
-        console.log(`  main_rebar: "${mainRebar}"`);
-        console.log(`  vertical_rebar: "${verticalRebar}"`);
-        console.log(`  horizontal_rebar: "${horizontalRebar}"`);
-        console.log(`  stirrups: "${stirrups}"`);
-        console.log(`  construction_method: "${constructionMethod}"`);
-        console.log(`  arrangement_type: "${arrangementType}"`);
-        console.log(`  splice_dowels: "${spliceDowels}"`);
-        console.log("---");
-
-        const rowObj = {
+        // ----------------------------------------------------
+        // Build the row object dynamically from activeColumns
+        // so absent columns are absent from the JSON.
+        // ----------------------------------------------------
+        const valuesByProp = {
             detail_mark: currentDetailMark || rowData.get("Mark") || "",
             start_storey: startStorey,
             end_storey: endStorey,
             material_grade: materialGrade,
             width_mm: parseFloat(width) || null,
             breadth_mm: parseFloat(breadth) || null,
-            main_rebar: mainRebar,
+            main_rebar: mainRebar || null,
             vertical_rebar: verticalRebar || null,
             horizontal_rebar: horizontalRebar || null,
-            stirrups: stirrups,
-            construction_method: constructionMethod,
+            stirrups: stirrups || null,
+            construction_method: constructionMethod || null,
             arrangement_type: arrangementType || null,
             splice_dowels: spliceDowels || null,
             remark: remark || "",
             refer_to_2d_detail: rowData.get("ReferTo2DDetail") || ""
         };
+
+        const rowObj = {};
+        for (const col of activeColumns) {
+            rowObj[col.prop] = valuesByProp[col.prop];
+        }
 
         processedRows.push(rowObj);
     }
@@ -1440,13 +1530,13 @@ function createDataSheet(sheet, items, workbook) {
     sheet.getCell(summaryRow + 2, 1).value = "==========================================";
 
     // --------------------------------------------------------
-    // Data Table sheet - headers and body driven by COLUMNS
+    // Data Table sheet - headers and body driven by activeColumns
     // --------------------------------------------------------
     const dataTableSheet = workbook.addWorksheet("Data Table");
 
-    LAYOUT_HEADER_LABELS.forEach((label, index) => {
+    activeColumns.forEach((col, index) => {
         const cell = dataTableSheet.getCell(1, index + 1);
-        cell.value = label;
+        cell.value = headerLabel(col);
         cell.font = { bold: true };
         cell.alignment = { horizontal: "center", vertical: "center" };
         cell.border = {
@@ -1459,7 +1549,7 @@ function createDataSheet(sheet, items, workbook) {
 
     let rowNum = 2;
     for (const row of processedRows) {
-        COLUMNS.forEach((col, colIndex) => {
+        activeColumns.forEach((col, colIndex) => {
             const value = row[col.prop];
             const cell = dataTableSheet.getCell(rowNum, colIndex + 1);
             cell.value = value !== null && value !== undefined ? value : "";
@@ -1482,7 +1572,7 @@ function createDataSheet(sheet, items, workbook) {
         Remark: 22, ReferTo2DDetail: 22
     };
 
-    COLUMNS.forEach((col, index) => {
+    activeColumns.forEach((col, index) => {
         dataTableSheet.getColumn(index + 1).width = layoutWidths[col.key] || 16;
     });
 
@@ -1491,7 +1581,7 @@ function createDataSheet(sheet, items, workbook) {
     if (dataTableSheet.rowCount > 1) {
         dataTableSheet.autoFilter = {
             from: "A1",
-            to: `${getExcelColumnName(COLUMNS.length)}${dataTableSheet.rowCount}`
+            to: `${getExcelColumnName(activeColumns.length)}${dataTableSheet.rowCount}`
         };
     }
 
@@ -1541,8 +1631,12 @@ export async function generateCoordScheduleWorkbook(json, outputPath = OUTPUT_FI
     createInfoSheet(infoSheet, items, xCenters, yDescending);
     createLayoutSheet(layoutSheet, items, xCenters, yDescending);
     createRawSheet(rawSheet, items, xCenters, yDescending);
-    createScheduleSheet(scheduleSheet, items);
-    const processedRows = createDataSheet(dataSheet, items, workbook);
+
+    const detection = detectActiveColumns(items);
+    const activeColumns = detection.activeColumns;
+
+    createScheduleSheet(scheduleSheet, items, activeColumns);
+    const processedRows = createDataSheet(dataSheet, items, workbook, activeColumns);
 
     await workbook.xlsx.writeFile(outputPath);
 
@@ -1555,10 +1649,10 @@ export async function generateCoordScheduleWorkbook(json, outputPath = OUTPUT_FI
             const csvFilename = `output_data_${timestamp}.csv`;
             const tempCsvPath = path.join(TEMP_DIR, csvFilename);
 
-            const csvResult = await exportToCsv(processedRows, tempCsvPath);
+            const csvResult = await exportToCsv(processedRows, tempCsvPath, activeColumns);
             if (csvResult) {
                 csvExported = true;
-                csvBuffer = getCsvBuffer(processedRows);
+                csvBuffer = getCsvBuffer(processedRows, activeColumns);
                 fs.copyFileSync(tempCsvPath, csvPath);
             }
         } catch (error) {
@@ -1571,6 +1665,7 @@ export async function generateCoordScheduleWorkbook(json, outputPath = OUTPUT_FI
         outputFile: outputPath,
         csvFile: csvExported ? csvPath : null,
         csvBuffer: csvBuffer,
+        activeColumns: activeColumns.map(c => c.key),
         itemCount: items.length,
         xClusterCount: xCenters.length,
         yRowCount: yDescending.length,
