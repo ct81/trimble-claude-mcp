@@ -889,7 +889,7 @@ const headerAliases = {
     "Length": ["Length"],
     "Width": ["Width"],
     "Thickness": ["Thickness"],
-    "MainRebar": ["MainRebar", "Main Rebar", "Length"],
+    "MainRebar": ["MainRebar", "Main Rebar"],
     "VerticalRebar": ["VerticalRebar", "Vertical Rebar", "V-Rebar", "V Rebar"],
     "HorizontalRebar": ["HorizontalRebar", "Horizontal Rebar", "H-Rebar", "H Rebar"],
     "Stirrups": ["Stirrups", "Thickness"],
@@ -1260,7 +1260,7 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         let materialGrade = rowData.get("MaterialGrade") || "";
         let width = rowData.get("Width") || rowData.get("Thickness") || "";
         let breadth = rowData.get("Breadth") || rowData.get("Length") || "";
-        let mainRebar = rowData.get("MainRebar") || rowData.get("Length") || "";
+        let mainRebar = rowData.get("MainRebar") || "";
         let verticalRebar = rowData.get("VerticalRebar") || "";
         let horizontalRebar = rowData.get("HorizontalRebar") || "";
         let stirrups = rowData.get("Stirrups") || rowData.get("Thickness") || "";
