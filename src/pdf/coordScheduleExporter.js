@@ -11,9 +11,6 @@ import ExcelJS from "exceljs";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const OUTPUT_FILE = path.join(__dirname, "output.xlsx");
-const OUTPUT_CSV_FILE = path.join(__dirname, "output_data.csv");
-
 const TEMP_DIR = path.join(__dirname, "temp");
 
 if (!fs.existsSync(TEMP_DIR)) {
@@ -26,7 +23,7 @@ const Y_TOLERANCE = 2.5;
 
 // ============================================================
 // HEADER STYLE SWITCH
-//   "friendly" -> "Detail Mark", "Width (mm)", ...
+//   "friendly" -> "Mark", "Width (mm)", ...
 //   "internal" -> "DetailMark",  "Thickness", ...
 // ============================================================
 
@@ -38,7 +35,7 @@ const HEADER_STYLE = "friendly";
 // ============================================================
 
 const COLUMNS = [
-    { key: "DetailMark",         friendly: "Detail Mark",         internal: "DetailMark",         prop: "detail_mark",         required: true  },
+    { key: "DetailMark",         friendly: "Mark",               internal: "DetailMark",         prop: "detail_mark",         required: true  },
     { key: "DetailStartStorey",  friendly: "Start Storey",        internal: "DetailStartStorey",  prop: "start_storey" },
     { key: "DetailEndstorey",    friendly: "End Storey",          internal: "DetailEndstorey",    prop: "end_storey" },
     { key: "MaterialGrade",      friendly: "Material Grade",      internal: "MaterialGrade",      prop: "material_grade" },
@@ -79,13 +76,20 @@ async function main() {
     console.log("==============================================");
     console.log("");
 
-    const json = await getInputJson();
+    const input = await getInputJson();
 
-    if (!json) {
+    if (!input || !input.json) {
         console.error("");
         console.error("No valid JSON input.");
         process.exit(1);
     }
+
+    const { json, sourceName } = input;
+    const baseName = sourceName || "output";
+
+    // Output filenames follow the uploaded JSON/TXT filename
+    const outputFile    = path.join(__dirname, `${baseName}.xlsx`);
+    const outputCsvFile = path.join(__dirname, `${baseName}.csv`);
 
     const items = extractItems(json);
 
@@ -139,22 +143,21 @@ async function main() {
     console.log("");
     console.log("Saving Excel...");
 
-    await workbook.xlsx.writeFile(OUTPUT_FILE);
+    await workbook.xlsx.writeFile(outputFile);
 
     console.log("");
     console.log("==============================================");
     console.log(" COMPLETE");
     console.log("==============================================");
     console.log("");
-    console.log(`Output: ${OUTPUT_FILE}`);
+    console.log(`Output: ${outputFile}`);
 
     if (processedRows && processedRows.length > 0) {
         console.log("");
         console.log(`Exporting CSV with ${processedRows.length} rows...`);
 
         try {
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-            const csvFilename = `output_data_${timestamp}.csv`;
+            const csvFilename = `${baseName}.csv`;
             const csvPath = path.join(TEMP_DIR, csvFilename);
 
             const csvResult = await exportToCsv(processedRows, csvPath, activeColumns);
@@ -163,8 +166,8 @@ async function main() {
                 console.log(`CSV saved to: ${csvPath}`);
                 console.log(`To download, access: /temp/${csvFilename}`);
 
-                fs.copyFileSync(csvPath, OUTPUT_CSV_FILE);
-                console.log(`CSV also saved to: ${OUTPUT_CSV_FILE}`);
+                fs.copyFileSync(csvPath, outputCsvFile);
+                console.log(`CSV also saved to: ${outputCsvFile}`);
             }
         } catch (error) {
             console.error("Error exporting CSV:", error.message);
@@ -482,7 +485,10 @@ async function getInputJson() {
     switch (choice.trim()) {
         case "1": return await readTextFile();
         case "2": return await readJsonFile();
-        case "3": return await readDirectJson();
+        case "3": {
+            const json = await readDirectJson();
+            return json ? { json, sourceName: "output" } : null;
+        }
         default:
             console.error("");
             console.error("Invalid selection.");
@@ -505,7 +511,10 @@ async function readTextFile() {
     console.log(`Reading TXT: ${resolvedPath}`);
 
     const raw = fs.readFileSync(resolvedPath, "utf8");
-    return parseJsonText(raw);
+    const json = parseJsonText(raw);
+    if (!json) return null;
+
+    return { json, sourceName: path.parse(resolvedPath).name };
 }
 
 async function readJsonFile() {
@@ -523,7 +532,10 @@ async function readJsonFile() {
     console.log(`Reading JSON: ${resolvedPath}`);
 
     const raw = fs.readFileSync(resolvedPath, "utf8");
-    return parseJsonText(raw);
+    const json = parseJsonText(raw);
+    if (!json) return null;
+
+    return { json, sourceName: path.parse(resolvedPath).name };
 }
 
 async function readDirectJson() {
@@ -1635,11 +1647,20 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
 // EXPORTABLE API ENTRYPOINT
 // ============================================================
 
-export async function generateCoordScheduleWorkbook(json, outputPath = OUTPUT_FILE, csvPath = OUTPUT_CSV_FILE) {
+export async function generateCoordScheduleWorkbook(
+    json,
+    sourceName = "output",
+    outputPath = null,
+    csvPath = null
+) {
 
     if (!json) {
         throw new Error("JSON input is required.");
     }
+
+    // Fall back to sourceName-derived paths when not explicitly provided
+    const finalOutputPath = outputPath || path.join(__dirname, `${sourceName}.xlsx`);
+    const finalCsvPath    = csvPath    || path.join(__dirname, `${sourceName}.csv`);
 
     const items = extractItems(json);
 
@@ -1676,22 +1697,21 @@ export async function generateCoordScheduleWorkbook(json, outputPath = OUTPUT_FI
     createScheduleSheet(scheduleSheet, items, activeColumns);
     const processedRows = createDataSheet(dataSheet, items, workbook, activeColumns);
 
-    await workbook.xlsx.writeFile(outputPath);
+    await workbook.xlsx.writeFile(finalOutputPath);
 
     let csvExported = false;
     let csvBuffer = null;
 
     if (processedRows && processedRows.length > 0) {
         try {
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-            const csvFilename = `output_data_${timestamp}.csv`;
+            const csvFilename = `${sourceName}.csv`;
             const tempCsvPath = path.join(TEMP_DIR, csvFilename);
 
             const csvResult = await exportToCsv(processedRows, tempCsvPath, activeColumns);
             if (csvResult) {
                 csvExported = true;
                 csvBuffer = getCsvBuffer(processedRows, activeColumns);
-                fs.copyFileSync(tempCsvPath, csvPath);
+                fs.copyFileSync(tempCsvPath, finalCsvPath);
             }
         } catch (error) {
             console.error("Error exporting CSV:", error.message);
@@ -1700,9 +1720,10 @@ export async function generateCoordScheduleWorkbook(json, outputPath = OUTPUT_FI
 
     return {
         success: true,
-        outputFile: outputPath,
-        csvFile: csvExported ? csvPath : null,
+        outputFile: finalOutputPath,
+        csvFile: csvExported ? finalCsvPath : null,
         csvBuffer: csvBuffer,
+        sourceName: sourceName,
         activeColumns: activeColumns.map(c => c.key),
         itemCount: items.length,
         xClusterCount: xCenters.length,
