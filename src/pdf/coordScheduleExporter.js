@@ -35,14 +35,6 @@ const HEADER_STYLE = "friendly";
 
 // ============================================================
 // CANONICAL COLUMN DEFINITIONS
-// Each column: { key, friendly, internal, prop, required?, aliases? }
-//   key      : stable internal id (used for PDF header matching)
-//   friendly : label for "friendly" style
-//   internal : label for "internal" style
-//   prop     : JSON property name on the row object
-//   required : if true, always include even if not detected
-//   aliases  : extra keys that also count as this column being present
-//              (used for detection OR-grouping, e.g. Breadth <-> Length)
 // ============================================================
 
 const COLUMNS = [
@@ -188,15 +180,6 @@ async function main() {
 
 // ============================================================
 // COLUMN DETECTION
-// ------------------------------------------------------------
-// Returns { activeColumns, foundHeaders }
-// activeColumns = COLUMNS entries actually detected on the PDF
-// (plus any with required: true)
-//
-// A column is considered present if EITHER its key OR any of
-// its aliases match a header on the PDF. This is what lets
-// "Breadth" keep the "Length" column alive (and vice versa),
-// and "Width" keep "Thickness" alive.
 // ============================================================
 
 function detectActiveColumns(items) {
@@ -206,7 +189,6 @@ function detectActiveColumns(items) {
     for (const col of COLUMNS) {
         const keysToTry = [col.key, ...(col.aliases || [])];
 
-        // Try the canonical key + aliases
         let matches = [];
         let matchedViaKey = null;
 
@@ -926,7 +908,7 @@ const headerAliases = {
     "Stirrups": ["Stirrups"],
     "ConstructionMethod": ["ConstructionMethod", "Construction Method", "ArrangementType"],
     "ArrangementType": ["ArrangementType", "Arrangement Type"],
-    "Splice/Dowels": ["Splice/Dowels", "Splice / Dowels", "SpliceDowels", "Splice Dowels"],
+    "Splice/Dowels": ["Splice/Dowels", "Splice / Dowels", "SpliceDowels", "Splice Dowels", "Splice"],
     "Remark": ["Remark"],
     "ReferTo2DDetail": ["ReferTo2DDetail", "Refer To 2D Detail", "ReferTo2D Details", "Refer To 2D Details"]
 };
@@ -1273,22 +1255,36 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
             rowData.get("DetailMark") ||
             rowData.get("Mark") ||
             "";
-        //const isDetailMarkRow = /^43[C|P]/.test(detailMarkValue);
-        //const isDetailMarkRow = /^\d{2}[A-Z]/i.test(detailMarkValue);
+
+        // Accept:   43LW11, 21A5, 07B3   (2 digits + letter)
+        //           GB01, GB02, GB03     (2 letters + 2 digits)
         const isDetailMarkRow = /^(\d{2}[A-Z]|[A-Z]{2}\d{2})/i.test(detailMarkValue);
+
+        // Does this row contain any real data beyond the mark itself?
+        let rowHasData = false;
+        for (const [k, value] of rowData) {
+            if (k === "DetailMark" || k === "Mark") continue;
+            if (value && value.trim() && value.trim() !== "A") {
+                rowHasData = true;
+                break;
+            }
+        }
 
         if (isDetailMarkRow) {
             currentDetailMark = detailMarkValue;
             console.log(`Detail mark found: "${currentDetailMark}" at row ${rowIndex + 1}`);
-        } else if (currentDetailMark) {
-            let hasData = false;
-            for (const [, value] of rowData) {
-                if (value && value.trim() && value.trim() !== "A") {
-                    hasData = true;
-                    break;
-                }
+
+            // If the mark row ALSO has data (row-per-mark style PDFs like GB01..GB61),
+            // push it as a data row too.
+            if (rowHasData) {
+                allRows.push({
+                    detail_mark: currentDetailMark,
+                    rowData: rowData,
+                    rowIndex: rowIndex
+                });
             }
-            if (hasData) {
+        } else if (currentDetailMark) {
+            if (rowHasData) {
                 allRows.push({
                     detail_mark: currentDetailMark,
                     rowData: rowData,
