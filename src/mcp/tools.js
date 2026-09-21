@@ -572,13 +572,12 @@ function decodePdfBase64(value) {
   return buffer;
 }
 
-// Derive the base output name from whatever the caller provided.
-// Priority: sourceName -> jsonPath basename -> outputPath basename -> fallback
-function deriveSourceNameFromArgs(args, fallback = 'coord-schedule-output') {
-  const stripExt = (n) => String(n).replace(/\.(json|txt|xlsx|csv)$/i, '');
+// ---------- Helper: derive output basename from whatever the caller sent -----
+function deriveSourceNameFromArgs(args, fallback = "coord-schedule-output") {
+  const stripExt = (n) => String(n).replace(/\.(json|txt|xlsx|csv)$/i, "");
 
   if (args && args.sourceName) return stripExt(args.sourceName);
-  if (args && args.jsonPath) return stripExt(path.basename(String(args.jsonPath)));
+  if (args && args.jsonPath)   return stripExt(path.basename(String(args.jsonPath)));
   if (args && args.outputPath) return stripExt(path.basename(String(args.outputPath)));
   return fallback;
 }
@@ -747,7 +746,8 @@ export async function callTool(
     }
 
     case 'export_coord_schedule_excel': {
-      // ---------- 1. Load JSON ------------------------------------------
+
+      // 1. Load JSON -----------------------------------------------------
       let jsonValue = args.json;
 
       if (!jsonValue && args.jsonPath) {
@@ -762,10 +762,13 @@ export async function callTool(
 
       const payload = parseJsonInput(jsonValue, 'json');
 
-      // ---------- 2. Filename follows the JSON file ---------------------
+      // 2. Filename follows the JSON file ---------------------------------
       const sourceName = deriveSourceNameFromArgs(args);
 
-      // Directory: honour args.outputPath's folder, otherwise cwd
+      console.log('[export_coord_schedule_excel] sourceName =', sourceName);
+      console.log('[export_coord_schedule_excel] args.jsonPath =', args.jsonPath);
+
+      // 3. Output directory ----------------------------------------------
       const outputDir = args.outputPath
         ? path.dirname(path.resolve(args.outputPath))
         : process.cwd();
@@ -775,7 +778,10 @@ export async function callTool(
       const finalExcelPath = path.join(outputDir, `${sourceName}.xlsx`);
       const finalCsvPath   = path.join(outputDir, `${sourceName}.csv`);
 
-      // ---------- 3. Timestamped copies for download URLs ---------------
+      console.log('[export_coord_schedule_excel] finalExcelPath =', finalExcelPath);
+      console.log('[export_coord_schedule_excel] finalCsvPath   =', finalCsvPath);
+
+      // 4. Timestamped copies for download URLs ---------------------------
       const downloadDirectory = path.join(
         process.cwd(),
         'src',
@@ -790,22 +796,21 @@ export async function callTool(
       const excelDownloadPath = path.join(downloadDirectory, excelFilename);
       const csvDownloadPath   = path.join(downloadDirectory, csvFilename);
 
-      // ---------- 4. Generate -------------------------------------------
-      // Signature: generateCoordScheduleWorkbook(json, outputPath, csvPath, sourceName)
+      // 5. Generate -------------------------------------------------------
       result = await generateCoordScheduleWorkbook(
         payload,
-        finalExcelPath,
-        finalCsvPath,
-        sourceName
+        finalExcelPath,   // outputPath
+        finalCsvPath,     // csvPath
+        sourceName        // sourceName  ← the JSON-derived name
       );
 
-      // ---------- 5. Mirror to timestamped downloads --------------------
+      // 6. Mirror to timestamped downloads --------------------------------
       fs.copyFileSync(finalExcelPath, excelDownloadPath);
       if (result.csvFile && fs.existsSync(result.csvFile)) {
         fs.copyFileSync(result.csvFile, csvDownloadPath);
       }
 
-      // ---------- 6. Build response -------------------------------------
+      // 7. Response -------------------------------------------------------
       const publicBaseUrl = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
 
       result = {

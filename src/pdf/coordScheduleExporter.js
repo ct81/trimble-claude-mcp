@@ -40,11 +40,9 @@ const COLUMNS = [
     { key: "DetailEndstorey",    friendly: "End Storey",          internal: "DetailEndstorey",    prop: "end_storey" },
     { key: "MaterialGrade",      friendly: "Material Grade",      internal: "MaterialGrade",      prop: "material_grade" },
 
-    // Thickness and Width are the same physical column
     { key: "Thickness",          friendly: "Width (mm)",          internal: "Thickness",          prop: "width_mm",
       aliases: ["Width"] },
 
-    // Length and Breadth are the same physical column
     { key: "Length",             friendly: "Breadth (mm)",        internal: "Length",             prop: "breadth_mm",
       aliases: ["Breadth"] },
 
@@ -65,7 +63,7 @@ function headerLabel(col) {
 
 
 // ============================================================
-// MAIN
+// MAIN (CLI)
 // ============================================================
 
 async function main() {
@@ -87,7 +85,6 @@ async function main() {
     const { json, sourceName } = input;
     const baseName = sourceName || "output";
 
-    // Output filenames follow the uploaded JSON/TXT filename
     const outputFile    = path.join(__dirname, `${baseName}.xlsx`);
     const outputCsvFile = path.join(__dirname, `${baseName}.csv`);
 
@@ -126,9 +123,6 @@ async function main() {
     createLayoutSheet(layoutSheet, items, xCenters, yDescending);
     createRawSheet(rawSheet, items, xCenters, yDescending);
 
-    // ------------------------------------------------
-    // Resolve which columns actually exist on the PDF
-    // ------------------------------------------------
     const detection = detectActiveColumns(items);
     const activeColumns = detection.activeColumns;
 
@@ -143,7 +137,6 @@ async function main() {
     console.log("");
     console.log("Saving Excel...");
 
-    // Ensure output dir exists
     const outputDir = path.dirname(outputFile);
     if (!fs.existsSync(outputDir)) {
         fs.mkdirSync(outputDir, { recursive: true });
@@ -170,7 +163,6 @@ async function main() {
 
             if (csvResult) {
                 console.log(`CSV saved to: ${csvPath}`);
-                console.log(`To download, access: /temp/${csvFilename}`);
 
                 const csvOutDir = path.dirname(outputCsvFile);
                 if (!fs.existsSync(csvOutDir)) {
@@ -233,7 +225,6 @@ function detectActiveColumns(items) {
         }
     }
 
-    // Position-based fallback only if we found very few headers
     if (foundHeaders.length === 0) {
         console.log("No headers detected by name. Using position-based fallback...");
 
@@ -290,7 +281,6 @@ function detectActiveColumns(items) {
         }
     }
 
-    // Build active column set
     const seen = new Set();
     const activeColumns = [];
 
@@ -343,6 +333,10 @@ async function exportToCsv(rows, outputPath, activeColumns) {
     console.log(`Built CSV with ${exportedCount} rows.`);
 
     try {
+        const dir = path.dirname(outputPath);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
         fs.writeFileSync(outputPath, csvContent, "utf8");
         console.log(`CSV file written to: ${outputPath}`);
         console.log(`File size: ${fs.statSync(outputPath).size} bytes`);
@@ -480,7 +474,7 @@ export function getExcelDownloadHeaders(filename = "output.xlsx") {
 
 
 // ============================================================
-// INPUT MENU
+// INPUT MENU (CLI)
 // ============================================================
 
 async function getInputJson() {
@@ -1147,7 +1141,6 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         }
     }
 
-    // Position-based fallback
     if (foundHeaders.length < headerKeys.length) {
         console.log("Not all headers found. Using position-based detection...");
 
@@ -1279,11 +1272,8 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
             rowData.get("Mark") ||
             "";
 
-        // Accept:   43LW11, 21A5, 07B3   (2 digits + letter)
-        //           GB01, GB02, GB03     (2 letters + 2 digits)
         const isDetailMarkRow = /^(\d{2}[A-Z]|[A-Z]{2}\d{2})/i.test(detailMarkValue);
 
-        // Does this row contain any real data beyond the mark itself?
         let rowHasData = false;
         for (const [k, value] of rowData) {
             if (k === "DetailMark" || k === "Mark") continue;
@@ -1297,8 +1287,6 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
             currentDetailMark = detailMarkValue;
             console.log(`Detail mark found: "${currentDetailMark}" at row ${rowIndex + 1}`);
 
-            // If the mark row ALSO has data (row-per-mark style PDFs like GB01..GB61),
-            // push it as a data row too.
             if (rowHasData) {
                 allRows.push({
                     detail_mark: currentDetailMark,
@@ -1324,7 +1312,6 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         const rowIndex = row.rowIndex;
         const currentDetailMark = row.detail_mark;
 
-        // Read from canonical keys, but also allow alias keys
         let materialGrade = rowData.get("MaterialGrade") || "";
         let width = rowData.get("Thickness") || rowData.get("Width") || "";
         let breadth = rowData.get("Length") || rowData.get("Breadth") || "";
@@ -1339,7 +1326,6 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         let startStorey = rowData.get("DetailStartStorey") || "";
         let endStorey = rowData.get("DetailEndstorey") || "";
 
-        // FILTER 1
         let hasOtherData = false;
         for (const [, value] of rowData) {
             const trimmedValue = value.trim();
@@ -1349,11 +1335,10 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
             }
         }
         if (!hasOtherData) {
-            console.log(`Filter 1: Skipping row ${rowIndex + 1} - only contains "A" values`);
+            console.log(`Filter 1: Skipping row ${rowIndex + 1}`);
             continue;
         }
 
-        // FILTER 2
         const firstThreeKeys = xSortedHeaders.slice(0, 3).map(h => h.key);
         let firstThreeEmpty = true;
         for (const headerKey of firstThreeKeys) {
@@ -1364,11 +1349,10 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
             }
         }
         if (firstThreeEmpty) {
-            console.log(`Filter 2: Skipping row ${rowIndex + 1} - first 3 cells are empty`);
+            console.log(`Filter 2: Skipping row ${rowIndex + 1}`);
             continue;
         }
 
-        // FILTER 3
         const col2Key = xSortedHeaders.length > 1 ? xSortedHeaders[1].key : null;
         const col3Key = xSortedHeaders.length > 2 ? xSortedHeaders[2].key : null;
 
@@ -1384,21 +1368,19 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
             if (value.trim() !== "") col3Empty = false;
         }
         if (col2Empty && col3Empty) {
-            console.log(`Filter 3: Skipping row ${rowIndex + 1} - columns 2 & 3 are empty`);
+            console.log(`Filter 3: Skipping row ${rowIndex + 1}`);
             continue;
         }
 
         const allText = Array.from(rowData.values()).filter(v => v).join(" ");
         console.log(`Row ${rowIndex + 1} combined: "${allText}"`);
 
-        // Arrangement type
         const arrangementPattern = /\b(\d+)-TIER\b/i;
         const arrangementMatch = allText.match(arrangementPattern);
         if (arrangementMatch) {
             arrangementType = arrangementMatch[0].toUpperCase();
         }
 
-        // Splice/dowels
         const splicePattern = /\b\d+[A-Z]\d+\s*[\(p\)]+\b/gi;
         const spliceMatches = allText.match(splicePattern);
         if (spliceMatches && spliceMatches.length > 0) {
@@ -1432,7 +1414,6 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
             }
         }
 
-        // Breadth extraction
         let breadthValue = rowData.get("Length") || rowData.get("Breadth") || "";
 
         if (!breadthValue || isNaN(parseFloat(breadthValue))) {
@@ -1487,7 +1468,6 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
             breadth = "";
         }
 
-        // Main rebar and stirrups
         if (mainRebar && /^\d{3,4}$/.test(mainRebar.trim())) mainRebar = "";
 
         const stirrupsPattern = /\d+[A-Z]\d+-\d+\+\d+[A-Z]\d+-\d+/g;
@@ -1542,7 +1522,6 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         width = width.replace(/\s+.*$/, "").trim();
         breadth = breadth.toString().trim();
 
-        // Build the row object dynamically from activeColumns
         const valuesByProp = {
             detail_mark: currentDetailMark || rowData.get("Mark") || "",
             start_storey: startStorey,
@@ -1573,7 +1552,6 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
     console.log(`Total processed rows: ${processedRows.length}`);
     console.log("");
 
-    // Write JSON to Data sheet
     const jsonData = { column_schedule: processedRows };
     const jsonString = JSON.stringify(jsonData, null, 2);
     const lines = jsonString.split('\n');
@@ -1592,7 +1570,6 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
     sheet.getCell(summaryRow + 1, 1).value = `Total Rows: ${processedRows.length}`;
     sheet.getCell(summaryRow + 2, 1).value = "==========================================";
 
-    // Data Table sheet
     const dataTableSheet = workbook.addWorksheet("Data Table");
 
     activeColumns.forEach((col, index) => {
@@ -1657,19 +1634,20 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
 // ============================================================
 // EXPORTABLE API ENTRYPOINT
 // ------------------------------------------------------------
-// Output filenames follow the uploaded JSON filename:
-//   "D24030.json"  ->  D24030.xlsx  +  D24030.csv
+// Output filenames follow the uploaded JSON filename.
 //
-// Signature (backward compatible):
+// Signature:
 //   generateCoordScheduleWorkbook(json, outputPath?, csvPath?, sourceName?)
 //
-//   Resolution:
-//     - If sourceName is provided, use it (ext stripped) for the basename.
-//     - Else if outputPath basename exists, use that (ext stripped).
-//     - Else fall back to "coord-schedule-output".
+//   sourceName resolution (in order):
+//     1. Explicit 4th argument.
+//     2. basename of `outputPath` (extension stripped).
+//     3. "coord-schedule-output".
 //
 //   Directory resolution:
-//     - If outputPath is provided, its dirname is used.
+//     - If outputPath ends with a separator OR points to an existing dir,
+//       use it as the directory.
+//     - Else use path.dirname(outputPath).
 //     - Else __dirname.
 // ============================================================
 
@@ -1684,22 +1662,20 @@ export async function generateCoordScheduleWorkbook(
         throw new Error("JSON input is required.");
     }
 
-    // ---------- Resolve basename ----------
     const stripExt = (n) => String(n).replace(/\.(json|txt|xlsx|csv)$/i, "");
 
+    // ---------- Resolve basename ----------
     let resolvedSourceName;
 
     if (sourceName) {
-        resolvedSourceName = stripExt(sourceName);
+        resolvedSourceName = stripExt(path.basename(sourceName));
     } else if (outputPath) {
         resolvedSourceName = stripExt(path.parse(outputPath).name);
     } else {
         resolvedSourceName = "coord-schedule-output";
     }
 
-    if (!resolvedSourceName) {
-        resolvedSourceName = "coord-schedule-output";
-    }
+    if (!resolvedSourceName) resolvedSourceName = "coord-schedule-output";
 
     // ---------- Resolve target directory ----------
     let targetDir = __dirname;
@@ -1713,6 +1689,7 @@ export async function generateCoordScheduleWorkbook(
         targetDir = looksLikeDir ? outputPath : path.dirname(outputPath);
     }
 
+    if (!targetDir) targetDir = __dirname;
     if (!fs.existsSync(targetDir)) {
         fs.mkdirSync(targetDir, { recursive: true });
     }
@@ -1790,13 +1767,6 @@ export async function generateCoordScheduleWorkbook(
         yRowCount: yDescending.length,
         rowCount: processedRows ? processedRows.length : 0
     };
-}
-
-
-// Helper: strip .json / .txt / .xlsx / .csv extension
-function stripExtension(name) {
-    if (!name) return "coord-schedule-output";
-    return name.replace(/\.(json|txt|xlsx|csv)$/i, "");
 }
 
 
