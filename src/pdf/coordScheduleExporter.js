@@ -67,10 +67,18 @@ const COLUMNS = [
     // Dimensions
     {
         key: "Width",
-        friendly: "Width / Breadth (mm)",
+        friendly: "Width (mm)",
         internal: "Width",
         prop: "width_mm",
-        aliases: ["Width", "Breadth"]
+        aliases: ["Width"]
+    },
+
+    {
+        key: "Breadth",
+        friendly: "Breadth (mm)",
+        internal: "Breadth",
+        prop: "breath_mm",
+        aliases: ["Breadth"]
     },
 
     {
@@ -1016,7 +1024,10 @@ const headerAliases = {
 
     // Width and Breadth are aliases
     "Width": [
-        "Width",
+        "Width"
+    ],
+
+    "Breadth": [
         "Breadth"
     ],
 
@@ -1485,7 +1496,8 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         let spanType = rowData.get("DetailSpanType") || rowData.get("SpanType") || "";
         let materialGrade = rowData.get("MaterialGrade") || "";
 
-        let width = rowData.get("Width") || rowData.get("Breadth") || "";
+        let width = rowData.get("Width") || "";
+        let breadth = rowData.get("Breadth") || "";
         let length = rowData.get("Length") || "";
         let depth = rowData.get("Depth") || "";
         let thickness = rowData.get("Thickness") || "";
@@ -1721,6 +1733,7 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         materialGrade = materialGrade.replace(/\s+\d+.*$/, "").trim();
 
         width = width.toString().replace(/\s+.*$/, "").trim();
+        breadth = breadth.toString().replace(/\s+.*$/, "").trim();
         length = length.toString().replace(/\s+.*$/, "").trim();
         depth = depth.toString().replace(/\s+.*$/, "").trim();
         thickness = thickness.toString().replace(/\s+.*$/, "").trim();
@@ -1735,6 +1748,7 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
 
             // Dimensions
             width_mm: parseFloat(width) || null,
+            breadth_mm: parseFloat(breadth) || null,
             length_mm: parseFloat(length) || null,
             depth_mm: parseFloat(depth) || null,
             thickness_mm: parseFloat(thickness) || null,
