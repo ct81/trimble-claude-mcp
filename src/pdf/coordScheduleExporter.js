@@ -114,7 +114,7 @@ const COLUMNS = [
         key: "SideBar",
         friendly: "Side Bar",
         internal: "SideBar",
-        prop: "sidebar"
+        prop: "side_bar"
     },
     
     { key: "ConstructionMethod", friendly: "Construction Method",       internal: "ConstructionMethod",  prop: "construction_method" },
