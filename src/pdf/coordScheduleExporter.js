@@ -34,28 +34,78 @@ const HEADER_STYLE = "friendly";
 // CANONICAL COLUMN DEFINITIONS
 // ============================================================
 
+// const COLUMNS = [
+//     { key: "DetailMark",         friendly: "Detail Mark / Mark",               internal: "DetailMark",         prop: "detail_mark",         required: true  },
+//     { key: "DetailSpanType",     friendly: "Detail Span Type",          internal: "DetailSpanType",     prop: "span_type" },
+//     { key: "DetailStartStorey",  friendly: "Start Storey",        internal: "DetailStartStorey",  prop: "start_storey" },
+//     { key: "DetailEndstorey",    friendly: "End Storey",          internal: "DetailEndstorey",    prop: "end_storey" },
+//     { key: "MaterialGrade",      friendly: "Material Grade",      internal: "MaterialGrade",      prop: "material_grade" },
+
+//     { key: "Thickness",          friendly: "Width (mm)",          internal: "Thickness",          prop: "width_mm",
+//       aliases: ["Width"] },
+
+//     { key: "Length",             friendly: "Breadth (mm)",        internal: "Length",             prop: "breadth_mm",
+//       aliases: ["Breadth"] },
+
+//     { key: "MainRebar",          friendly: "Main Rebar",          internal: "MainRebar",          prop: "main_rebar" },
+//     { key: "VerticalRebar",      friendly: "Vertical Rebar",      internal: "VerticalRebar",      prop: "vertical_rebar" },
+//     { key: "HorizontalRebar",    friendly: "Horizontal Rebar",    internal: "HorizontalRebar",    prop: "horizontal_rebar" },
+//     { key: "Stirrups",           friendly: "Stirrups",            internal: "Stirrups",           prop: "stirrups" },
+//     { key: "ConstructionMethod", friendly: "Construction Method", internal: "ConstructionMethod", prop: "construction_method" },
+//     { key: "ArrangementType",    friendly: "Arrangement Type",    internal: "ArrangementType",    prop: "arrangement_type" },
+//     { key: "Splice/Dowels",      friendly: "Splice/Dowels",       internal: "Splice/Dowels",      prop: "splice_dowels" },
+//     { key: "Remark",             friendly: "Remark",              internal: "Remark",             prop: "remark" },
+//     { key: "ReferTo2DDetail",    friendly: "Refer To 2D Detail",  internal: "ReferTo2DDetail",    prop: "refer_to_2d_detail" }
+// ];
 const COLUMNS = [
-    { key: "DetailMark",         friendly: "Detail Mark / Mark",               internal: "DetailMark",         prop: "detail_mark",         required: true  },
-    { key: "DetailSpanType",     friendly: "Detail Span Type",          internal: "DetailSpanType",     prop: "span_type" },
-    { key: "DetailStartStorey",  friendly: "Start Storey",        internal: "DetailStartStorey",  prop: "start_storey" },
-    { key: "DetailEndstorey",    friendly: "End Storey",          internal: "DetailEndstorey",    prop: "end_storey" },
-    { key: "MaterialGrade",      friendly: "Material Grade",      internal: "MaterialGrade",      prop: "material_grade" },
+    { key: "DetailMark",         friendly: "Detail Mark / Mark",       internal: "DetailMark",          prop: "detail_mark",         required: true },
+    { key: "DetailSpanType",     friendly: "Detail Span Type",         internal: "DetailSpanType",      prop: "span_type" },
+    { key: "DetailStartStorey",  friendly: "Start Storey",             internal: "DetailStartStorey",   prop: "start_storey" },
+    { key: "DetailEndstorey",    friendly: "End Storey",               internal: "DetailEndstorey",     prop: "end_storey" },
+    { key: "MaterialGrade",      friendly: "Material Grade",            internal: "MaterialGrade",       prop: "material_grade" },
 
-    { key: "Thickness",          friendly: "Width (mm)",          internal: "Thickness",          prop: "width_mm",
-      aliases: ["Width"] },
+    // Dimensions
+    {
+        key: "Width",
+        friendly: "Width / Breadth (mm)",
+        internal: "Width",
+        prop: "width_mm",
+        aliases: ["Width", "Breadth"]
+    },
 
-    { key: "Length",             friendly: "Breadth (mm)",        internal: "Length",             prop: "breadth_mm",
-      aliases: ["Breadth"] },
+    {
+        key: "Length",
+        friendly: "Length (mm)",
+        internal: "Length",
+        prop: "length_mm",
+        aliases: ["Length"]
+    },
 
-    { key: "MainRebar",          friendly: "Main Rebar",          internal: "MainRebar",          prop: "main_rebar" },
-    { key: "VerticalRebar",      friendly: "Vertical Rebar",      internal: "VerticalRebar",      prop: "vertical_rebar" },
-    { key: "HorizontalRebar",    friendly: "Horizontal Rebar",    internal: "HorizontalRebar",    prop: "horizontal_rebar" },
-    { key: "Stirrups",           friendly: "Stirrups",            internal: "Stirrups",           prop: "stirrups" },
-    { key: "ConstructionMethod", friendly: "Construction Method", internal: "ConstructionMethod", prop: "construction_method" },
-    { key: "ArrangementType",    friendly: "Arrangement Type",    internal: "ArrangementType",    prop: "arrangement_type" },
-    { key: "Splice/Dowels",      friendly: "Splice/Dowels",       internal: "Splice/Dowels",      prop: "splice_dowels" },
-    { key: "Remark",             friendly: "Remark",              internal: "Remark",             prop: "remark" },
-    { key: "ReferTo2DDetail",    friendly: "Refer To 2D Detail",  internal: "ReferTo2DDetail",    prop: "refer_to_2d_detail" }
+    {
+        key: "Depth",
+        friendly: "Depth (mm)",
+        internal: "Depth",
+        prop: "depth_mm",
+        aliases: ["Depth"]
+    },
+
+    {
+        key: "Thickness",
+        friendly: "Thickness (mm)",
+        internal: "Thickness",
+        prop: "thickness_mm",
+        aliases: ["Thickness"]
+    },
+
+    { key: "MainRebar",          friendly: "Main Rebar",                internal: "MainRebar",           prop: "main_rebar" },
+    { key: "VerticalRebar",      friendly: "Vertical Rebar",            internal: "VerticalRebar",       prop: "vertical_rebar" },
+    { key: "HorizontalRebar",    friendly: "Horizontal Rebar",          internal: "HorizontalRebar",     prop: "horizontal_rebar" },
+    { key: "Stirrups",           friendly: "Stirrups",                  internal: "Stirrups",            prop: "stirrups" },
+    { key: "ConstructionMethod", friendly: "Construction Method",       internal: "ConstructionMethod",  prop: "construction_method" },
+    { key: "ArrangementType",    friendly: "Arrangement Type",          internal: "ArrangementType",    prop: "arrangement_type" },
+    { key: "Splice/Dowels",      friendly: "Splice/Dowels",              internal: "Splice/Dowels",      prop: "splice_dowels" },
+    { key: "Remark",             friendly: "Remark",                    internal: "Remark",             prop: "remark" },
+    { key: "ReferTo2DDetail",    friendly: "Refer To 2D Detail",         internal: "ReferTo2DDetail",    prop: "refer_to_2d_detail" }
 ];
 
 function headerLabel(col) {
@@ -911,25 +961,129 @@ function normalizeHeaderText(text) {
 // HEADER ALIASES
 // ============================================================
 
+// const headerAliases = {
+//     "DetailMark": ["DetailMark", "Detail Mark", "Mark", "mark"],
+//     "DetailSpanType": ["DetailSpanType", "Detail Span Type", "SpanType", "Span Type", "Span"],
+//     "DetailStartStorey": ["DetailStartStorey", "Detail Start Storey"],
+//     "DetailEndstorey": ["DetailEndstorey", "DetailEndStorey", "Detail End Storey"],
+//     "MaterialGrade": ["MaterialGrade", "Material Grade"],
+//     "Breadth": ["Breadth"],
+//     "Length": ["Length"],
+//     "Width": ["Width"],
+//     "Thickness": ["Thickness"],
+//     "MainRebar": ["MainRebar", "Main Rebar"],
+//     "VerticalRebar": ["VerticalRebar", "Vertical Rebar", "V-Rebar", "V Rebar"],
+//     "HorizontalRebar": ["HorizontalRebar", "Horizontal Rebar", "H-Rebar", "H Rebar"],
+//     "Stirrups": ["Stirrups"],
+//     "ConstructionMethod": ["ConstructionMethod", "Construction Method", "ArrangementType"],
+//     "ArrangementType": ["ArrangementType", "Arrangement Type"],
+//     "Splice/Dowels": ["Splice/Dowels", "Splice / Dowels", "SpliceDowels", "Splice Dowels", "Splice"],
+//     "Remark": ["Remark"],
+//     "ReferTo2DDetail": ["ReferTo2DDetail", "Refer To 2D Detail", "ReferTo2D Details", "Refer To 2D Details"]
+// };
 const headerAliases = {
-    "DetailMark": ["DetailMark", "Detail Mark", "Mark", "mark"],
-    "DetailSpanType": ["DetailSpanType", "Detail Span Type", "SpanType", "Span Type", "Span"],
-    "DetailStartStorey": ["DetailStartStorey", "Detail Start Storey"],
-    "DetailEndstorey": ["DetailEndstorey", "DetailEndStorey", "Detail End Storey"],
-    "MaterialGrade": ["MaterialGrade", "Material Grade"],
-    "Breadth": ["Breadth"],
-    "Length": ["Length"],
-    "Width": ["Width"],
-    "Thickness": ["Thickness"],
-    "MainRebar": ["MainRebar", "Main Rebar"],
-    "VerticalRebar": ["VerticalRebar", "Vertical Rebar", "V-Rebar", "V Rebar"],
-    "HorizontalRebar": ["HorizontalRebar", "Horizontal Rebar", "H-Rebar", "H Rebar"],
-    "Stirrups": ["Stirrups"],
-    "ConstructionMethod": ["ConstructionMethod", "Construction Method", "ArrangementType"],
-    "ArrangementType": ["ArrangementType", "Arrangement Type"],
-    "Splice/Dowels": ["Splice/Dowels", "Splice / Dowels", "SpliceDowels", "Splice Dowels", "Splice"],
-    "Remark": ["Remark"],
-    "ReferTo2DDetail": ["ReferTo2DDetail", "Refer To 2D Detail", "ReferTo2D Details", "Refer To 2D Details"]
+
+    "DetailMark": [
+        "DetailMark",
+        "Detail Mark",
+        "Mark",
+        "mark"
+    ],
+
+    "DetailSpanType": [
+        "DetailSpanType",
+        "Detail Span Type",
+        "SpanType",
+        "Span Type",
+        "Span"
+    ],
+
+    "DetailStartStorey": [
+        "DetailStartStorey",
+        "Detail Start Storey"
+    ],
+
+    "DetailEndstorey": [
+        "DetailEndstorey",
+        "DetailEndStorey",
+        "Detail End Storey"
+    ],
+
+    "MaterialGrade": [
+        "MaterialGrade",
+        "Material Grade"
+    ],
+
+    // Width and Breadth are aliases
+    "Width": [
+        "Width",
+        "Breadth"
+    ],
+
+    // Separate fields
+    "Length": [
+        "Length"
+    ],
+
+    "Depth": [
+        "Depth"
+    ],
+
+    "Thickness": [
+        "Thickness"
+    ],
+
+    "MainRebar": [
+        "MainRebar",
+        "Main Rebar"
+    ],
+
+    "VerticalRebar": [
+        "VerticalRebar",
+        "Vertical Rebar",
+        "V-Rebar",
+        "V Rebar"
+    ],
+
+    "HorizontalRebar": [
+        "HorizontalRebar",
+        "Horizontal Rebar",
+        "H-Rebar",
+        "H Rebar"
+    ],
+
+    "Stirrups": [
+        "Stirrups"
+    ],
+
+    "ConstructionMethod": [
+        "ConstructionMethod",
+        "Construction Method"
+    ],
+
+    "ArrangementType": [
+        "ArrangementType",
+        "Arrangement Type"
+    ],
+
+    "Splice/Dowels": [
+        "Splice/Dowels",
+        "Splice / Dowels",
+        "SpliceDowels",
+        "Splice Dowels",
+        "Splice"
+    ],
+
+    "Remark": [
+        "Remark"
+    ],
+
+    "ReferTo2DDetail": [
+        "ReferTo2DDetail",
+        "Refer To 2D Detail",
+        "ReferTo2D Details",
+        "Refer To 2D Details"
+    ]
 };
 
 
@@ -1314,18 +1468,39 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         const rowIndex = row.rowIndex;
         const currentDetailMark = row.detail_mark;
 
+        // let spanType = rowData.get("DetailSpanType") || rowData.get("SpanType") || "";
+        // let materialGrade = rowData.get("MaterialGrade") || "";
+        // let width = rowData.get("Thickness") || rowData.get("Width") || "";
+        // let breadth = rowData.get("Length") || rowData.get("Breadth") || "";
+        // let mainRebar = rowData.get("MainRebar") || "";
+        // let verticalRebar = rowData.get("VerticalRebar") || "";
+        // let horizontalRebar = rowData.get("HorizontalRebar") || "";
+        // let stirrups = rowData.get("Stirrups") || "";
+        // let constructionMethod = rowData.get("ConstructionMethod") || rowData.get("ArrangementType") || "";
+        // let arrangementType = rowData.get("ArrangementType") || "";
+        // let spliceDowels = rowData.get("Splice/Dowels") || "";
+        // let remark = rowData.get("Remark") || "";
+        // let startStorey = rowData.get("DetailStartStorey") || "";
+        // let endStorey = rowData.get("DetailEndstorey") || "";
         let spanType = rowData.get("DetailSpanType") || rowData.get("SpanType") || "";
         let materialGrade = rowData.get("MaterialGrade") || "";
-        let width = rowData.get("Thickness") || rowData.get("Width") || "";
-        let breadth = rowData.get("Length") || rowData.get("Breadth") || "";
+
+        let width = rowData.get("Width") || rowData.get("Breadth") || "";
+        let length = rowData.get("Length") || "";
+        let depth = rowData.get("Depth") || "";
+        let thickness = rowData.get("Thickness") || "";
+
         let mainRebar = rowData.get("MainRebar") || "";
         let verticalRebar = rowData.get("VerticalRebar") || "";
         let horizontalRebar = rowData.get("HorizontalRebar") || "";
         let stirrups = rowData.get("Stirrups") || "";
-        let constructionMethod = rowData.get("ConstructionMethod") || rowData.get("ArrangementType") || "";
+
+        let constructionMethod = rowData.get("ConstructionMethod") || "";
         let arrangementType = rowData.get("ArrangementType") || "";
+
         let spliceDowels = rowData.get("Splice/Dowels") || "";
         let remark = rowData.get("Remark") || "";
+
         let startStorey = rowData.get("DetailStartStorey") || "";
         let endStorey = rowData.get("DetailEndstorey") || "";
 
@@ -1521,25 +1696,61 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
             }
         }
 
+        // materialGrade = materialGrade.replace(/\s+\d+.*$/, "").trim();
+        // width = width.replace(/\s+.*$/, "").trim();
+        // breadth = breadth.toString().trim();
+
+        // const valuesByProp = {
+        //     detail_mark: currentDetailMark || rowData.get("Mark") || "",
+        //     span_type: spanType, 
+        //     start_storey: startStorey,
+        //     end_storey: endStorey,
+        //     material_grade: materialGrade,
+        //     width_mm: parseFloat(width) || null,
+        //     breadth_mm: parseFloat(breadth) || null,
+        //     main_rebar: mainRebar || null,
+        //     vertical_rebar: verticalRebar || null,
+        //     horizontal_rebar: horizontalRebar || null,
+        //     stirrups: stirrups || null,
+        //     construction_method: constructionMethod || null,
+        //     arrangement_type: arrangementType || null,
+        //     splice_dowels: spliceDowels || null,
+        //     remark: remark || "",
+        //     refer_to_2d_detail: rowData.get("ReferTo2DDetail") || ""
+        // };
         materialGrade = materialGrade.replace(/\s+\d+.*$/, "").trim();
-        width = width.replace(/\s+.*$/, "").trim();
-        breadth = breadth.toString().trim();
+
+        width = width.toString().replace(/\s+.*$/, "").trim();
+        length = length.toString().replace(/\s+.*$/, "").trim();
+        depth = depth.toString().replace(/\s+.*$/, "").trim();
+        thickness = thickness.toString().replace(/\s+.*$/, "").trim();
 
         const valuesByProp = {
             detail_mark: currentDetailMark || rowData.get("Mark") || "",
-            span_type: spanType, 
+
+            span_type: spanType,
             start_storey: startStorey,
             end_storey: endStorey,
             material_grade: materialGrade,
+
+            // Dimensions
             width_mm: parseFloat(width) || null,
-            breadth_mm: parseFloat(breadth) || null,
+            length_mm: parseFloat(length) || null,
+            depth_mm: parseFloat(depth) || null,
+            thickness_mm: parseFloat(thickness) || null,
+
+            // Reinforcement
             main_rebar: mainRebar || null,
             vertical_rebar: verticalRebar || null,
             horizontal_rebar: horizontalRebar || null,
             stirrups: stirrups || null,
+
+            // Construction
             construction_method: constructionMethod || null,
             arrangement_type: arrangementType || null,
             splice_dowels: spliceDowels || null,
+
+            // Other
             remark: remark || "",
             refer_to_2d_detail: rowData.get("ReferTo2DDetail") || ""
         };
