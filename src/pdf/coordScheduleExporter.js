@@ -77,7 +77,7 @@ const COLUMNS = [
         key: "Breadth",
         friendly: "Breadth (mm)",
         internal: "Breadth",
-        prop: "breath_mm",
+        prop: "breadth_mm",
         aliases: ["Breadth"]
     },
 
