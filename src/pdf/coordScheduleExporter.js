@@ -109,6 +109,14 @@ const COLUMNS = [
     { key: "VerticalRebar",      friendly: "Vertical Rebar",            internal: "VerticalRebar",       prop: "vertical_rebar" },
     { key: "HorizontalRebar",    friendly: "Horizontal Rebar",          internal: "HorizontalRebar",     prop: "horizontal_rebar" },
     { key: "Stirrups",           friendly: "Stirrups",                  internal: "Stirrups",            prop: "stirrups" },
+    
+    {
+        key: "SideBar",
+        friendly: "Side Bar",
+        internal: "SideBar",
+        prop: "sidebar"
+    },
+    
     { key: "ConstructionMethod", friendly: "Construction Method",       internal: "ConstructionMethod",  prop: "construction_method" },
     { key: "ArrangementType",    friendly: "Arrangement Type",          internal: "ArrangementType",    prop: "arrangement_type" },
     { key: "Splice/Dowels",      friendly: "Splice/Dowels",              internal: "Splice/Dowels",      prop: "splice_dowels" },
@@ -1067,6 +1075,11 @@ const headerAliases = {
         "Stirrups"
     ],
 
+    "SideBar": [
+        "SideBar",
+        "Side Bar"
+    ],
+
     "ConstructionMethod": [
         "ConstructionMethod",
         "Construction Method"
@@ -1230,8 +1243,8 @@ function createScheduleSheet(sheet, items, activeColumns) {
     }
 
     const widths = {
-        DetailMark: 25, DetailStartStorey: 20, DetailEndstorey: 20,
-        MaterialGrade: 16, Thickness: 14, Length: 14, Width: 14, Breadth: 14,
+        DetailMark: 25,  DetailSpanType: 15, DetailStartStorey: 20, DetailEndstorey: 20,
+        MaterialGrade: 16, Thickness: 14, Length: 14, Width: 14, Breadth: 14, Depth: 14,
         MainRebar: 20, VerticalRebar: 20, HorizontalRebar: 20, Stirrups: 20,
         ConstructionMethod: 20, ArrangementType: 20, "Splice/Dowels": 18,
         Remark: 22, ReferTo2DDetail: 22
@@ -1526,6 +1539,8 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         let horizontalRebar = rowData.get("HorizontalRebar") || "";
         let stirrups = rowData.get("Stirrups") || "";
 
+        let sideBar = rowData.get("SideBar") || "";
+
         let constructionMethod = rowData.get("ConstructionMethod") || "";
         let arrangementType = rowData.get("ArrangementType") || "";
 
@@ -1789,6 +1804,8 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
             vertical_rebar: verticalRebar || null,
             horizontal_rebar: horizontalRebar || null,
             stirrups: stirrups || null,
+
+            side_bar: sideBar || null,
 
             // Construction
             construction_method: constructionMethod || null,
