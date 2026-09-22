@@ -178,7 +178,12 @@
 				document.getElementById('yRowCount').textContent = response.headers.get('X-Coordinate-Y-Rows') || '-';
 				const disposition = response.headers.get('Content-Disposition') || '';
 				//const filename = disposition.match(/filename="?([^";]+)"?/i)?.[1] || `coord-schedule-output.${isCsv ? 'csv' : 'xlsx'}`;
-				const filename = fileStatus.textContent + `.${isCsv ? 'csv' : 'xlsx'}`;
+				
+				const baseName = String(fileStatus.textContent || "")
+					.replace(/\.(json|txt|csv|xlsx)$/i, "")
+					.trim();
+
+				const filename = `${baseName}.${isCsv ? 'csv' : 'xlsx'}`;
 				
 				const link = document.createElement('a');
 				link.href = URL.createObjectURL(blob);
