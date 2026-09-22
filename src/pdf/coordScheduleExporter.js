@@ -1732,11 +1732,24 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         // };
         materialGrade = materialGrade.replace(/\s+\d+.*$/, "").trim();
 
-        width = width.toString().replace(/\s+.*$/, "").trim();
-        breadth = breadth.toString().replace(/\s+.*$/, "").trim();
-        length = length.toString().replace(/\s+.*$/, "").trim();
-        depth = depth.toString().replace(/\s+.*$/, "").trim();
-        thickness = thickness.toString().replace(/\s+.*$/, "").trim();
+        // width = width.toString().replace(/\s+.*$/, "").trim();
+        // breadth = breadth.toString().replace(/\s+.*$/, "").trim();
+        // length = length.toString().replace(/\s+.*$/, "").trim();
+        // depth = depth.toString().replace(/\s+.*$/, "").trim();
+        // thickness = thickness.toString().replace(/\s+.*$/, "").trim();
+
+        // Preserve ALL values in the cell — only collapse whitespace and trim edges.
+        const keepAll = (v) =>
+            String(v ?? "")
+                .replace(/[\u200B-\u200D\uFEFF]/g, "")   // strip zero-width chars
+                .replace(/\s+/g, " ")                     // collapse runs of whitespace
+                .trim();                                  // trim leading/trailing
+
+        width     = keepAll(width);
+        breadth   = keepAll(breadth);
+        length    = keepAll(length);
+        depth     = keepAll(depth);
+        thickness = keepAll(thickness);
 
         const valuesByProp = {
             detail_mark: currentDetailMark || rowData.get("Mark") || "",
