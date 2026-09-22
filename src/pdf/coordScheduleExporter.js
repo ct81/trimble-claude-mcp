@@ -1758,11 +1758,16 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         // thickness = thickness.toString().replace(/\s+.*$/, "").trim();
 
         // Preserve ALL values in the cell — only collapse whitespace and trim edges.
-        width     = parseDimensionList(width);
-        breadth   = parseDimensionList(breadth);
-        length    = parseDimensionList(length);
-        depth     = parseDimensionList(depth);
-        thickness = parseDimensionList(thickness);
+        const widthList     = parseDimensionList(width);
+        const breadthList   = parseDimensionList(breadth);
+        const lengthList    = parseDimensionList(length);
+        const depthList     = parseDimensionList(depth);
+        const thicknessList = parseDimensionList(thickness);
+        width     = widthList.join(", ");
+        breadth   = breadthList.join(", ");
+        length    = lengthList.join(", ");
+        depth     = depthList.join(", ");
+        thickness = thicknessList.join(", ");
 
         const valuesByProp = {
             detail_mark: currentDetailMark || rowData.get("Mark") || "",
