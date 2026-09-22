@@ -1273,6 +1273,25 @@ function findScheduleColumn(x, headers) {
     return headers.length;
 }
 
+// Parse a dimension cell into an array of clean numeric strings.
+//   "3250"                  → ["3250"]
+//   "3250, 9050"            → ["3250", "9050"]
+//   "3250, 8800, 16500"     → ["3250", "8800", "16500"]
+//   "3250 9050"             → ["3250", "9050"]
+//   "3250/9050"             → ["3250", "9050"]
+//   "  3250 , 9050 "        → ["3250", "9050"]
+//   ""                      → []
+//   null / undefined        → []
+function parseDimensionList(v) {
+    if (v === null || v === undefined) return [];
+
+    return String(v)
+        .replace(/[\u200B-\u200D\uFEFF]/g, "")    // strip zero-width chars
+        .trim()
+        .split(/[\s,;\/]+/)                        // split on space, comma, semicolon, slash
+        .map(s => s.trim())
+        .filter(Boolean);                          // drop empty tokens
+}
 
 // ============================================================
 // DATA SHEET
@@ -1739,17 +1758,11 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         // thickness = thickness.toString().replace(/\s+.*$/, "").trim();
 
         // Preserve ALL values in the cell — only collapse whitespace and trim edges.
-        const keepAll = (v) =>
-            String(v ?? "")
-                .replace(/[\u200B-\u200D\uFEFF]/g, "")   // strip zero-width chars
-                .replace(/\s+/g, " ")                     // collapse runs of whitespace
-                .trim();                                  // trim leading/trailing
-
-        width     = keepAll(width);
-        breadth   = keepAll(breadth);
-        length    = keepAll(length);
-        depth     = keepAll(depth);
-        thickness = keepAll(thickness);
+        width     = parseDimensionList(width);
+        breadth   = parseDimensionList(breadth);
+        length    = parseDimensionList(length);
+        depth     = parseDimensionList(depth);
+        thickness = parseDimensionList(thickness);
 
         const valuesByProp = {
             detail_mark: currentDetailMark || rowData.get("Mark") || "",
