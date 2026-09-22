@@ -128,7 +128,8 @@
 			const reader = new FileReader();
 			reader.onload = () => {
 				jsonInput.value = reader.result;
-				fileStatus.textContent = `${file.name} selected`;
+				//fileStatus.textContent = `${file.name} selected`;
+				fileStatus.textContent = `${file.name}`;
 				setStatus('JSON loaded and ready to generate.', 'success');
 			};
 			reader.onerror = () => setStatus('Unable to read that file.', 'error');
@@ -176,7 +177,9 @@
 				document.getElementById('xClusterCount').textContent = response.headers.get('X-Coordinate-X-Clusters') || '-';
 				document.getElementById('yRowCount').textContent = response.headers.get('X-Coordinate-Y-Rows') || '-';
 				const disposition = response.headers.get('Content-Disposition') || '';
-				const filename = disposition.match(/filename="?([^";]+)"?/i)?.[1] || `coord-schedule-output.${isCsv ? 'csv' : 'xlsx'}`;
+				//const filename = disposition.match(/filename="?([^";]+)"?/i)?.[1] || `coord-schedule-output.${isCsv ? 'csv' : 'xlsx'}`;
+				const filename = disposition.match(/filename="?([^";]+)"?/i)?.[1] || fileStatus.textContent + `.${isCsv ? 'csv' : 'xlsx'}`;
+				
 				const link = document.createElement('a');
 				link.href = URL.createObjectURL(blob);
 				link.download = filename;
