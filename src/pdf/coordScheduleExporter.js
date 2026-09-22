@@ -23,6 +23,8 @@ const Y_TOLERANCE = 2.5;
 
 // ============================================================
 // HEADER STYLE SWITCH
+//   "friendly" -> "Mark", "Width (mm)", ...
+//   "internal" -> "DetailMark",  "Thickness", ...
 // ============================================================
 
 const HEADER_STYLE = "friendly";
@@ -32,31 +34,94 @@ const HEADER_STYLE = "friendly";
 // CANONICAL COLUMN DEFINITIONS
 // ============================================================
 
+// const COLUMNS = [
+//     { key: "DetailMark",         friendly: "Detail Mark / Mark",               internal: "DetailMark",         prop: "detail_mark",         required: true  },
+//     { key: "DetailSpanType",     friendly: "Detail Span Type",          internal: "DetailSpanType",     prop: "span_type" },
+//     { key: "DetailStartStorey",  friendly: "Start Storey",        internal: "DetailStartStorey",  prop: "start_storey" },
+//     { key: "DetailEndstorey",    friendly: "End Storey",          internal: "DetailEndstorey",    prop: "end_storey" },
+//     { key: "MaterialGrade",      friendly: "Material Grade",      internal: "MaterialGrade",      prop: "material_grade" },
+
+//     { key: "Thickness",          friendly: "Width (mm)",          internal: "Thickness",          prop: "width_mm",
+//       aliases: ["Width"] },
+
+//     { key: "Length",             friendly: "Breadth (mm)",        internal: "Length",             prop: "breadth_mm",
+//       aliases: ["Breadth"] },
+
+//     { key: "MainRebar",          friendly: "Main Rebar",          internal: "MainRebar",          prop: "main_rebar" },
+//     { key: "VerticalRebar",      friendly: "Vertical Rebar",      internal: "VerticalRebar",      prop: "vertical_rebar" },
+//     { key: "HorizontalRebar",    friendly: "Horizontal Rebar",    internal: "HorizontalRebar",    prop: "horizontal_rebar" },
+//     { key: "Stirrups",           friendly: "Stirrups",            internal: "Stirrups",           prop: "stirrups" },
+//     { key: "ConstructionMethod", friendly: "Construction Method", internal: "ConstructionMethod", prop: "construction_method" },
+//     { key: "ArrangementType",    friendly: "Arrangement Type",    internal: "ArrangementType",    prop: "arrangement_type" },
+//     { key: "Splice/Dowels",      friendly: "Splice/Dowels",       internal: "Splice/Dowels",      prop: "splice_dowels" },
+//     { key: "Remark",             friendly: "Remark",              internal: "Remark",             prop: "remark" },
+//     { key: "ReferTo2DDetail",    friendly: "Refer To 2D Detail",  internal: "ReferTo2DDetail",    prop: "refer_to_2d_detail" }
+// ];
 const COLUMNS = [
     { key: "DetailMark",         friendly: "Detail Mark / Mark",       internal: "DetailMark",          prop: "detail_mark",         required: true },
     { key: "DetailSpanType",     friendly: "Detail Span Type",         internal: "DetailSpanType",      prop: "span_type" },
     { key: "DetailStartStorey",  friendly: "Start Storey",             internal: "DetailStartStorey",   prop: "start_storey" },
     { key: "DetailEndstorey",    friendly: "End Storey",               internal: "DetailEndstorey",     prop: "end_storey" },
-    { key: "MaterialGrade",      friendly: "Material Grade",           internal: "MaterialGrade",       prop: "material_grade" },
+    { key: "MaterialGrade",      friendly: "Material Grade",            internal: "MaterialGrade",       prop: "material_grade" },
 
-    { key: "Width",     friendly: "Width (mm)",     internal: "Width",     prop: "width_mm",     aliases: ["Width"] },
-    { key: "Breadth",   friendly: "Breadth (mm)",   internal: "Breadth",   prop: "breadth_mm",   aliases: ["Breadth"] },
-    { key: "Length",    friendly: "Length (mm)",    internal: "Length",    prop: "length_mm",    aliases: ["Length"] },
-    { key: "Depth",     friendly: "Depth (mm)",     internal: "Depth",     prop: "depth_mm",     aliases: ["Depth"] },
-    { key: "Thickness", friendly: "Thickness (mm)", internal: "Thickness", prop: "thickness_mm", aliases: ["Thickness"] },
+    // Dimensions
+    {
+        key: "Width",
+        friendly: "Width (mm)",
+        internal: "Width",
+        prop: "width_mm",
+        aliases: ["Width"]
+    },
 
-    { key: "MainRebar",       friendly: "Main Rebar",       internal: "MainRebar",       prop: "main_rebar" },
-    { key: "VerticalRebar",   friendly: "Vertical Rebar",   internal: "VerticalRebar",   prop: "vertical_rebar" },
-    { key: "HorizontalRebar", friendly: "Horizontal Rebar", internal: "HorizontalRebar", prop: "horizontal_rebar" },
-    { key: "Stirrups",        friendly: "Stirrups",         internal: "Stirrups",        prop: "stirrups" },
+    {
+        key: "Breadth",
+        friendly: "Breadth (mm)",
+        internal: "Breadth",
+        prop: "breadth_mm",
+        aliases: ["Breadth"]
+    },
 
-    { key: "SideBar", friendly: "Side Bar", internal: "SideBar", prop: "side_bar" },
+    {
+        key: "Length",
+        friendly: "Length (mm)",
+        internal: "Length",
+        prop: "length_mm",
+        aliases: ["Length"]
+    },
 
-    { key: "ConstructionMethod", friendly: "Construction Method", internal: "ConstructionMethod", prop: "construction_method" },
-    { key: "ArrangementType",    friendly: "Arrangement Type",    internal: "ArrangementType",    prop: "arrangement_type" },
-    { key: "Splice/Dowels",      friendly: "Splice/Dowels",       internal: "Splice/Dowels",      prop: "splice_dowels" },
-    { key: "Remark",             friendly: "Remark",              internal: "Remark",             prop: "remark" },
-    { key: "ReferTo2DDetail",    friendly: "Refer To 2D Detail",  internal: "ReferTo2DDetail",    prop: "refer_to_2d_detail" }
+    {
+        key: "Depth",
+        friendly: "Depth (mm)",
+        internal: "Depth",
+        prop: "depth_mm",
+        aliases: ["Depth"]
+    },
+
+    {
+        key: "Thickness",
+        friendly: "Thickness (mm)",
+        internal: "Thickness",
+        prop: "thickness_mm",
+        aliases: ["Thickness"]
+    },
+
+    { key: "MainRebar",          friendly: "Main Rebar",                internal: "MainRebar",           prop: "main_rebar" },
+    { key: "VerticalRebar",      friendly: "Vertical Rebar",            internal: "VerticalRebar",       prop: "vertical_rebar" },
+    { key: "HorizontalRebar",    friendly: "Horizontal Rebar",          internal: "HorizontalRebar",     prop: "horizontal_rebar" },
+    { key: "Stirrups",           friendly: "Stirrups",                  internal: "Stirrups",            prop: "stirrups" },
+    
+    {
+        key: "SideBar",
+        friendly: "Side Bar",
+        internal: "SideBar",
+        prop: "side_bar"
+    },
+    
+    { key: "ConstructionMethod", friendly: "Construction Method",       internal: "ConstructionMethod",  prop: "construction_method" },
+    { key: "ArrangementType",    friendly: "Arrangement Type",          internal: "ArrangementType",    prop: "arrangement_type" },
+    { key: "Splice/Dowels",      friendly: "Splice/Dowels",              internal: "Splice/Dowels",      prop: "splice_dowels" },
+    { key: "Remark",             friendly: "Remark",                    internal: "Remark",             prop: "remark" },
+    { key: "ReferTo2DDetail",    friendly: "Refer To 2D Detail",         internal: "ReferTo2DDetail",    prop: "refer_to_2d_detail" }
 ];
 
 function headerLabel(col) {
@@ -912,6 +977,26 @@ function normalizeHeaderText(text) {
 // HEADER ALIASES
 // ============================================================
 
+// const headerAliases = {
+//     "DetailMark": ["DetailMark", "Detail Mark", "Mark", "mark"],
+//     "DetailSpanType": ["DetailSpanType", "Detail Span Type", "SpanType", "Span Type", "Span"],
+//     "DetailStartStorey": ["DetailStartStorey", "Detail Start Storey"],
+//     "DetailEndstorey": ["DetailEndstorey", "DetailEndStorey", "Detail End Storey"],
+//     "MaterialGrade": ["MaterialGrade", "Material Grade"],
+//     "Breadth": ["Breadth"],
+//     "Length": ["Length"],
+//     "Width": ["Width"],
+//     "Thickness": ["Thickness"],
+//     "MainRebar": ["MainRebar", "Main Rebar"],
+//     "VerticalRebar": ["VerticalRebar", "Vertical Rebar", "V-Rebar", "V Rebar"],
+//     "HorizontalRebar": ["HorizontalRebar", "Horizontal Rebar", "H-Rebar", "H Rebar"],
+//     "Stirrups": ["Stirrups"],
+//     "ConstructionMethod": ["ConstructionMethod", "Construction Method", "ArrangementType"],
+//     "ArrangementType": ["ArrangementType", "Arrangement Type"],
+//     "Splice/Dowels": ["Splice/Dowels", "Splice / Dowels", "SpliceDowels", "Splice Dowels", "Splice"],
+//     "Remark": ["Remark"],
+//     "ReferTo2DDetail": ["ReferTo2DDetail", "Refer To 2D Detail", "ReferTo2D Details", "Refer To 2D Details"]
+// };
 const headerAliases = {
 
     "DetailMark": [
@@ -945,31 +1030,54 @@ const headerAliases = {
         "Material Grade"
     ],
 
-    "Width":     ["Width"],
-    "Breadth":   ["Breadth"],
-    "Length":    ["Length"],
-    "Depth":     ["Depth"],
-    "Thickness": ["Thickness"],
+    // Width and Breadth are aliases
+    "Width": [
+        "Width"
+    ],
 
-    "MainRebar":       ["MainRebar", "Main Rebar"],
-    "VerticalRebar":   ["VerticalRebar", "Vertical Rebar", "V-Rebar", "V Rebar"],
-    "HorizontalRebar": ["HorizontalRebar", "Horizontal Rebar", "H-Rebar", "H Rebar"],
-    "Stirrups":        ["Stirrups", "Shear Links", "Shear Link", "Links"],
+    "Breadth": [
+        "Breadth"
+    ],
+
+    // Separate fields
+    "Length": [
+        "Length"
+    ],
+
+    "Depth": [
+        "Depth"
+    ],
+
+    "Thickness": [
+        "Thickness"
+    ],
+
+    "MainRebar": [
+        "MainRebar",
+        "Main Rebar"
+    ],
+
+    "VerticalRebar": [
+        "VerticalRebar",
+        "Vertical Rebar",
+        "V-Rebar",
+        "V Rebar"
+    ],
+
+    "HorizontalRebar": [
+        "HorizontalRebar",
+        "Horizontal Rebar",
+        "H-Rebar",
+        "H Rebar"
+    ],
+
+    "Stirrups": [
+        "Stirrups"
+    ],
 
     "SideBar": [
         "SideBar",
-        "Side Bar",
-        "Side Bars",
-        "SideBar Reinforcement",
-        "Side Bar Reinforcement",
-        "SideReinf",
-        "Side Reinf",
-        "Side Reinft",
-        "Skin Reinforcement",
-        "SkinBar",
-        "Skin Bar",
-        "Face Bar",
-        "S.B."
+        "Side Bar"
     ],
 
     "ConstructionMethod": [
@@ -1004,37 +1112,17 @@ const headerAliases = {
 
 
 // ============================================================
-// FIND HEADER MATCHES  (token-aware)
-// ------------------------------------------------------------
-// Handles:
-//   exact match           → "SideBar"
-//   multi-token cell      → "SideBar ConstructionMethod"
-//                         → matches both "SideBar" and "ConstructionMethod"
+// FIND HEADER MATCHES
 // ============================================================
 
 function findHeaderMatches(items, headerName) {
     const aliases = headerAliases[headerName] || [headerName];
+
     const normalizedAliases = aliases.map(alias => normalizeHeaderText(alias));
 
     return items.filter(item => {
-        const raw = String(item.text || "").trim();
-        if (!raw) return false;
-
-        // 1. Whole-cell match
-        const whole = normalizeHeaderText(raw);
-        if (normalizedAliases.includes(whole)) return true;
-
-        // 2. Token-level match
-        const tokens = raw
-            .split(/[\s,;\|]+/)
-            .map(t => normalizeHeaderText(t))
-            .filter(Boolean);
-
-        for (const tok of tokens) {
-            if (normalizedAliases.includes(tok)) return true;
-        }
-
-        return false;
+        const text = normalizeHeaderText(item.text);
+        return normalizedAliases.includes(text);
     });
 }
 
@@ -1157,7 +1245,7 @@ function createScheduleSheet(sheet, items, activeColumns) {
     const widths = {
         DetailMark: 25,  DetailSpanType: 15, DetailStartStorey: 20, DetailEndstorey: 20,
         MaterialGrade: 16, Thickness: 14, Length: 14, Width: 14, Breadth: 14, Depth: 14,
-        MainRebar: 20, VerticalRebar: 20, HorizontalRebar: 20, Stirrups: 20, SideBar: 18,
+        MainRebar: 20, VerticalRebar: 20, HorizontalRebar: 20, Stirrups: 20,
         ConstructionMethod: 20, ArrangementType: 20, "Splice/Dowels": 18,
         Remark: 22, ReferTo2DDetail: 22
     };
@@ -1198,63 +1286,25 @@ function findScheduleColumn(x, headers) {
     return headers.length;
 }
 
-
-// ============================================================
-// PARSE DIMENSION LIST
-// ============================================================
-
+// Parse a dimension cell into an array of clean numeric strings.
+//   "3250"                  → ["3250"]
+//   "3250, 9050"            → ["3250", "9050"]
+//   "3250, 8800, 16500"     → ["3250", "8800", "16500"]
+//   "3250 9050"             → ["3250", "9050"]
+//   "3250/9050"             → ["3250", "9050"]
+//   "  3250 , 9050 "        → ["3250", "9050"]
+//   ""                      → []
+//   null / undefined        → []
 function parseDimensionList(v) {
     if (v === null || v === undefined) return [];
 
     return String(v)
-        .replace(/[\u200B-\u200D\uFEFF]/g, "")
+        .replace(/[\u200B-\u200D\uFEFF]/g, "")    // strip zero-width chars
         .trim()
-        .split(/[\s,;\/]+/)
+        .split(/[\s,;\/]+/)                        // split on space, comma, semicolon, slash
         .map(s => s.trim())
-        .filter(Boolean);
+        .filter(Boolean);                          // drop empty tokens
 }
-
-
-// ============================================================
-// EXTRACT SIDE BAR FROM ROW TEXT
-// ============================================================
-
-function extractSideBarFromText(allText, rowData) {
-    // 1) Explicit column value (if the PDF has a Side Bar column)
-    const direct =
-        rowData.get("SideBar") ||
-        rowData.get("Side Bar") ||
-        rowData.get("SideReinf") ||
-        rowData.get("Side Reinft") ||
-        rowData.get("Skin Reinforcement") ||
-        rowData.get("Face Bar") ||
-        "";
-    if (direct && direct.trim()) return direct.trim();
-
-    if (!allText) return "";
-
-    // 2) Regex patterns for inline mentions
-    const patterns = [
-        /\b(\d+\s*[-]?\s*[A-Z]\d+(?:\s*[-+]\s*\d+\s*[A-Z]\d+)?)\s*(?:NOS?\s*)?SIDE\s*BARS?\b/i,
-        /\bSIDE\s*BARS?\s*[:\-]?\s*(\d+\s*[-]?\s*[A-Z]\d+(?:\s*[-+]\s*\d+\s*[A-Z]\d+)?)/i,
-        /\bSIDEBARS?\s*[:\-]?\s*(\d+\s*[-]?\s*[A-Z]\d+)/i,
-        /\b(\d+\s*[-]?\s*[A-Z]\d+)\s*S\.?\s*B\.?\b/i,
-        /\b(\d+\s*[-]?\s*[A-Z]\d+)\s*(?:NOS?\s*)?SKIN(?:\s*BARS?)?\b/i,
-        /\b(\d+\s*[-]?\s*[A-Z]\d+)\s*(?:NOS?\s*)?FACE\s*BARS?\b/i,
-        /\bSIDE\s*[:\-]?\s*(\d+\s*[-]?\s*[A-Z]\d+)/i,
-        /\bSIDEBARS?\s*[:\-]?\s*(\d+\s*[-]\s*[A-Z]\d+)/i
-    ];
-
-    for (const p of patterns) {
-        const m = allText.match(p);
-        if (m && m[1]) {
-            return m[1].replace(/\s+/g, " ").trim();
-        }
-    }
-
-    return "";
-}
-
 
 // ============================================================
 // DATA SHEET
@@ -1387,28 +1437,6 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
     });
     console.log("");
 
-    // ========================================================
-    // ★ DIAGNOSTIC — RAW HEADER TEXT ITEMS
-    // ========================================================
-    console.log("");
-    console.log("==============================================");
-    console.log(" RAW HEADER ITEMS (sorted by X)");
-    console.log("==============================================");
-
-    const headerWindow = items.filter(it =>
-        Math.abs(it.y - headerY) < 15
-    );
-
-    headerWindow
-        .sort((a, b) => a.x - b.x)
-        .forEach(it => {
-            console.log(`  x=${it.x.toFixed(1).padStart(7)}  y=${it.y.toFixed(1).padStart(7)}  text="${it.text}"`);
-        });
-
-    console.log("==============================================");
-    console.log("");
-    // ========================================================
-
     const rowGroups = new Map();
     for (const item of scheduleItems) {
         const row = nearestIndex(item.y, scheduleRows);
@@ -1456,6 +1484,7 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
 
         if (isDetailMarkRow) {
             currentDetailMark = detailMarkValue;
+            console.log(`Detail mark found: "${currentDetailMark}" at row ${rowIndex + 1}`);
 
             if (rowHasData) {
                 allRows.push({
@@ -1482,15 +1511,20 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         const rowIndex = row.rowIndex;
         const currentDetailMark = row.detail_mark;
 
-        // ========================================================
-        // ★ DIAGNOSTIC — PER-ROW rowData DUMP
-        // ========================================================
-        console.log(`--- Row ${rowIndex + 1} (mark=${currentDetailMark}) ---`);
-        for (const [k, v] of rowData.entries()) {
-            console.log(`    ${k.padEnd(22)} = "${v}"`);
-        }
-        // ========================================================
-
+        // let spanType = rowData.get("DetailSpanType") || rowData.get("SpanType") || "";
+        // let materialGrade = rowData.get("MaterialGrade") || "";
+        // let width = rowData.get("Thickness") || rowData.get("Width") || "";
+        // let breadth = rowData.get("Length") || rowData.get("Breadth") || "";
+        // let mainRebar = rowData.get("MainRebar") || "";
+        // let verticalRebar = rowData.get("VerticalRebar") || "";
+        // let horizontalRebar = rowData.get("HorizontalRebar") || "";
+        // let stirrups = rowData.get("Stirrups") || "";
+        // let constructionMethod = rowData.get("ConstructionMethod") || rowData.get("ArrangementType") || "";
+        // let arrangementType = rowData.get("ArrangementType") || "";
+        // let spliceDowels = rowData.get("Splice/Dowels") || "";
+        // let remark = rowData.get("Remark") || "";
+        // let startStorey = rowData.get("DetailStartStorey") || "";
+        // let endStorey = rowData.get("DetailEndstorey") || "";
         let spanType = rowData.get("DetailSpanType") || rowData.get("SpanType") || "";
         let materialGrade = rowData.get("MaterialGrade") || "";
 
@@ -1504,6 +1538,8 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         let verticalRebar = rowData.get("VerticalRebar") || "";
         let horizontalRebar = rowData.get("HorizontalRebar") || "";
         let stirrups = rowData.get("Stirrups") || "";
+
+        let sideBar = rowData.get("SideBar") || "";
 
         let constructionMethod = rowData.get("ConstructionMethod") || "";
         let arrangementType = rowData.get("ArrangementType") || "";
@@ -1561,6 +1597,7 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         }
 
         const allText = Array.from(rowData.values()).filter(v => v).join(" ");
+        console.log(`Row ${rowIndex + 1} combined: "${allText}"`);
 
         const arrangementPattern = /\b(\d+)-TIER\b/i;
         const arrangementMatch = allText.match(arrangementPattern);
@@ -1705,8 +1742,37 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
             }
         }
 
+        // materialGrade = materialGrade.replace(/\s+\d+.*$/, "").trim();
+        // width = width.replace(/\s+.*$/, "").trim();
+        // breadth = breadth.toString().trim();
+
+        // const valuesByProp = {
+        //     detail_mark: currentDetailMark || rowData.get("Mark") || "",
+        //     span_type: spanType, 
+        //     start_storey: startStorey,
+        //     end_storey: endStorey,
+        //     material_grade: materialGrade,
+        //     width_mm: parseFloat(width) || null,
+        //     breadth_mm: parseFloat(breadth) || null,
+        //     main_rebar: mainRebar || null,
+        //     vertical_rebar: verticalRebar || null,
+        //     horizontal_rebar: horizontalRebar || null,
+        //     stirrups: stirrups || null,
+        //     construction_method: constructionMethod || null,
+        //     arrangement_type: arrangementType || null,
+        //     splice_dowels: spliceDowels || null,
+        //     remark: remark || "",
+        //     refer_to_2d_detail: rowData.get("ReferTo2DDetail") || ""
+        // };
         materialGrade = materialGrade.replace(/\s+\d+.*$/, "").trim();
 
+        // width = width.toString().replace(/\s+.*$/, "").trim();
+        // breadth = breadth.toString().replace(/\s+.*$/, "").trim();
+        // length = length.toString().replace(/\s+.*$/, "").trim();
+        // depth = depth.toString().replace(/\s+.*$/, "").trim();
+        // thickness = thickness.toString().replace(/\s+.*$/, "").trim();
+
+        // Preserve ALL values in the cell — only collapse whitespace and trim edges.
         const widthList     = parseDimensionList(width);
         const breadthList   = parseDimensionList(breadth);
         const lengthList    = parseDimensionList(length);
@@ -1718,9 +1784,6 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         depth     = depthList.join(", ");
         thickness = thicknessList.join(", ");
 
-        // ★ Side bar extraction
-        const sideBar = extractSideBarFromText(allText, rowData);
-
         const valuesByProp = {
             detail_mark: currentDetailMark || rowData.get("Mark") || "",
 
@@ -1729,12 +1792,14 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
             end_storey: endStorey,
             material_grade: materialGrade,
 
+            // Dimensions
             width_mm: parseFloat(width) || null,
             breadth_mm: parseFloat(breadth) || null,
             length_mm: parseFloat(length) || null,
             depth_mm: parseFloat(depth) || null,
             thickness_mm: parseFloat(thickness) || null,
 
+            // Reinforcement
             main_rebar: mainRebar || null,
             vertical_rebar: verticalRebar || null,
             horizontal_rebar: horizontalRebar || null,
@@ -1742,10 +1807,12 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
 
             side_bar: sideBar || null,
 
+            // Construction
             construction_method: constructionMethod || null,
             arrangement_type: arrangementType || null,
             splice_dowels: spliceDowels || null,
 
+            // Other
             remark: remark || "",
             refer_to_2d_detail: rowData.get("ReferTo2DDetail") || ""
         };
@@ -1813,9 +1880,9 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
     }
 
     const layoutWidths = {
-        DetailMark: 25, DetailSpanType: 15, DetailStartStorey: 20, DetailEndstorey: 20,
-        MaterialGrade: 16, Thickness: 14, Length: 14, Width: 14, Breadth: 14, Depth: 14,
-        MainRebar: 20, VerticalRebar: 20, HorizontalRebar: 20, Stirrups: 20, SideBar: 18,
+        DetailMark: 25, DetailStartStorey: 20, DetailEndstorey: 20,
+        MaterialGrade: 16, Thickness: 14, Length: 14,
+        MainRebar: 20, VerticalRebar: 20, HorizontalRebar: 20, Stirrups: 20,
         ConstructionMethod: 20, ArrangementType: 18, "Splice/Dowels": 18,
         Remark: 22, ReferTo2DDetail: 22
     };
@@ -1843,6 +1910,22 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
 
 // ============================================================
 // EXPORTABLE API ENTRYPOINT
+// ------------------------------------------------------------
+// Output filenames follow the uploaded JSON filename.
+//
+// Signature:
+//   generateCoordScheduleWorkbook(json, outputPath?, csvPath?, sourceName?)
+//
+//   sourceName resolution (in order):
+//     1. Explicit 4th argument.
+//     2. basename of `outputPath` (extension stripped).
+//     3. "coord-schedule-output".
+//
+//   Directory resolution:
+//     - If outputPath ends with a separator OR points to an existing dir,
+//       use it as the directory.
+//     - Else use path.dirname(outputPath).
+//     - Else __dirname.
 // ============================================================
 
 export async function generateCoordScheduleWorkbook(
@@ -1858,6 +1941,7 @@ export async function generateCoordScheduleWorkbook(
 
     const stripExt = (n) => String(n).replace(/\.(json|txt|xlsx|csv)$/i, "");
 
+    // ---------- Resolve basename ----------
     let resolvedSourceName;
 
     if (sourceName) {
@@ -1870,6 +1954,7 @@ export async function generateCoordScheduleWorkbook(
 
     if (!resolvedSourceName) resolvedSourceName = "coord-schedule-output";
 
+    // ---------- Resolve target directory ----------
     let targetDir = __dirname;
 
     if (outputPath) {
@@ -1889,6 +1974,7 @@ export async function generateCoordScheduleWorkbook(
     const finalXlsxPath = path.join(targetDir, `${resolvedSourceName}.xlsx`);
     const finalCsvPath  = path.join(targetDir, `${resolvedSourceName}.csv`);
 
+    // ---------- Build workbook ----------
     const items = extractItems(json);
 
     if (items.length === 0) {
@@ -1926,6 +2012,7 @@ export async function generateCoordScheduleWorkbook(
 
     await workbook.xlsx.writeFile(finalXlsxPath);
 
+    // ---------- CSV ----------
     let csvExported = false;
     let csvBuffer = null;
 
