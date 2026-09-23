@@ -1,5 +1,5 @@
 // git add . 
-// git commit -m "Start MCP, Swagger, UI, TC Workspace API and Property Set API #55"
+// git commit -m "Start MCP, Swagger, UI, TC Workspace API and Property Set API #56"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -1497,6 +1497,52 @@ app.use(
 app.post('/mcp', requireSession, handleMcp);
 
 app.post('/mcp-debug', handleMcp);
+
+// Global error handler — MUST be the last app.use() before app.listen()
+app.use((err, req, res, next) => {
+  console.error('========== EXPRESS ERROR ==========');
+  console.error('Name:', err.name);
+  console.error('Message:', err.message);
+  console.error('Status:', err.status || err.statusCode || 500);
+  console.error('Method:', req.method, req.originalUrl);
+  console.error('Headers:', {
+    'content-type': req.headers['content-type'],
+    'content-length': req.headers['content-length'],
+    authorization:
+      req.headers.authorization
+        ? req.headers.authorization.slice(0, 20) + '…'
+        : '(none)',
+    origin: req.headers.origin || '(none)'
+  });
+  console.error('Stack:', err.stack);
+  console.error('===================================');
+
+  // If headers were already sent, we can't do anything — delegate.
+  if (res.headersSent) {
+    return next(err);
+  }
+
+  const status = err.status || err.statusCode || 500;
+
+  // Map body-parser errors to a clearer JSON-RPC message
+  let message = err.message || 'Internal error';
+  if (err.type === 'entity.too.large') {
+    status = 413;
+    message = 'Request body too large.';
+  } else if (err.type === 'entity.parse.failed') {
+    status = 400;
+    message = 'Request body is not valid JSON.';
+  }
+
+  res.status(status).json({
+    jsonrpc: '2.0',
+    id: req.body?.id ?? null,
+    error: {
+      code: -32700,
+      message
+    }
+  });
+});
 
 app.listen(config.port, () => console.log(`Trimble Claude MCP listening on ${config.port}`));
 function escapeHtml(s){return String(s).replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\\':'&#39;'}[c]));}
