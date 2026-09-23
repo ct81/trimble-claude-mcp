@@ -1,5 +1,5 @@
 // git add . 
-// git commit -m "Start MCP, Swagger, UI, TC Workspace API and Property Set API #57"
+// git commit -m "Start MCP, Swagger, UI, TC Workspace API and Property Set API #58"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -1496,6 +1496,7 @@ app.use(
 );
 app.post('/mcp', requireSession, handleMcp);
 
+// REMOVE THIS before shipping
 //app.post('/mcp-debug', handleMcp);
 
 // Global error handler — MUST be the last app.use() before app.listen()

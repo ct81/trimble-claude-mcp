@@ -578,7 +578,7 @@
       setStatus('Structured JSON exported successfully', '#3fb950');
     }
 
-    fileInput.addEventListener('change', () => {
+    fileInput.addEventListener('change', async () => {
       const file = fileInput.files && fileInput.files[0];
 
       if (!file) {
@@ -593,6 +593,7 @@
         fileInput.value = '';
         uploadBtn.disabled = true;
         setStatus('Please select a valid PDF file', '#f85149');
+        await extract();
         return;
       }
 
@@ -620,6 +621,10 @@
     });
 
     uploadBtn.addEventListener('click', async () => {
+      await extract();
+    });
+
+    async function extract(){
       if (!selectedFile) {
         setStatus('Please choose a PDF file first', '#f85149');
         return;
@@ -658,7 +663,7 @@
       } finally {
         uploadBtn.disabled = false;
       }
-    });
+    }
 
     clearBtn.addEventListener('click', clearData);
     copyJsonBtn.addEventListener('click', copyJson);
