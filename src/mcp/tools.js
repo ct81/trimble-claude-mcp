@@ -22,6 +22,12 @@ import {
   processColumnSchedule
 } from '../pdf/columnScheduleExporter.js';
 
+import { listSketchUpTools } from './sketchup/bridge.js';
+
+const SKETCHUP_PREFIX = 'sketchup_';
+
+let mergedDefinitions = null;
+
 // Extraction timeout. If the extractor hangs, fail loudly instead of
 // hanging the request forever.
 const EXTRACT_TIMEOUT_MS = 60_000;
@@ -663,6 +669,13 @@ export async function callTool(
 ) {
   let result;
 
+  // Route SketchUp tools
+  if (name.startsWith(SKETCHUP_PREFIX)) {
+    const realName = name.slice(SKETCHUP_PREFIX.length);
+    console.log(`[SketchUp] Forwarding tool call: ${realName}`);
+    return callSketchUpTool(realName, args);
+  }
+
   switch (name) {
 
     case 'get_projects':
@@ -1029,6 +1042,30 @@ export async function callTool(
     ]
   };
 }
+
+//[Start] Route SketchUp tools
+export async function getDefinitions() {
+  if (mergedDefinitions) return mergedDefinitions;
+
+  // Your existing Trimble tool definitions
+  const trimbleDefs = definitions;
+
+  // Fetch SketchUp tools and apply namespace prefix
+  const suTools = await listSketchUpTools();
+  const suDefs = suTools.map(tool => ({
+    ...tool,
+    name: `${SKETCHUP_PREFIX}${tool.name}`,
+    description: `[SketchUp] ${tool.description}`,
+  }));
+
+  mergedDefinitions = [...trimbleDefs, ...suDefs];
+  return mergedDefinitions;
+}
+
+export function invalidateDefinitionsCache() {
+  mergedDefinitions = null;
+}
+//[End] Route SketchUp tools
 
 // import fs from 'node:fs';
 // import path from 'node:path';
