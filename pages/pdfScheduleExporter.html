@@ -593,13 +593,13 @@
         fileInput.value = '';
         uploadBtn.disabled = true;
         setStatus('Please select a valid PDF file', '#f85149');
-        await extract();
         return;
       }
 
       selectedFile = file;
       uploadBtn.disabled = false;
       setStatus(`${file.name} selected`, '#3fb950');
+      await extract();
     });
 
     uploadArea.addEventListener('dragover', (event) => {
