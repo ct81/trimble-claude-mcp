@@ -612,25 +612,98 @@ function parseJsonInput(value, label) {
   return value;
 }
 
+// function decodePdfBase64(value) {
+//   if (typeof value !== 'string' || !value.trim()) {
+//     throw new Error('pdfBase64 must be a non-empty base64 string.');
+//   }
+
+//   const base64 = value.trim().replace(/^data:application\/pdf;base64,/, '');
+
+//   if (!/^[A-Za-z0-9+/]*={0,2}$/.test(base64) || base64.length % 4 === 1) {
+//     throw new Error('pdfBase64 is not valid base64.');
+//   }
+
+//   const buffer = Buffer.from(base64, 'base64');
+
+//   if (!buffer.length) {
+//     throw new Error('pdfBase64 must contain PDF data.');
+//   }
+
+//   return buffer;
+// }
 function decodePdfBase64(value) {
   if (typeof value !== 'string' || !value.trim()) {
     throw new Error('pdfBase64 must be a non-empty base64 string.');
   }
 
-  const base64 = value.trim().replace(/^data:application\/pdf;base64,/, '');
+  // ---- 1. strip data-URI prefix ----
+  let base64 = value
+    .trim()
+    .replace(/^data:application\/pdf;base64,/, '');
 
-  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(base64) || base64.length % 4 === 1) {
-    throw new Error('pdfBase64 is not valid base64.');
+  // ---- 2. log diagnostics on the RAW input ----
+  console.log('[PDF][b64] raw length:', base64.length);
+  console.log('[PDF][b64] length % 4:', base64.length % 4);
+  console.log('[PDF][b64] head:', JSON.stringify(base64.slice(0, 40)));
+  console.log('[PDF][b64] tail:', JSON.stringify(base64.slice(-40)));
+  console.log('[PDF][b64] has whitespace:', /\s/.test(base64));
+  console.log('[PDF][b64] has url-safe chars (- or _):', /[-_]/.test(base64));
+  console.log('[PDF][b64] has invalid chars:', /[^A-Za-z0-9+/=]/.test(base64));
+
+  // ---- 3. normalize: strip whitespace, convert url-safe ----
+  base64 = base64
+    .replace(/\s+/g, '')          // remove \n, \r, spaces, tabs
+    .replace(/-/g, '+')           // url-safe -> standard
+    .replace(/_/g, '/');
+
+  // ---- 4. fix padding if missing (length % 4 === 2 or 3) ----
+  if (base64.length % 4 === 2) {
+    base64 += '==';
+  } else if (base64.length % 4 === 3) {
+    base64 += '=';
   }
 
+  // ---- 5. lenient validation ----
+  // Accept standard base64 with optional padding.
+  // Reject only if there is obviously garbage in the middle.
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(base64)) {
+    console.error('[PDF][b64] validation failed.');
+    console.error('[PDF][b64] normalized length:', base64.length);
+    console.error('[PDF][b64] offending chars:',
+      (base64.match(/[^A-Za-z0-9+/=]/g) || []).slice(0, 20)
+    );
+    console.error('[PDF][b64] head:', JSON.stringify(base64.slice(0, 80)));
+    console.error('[PDF][b64] tail:', JSON.stringify(base64.slice(-80)));
+
+    throw new Error(
+      'pdfBase64 is not valid base64 (after normalization). ' +
+      'See server logs for the offending characters.'
+    );
+  }
+
+  // ---- 6. decode ----
   const buffer = Buffer.from(base64, 'base64');
 
+  console.log('[PDF][b64] normalized length:', base64.length);
+  console.log('[PDF][b64] decoded bytes:', buffer.length);
+  console.log('[PDF][b64] PDF magic:',
+    buffer.slice(0, 5).toString('latin1')  // should be "%PDF-"
+  );
+
   if (!buffer.length) {
-    throw new Error('pdfBase64 must contain PDF data.');
+    throw new Error('pdfBase64 decoded to an empty buffer.');
+  }
+
+  if (buffer.slice(0, 5).toString('latin1') !== '%PDF-') {
+    throw new Error(
+      'Decoded data does not look like a PDF (missing %PDF- header). ' +
+      'Did you base64-encode the wrong file?'
+    );
   }
 
   return buffer;
 }
+
 
 // ---------- Helper: derive output basename from whatever the caller sent -----
 function deriveSourceNameFromArgs(args, fallback = "coord-schedule-output") {

@@ -1,5 +1,5 @@
 // git add . 
-// git commit -m "Start MCP, Swagger, UI, TC Workspace API and Property Set API #51"
+// git commit -m "Start MCP, Swagger, UI, TC Workspace API and Property Set API #52"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -76,7 +76,7 @@ app.use('/pages', express.static(path.join(process.cwd(), 'pages')));
 app.use('/src', express.static(path.join(process.cwd(), 'src')));
 
 //app.use(express.json({limit:'2mb'}));
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '500mb' }));
 app.use(
     express.urlencoded({
         extended: true
