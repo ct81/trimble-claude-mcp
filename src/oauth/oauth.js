@@ -12,6 +12,107 @@ import {
 } from './oauthState.js';
 
 
+// export function requireSession(
+//   req,
+//   res,
+//   next
+// ) {
+
+//   /*
+//    * =========================================
+//    * Claude MCP OAuth
+//    * =========================================
+//    */
+
+//   const authHeader =
+//     req.headers.authorization;
+
+//   if (
+//     authHeader &&
+//     authHeader.startsWith('Bearer ')
+//   ) {
+
+//     const accessToken =
+//       authHeader.substring(7).trim();
+
+//     const sessionId =
+//       getSessionIdFromMcpToken(
+//         accessToken
+//       );
+
+//     if (!sessionId) {
+
+//       const baseUrl =
+//         process.env.PUBLIC_BASE_URL;
+
+//       res.setHeader(
+//         'WWW-Authenticate',
+//         `Bearer resource_metadata="${baseUrl}/.well-known/oauth-protected-resource"`
+//       );
+
+//       return res.status(401).json({
+//         error:
+//           'invalid_token'
+//       });
+//     }
+
+//     const session =
+//       getSession(sessionId);
+
+//     if (!session) {
+
+//       return res.status(401).json({
+//         error:
+//           'invalid_token'
+//       });
+//     }
+
+//     req.mcpSessionId =
+//       sessionId;
+
+//     req.session =
+//       session;
+
+//     return next();
+//   }
+
+//   /*
+//    * =========================================
+//    * Existing Trimble Connect extension
+//    * =========================================
+//    */
+
+//   const id =
+//     req.headers['x-mcp-session'] ||
+//     req.cookies?.mcp_session;
+
+//   const session =
+//     getSession(id);
+
+//   if (!session) {
+
+//     const baseUrl =
+//       process.env.PUBLIC_BASE_URL;
+
+//     res.setHeader(
+//       'WWW-Authenticate',
+//       `Bearer resource_metadata="${baseUrl}/.well-known/oauth-protected-resource"`
+//     );
+
+//     return res.status(401).json({
+//       error:
+//         'authentication_required'
+//     });
+//   }
+
+//   req.mcpSessionId =
+//     id;
+
+//   req.session =
+//     session;
+
+//   next();
+// }
 export function requireSession(
   req,
   res,
@@ -42,6 +143,18 @@ export function requireSession(
 
     if (!sessionId) {
 
+      console.warn(
+        '[requireSession] Invalid or unknown MCP access token',
+        {
+          method: req.method,
+          path: req.originalUrl,
+          tokenPrefix:
+            accessToken
+              ? accessToken.slice(0, 8) + '…'
+              : '(empty)'
+        }
+      );
+
       const baseUrl =
         process.env.PUBLIC_BASE_URL;
 
@@ -51,8 +164,13 @@ export function requireSession(
       );
 
       return res.status(401).json({
-        error:
-          'invalid_token'
+        jsonrpc: '2.0',
+        id: req.body?.id ?? null,
+        error: {
+          code: -32001,
+          message:
+            'Unauthorized: invalid or expired MCP access token.'
+        }
       });
     }
 
@@ -61,9 +179,31 @@ export function requireSession(
 
     if (!session) {
 
+      console.warn(
+        '[requireSession] MCP token valid but session missing',
+        {
+          sessionId,
+          method: req.method,
+          path: req.originalUrl
+        }
+      );
+
+      const baseUrl =
+        process.env.PUBLIC_BASE_URL;
+
+      res.setHeader(
+        'WWW-Authenticate',
+        `Bearer resource_metadata="${baseUrl}/.well-known/oauth-protected-resource"`
+      );
+
       return res.status(401).json({
-        error:
-          'invalid_token'
+        jsonrpc: '2.0',
+        id: req.body?.id ?? null,
+        error: {
+          code: -32001,
+          message:
+            'Unauthorized: session not found or expired.'
+        }
       });
     }
 
@@ -91,6 +231,24 @@ export function requireSession(
 
   if (!session) {
 
+    console.warn(
+      '[requireSession] No bearer token and no valid session cookie',
+      {
+        method: req.method,
+        path: req.originalUrl,
+        hasXMCPHeader:
+          !!req.headers['x-mcp-session'],
+        hasCookie:
+          !!req.cookies?.mcp_session,
+        authHeaderPresent:
+          !!authHeader,
+        authScheme:
+          authHeader
+            ? authHeader.split(' ')[0]
+            : '(none)'
+      }
+    );
+
     const baseUrl =
       process.env.PUBLIC_BASE_URL;
 
@@ -100,8 +258,13 @@ export function requireSession(
     );
 
     return res.status(401).json({
-      error:
-        'authentication_required'
+      jsonrpc: '2.0',
+      id: req.body?.id ?? null,
+      error: {
+        code: -32001,
+        message:
+          'Unauthorized: no credentials supplied.'
+      }
     });
   }
 

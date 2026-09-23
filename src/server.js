@@ -1,5 +1,5 @@
 // git add . 
-// git commit -m "Start MCP, Swagger, UI, TC Workspace API and Property Set API #53"
+// git commit -m "Start MCP, Swagger, UI, TC Workspace API and Property Set API #54"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -1496,7 +1496,7 @@ app.use(
 );
 app.post('/mcp', requireSession, handleMcp);
 
-app.post('/mcp-debug', handleMcp);
+//app.post('/mcp-debug', handleMcp);
 
 app.listen(config.port, () => console.log(`Trimble Claude MCP listening on ${config.port}`));
 function escapeHtml(s){return String(s).replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\\':'&#39;'}[c]));}
