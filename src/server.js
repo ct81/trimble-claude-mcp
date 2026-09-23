@@ -1,5 +1,9 @@
 // git add . 
-// git commit -m "Start MCP, Swagger, UI, TC Workspace API and Property Set API #50"
+// git commit -m "Start MCP, Swagger, UI, TC Workspace API and Property Set API #51"
+// git push origin main
+
+// git add src/mcp/http.js src/mcp/tools.js
+// git commit -m "Fix MCP PDF input handling and diagnostics"
 // git push origin main
 
 import express from 'express';
