@@ -1,0 +1,8 @@
+{
+"icon": "https://api.iconify.design/tabler/shield-lock.svg?color=%23FFFFFF",
+"title": "Avatar",
+"url": "https://trimble-claude-mcp-g86i.onrender.com/pages/accessToken.html",
+"description": "Get User Trimble Access Token.",
+"configCommand": "do_config",
+"enabled": true
+}
