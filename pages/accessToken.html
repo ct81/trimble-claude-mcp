@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head runat="server">
+    <title></title>
+    <meta charset="utf-8" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
+   
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+
+    <style>
+        body{
+            background:#f3f6fb;
+            font-family:'Segoe UI',Tahoma,sans-serif;
+        }
+
+        .info-card{
+            width:900px;
+            margin:25px auto;
+            background:#fff;
+            border-radius:12px;
+            box-shadow:0 8px 20px rgba(0,0,0,.12);
+            overflow:hidden;
+        }
+
+        .card-header{
+            background:#0078D4;
+            color:#fff;
+            padding:15px 25px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+        }
+
+        .header-title span{
+            font-size:22px;
+            font-weight:600;
+        }
+
+        .header-status{
+            display:flex;
+            flex-direction:column;
+            align-items:flex-end;
+        }
+
+        #lblTimeStamp{
+            font-size:14px;
+            font-weight:normal;
+            opacity:0.95;
+        }
+
+        #lblCountdown{
+            margin-top:5px;
+            font-size:12px;
+            font-weight:bold;
+            opacity:0.85;
+        }
+
+        .info-row{
+            display:flex;
+            padding:14px 25px;
+            border-bottom:1px solid #ececec;
+            align-items:flex-start;
+        }
+
+        .info-row:last-child{
+            border-bottom:none;
+        }
+
+        .label{
+            width:180px;
+            font-weight:600;
+            color:#444;
+        }
+
+        .value{
+            flex:1;
+            color:#222;
+            word-break:break-word;
+        }
+
+        .token{
+            font-family:Consolas, monospace;
+            color:#0b5ed7;
+            font-size:13px;
+            background:#f5f8ff;
+            padding:8px;
+            border-radius:6px;
+            border:1px solid #dbe7ff;
+        }
+    </style>
+</head>
+<body>
+    <form id="form1" runat="server">
+        <div>
+        
+        <asp:HiddenField ID="hdnProjectDetail" runat="server" />
+        <asp:HiddenField ID="hdnProjectName" runat="server" />
+        <asp:HiddenField ID="hdnUserId" runat="server" />
+        <asp:HiddenField ID="hdnUserEmail" runat="server" />
+        <asp:HiddenField ID="hdnUserFirstName" runat="server" />
+        <asp:HiddenField ID="hdnUserLastName" runat="server" />
+        <asp:HiddenField ID="hdnUserDetail" runat="server" />
+        <asp:HiddenField ID="hdnAccessTokenDetail" runat="server" />
+        <asp:HiddenField ID="hdnLicenseJson" runat="server" />
+
+        <%--<div id="lblCountdown" style="font-size:16px;font-weight:bold;">
+            Next refresh in 30 seconds
+        </div>--%>
+        <%--<span id="lblAccessToken"></span>--%>
+            <div class="info-card">
+
+                <div class="card-header">
+
+                    <div class="header-title">
+                        <span>Trimble Connect Information</span>
+                    </div>
+
+                    <div class="header-status">
+                        <div id="lblTimeStamp">
+                            Last Updated: -
+                        </div>
+
+                        <div id="lblCountdown">
+                            Next refresh in 30 seconds
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="info-row">
+                    <span class="label">Project ID</span>
+                    <span class="value" id="lblProjectId">-</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="label">Project Name</span>
+                    <span class="value" id="lblProjectName">-</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="label">User ID</span>
+                    <span class="value" id="lblUserId">-</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="label">User Name</span>
+                    <span class="value" id="lblUserName">-</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="label">Email</span>
+                    <span class="value" id="lblEmail">-</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="label">Licenses</span>
+                    <span class="value" id="lblLicense">Loading...</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="label">Access Token</span>
+                    <span class="value token" id="lblAccessToken">Loading...</span>
+                </div>
+
+            </div>
+
+        <script type="module">
+
+            let API_Ext;
+
+            async function doConnect() {
+
+                API_Ext = await TrimbleConnectWorkspace.connect(window.parent, (event, data, args) => {
+                    console.log("**Extension: ", event.type, event.data);
+
+                    var json = data.data
+                    var obj = json.replace('"', '');
+
+                    switch (event) {
+                        case "extension.command":
+                            //"Command executed by the user: args.data"
+
+                            //if (obj == 'submenu_1_clicked') {
+                            //    console.log("=====GET1: " + obj);
+                            //}
+                            break;
+                        case "extension.accessToken":
+                            //"Accestoken or status: args.data"
+                            break;
+                        case "extension.userSettingsChanged":
+                            //"User settings changed!"
+                            break;
+                        //default:
+                    }
+
+
+                });
+
+                API_Ext.ui.setMenu({
+                    title: "Access Token"
+                    , icon: "https://components.stage.connect.trimble.com/trimble-connect-project-workspace-api/logo192.png"
+                    , command: "main_menu_clicked"
+                    , subMenus: []
+                });
+
+                API_Ext.extension.setStatusMessage("").then(setStatusMsgClear => {
+                    console.log("**setStatusMsgClear: " + setStatusMsgClear);
+                });
+
+                API_Ext.ui.setActiveMenuItem("main_menu_clicked");
+
+                API_Ext.project.getProject().then(project => {
+                    console.log("**ProjectId: " + project.id);
+                    console.log("**ProjectName: " + project.name);
+                    document.getElementById('hdnProjectDetail').value = project.id;
+                    document.getElementById('hdnProjectName').value = project.name;
+
+                    document.getElementById("lblProjectId").innerText = project.id;
+                    document.getElementById("lblProjectName").innerText = project.name;
+                });
+
+                API_Ext.user.getUserSettings().then(userSettings => {
+                    document.getElementById('hdnUserId').value = userSettings.id;
+                    document.getElementById('hdnUserEmail').value = userSettings.email;
+                    document.getElementById('hdnUserFirstName').value = userSettings.firstName;
+                    document.getElementById('hdnUserLastName').value = userSettings.lastName;
+                    document.getElementById('hdnUserDetail').value = userSettings.id + ',' + userSettings.firstName + ' ' + userSettings.lastName + ',' + userSettings.email;
+
+                    document.getElementById("lblUserId").innerText = userSettings.id;
+                    document.getElementById("lblUserName").innerText = userSettings.firstName + " " + userSettings.lastName;
+                    document.getElementById("lblEmail").innerText = userSettings.email;
+                });
+
+                API_Ext.extension.getPermission("accesstoken").then(async (accessToken) => {
+                    document.getElementById("lblAccessToken").innerText = accessToken;
+                    //document.getElementById("lblAccessToken").innerText = "Access Token: " + accessToken.substring(0, 20) + "...";
+                    console.log("**Accesstoken: " + accessToken);
+                    try {
+                        const response = await fetch(
+                            "https://app.connect.trimble.com/tc/api/2.0/users/licenses",
+                            {
+                                method: "GET",
+                                timeout: 300000,
+                                headers: {
+                                    Authorization: `Bearer ${accessToken}`
+                                }
+                            });
+
+                        const licenses = await response.json();
+
+                        let html = "";
+
+                        licenses.forEach(l => {
+                            html += `${l.name}<br>`;
+                        });
+
+                        document.getElementById("lblLicense").innerHTML = html;
+
+                        var alllicense = '';
+                        for (var i = 0; i < licenses.length; i++) {
+                            alllicense += `${JSON.stringify(licenses[i])},`;
+                            //console.log(`${JSON.stringify(licenses[i])},`);
+                        }
+                        console.log('all license: ' + '[' + alllicense.slice(0, -1) + ']');
+                        document.getElementById('hdnLicenseJson').value = '[' + alllicense.slice(0, -1) + ']';
+                        //document.getElementById("hdnLicenseJson").value = JSON.stringify(licenses);
+
+                        await API_Ext.extension.setStatusMessage("Running...");
+
+                        // ===========================================
+                        // Save Access Token to ASP.NET WebMethod
+                        // ===========================================
+                        // const updateResponse = await fetch("atoken.aspx/Update", {
+                        //     method: "POST",
+                        //     headers: {
+                        //         "Content-Type": "application/json; charset=utf-8"
+                        //     },
+                        //     body: JSON.stringify({
+                        //         action: "Update",
+                        //         accesstoken: accessToken,
+                        //         userid: document.getElementById("hdnUserId").value
+                        //         //,licenseJson: document.getElementById("hdnLicenseJson").value
+                        //     })
+                        // });
+
+                        // const updateResult = await updateResponse.json();
+
+                        // console.log("Update Result:", updateResult.d);
+
+                        // if (updateResult.d === "true") {
+                        //     console.log("Access token saved successfully.");
+                        //     updateTimestamp();
+                        // } else {
+                        //     console.log("Failed to save access token.");
+                        // }
+                    }
+                    catch (err) {
+                        console.error(err);
+                    }
+                    finally {
+                        await sleep(2000);
+                        await API_Ext.extension.setStatusMessage("Connected");
+                    }
+                });
+
+                sleep(3000).then(() => {
+                    API_Ext.extension.setStatusMessage("Connected").then(setStatusMsgEnd => {
+                        console.log("**setStatusMsg: " + setStatusMsgEnd);
+                    });
+                });
+
+                API_Ext.extension.getStatusMessage().then(getStatusMsg => {
+                    console.log("**getStatusMsg: " + getStatusMsg);
+                });
+            }
+
+            function sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+
+            function updateTimestamp() {
+
+                const now = new Date();
+
+                const timestamp =
+                    now.getFullYear() + "-" +
+                    String(now.getMonth() + 1).padStart(2, '0') + "-" +
+                    String(now.getDate()).padStart(2, '0') + " " +
+                    String(now.getHours()).padStart(2, '0') + ":" +
+                    String(now.getMinutes()).padStart(2, '0') + ":" +
+                    String(now.getSeconds()).padStart(2, '0');
+
+                document.getElementById("lblTimeStamp").innerText =
+                    "Last Updated: " + timestamp;
+            }
+
+            //let countdownInterval = null;
+
+            //function startCountdown() {
+
+            //    let seconds = 30;
+            //    const lbl = document.getElementById("lblCountdown");
+
+            //    lbl.innerHTML = `Connecting... ${seconds}s`;
+
+            //    countdownInterval = setInterval(() => {
+
+            //        seconds--;
+
+            //        if (seconds < 0) {
+            //            seconds = 30;   // Restart countdown
+            //        }
+
+            //        lbl.innerHTML = `Connecting... ${seconds}s`;
+
+            //    }, 1000);
+            //}
+
+            //function stopCountdown(message = "Connected") {
+
+            //    if (countdownInterval) {
+            //        clearInterval(countdownInterval);
+            //        countdownInterval = null;
+            //    }
+
+            //    document.getElementById("lblCountdown").innerHTML = message;
+            //}
+            //await doConnect();
+            //startCountdown();
+
+            //try {
+            //    await doConnect();
+            //    stopCountdown("✅ Connected");
+            //}
+            //catch (err) {
+            //    stopCountdown("❌ Connection Failed");
+            //    console.error(err);
+            //}
+            const REFRESH_SECONDS = 59;
+
+            async function startAutoRefresh() {
+
+                const lbl = document.getElementById("lblCountdown");
+
+                while (true) {
+
+                    // Run your connection
+                    try {
+                        lbl.innerHTML = "Refreshing...";
+                        await doConnect();
+                    }
+                    catch (err) {
+                        console.error(err);
+                    }
+
+                    // Countdown to next refresh
+                    for (let seconds = REFRESH_SECONDS; seconds > 0; seconds--) {
+
+                        lbl.innerHTML = `Next refresh in ${seconds} second${seconds > 1 ? "s" : ""}`;
+
+                        await sleep(1000);
+                    }
+                }
+            }
+            startAutoRefresh();
+        </script>
+        </div>
+    </form>
+</body>
+</html>
