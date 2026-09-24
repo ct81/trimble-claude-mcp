@@ -1,5 +1,5 @@
 // git add . 
-// git commit -m "Start MCP, Swagger, UI, TC Workspace API and Property Set API #74"
+// git commit -m "Start MCP, Swagger, UI, TC Workspace API and Property Set API #75"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -1504,6 +1504,25 @@ app.get(
       return res.json({ tools });
     } catch (e) {
       console.error('GET /api/mcp/tools:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.post(
+  '/api/mcp/tools/:toolName',
+  requireSession,
+  async (req, res) => {
+    try {
+      const args = req.body?.arguments ?? req.body ?? {};
+      const result = await callTool(
+        req.mcpSessionId,
+        req.params.toolName,
+        args
+      );
+      return res.json(result);
+    } catch (e) {
+      console.error('POST /api/mcp/tools/:toolName:', e);
       return res.status(500).json({ error: e.message });
     }
   }

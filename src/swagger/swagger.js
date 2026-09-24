@@ -130,6 +130,52 @@ export const swaggerDocument = {
       }
     },
 
+    '/api/mcp/tools/{toolName}': {
+
+      post: {
+
+        tags: ['SketchUp'],
+        security: [{ bearerAuth: [] }],
+        summary: 'Call an MCP tool by name',
+        description:
+          'Call a Trimble or SketchUp MCP tool. Use the prefixed SketchUp name returned by GET /api/mcp/tools, such as sketchup_get_selection.',
+
+        parameters: [
+          {
+            name: 'toolName',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+            example: 'sketchup_get_selection'
+          }
+        ],
+
+        requestBody: {
+          required: false,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                description: 'Arguments for the selected MCP tool.'
+              }
+            }
+          }
+        },
+
+        responses: {
+          200: {
+            description: 'MCP tool result'
+          },
+          401: {
+            description: 'Authentication required'
+          },
+          500: {
+            description: 'MCP tool call failed'
+          }
+        }
+      }
+    },
+
     '/api/pdf/uploads': {
 
       post: {
