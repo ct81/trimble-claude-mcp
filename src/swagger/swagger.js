@@ -1,4 +1,4 @@
-import { definitions } from '../mcp/tools.js';
+import { definitions, getDefinitions } from '../mcp/tools.js';
 
 let mergedDefinitions = null;
 
@@ -1261,3 +1261,95 @@ export const swaggerDocument = {
   }
 
 };
+
+
+// ==========================================
+// DYNAMIC SWAGGER DOCUMENT
+// ==========================================
+
+export async function getSwaggerDocument() {
+
+  const doc = structuredClone(swaggerDocument);
+
+  const tools = await getDefinitions();
+
+  console.log(
+    `[Swagger] Building document with ${tools.length} tools`
+  );
+
+  for (const tool of tools) {
+
+    if (!tool.name.startsWith('sketchup_')) {
+      continue;
+    }
+
+    const toolName = tool.name;
+
+    const inputSchema =
+      tool.inputSchema || {
+        type: 'object',
+        properties: {}
+      };
+
+    console.log(
+      `[Swagger] Adding SketchUp tool: ${toolName}`
+    );
+
+    doc.paths[`/api/mcp/tools/${toolName}`] = {
+      post: {
+        tags: ['SketchUp'],
+
+        summary:
+          tool.description ||
+          `Execute ${toolName}`,
+
+        description:
+          tool.description ||
+          `Execute SketchUp MCP tool: ${toolName}`,
+
+        operationId: toolName,
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
+
+        requestBody: {
+          required: true,
+
+          content: {
+            'application/json': {
+              schema: inputSchema
+            }
+          }
+        },
+
+        responses: {
+          200: {
+            description: 'SketchUp MCP tool result',
+
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: true
+                }
+              }
+            }
+          },
+
+          401: {
+            description: 'Authentication required'
+          },
+
+          500: {
+            description: 'SketchUp tool execution failed'
+          }
+        }
+      }
+    };
+  }
+
+  return doc;
+}

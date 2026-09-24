@@ -1,5 +1,5 @@
 // git add . 
-// git commit -m "Start MCP, Swagger, UI, TC Workspace API and Property Set API #75"
+// git commit -m "Start MCP, Swagger, UI, TC Workspace API and Property Set API #76"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -51,8 +51,12 @@ import {
   createOAuthState
 } from './oauth/oauthState.js';
 
+// import {
+//   swaggerDocument
+// } from './swagger/swagger.js';
 import {
-  swaggerDocument
+  swaggerDocument,
+  getSwaggerDocument
 } from './swagger/swagger.js';
 
 import {
@@ -83,15 +87,66 @@ app.use(
     })
 );
 app.use(cookieParser());
+// app.use(
+//     '/swagger',
+//     swaggerUi.serve,
+//     swaggerUi.setup(
+//         swaggerDocument,
+//         {
+//             explorer: true
+//         }
+//     )
+// );
+
+// ==========================================
+// DYNAMIC SWAGGER JSON
+// ==========================================
+
+app.get('/swagger/swagger.json', async (req, res) => {
+
+  try {
+
+    console.log(
+      '[Swagger] Generating dynamic Swagger document...'
+    );
+
+    const document =
+      await getSwaggerDocument();
+
+    res.json(document);
+
+  } catch (err) {
+
+    console.error(
+      '[Swagger] Failed to generate document:',
+      err
+    );
+
+    res.status(500).json({
+      error:
+        'Failed to generate Swagger document',
+
+      message:
+        err.message
+    });
+  }
+});
+
+
+// ==========================================
+// SWAGGER UI
+// ==========================================
+
 app.use(
-    '/swagger',
-    swaggerUi.serve,
-    swaggerUi.setup(
-        swaggerDocument,
-        {
-            explorer: true
-        }
-    )
+  '/swagger',
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerDocument, {
+    explorer: true,
+
+    swaggerOptions: {
+      url: '/swagger/swagger.json'
+    }
+  })
 );
 
 app.get('/health', (_, res) => res.json({status:'ok',service:'trimble-connect-mcp'}));
