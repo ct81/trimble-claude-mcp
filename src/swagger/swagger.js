@@ -1,4 +1,3 @@
-import swaggerJsdoc from 'swagger-jsdoc';
 import { definitions } from './tools.js';
 import { listSketchUpTools } from './mcp/sketchup/bridge.js';
 
