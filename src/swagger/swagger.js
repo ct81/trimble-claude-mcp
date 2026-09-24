@@ -1,4 +1,4 @@
-import { definitions } from './tools.js';
+import { definitions } from './mcp/tools.js';
 import { listSketchUpTools } from './mcp/sketchup/bridge.js';
 
 const SKETCHUP_PREFIX = 'sketchup_';
