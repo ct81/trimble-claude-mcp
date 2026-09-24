@@ -1,32 +1,32 @@
 import { definitions, getDefinitions } from '../mcp/tools.js';
 
-let mergedDefinitions = null;
+// let mergedDefinitions = null;
 
-export async function getDefinitions() {
-  if (mergedDefinitions) return mergedDefinitions;
+// export async function getDefinitions() {
+//   if (mergedDefinitions) return mergedDefinitions;
 
-  // Swagger exposes the Trimble testing surface only.
-  mergedDefinitions = definitions;
-  return mergedDefinitions;
-}
+//   // Swagger exposes the Trimble testing surface only.
+//   mergedDefinitions = definitions;
+//   return mergedDefinitions;
+// }
 
-export function invalidateDefinitionsCache() {
-  mergedDefinitions = null;
-}
+// export function invalidateDefinitionsCache() {
+//   mergedDefinitions = null;
+// }
 
-const options = {
-  definition: {
-    openapi: '3.0.0',
-    info: { title: 'My API', version: '1.0.0' },
-    paths: { /* ... unchanged ... */ },
-    components: {
-      schemas: {
-        Tool: { /* ... unchanged ... */ },
-      },
-    },
-  },
-  apis: ['./routes/*.js'],
-};
+// const options = {
+//   definition: {
+//     openapi: '3.0.0',
+//     info: { title: 'My API', version: '1.0.0' },
+//     paths: { /* ... unchanged ... */ },
+//     components: {
+//       schemas: {
+//         Tool: { /* ... unchanged ... */ },
+//       },
+//     },
+//   },
+//   apis: ['./routes/*.js'],
+// };
 
 
 export const swaggerDocument = {
