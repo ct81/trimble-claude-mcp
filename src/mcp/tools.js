@@ -1057,7 +1057,9 @@ export async function getDefinitions() {
   const suTools = await listSketchUpTools();
   const suDefs = suTools.map(tool => ({
     ...tool,
-    name: `${SKETCHUP_PREFIX}${tool.name}`,
+    name: tool.name.startsWith(SKETCHUP_PREFIX)
+      ? tool.name
+      : `${SKETCHUP_PREFIX}${tool.name}`,
     description: `[SketchUp] ${tool.description}`,
   }));
 

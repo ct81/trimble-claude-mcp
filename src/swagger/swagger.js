@@ -1,5 +1,207 @@
 import { definitions, getDefinitions } from '../mcp/tools.js';
 
+// The published SketchUp MCP server advertises these tools even when the
+// desktop SketchUp process is not currently reachable. Keep Swagger useful on
+// Render by using this catalog until live definitions are available.
+const sketchupFallbackDefinitions = [
+  {
+    name: 'sketchup_status',
+    description: 'Check whether SketchUp is open and reachable.',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'sketchup_get_selection',
+    description: 'List the entities currently selected in SketchUp.',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'sketchup_capture_view',
+    description: 'Render the SketchUp viewport and return it as an image.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        view: { type: 'string', enum: ['current', 'iso', 'top', 'bottom', 'front', 'back', 'left', 'right'] },
+        zoom: { type: 'string', enum: ['none', 'extents', 'selection'] },
+        style: { type: 'string', enum: ['current', 'shaded', 'textured', 'wireframe', 'hidden_line', 'xray'] },
+        width: { type: 'integer', minimum: 256, maximum: 2000 },
+        height: { type: 'integer', minimum: 256, maximum: 2000 },
+        format: { type: 'string', enum: ['png', 'jpg'] },
+        keep_camera: { type: 'boolean' }
+      }
+    }
+  },
+  {
+    name: 'sketchup_create_component',
+    description: 'Create a primitive solid in the active SketchUp model.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        type: { type: 'string', enum: ['cube', 'cylinder', 'sphere', 'cone'], default: 'cube' },
+        position: { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 },
+        dimensions: { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 }
+      }
+    }
+  },
+  {
+    name: 'sketchup_delete_component',
+    description: 'Delete an entity from the active SketchUp model.',
+    inputSchema: {
+      type: 'object',
+      properties: { id: { type: 'string' } },
+      required: ['id']
+    }
+  },
+  {
+    name: 'sketchup_transform_component',
+    description: 'Move, rotate, or scale an existing SketchUp entity.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        position: { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 },
+        rotation: { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 },
+        scale: { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 }
+      },
+      required: ['id']
+    }
+  },
+  {
+    name: 'sketchup_set_material',
+    description: 'Apply a material or colour to an entity.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        entity_id: { type: 'string' },
+        material: { type: 'string' },
+        color: { type: 'string' }
+      },
+      required: ['entity_id']
+    }
+  },
+  {
+    name: 'sketchup_export_scene',
+    description: 'Export the active SketchUp model to a file.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        format: { type: 'string', enum: ['skp', 'obj', 'dae', 'stl', 'png', 'jpg'], default: 'skp' },
+        width: { type: 'integer', minimum: 1 },
+        height: { type: 'integer', minimum: 1 }
+      },
+      required: ['format']
+    }
+  },
+  {
+    name: 'sketchup_boolean_operation',
+    description: 'Combine or cut two solid entities.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        operation: { type: 'string', enum: ['union', 'difference', 'intersection'] },
+        target_id: { type: 'string' },
+        tool_id: { type: 'string' },
+        delete_originals: { type: 'boolean', default: false }
+      },
+      required: ['operation', 'target_id', 'tool_id']
+    }
+  },
+  {
+    name: 'sketchup_chamfer_edges',
+    description: 'Cut a flat bevel on the edges of a solid.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        entity_id: { type: 'string' },
+        distance: { type: 'number', exclusiveMinimum: 0, default: 0.5 },
+        edge_indices: { type: 'array', items: { type: 'integer', minimum: 0 } },
+        delete_original: { type: 'boolean', default: false }
+      },
+      required: ['entity_id']
+    }
+  },
+  {
+    name: 'sketchup_fillet_edges',
+    description: 'Round the edges of a solid.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        entity_id: { type: 'string' },
+        radius: { type: 'number', exclusiveMinimum: 0, default: 0.5 },
+        edge_indices: { type: 'array', items: { type: 'integer', minimum: 0 } },
+        segments: { type: 'integer', minimum: 1, default: 4 },
+        delete_original: { type: 'boolean', default: false }
+      },
+      required: ['entity_id']
+    }
+  },
+  {
+    name: 'sketchup_create_mortise_tenon',
+    description: 'Cut a mortise-and-tenon joint between two boards.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        mortise_id: { type: 'string' },
+        tenon_id: { type: 'string' },
+        width: { type: 'number', exclusiveMinimum: 0, default: 1 },
+        height: { type: 'number', exclusiveMinimum: 0, default: 1 },
+        depth: { type: 'number', exclusiveMinimum: 0, default: 1 },
+        offset_x: { type: 'number', default: 0 },
+        offset_y: { type: 'number', default: 0 },
+        offset_z: { type: 'number', default: 0 }
+      },
+      required: ['mortise_id', 'tenon_id']
+    }
+  },
+  {
+    name: 'sketchup_create_dovetail',
+    description: 'Cut a dovetail joint between two boards.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tail_id: { type: 'string' },
+        pin_id: { type: 'string' },
+        width: { type: 'number', exclusiveMinimum: 0, default: 1 },
+        height: { type: 'number', exclusiveMinimum: 0, default: 2 },
+        depth: { type: 'number', exclusiveMinimum: 0, default: 1 },
+        angle: { type: 'number', minimum: 1, maximum: 45, default: 15 },
+        num_tails: { type: 'integer', minimum: 1, default: 3 },
+        offset_x: { type: 'number', default: 0 },
+        offset_y: { type: 'number', default: 0 },
+        offset_z: { type: 'number', default: 0 }
+      },
+      required: ['tail_id', 'pin_id']
+    }
+  },
+  {
+    name: 'sketchup_create_finger_joint',
+    description: 'Cut a finger joint between two boards.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        board1_id: { type: 'string' },
+        board2_id: { type: 'string' },
+        width: { type: 'number', exclusiveMinimum: 0, default: 1 },
+        height: { type: 'number', exclusiveMinimum: 0, default: 2 },
+        depth: { type: 'number', exclusiveMinimum: 0, default: 1 },
+        num_fingers: { type: 'integer', minimum: 1, default: 5 },
+        offset_x: { type: 'number', default: 0 },
+        offset_y: { type: 'number', default: 0 },
+        offset_z: { type: 'number', default: 0 }
+      },
+      required: ['board1_id', 'board2_id']
+    }
+  },
+  {
+    name: 'sketchup_eval_ruby',
+    description: 'Execute Ruby code inside the SketchUp process. Use only for trusted administrative testing.',
+    inputSchema: {
+      type: 'object',
+      properties: { code: { type: 'string', minLength: 1 } },
+      required: ['code']
+    }
+  }
+];
+
 // let mergedDefinitions = null;
 
 // export async function getDefinitions() {
@@ -1272,16 +1474,26 @@ export async function getSwaggerDocument() {
   const doc = structuredClone(swaggerDocument);
 
   const tools = await getDefinitions();
+  const liveSketchupTools = new Map(
+    tools
+      .filter((tool) => tool.name.startsWith('sketchup_'))
+      .map((tool) => [tool.name, tool])
+  );
+  const sketchupTools = [
+    ...sketchupFallbackDefinitions.map((tool) =>
+      liveSketchupTools.get(tool.name) || tool
+    ),
+    ...tools.filter(
+      (tool) => tool.name.startsWith('sketchup_') &&
+        !sketchupFallbackDefinitions.some((fallback) => fallback.name === tool.name)
+    )
+  ];
 
   console.log(
-    `[Swagger] Building document with ${tools.length} tools`
+    `[Swagger] Building document with ${tools.length} live tools and ${sketchupTools.length} SketchUp tools`
   );
 
-  for (const tool of tools) {
-
-    if (!tool.name.startsWith('sketchup_')) {
-      continue;
-    }
+  for (const tool of sketchupTools) {
 
     const toolName = tool.name;
 
