@@ -1058,8 +1058,14 @@ export async function getDefinitions() {
     description: `[SketchUp] ${tool.description}`,
   }));
 
-  mergedDefinitions = [...trimbleDefs, ...suDefs];
-  return mergedDefinitions;
+  const merged = [...trimbleDefs, ...suDefs];
+
+  // Do not permanently cache a transient SketchUp startup failure.
+  if (suTools.length > 0) {
+    mergedDefinitions = merged;
+  }
+
+  return merged;
 }
 
 export function invalidateDefinitionsCache() {

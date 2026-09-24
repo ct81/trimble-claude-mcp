@@ -1,5 +1,5 @@
 // git add . 
-// git commit -m "Start MCP, Swagger, UI, TC Workspace API and Property Set API #73"
+// git commit -m "Start MCP, Swagger, UI, TC Workspace API and Property Set API #74"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -14,7 +14,7 @@ import path from 'node:path';
 import { config } from './config.js';
 import { authorizationUrl, exchangeCode, requireSession } from './oauth/oauth.js';
 // import { tools } from './trimble/client.js';
-import { definitions, callTool } from './mcp/tools.js';
+import { definitions, getDefinitions, callTool } from './mcp/tools.js';
 import { handleMcp } from './mcp/http.js';
 import {
   createOAuthTransaction,
@@ -1494,6 +1494,21 @@ app.use(
   '/api/pdf',
   pdfRouter
 );
+
+app.get(
+  '/api/mcp/tools',
+  requireSession,
+  async (req, res) => {
+    try {
+      const tools = await getDefinitions();
+      return res.json({ tools });
+    } catch (e) {
+      console.error('GET /api/mcp/tools:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
 app.post('/mcp', requireSession, handleMcp);
 
 // REMOVE THIS before shipping

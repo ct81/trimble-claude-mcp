@@ -64,6 +64,10 @@ export const swaggerDocument = {
       description: 'Schedule extraction and PDF processing utilities.'
     },
     {
+      name: 'SketchUp',
+      description: 'SketchUp tools exposed by the connected SketchUp MCP backend.'
+    },
+    {
       name: 'Health',
       description: 'Service health and diagnostics.'
     }
@@ -88,6 +92,43 @@ export const swaggerDocument = {
   },
 
   paths: {
+
+    '/api/mcp/tools': {
+
+      get: {
+
+        tags: ['SketchUp'],
+        security: [{ bearerAuth: [] }],
+        summary: 'List Trimble and connected SketchUp MCP tools',
+        description:
+          'Returns the current MCP tool definitions. SketchUp tools appear when the SketchUp MCP backend is connected to this server.',
+
+        responses: {
+          200: {
+            description: 'Available MCP tool definitions',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    tools: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        additionalProperties: true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          401: {
+            description: 'Authentication required'
+          }
+        }
+      }
+    },
 
     '/api/pdf/uploads': {
 
