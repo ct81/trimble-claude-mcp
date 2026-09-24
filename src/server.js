@@ -1,5 +1,5 @@
 // git add . 
-// git commit -m "Start MCP, Swagger, UI, TC Workspace API and Property Set API #66"
+// git commit -m "Start MCP, Swagger, UI, TC Workspace API and Property Set API #67"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -54,6 +54,7 @@ import {
 import {
   swaggerDocument
 } from './swagger/swagger.js';
+import { getSwaggerSpec } from './swagger/swagger.js';
 
 import {
   core,
