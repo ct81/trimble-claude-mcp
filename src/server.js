@@ -1,5 +1,5 @@
 // git add . 
-// git commit -m "Start MCP, Swagger, UI, TC Workspace API and Property Set API #65"
+// git commit -m "Start MCP, Swagger, UI, TC Workspace API and Property Set API #66"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -83,16 +83,24 @@ app.use(
     })
 );
 app.use(cookieParser());
-app.use(
-    '/swagger',
-    swaggerUi.serve,
-    swaggerUi.setup(
-        swaggerDocument,
-        {
-            explorer: true
-        }
-    )
-);
+// app.use(
+//     '/swagger',
+//     swaggerUi.serve,
+//     swaggerUi.setup(
+//         swaggerDocument,
+//         {
+//             explorer: true
+//         }
+//     )
+// );
+app.use('/docs', swaggerUi.serve, async (req, res, next) => {
+  try {
+    const spec = await getSwaggerSpec();
+    swaggerUi.setup(spec)(req, res, next);
+  } catch (err) {
+    next(err);
+  }
+});
 
 app.get('/health', (_, res) => res.json({status:'ok',service:'trimble-connect-mcp'}));
 app.get(

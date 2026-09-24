@@ -1,3 +1,80 @@
+import swaggerJsdoc from 'swagger-jsdoc';
+import { definitions } from './tools.js';
+import { listSketchUpTools } from './mcp/sketchup/bridge.js';
+
+const SKETCHUP_PREFIX = 'sketchup_';
+let mergedDefinitions = null;
+
+export async function getDefinitions() {
+  if (mergedDefinitions) return mergedDefinitions;
+
+  const suTools = await listSketchUpTools();
+  const suDefs = suTools.map(tool => ({
+    ...tool,
+    name: `${SKETCHUP_PREFIX}${tool.name}`,
+    description: `[SketchUp] ${tool.description}`,
+  }));
+
+  mergedDefinitions = [...definitions, ...suDefs];
+  return mergedDefinitions;
+}
+
+export function invalidateDefinitionsCache() {
+  mergedDefinitions = null;
+}
+
+const options = {
+  definition: {
+    openapi: '3.0.0',
+    info: { title: 'My API', version: '1.0.0' },
+    paths: { /* ... unchanged ... */ },
+    components: {
+      schemas: {
+        Tool: { /* ... unchanged ... */ },
+      },
+    },
+  },
+  apis: ['./routes/*.js'],
+};
+
+export async function getSwaggerSpec() {
+  const allTools = await getDefinitions();
+
+  // Inject tools where your spec expects them.
+  // Most commonly: a custom path like /tools, or a vendor extension.
+  const spec = swaggerJsdoc({
+    ...options,
+    definition: {
+      ...options.definition,
+      paths: {
+        ...options.definition.paths,
+        '/tools': {
+          get: {
+            summary: 'List all available MCP tools',
+            responses: {
+              200: {
+                description: 'OK',
+                content: {
+                  'application/json': {
+                    schema: {
+                      type: 'array',
+                      items: { $ref: '#/components/schemas/Tool' },
+                    },
+                    example: allTools,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return spec;
+}
+
+
 export const swaggerDocument = {
 
   openapi: '3.0.3',
