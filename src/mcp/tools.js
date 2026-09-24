@@ -22,7 +22,10 @@ import {
   processColumnSchedule
 } from '../pdf/columnScheduleExporter.js';
 
-import { listSketchUpTools } from './sketchup/bridge.js';
+import {
+  callSketchUpTool,
+  listSketchUpTools
+} from './sketchup/bridge.js';
 
 const SKETCHUP_PREFIX = 'sketchup_';
 

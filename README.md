@@ -27,6 +27,26 @@ npm start
 ```
 Open `http://localhost:3000/health`.
 
+## SketchUp status bridge
+
+The optional SketchUp Ruby bridge is in `sketchup/SUBridge.rb`. In SketchUp,
+open **Window > Ruby Console**, paste the file contents, and run it. It starts
+a loopback-only HTTP server at `http://127.0.0.1:43127/status` and evaluates
+SketchUp model state on SketchUp's UI thread.
+
+Check it locally with:
+
+```bash
+curl http://127.0.0.1:43127/status
+```
+
+This endpoint is a status bridge only. It does not implement MCP tool listing
+or tool calls. The existing MCP integration uses
+`@parkhill/mcp-server-for-sketchup` on port `9876`; keep that backend running
+when using the `sketchup_*` MCP tools. A deployed Render service cannot reach a
+desktop SketchUp instance through `127.0.0.1`; use a local Node service or an
+authenticated tunnel/relay for that topology.
+
 ## Extract a client-side PDF
 The `extract_column_schedule` MCP tool accepts either a server-visible `pdfPath` or
 the PDF contents as `pdfBase64` when the file exists on the client:
