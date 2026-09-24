@@ -37,43 +37,6 @@ const options = {
   apis: ['./routes/*.js'],
 };
 
-export async function getSwaggerSpec() {
-  const allTools = await getDefinitions();
-
-  // Inject tools where your spec expects them.
-  // Most commonly: a custom path like /tools, or a vendor extension.
-  const spec = swaggerJsdoc({
-    ...options,
-    definition: {
-      ...options.definition,
-      paths: {
-        ...options.definition.paths,
-        '/tools': {
-          get: {
-            summary: 'List all available MCP tools',
-            responses: {
-              200: {
-                description: 'OK',
-                content: {
-                  'application/json': {
-                    schema: {
-                      type: 'array',
-                      items: { $ref: '#/components/schemas/Tool' },
-                    },
-                    example: allTools,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  });
-
-  return spec;
-}
-
 
 export const swaggerDocument = {
 
