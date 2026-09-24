@@ -1,20 +1,12 @@
 import { definitions } from '../mcp/tools.js';
-import { listSketchUpTools } from '../mcp/sketchup/bridge.js';
 
-const SKETCHUP_PREFIX = 'sketchup_';
 let mergedDefinitions = null;
 
 export async function getDefinitions() {
   if (mergedDefinitions) return mergedDefinitions;
 
-  const suTools = await listSketchUpTools();
-  const suDefs = suTools.map(tool => ({
-    ...tool,
-    name: `${SKETCHUP_PREFIX}${tool.name}`,
-    description: `[SketchUp] ${tool.description}`,
-  }));
-
-  mergedDefinitions = [...definitions, ...suDefs];
+  // Swagger exposes the Trimble testing surface only.
+  mergedDefinitions = definitions;
   return mergedDefinitions;
 }
 
