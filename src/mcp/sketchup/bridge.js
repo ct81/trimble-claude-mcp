@@ -28,6 +28,11 @@ export async function getSketchUpClient() {
     let client;
 
     try {
+      console.log('[SketchUp] MCP connection config:', {
+        host: SKETCHUP_MCP_HOST,
+        port: SKETCHUP_MCP_PORT
+      });
+
       const transport = new StdioClientTransport({
         command: SKETCHUP_MCP_COMMAND,
         args: SKETCHUP_MCP_ARGS,
@@ -156,6 +161,10 @@ function callLegacySketchUpTool(name, args) {
       finish(() => reject(new Error(`SketchUp request timed out after ${SKETCHUP_MCP_CALL_TIMEOUT_MS} ms`)));
     });
     socket.on('connect', () => {
+      console.log('[SketchUp] Connected to MCP server:', {
+        host: socket.remoteAddress || SKETCHUP_MCP_HOST,
+        port: socket.remotePort || Number(SKETCHUP_MCP_PORT)
+      });
       send('hello', { client_version: SKETCHUP_MCP_CLIENT_VERSION });
     });
     socket.on('data', (chunk) => {

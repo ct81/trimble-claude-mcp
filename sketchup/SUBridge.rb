@@ -29,6 +29,7 @@ module SUBridge
     return if @started
 
     @started = true
+    puts '[SUBridge] Starting'
 
     UI.start_timer(0.1, true) do
       until @queue.empty?
@@ -48,11 +49,15 @@ module SUBridge
 
       loop do
         client = server.accept
+        peer = client.peeraddr
+        puts "[SUBridge] Connection from #{peer[3]}:#{peer[1]}"
 
         Thread.new(client) do |socket|
           begin
             request_line = socket.gets
             next unless request_line
+
+            puts "[SUBridge] Request: #{request_line.strip}"
 
             method, request_path = request_line.split(' ', 3)
 
@@ -93,4 +98,5 @@ module SUBridge
   end
 end
 
+puts '[SUBridge] Loaded'
 SUBridge.start
