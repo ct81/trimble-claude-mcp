@@ -2,8 +2,10 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { setTimeout as delay } from 'node:timers/promises';
 
-const SKETCHUP_MCP_COMMAND = 'npx';
-const SKETCHUP_MCP_ARGS = ['-y', '@parkhill/mcp-server-for-sketchup@latest'];
+const SKETCHUP_MCP_COMMAND = process.execPath;
+const SKETCHUP_MCP_ARGS = [
+  'node_modules/@parkhill/mcp-server-for-sketchup/build/index.js'
+];
 const SKETCHUP_CONNECT_TIMEOUT_MS = 30_000;
 const SKETCHUP_MCP_HOST = process.env.SKETCHUP_MCP_HOST || '0.tcp.ap.ngrok.io';
 const SKETCHUP_MCP_PORT = process.env.SKETCHUP_MCP_PORT || '16942';
