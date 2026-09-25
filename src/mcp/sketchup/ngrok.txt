@@ -1,3 +1,5 @@
+https://dashboard.ngrok.com/get-started/gateway
+
 1
 Create an ngrok account and get your authtoken
 Go to ngrok.com and sign up for a free account. Once logged in, go to your dashboard's "Your Authtoken" page (under Getting Started > Your Authtoken). Copy the token shown there — you'll need it in the next step.

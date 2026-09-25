@@ -73,7 +73,21 @@ export async function callSketchUpTool(name, args) {
   if (!client) {
     throw new Error('SKETCHUP_NOT_RUNNING: SketchUp MCP backend is unavailable');
   }
-  return client.callTool({ name, arguments: args });
+
+  // The backend has used both names (`status` and `sketchup_status`) over
+  // time. Resolve against its live catalog instead of assuming one naming
+  // convention.
+  const result = await client.listTools();
+  const availableNames = new Set(
+    (result.tools || []).map((tool) => tool.name)
+  );
+  const backendName = availableNames.has(name)
+    ? name
+    : availableNames.has(`sketchup_${name}`)
+      ? `sketchup_${name}`
+      : name;
+
+  return client.callTool({ name: backendName, arguments: args });
 }
 
 /**
