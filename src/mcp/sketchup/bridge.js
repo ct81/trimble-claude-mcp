@@ -25,8 +25,10 @@ export async function getSketchUpClient() {
         args: SKETCHUP_MCP_ARGS,
         env: {
           ...process.env,
-          SKETCHUP_MCP_HOST: '127.0.0.1',
-          SKETCHUP_MCP_PORT: '9876',
+          // SKETCHUP_MCP_HOST: '127.0.0.1',
+          // SKETCHUP_MCP_PORT: '9876',
+          SKETCHUP_MCP_HOST: '0.tcp.ap.ngrok.io',
+          SKETCHUP_MCP_PORT: '16942',
         },
       });
 

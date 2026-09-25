@@ -1,0 +1,24 @@
+1
+Create an ngrok account and get your authtoken
+Go to ngrok.com and sign up for a free account. Once logged in, go to your dashboard's "Your Authtoken" page (under Getting Started > Your Authtoken). Copy the token shown there — you'll need it in the next step.
+2
+Install the ngrok binary
+macOS (Homebrew): run `brew install ngrok/ngrok/ngrok` in Terminal. Windows (Chocolatey): run `choco install ngrok` in an admin PowerShell/CMD. Windows (manual): download the .zip from ngrok.com/download, extract it, and note the folder containing ngrok.exe. Linux: download the tarball for your architecture from ngrok.com/download, extract with `tar -xvzf ngrok-v3-stable-linux-amd64.tgz`, then move the binary to `/usr/local/bin` so it's on your PATH.
+3
+Authenticate ngrok on your machine
+Run: `ngrok config add-authtoken YOUR_TOKEN_HERE` (replace with the token from step 1). This writes the token to ngrok's config file (usually `~/.config/ngrok/ngrok.yml` on Mac/Linux or `%HOMEPATH%\AppData\Local\ngrok\ngrok.yml` on Windows) so you don't have to pass it every time.
+4
+Confirm SketchUp's MCP extension is running
+In SketchUp, open Extensions > MCP Server (or the sketchup-mcp2 extension's menu) and confirm it shows "Server running" or similar, bound to 127.0.0.1:9876 as you already verified. Leave SketchUp open — the tunnel is useless if the underlying server isn't up.
+5
+Start the ngrok TCP tunnel
+In a terminal, run: `ngrok tcp 9876` This opens a live session showing a "Forwarding" line like: `tcp://4.tcp.ngrok.io:18452 -> localhost:9876` The host and port after `tcp://` (here, `4.tcp.ngrok.io:18452`) is your new public address. Keep this terminal window open — closing it kills the tunnel.
+6
+Verify the tunnel actually reaches SketchUp
+From a different machine (or your phone's mobile data, not your home WiFi, to ensure it's really going over the internet), run: `nc -zv 4.tcp.ngrok.io 18452` (replace with your actual forwarding address). A successful connection message confirms the tunnel is live and reachable externally, isolating whether any later failure is on ngrok's side or the connector's side.
+7
+Restrict who can connect (important)
+On ngrok's free tier, anyone who discovers the address can attempt to connect — and this port can run arbitrary Ruby code in your SketchUp process, so treat it as sensitive. If you're on a paid ngrok plan, set up an IP restriction policy in the ngrok dashboard (Cloud Edge > Policies) limiting connections to Trimble's published outbound IP ranges, if they publish one — ask Trimble support for this list. On the free tier, your best mitigation is keeping the tunnel open only while actively testing, and closing it (Ctrl+C) the rest of the time.
+8
+Give Trimble/Parkhill the new address
+Contact Trimble/Parkhill support (or whoever administers your TC MCP connector) and ask them to point the SketchUp integration's target host/port at your ngrok forwarding address (e.g. `4.tcp.ngrok.io:18452`) instead of `127.0.0.1:9876`. Since this is a cloud-hosted connector, you likely can't change this yourself — confirm with them whether this is even a supported configuration, since hardcoded localhost targets sometimes mean the integration was only ever designed for co-located (on-premise) deployments.
