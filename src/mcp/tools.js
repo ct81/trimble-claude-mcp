@@ -29,6 +29,31 @@ import {
 
 const SKETCHUP_PREFIX = 'sketchup_';
 
+const sketchupFallbackDefinitions = [
+  'status',
+  'get_selection',
+  'capture_view',
+  'create_component',
+  'delete_component',
+  'transform_component',
+  'set_material',
+  'export_scene',
+  'boolean_operation',
+  'chamfer_edges',
+  'fillet_edges',
+  'create_mortise_tenon',
+  'create_dovetail',
+  'create_finger_joint',
+  'eval_ruby'
+].map((name) => ({
+  name: `${SKETCHUP_PREFIX}${name}`,
+  description: '[SketchUp] Tool available when the SketchUp extension is connected.',
+  inputSchema: {
+    type: 'object',
+    properties: {}
+  }
+}));
+
 let mergedDefinitions = null;
 
 // Extraction timeout. If the extractor hangs, fail loudly instead of
@@ -1063,7 +1088,10 @@ export async function getDefinitions() {
     description: `[SketchUp] ${tool.description}`,
   }));
 
-  const merged = [...trimbleDefs, ...suDefs];
+  const merged = [
+    ...trimbleDefs,
+    ...(suDefs.length > 0 ? suDefs : sketchupFallbackDefinitions)
+  ];
 
   // Do not permanently cache a transient SketchUp startup failure.
   if (suTools.length > 0) {

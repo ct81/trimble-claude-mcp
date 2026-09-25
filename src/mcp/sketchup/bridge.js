@@ -5,6 +5,8 @@ import { setTimeout as delay } from 'node:timers/promises';
 const SKETCHUP_MCP_COMMAND = 'npx';
 const SKETCHUP_MCP_ARGS = ['-y', '@parkhill/mcp-server-for-sketchup@latest'];
 const SKETCHUP_CONNECT_TIMEOUT_MS = 30_000;
+const SKETCHUP_MCP_HOST = process.env.SKETCHUP_MCP_HOST || '0.tcp.ap.ngrok.io';
+const SKETCHUP_MCP_PORT = process.env.SKETCHUP_MCP_PORT || '16942';
 
 let sketchupClient = null;
 let sketchupClientPromise = null;
@@ -25,10 +27,8 @@ export async function getSketchUpClient() {
         args: SKETCHUP_MCP_ARGS,
         env: {
           ...process.env,
-          // SKETCHUP_MCP_HOST: '127.0.0.1',
-          // SKETCHUP_MCP_PORT: '9876',
-          SKETCHUP_MCP_HOST: '0.tcp.ap.ngrok.io',
-          SKETCHUP_MCP_PORT: '16942',
+          SKETCHUP_MCP_HOST,
+          SKETCHUP_MCP_PORT,
         },
       });
 
@@ -73,7 +73,18 @@ export async function callSketchUpTool(name, args) {
   if (!client) {
     throw new Error('SKETCHUP_NOT_RUNNING: SketchUp MCP backend is unavailable');
   }
-  return client.callTool({ name, arguments: args });
+
+  const result = await client.listTools();
+  const availableNames = new Set(
+    (result.tools || []).map((tool) => tool.name)
+  );
+  const backendName = availableNames.has(name)
+    ? name
+    : availableNames.has(`sketchup_${name}`)
+      ? `sketchup_${name}`
+      : name;
+
+  return client.callTool({ name: backendName, arguments: args });
 }
 
 /**
