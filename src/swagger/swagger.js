@@ -1921,6 +1921,593 @@ export const swaggerDocument = {
 
       }
 
+    },
+
+    '/api/v1/projects/{projectId}/issues': {
+
+      get: {
+
+        tags: ['Issues'],
+        summary: 'List issues (BCF topics) for a Trimble Connect project',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Issues retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      },
+
+      post: {
+
+        tags: ['Issues'],
+        summary: 'Create an issue (BCF topic) in a Trimble Connect project',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { type: 'object' } } }
+        },
+
+        responses: {
+          201: { description: 'Issue created successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/projects/{projectId}/issues/{topicId}': {
+
+      get: {
+
+        tags: ['Issues'],
+        summary: 'Get an issue (BCF topic) by id',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Issue retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      },
+
+      put: {
+
+        tags: ['Issues'],
+        summary: 'Update an issue (BCF topic)',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { type: 'object' } } }
+        },
+
+        responses: {
+          200: { description: 'Issue updated successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/projects/{projectId}/issues/{topicId}/comments': {
+
+      get: {
+
+        tags: ['Issues'],
+        summary: 'List comments on an issue',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Comments retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      },
+
+      post: {
+
+        tags: ['Issues'],
+        summary: 'Add a comment to an issue',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { type: 'object' } } }
+        },
+
+        responses: {
+          201: { description: 'Comment created successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/projects/{projectId}/issues/{topicId}/comments/{commentId}': {
+
+      get: {
+
+        tags: ['Issues'],
+        summary: 'Get a single comment on an issue',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'commentId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Comment retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      },
+
+      put: {
+
+        tags: ['Issues'],
+        summary: 'Update a comment on an issue',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'commentId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { type: 'object' } } }
+        },
+
+        responses: {
+          200: { description: 'Comment updated successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      },
+
+      delete: {
+
+        tags: ['Issues'],
+        summary: 'Delete a comment on an issue',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'commentId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Comment deleted successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/projects/{projectId}/issues/{topicId}/viewpoints': {
+
+      get: {
+
+        tags: ['Issues'],
+        summary: 'List viewpoints on an issue',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Viewpoints retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      },
+
+      post: {
+
+        tags: ['Issues'],
+        summary: 'Add a viewpoint to an issue',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { type: 'object' } } }
+        },
+
+        responses: {
+          201: { description: 'Viewpoint created successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/projects/{projectId}/issues/{topicId}/viewpoints/{viewpointId}': {
+
+      get: {
+
+        tags: ['Issues'],
+        summary: 'Get a single viewpoint on an issue',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'viewpointId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Viewpoint retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      },
+
+      delete: {
+
+        tags: ['Issues'],
+        summary: 'Delete a viewpoint from an issue',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'viewpointId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Viewpoint deleted successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/projects/{projectId}/issues/{topicId}/viewpoints/{viewpointId}/snapshot': {
+
+      get: {
+
+        tags: ['Issues'],
+        summary: 'Get the snapshot image for an issue viewpoint',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'viewpointId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Snapshot retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/projects/{projectId}/issues/{topicId}/viewpoints/{viewpointId}/bitmaps/{bitmapId}': {
+
+      get: {
+
+        tags: ['Issues'],
+        summary: 'Get a bitmap image referenced by an issue viewpoint',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'viewpointId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'bitmapId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Bitmap retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/projects/{projectId}/issues/{topicId}/document-references': {
+
+      get: {
+
+        tags: ['Issues'],
+        summary: 'List document references attached to an issue',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Document references retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      },
+
+      post: {
+
+        tags: ['Issues'],
+        summary: 'Attach a document reference to an issue',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { type: 'object' } } }
+        },
+
+        responses: {
+          201: { description: 'Document reference created successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/projects/{projectId}/issues/{topicId}/document-references/{documentReferenceId}': {
+
+      get: {
+
+        tags: ['Issues'],
+        summary: 'Get a single document reference attached to an issue',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'documentReferenceId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Document reference retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      },
+
+      put: {
+
+        tags: ['Issues'],
+        summary: 'Update a document reference attached to an issue',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'documentReferenceId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { type: 'object' } } }
+        },
+
+        responses: {
+          200: { description: 'Document reference updated successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      },
+
+      delete: {
+
+        tags: ['Issues'],
+        summary: 'Remove a document reference from an issue',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'documentReferenceId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Document reference deleted successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/projects/{projectId}/issues/{topicId}/related-topics': {
+
+      get: {
+
+        tags: ['Issues'],
+        summary: 'List issues related to an issue',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Related issues retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      },
+
+      put: {
+
+        tags: ['Issues'],
+        summary: 'Set the issues related to an issue',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { type: 'object' } } }
+        },
+
+        responses: {
+          200: { description: 'Related issues updated successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/bcf/projects': {
+
+      get: {
+
+        tags: ['Issues'],
+        summary: 'List projects visible to the BCF issues service',
+        security: [{ bearerAuth: [] }],
+
+        responses: {
+          200: { description: 'BCF projects retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/projects/{projectId}/issue-extensions': {
+
+      get: {
+
+        tags: ['Issues'],
+        summary: 'Get the BCF extensions schema (types, statuses, priorities) for a project',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Extensions schema retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/projects/{projectId}/issue-documents': {
+
+      get: {
+
+        tags: ['Issues'],
+        summary: 'List documents available to reference from issues',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Documents retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/projects/{projectId}/issue-documents/{documentId}': {
+
+      get: {
+
+        tags: ['Issues'],
+        summary: 'Get a single document available to reference from issues',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'documentId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Document retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/bcf/version': {
+
+      get: {
+
+        tags: ['Issues'],
+        summary: 'Get the BCF API version supported by the issues service',
+        security: [{ bearerAuth: [] }],
+
+        responses: {
+          200: { description: 'BCF version retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
     }
 
   }
