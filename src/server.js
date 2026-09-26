@@ -1,5 +1,5 @@
 // git add . 
-// git commit -m "Start MCP, Swagger, UI, SketchUp APIs, TC Workspace API, Core & Property Set APIs #1"
+// git commit -m "Start MCP, Swagger, UI, SketchUp BridgeAPIs, TC Workspace API, Core & Property Set APIs #2"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
