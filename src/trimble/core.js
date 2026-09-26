@@ -66,10 +66,16 @@ export const core = {
     projectId,
     query = {}
   ) {
-    return trimbleRequest(
-      sessionId,
-      `/projects/${encodeURIComponent(projectId)}/folders${queryString(query)}`
-    );
+    // Trimble Connect has no /projects/{id}/folders route — resolve the
+    // project's root folder and list its children instead.
+    return core
+      .getProject(sessionId, projectId)
+      .then((project) =>
+        trimbleRequest(
+          sessionId,
+          `/folders/${encodeURIComponent(project.rootId || project.id)}/folders${queryString(query)}`
+        )
+      );
   },
 
   getFiles(
@@ -77,10 +83,16 @@ export const core = {
     projectId,
     query = {}
   ) {
-    return trimbleRequest(
-      sessionId,
-      `/projects/${encodeURIComponent(projectId)}/files${queryString(query)}`
-    );
+    // Trimble Connect has no /projects/{id}/files route — resolve the
+    // project's root folder and list its files instead.
+    return core
+      .getProject(sessionId, projectId)
+      .then((project) =>
+        trimbleRequest(
+          sessionId,
+          `/folders/${encodeURIComponent(project.rootId || project.id)}/files${queryString(query)}`
+        )
+      );
   },
 
   // ---------- USERS ----------
@@ -176,14 +188,20 @@ export const core = {
     projectId,
     folder
   ) {
-    return trimbleRequest(
-      sessionId,
-      `/projects/${encodeURIComponent(projectId)}/folders`,
-      {
-        method: 'POST',
-        body: folder
-      }
-    );
+    // Same INVALID_ENDPOINT issue as getFolders — create under the project's
+    // resolved root folder id instead of a non-existent /projects/{id}/folders route.
+    return core
+      .getProject(sessionId, projectId)
+      .then((project) =>
+        trimbleRequest(
+          sessionId,
+          `/folders/${encodeURIComponent(project.rootId || project.id)}/folders`,
+          {
+            method: 'POST',
+            body: folder
+          }
+        )
+      );
   },
 
   updateFolder(
