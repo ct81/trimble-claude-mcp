@@ -67,14 +67,11 @@ export const core = {
     query = {}
   ) {
     // Trimble Connect has no /projects/{id}/folders route — resolve the
-    // project's root folder and list its children instead.
+    // project's root folder and list its subfolder items instead.
     return core
       .getProject(sessionId, projectId)
       .then((project) =>
-        trimbleRequest(
-          sessionId,
-          `/folders/${encodeURIComponent(project.rootId || project.id)}/folders${queryString(query)}`
-        )
+        core.getSubfolders(sessionId, project.rootId || project.id, query)
       );
   },
 
@@ -84,14 +81,11 @@ export const core = {
     query = {}
   ) {
     // Trimble Connect has no /projects/{id}/files route — resolve the
-    // project's root folder and list its files instead.
+    // project's root folder and list its file items instead.
     return core
       .getProject(sessionId, projectId)
       .then((project) =>
-        trimbleRequest(
-          sessionId,
-          `/folders/${encodeURIComponent(project.rootId || project.id)}/files${queryString(query)}`
-        )
+        core.getFolderFiles(sessionId, project.rootId || project.id, query)
       );
   },
 
@@ -151,23 +145,13 @@ export const core = {
     );
   },
 
-  getProjectThumbnail(
+  getProjectMembers(
     sessionId,
     projectId
   ) {
     return trimbleRequest(
       sessionId,
-      `/projects/${encodeURIComponent(projectId)}/thumbnail`
-    );
-  },
-
-  getProjectPermissions(
-    sessionId,
-    projectId
-  ) {
-    return trimbleRequest(
-      sessionId,
-      `/projects/${encodeURIComponent(projectId)}/permissions`
+      `/projects/${encodeURIComponent(projectId)}/members`
     );
   },
 
@@ -188,17 +172,20 @@ export const core = {
     projectId,
     folder
   ) {
-    // Same INVALID_ENDPOINT issue as getFolders — create under the project's
-    // resolved root folder id instead of a non-existent /projects/{id}/folders route.
+    // Folder creation is a top-level POST /folders call — the parent is set
+    // via parentId in the body, not a nested /folders/{id}/folders route.
     return core
       .getProject(sessionId, projectId)
       .then((project) =>
         trimbleRequest(
           sessionId,
-          `/folders/${encodeURIComponent(project.rootId || project.id)}/folders`,
+          '/folders',
           {
             method: 'POST',
-            body: folder
+            body: {
+              parentId: project.rootId || project.id,
+              ...folder
+            }
           }
         )
       );
@@ -237,9 +224,10 @@ export const core = {
     folderId,
     query = {}
   ) {
+    // /folders/{id}/folders does not exist — list combined items and filter.
     return trimbleRequest(
       sessionId,
-      `/folders/${encodeURIComponent(folderId)}/folders${queryString(query)}`
+      `/folders/${encodeURIComponent(folderId)}/items${queryString({ ...query, type: 'folder' })}`
     );
   },
 
@@ -248,9 +236,10 @@ export const core = {
     folderId,
     query = {}
   ) {
+    // /folders/{id}/files does not exist — list combined items and filter.
     return trimbleRequest(
       sessionId,
-      `/folders/${encodeURIComponent(folderId)}/files${queryString(query)}`
+      `/folders/${encodeURIComponent(folderId)}/items${queryString({ ...query, type: 'file' })}`
     );
   },
 
@@ -319,26 +308,6 @@ export const core = {
     );
   },
 
-  getVersion(
-    sessionId,
-    versionId
-  ) {
-    return trimbleRequest(
-      sessionId,
-      `/versions/${encodeURIComponent(versionId)}`
-    );
-  },
-
-  getVersionContent(
-    sessionId,
-    versionId
-  ) {
-    return trimbleRequest(
-      sessionId,
-      `/versions/${encodeURIComponent(versionId)}/content`
-    );
-  },
-
   // ---------- TODOS ----------
 
   getTodos(
@@ -346,9 +315,11 @@ export const core = {
     projectId,
     query = {}
   ) {
+    // Todos are a top-level collection filtered by projectId, not nested
+    // under /projects/{id}/todos (that route does not exist).
     return trimbleRequest(
       sessionId,
-      `/projects/${encodeURIComponent(projectId)}/todos${queryString(query)}`
+      `/todos${queryString({ ...query, projectId })}`
     );
   },
 
@@ -369,10 +340,13 @@ export const core = {
   ) {
     return trimbleRequest(
       sessionId,
-      `/projects/${encodeURIComponent(projectId)}/todos`,
+      '/todos',
       {
         method: 'POST',
-        body: todo
+        body: {
+          projectId,
+          ...todo
+        }
       }
     );
   },
@@ -405,31 +379,6 @@ export const core = {
     );
   },
 
-  getTodoComments(
-    sessionId,
-    todoId
-  ) {
-    return trimbleRequest(
-      sessionId,
-      `/todos/${encodeURIComponent(todoId)}/comments`
-    );
-  },
-
-  createTodoComment(
-    sessionId,
-    todoId,
-    comment
-  ) {
-    return trimbleRequest(
-      sessionId,
-      `/todos/${encodeURIComponent(todoId)}/comments`,
-      {
-        method: 'POST',
-        body: comment
-      }
-    );
-  },
-
   // ---------- VIEWS ----------
 
   getViews(
@@ -437,9 +386,11 @@ export const core = {
     projectId,
     query = {}
   ) {
+    // Views are a top-level collection filtered by projectId, not nested
+    // under /projects/{id}/views (that route does not exist).
     return trimbleRequest(
       sessionId,
-      `/projects/${encodeURIComponent(projectId)}/views${queryString(query)}`
+      `/views${queryString({ ...query, projectId })}`
     );
   },
 
@@ -460,10 +411,13 @@ export const core = {
   ) {
     return trimbleRequest(
       sessionId,
-      `/projects/${encodeURIComponent(projectId)}/views`,
+      '/views',
       {
         method: 'POST',
-        body: view
+        body: {
+          projectId,
+          ...view
+        }
       }
     );
   },
@@ -475,9 +429,11 @@ export const core = {
     projectId,
     query = {}
   ) {
+    // Search is a top-level collection filtered by projectId, not nested
+    // under /projects/{id}/search (that route does not exist).
     return trimbleRequest(
       sessionId,
-      `/projects/${encodeURIComponent(projectId)}/search${queryString(query)}`
+      `/search${queryString({ ...query, projectId })}`
     );
   }
 

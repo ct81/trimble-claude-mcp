@@ -200,24 +200,9 @@ const baseDefinitions = [
   },
 
   {
-    name: 'get_project_thumbnail',
+    name: 'get_project_members',
     description:
-      'Get the thumbnail for a Trimble Connect project.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        projectId: {
-          type: 'string'
-        }
-      },
-      required: ['projectId']
-    }
-  },
-
-  {
-    name: 'get_project_permissions',
-    description:
-      'List permissions for a Trimble Connect project.',
+      'List members for a Trimble Connect project.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -389,36 +374,6 @@ const baseDefinitions = [
   },
 
   {
-    name: 'get_version',
-    description:
-      'Get a Trimble Connect file version by id.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        versionId: {
-          type: 'string'
-        }
-      },
-      required: ['versionId']
-    }
-  },
-
-  {
-    name: 'get_version_content',
-    description:
-      'Get the downloadable content location for a Trimble Connect file version.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        versionId: {
-          type: 'string'
-        }
-      },
-      required: ['versionId']
-    }
-  },
-
-  {
     name: 'get_todos',
     description:
       'List todos for a Trimble Connect project.',
@@ -496,39 +451,6 @@ const baseDefinitions = [
         }
       },
       required: ['todoId']
-    }
-  },
-
-  {
-    name: 'get_todo_comments',
-    description:
-      'List comments on a Trimble Connect todo.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        todoId: {
-          type: 'string'
-        }
-      },
-      required: ['todoId']
-    }
-  },
-
-  {
-    name: 'create_todo_comment',
-    description:
-      'Add a comment to a Trimble Connect todo.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        todoId: {
-          type: 'string'
-        },
-        comment: {
-          description: 'Comment payload.'
-        }
-      },
-      required: ['todoId', 'comment']
     }
   },
 
@@ -1239,12 +1161,8 @@ export async function callTool(
       result = await core.deleteProject(sessionId, args.projectId);
       break;
 
-    case 'get_project_thumbnail':
-      result = await core.getProjectThumbnail(sessionId, args.projectId);
-      break;
-
-    case 'get_project_permissions':
-      result = await core.getProjectPermissions(sessionId, args.projectId);
+    case 'get_project_members':
+      result = await core.getProjectMembers(sessionId, args.projectId);
       break;
 
     case 'get_folder':
@@ -1287,14 +1205,6 @@ export async function callTool(
       result = await core.getFileVersions(sessionId, args.fileId);
       break;
 
-    case 'get_version':
-      result = await core.getVersion(sessionId, args.versionId);
-      break;
-
-    case 'get_version_content':
-      result = await core.getVersionContent(sessionId, args.versionId);
-      break;
-
     case 'get_todos':
       result = await core.getTodos(sessionId, args.projectId);
       break;
@@ -1313,14 +1223,6 @@ export async function callTool(
 
     case 'delete_todo':
       result = await core.deleteTodo(sessionId, args.todoId);
-      break;
-
-    case 'get_todo_comments':
-      result = await core.getTodoComments(sessionId, args.todoId);
-      break;
-
-    case 'create_todo_comment':
-      result = await core.createTodoComment(sessionId, args.todoId, args.comment);
       break;
 
     case 'get_views':

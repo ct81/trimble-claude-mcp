@@ -1,5 +1,5 @@
 // git add . 
-// git commit -m "Start MCP, Swagger, UI, SketchUp BridgeAPIs, TC Workspace API, Core & Property Set APIs #4"
+// git commit -m "Start MCP, Swagger, UI, SketchUp BridgeAPIs, TC Workspace API, Core & Property Set APIs #5"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -1191,22 +1191,12 @@ app.delete('/api/v1/projects/:projectId', requireSession, async (req, res) => {
   }
 });
 
-app.get('/api/v1/projects/:projectId/thumbnail', requireSession, async (req, res) => {
+app.get('/api/v1/projects/:projectId/members', requireSession, async (req, res) => {
   try {
-    const result = await core.getProjectThumbnail(req.mcpSessionId, req.params.projectId);
+    const result = await core.getProjectMembers(req.mcpSessionId, req.params.projectId);
     return res.json(result);
   } catch (e) {
-    console.error('GET /api/v1/projects/:projectId/thumbnail:', e);
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-app.get('/api/v1/projects/:projectId/permissions', requireSession, async (req, res) => {
-  try {
-    const result = await core.getProjectPermissions(req.mcpSessionId, req.params.projectId);
-    return res.json(result);
-  } catch (e) {
-    console.error('GET /api/v1/projects/:projectId/permissions:', e);
+    console.error('GET /api/v1/projects/:projectId/members:', e);
     return res.status(500).json({ error: e.message });
   }
 });
@@ -1321,26 +1311,6 @@ app.post('/api/v1/files/:fileId/versions', requireSession, async (req, res) => {
   }
 });
 
-app.get('/api/v1/versions/:versionId', requireSession, async (req, res) => {
-  try {
-    const result = await core.getVersion(req.mcpSessionId, req.params.versionId);
-    return res.json(result);
-  } catch (e) {
-    console.error('GET /api/v1/versions/:versionId:', e);
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-app.get('/api/v1/versions/:versionId/content', requireSession, async (req, res) => {
-  try {
-    const result = await core.getVersionContent(req.mcpSessionId, req.params.versionId);
-    return res.json(result);
-  } catch (e) {
-    console.error('GET /api/v1/versions/:versionId/content:', e);
-    return res.status(500).json({ error: e.message });
-  }
-});
-
 app.get('/api/v1/projects/:projectId/todos', requireSession, async (req, res) => {
   try {
     const result = await core.getTodos(req.mcpSessionId, req.params.projectId, req.query);
@@ -1387,26 +1357,6 @@ app.delete('/api/v1/todos/:todoId', requireSession, async (req, res) => {
     return res.json(result);
   } catch (e) {
     console.error('DELETE /api/v1/todos/:todoId:', e);
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-app.get('/api/v1/todos/:todoId/comments', requireSession, async (req, res) => {
-  try {
-    const result = await core.getTodoComments(req.mcpSessionId, req.params.todoId);
-    return res.json(result);
-  } catch (e) {
-    console.error('GET /api/v1/todos/:todoId/comments:', e);
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-app.post('/api/v1/todos/:todoId/comments', requireSession, async (req, res) => {
-  try {
-    const result = await core.createTodoComment(req.mcpSessionId, req.params.todoId, req.body);
-    return res.status(201).json(result);
-  } catch (e) {
-    console.error('POST /api/v1/todos/:todoId/comments:', e);
     return res.status(500).json({ error: e.message });
   }
 });

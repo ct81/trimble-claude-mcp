@@ -1504,12 +1504,12 @@ export const swaggerDocument = {
 
     },
 
-    '/api/v1/projects/{projectId}/thumbnail': {
+    '/api/v1/projects/{projectId}/members': {
 
       get: {
 
         tags: ['Core'],
-        summary: 'Get a Trimble Connect project thumbnail',
+        summary: 'List members of a Trimble Connect project',
         security: [{ bearerAuth: [] }],
 
         parameters: [
@@ -1517,28 +1517,7 @@ export const swaggerDocument = {
         ],
 
         responses: {
-          200: { description: 'Thumbnail retrieved successfully' },
-          401: { description: 'Authentication required' }
-        }
-
-      }
-
-    },
-
-    '/api/v1/projects/{projectId}/permissions': {
-
-      get: {
-
-        tags: ['Core'],
-        summary: 'Get permissions for a Trimble Connect project',
-        security: [{ bearerAuth: [] }],
-
-        parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } }
-        ],
-
-        responses: {
-          200: { description: 'Permissions retrieved successfully' },
+          200: { description: 'Members retrieved successfully' },
           401: { description: 'Authentication required' }
         }
 
@@ -1751,48 +1730,6 @@ export const swaggerDocument = {
 
     },
 
-    '/api/v1/versions/{versionId}': {
-
-      get: {
-
-        tags: ['Core'],
-        summary: 'Get a Trimble Connect file version',
-        security: [{ bearerAuth: [] }],
-
-        parameters: [
-          { name: 'versionId', in: 'path', required: true, schema: { type: 'string' } }
-        ],
-
-        responses: {
-          200: { description: 'Version retrieved successfully' },
-          401: { description: 'Authentication required' }
-        }
-
-      }
-
-    },
-
-    '/api/v1/versions/{versionId}/content': {
-
-      get: {
-
-        tags: ['Core'],
-        summary: 'Get the downloadable content location for a Trimble Connect file version',
-        security: [{ bearerAuth: [] }],
-
-        parameters: [
-          { name: 'versionId', in: 'path', required: true, schema: { type: 'string' } }
-        ],
-
-        responses: {
-          200: { description: 'Version content location retrieved successfully' },
-          401: { description: 'Authentication required' }
-        }
-
-      }
-
-    },
-
     '/api/v1/projects/{projectId}/todos': {
 
       get: {
@@ -1889,49 +1826,6 @@ export const swaggerDocument = {
 
         responses: {
           200: { description: 'Todo deleted successfully' },
-          401: { description: 'Authentication required' }
-        }
-
-      }
-
-    },
-
-    '/api/v1/todos/{todoId}/comments': {
-
-      get: {
-
-        tags: ['Core'],
-        summary: 'List comments on a Trimble Connect todo',
-        security: [{ bearerAuth: [] }],
-
-        parameters: [
-          { name: 'todoId', in: 'path', required: true, schema: { type: 'string' } }
-        ],
-
-        responses: {
-          200: { description: 'Comments retrieved successfully' },
-          401: { description: 'Authentication required' }
-        }
-
-      },
-
-      post: {
-
-        tags: ['Core'],
-        summary: 'Add a comment to a Trimble Connect todo',
-        security: [{ bearerAuth: [] }],
-
-        parameters: [
-          { name: 'todoId', in: 'path', required: true, schema: { type: 'string' } }
-        ],
-
-        requestBody: {
-          required: true,
-          content: { 'application/json': { schema: { type: 'object' } } }
-        },
-
-        responses: {
-          201: { description: 'Comment created successfully' },
           401: { description: 'Authentication required' }
         }
 
