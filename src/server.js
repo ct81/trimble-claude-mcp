@@ -1,5 +1,5 @@
 // git add . 
-// git commit -m "Start MCP, Swagger, UI, SketchUp BridgeAPIs, TC Workspace API, Core & Property Set APIs #2"
+// git commit -m "Start MCP, Swagger, UI, SketchUp BridgeAPIs, TC Workspace API, Core & Property Set APIs #3"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -1150,6 +1150,306 @@ app.get(
     }
   }
 );
+
+app.get('/api/v1/users/:userId', requireSession, async (req, res) => {
+  try {
+    const result = await core.getUser(req.mcpSessionId, req.params.userId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/users/:userId:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/v1/projects', requireSession, async (req, res) => {
+  try {
+    const result = await core.createProject(req.mcpSessionId, req.body);
+    return res.status(201).json(result);
+  } catch (e) {
+    console.error('POST /api/v1/projects:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.put('/api/v1/projects/:projectId', requireSession, async (req, res) => {
+  try {
+    const result = await core.updateProject(req.mcpSessionId, req.params.projectId, req.body);
+    return res.json(result);
+  } catch (e) {
+    console.error('PUT /api/v1/projects/:projectId:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete('/api/v1/projects/:projectId', requireSession, async (req, res) => {
+  try {
+    const result = await core.deleteProject(req.mcpSessionId, req.params.projectId);
+    return res.json(result);
+  } catch (e) {
+    console.error('DELETE /api/v1/projects/:projectId:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/projects/:projectId/thumbnail', requireSession, async (req, res) => {
+  try {
+    const result = await core.getProjectThumbnail(req.mcpSessionId, req.params.projectId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/projects/:projectId/thumbnail:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/projects/:projectId/permissions', requireSession, async (req, res) => {
+  try {
+    const result = await core.getProjectPermissions(req.mcpSessionId, req.params.projectId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/projects/:projectId/permissions:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/v1/projects/:projectId/folders', requireSession, async (req, res) => {
+  try {
+    const result = await core.createFolder(req.mcpSessionId, req.params.projectId, req.body);
+    return res.status(201).json(result);
+  } catch (e) {
+    console.error('POST /api/v1/projects/:projectId/folders:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/folders/:folderId', requireSession, async (req, res) => {
+  try {
+    const result = await core.getFolder(req.mcpSessionId, req.params.folderId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/folders/:folderId:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.put('/api/v1/folders/:folderId', requireSession, async (req, res) => {
+  try {
+    const result = await core.updateFolder(req.mcpSessionId, req.params.folderId, req.body);
+    return res.json(result);
+  } catch (e) {
+    console.error('PUT /api/v1/folders/:folderId:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete('/api/v1/folders/:folderId', requireSession, async (req, res) => {
+  try {
+    const result = await core.deleteFolder(req.mcpSessionId, req.params.folderId);
+    return res.json(result);
+  } catch (e) {
+    console.error('DELETE /api/v1/folders/:folderId:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/folders/:folderId/folders', requireSession, async (req, res) => {
+  try {
+    const result = await core.getSubfolders(req.mcpSessionId, req.params.folderId, req.query);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/folders/:folderId/folders:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/folders/:folderId/files', requireSession, async (req, res) => {
+  try {
+    const result = await core.getFolderFiles(req.mcpSessionId, req.params.folderId, req.query);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/folders/:folderId/files:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/files/:fileId', requireSession, async (req, res) => {
+  try {
+    const result = await core.getFile(req.mcpSessionId, req.params.fileId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/files/:fileId:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.put('/api/v1/files/:fileId', requireSession, async (req, res) => {
+  try {
+    const result = await core.updateFile(req.mcpSessionId, req.params.fileId, req.body);
+    return res.json(result);
+  } catch (e) {
+    console.error('PUT /api/v1/files/:fileId:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete('/api/v1/files/:fileId', requireSession, async (req, res) => {
+  try {
+    const result = await core.deleteFile(req.mcpSessionId, req.params.fileId);
+    return res.json(result);
+  } catch (e) {
+    console.error('DELETE /api/v1/files/:fileId:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/files/:fileId/versions', requireSession, async (req, res) => {
+  try {
+    const result = await core.getFileVersions(req.mcpSessionId, req.params.fileId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/files/:fileId/versions:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/v1/files/:fileId/versions', requireSession, async (req, res) => {
+  try {
+    const result = await core.createFileVersion(req.mcpSessionId, req.params.fileId, req.body);
+    return res.status(201).json(result);
+  } catch (e) {
+    console.error('POST /api/v1/files/:fileId/versions:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/versions/:versionId', requireSession, async (req, res) => {
+  try {
+    const result = await core.getVersion(req.mcpSessionId, req.params.versionId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/versions/:versionId:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/versions/:versionId/content', requireSession, async (req, res) => {
+  try {
+    const result = await core.getVersionContent(req.mcpSessionId, req.params.versionId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/versions/:versionId/content:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/projects/:projectId/todos', requireSession, async (req, res) => {
+  try {
+    const result = await core.getTodos(req.mcpSessionId, req.params.projectId, req.query);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/projects/:projectId/todos:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/v1/projects/:projectId/todos', requireSession, async (req, res) => {
+  try {
+    const result = await core.createTodo(req.mcpSessionId, req.params.projectId, req.body);
+    return res.status(201).json(result);
+  } catch (e) {
+    console.error('POST /api/v1/projects/:projectId/todos:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/todos/:todoId', requireSession, async (req, res) => {
+  try {
+    const result = await core.getTodo(req.mcpSessionId, req.params.todoId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/todos/:todoId:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.put('/api/v1/todos/:todoId', requireSession, async (req, res) => {
+  try {
+    const result = await core.updateTodo(req.mcpSessionId, req.params.todoId, req.body);
+    return res.json(result);
+  } catch (e) {
+    console.error('PUT /api/v1/todos/:todoId:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete('/api/v1/todos/:todoId', requireSession, async (req, res) => {
+  try {
+    const result = await core.deleteTodo(req.mcpSessionId, req.params.todoId);
+    return res.json(result);
+  } catch (e) {
+    console.error('DELETE /api/v1/todos/:todoId:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/todos/:todoId/comments', requireSession, async (req, res) => {
+  try {
+    const result = await core.getTodoComments(req.mcpSessionId, req.params.todoId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/todos/:todoId/comments:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/v1/todos/:todoId/comments', requireSession, async (req, res) => {
+  try {
+    const result = await core.createTodoComment(req.mcpSessionId, req.params.todoId, req.body);
+    return res.status(201).json(result);
+  } catch (e) {
+    console.error('POST /api/v1/todos/:todoId/comments:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/projects/:projectId/views', requireSession, async (req, res) => {
+  try {
+    const result = await core.getViews(req.mcpSessionId, req.params.projectId, req.query);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/projects/:projectId/views:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/v1/projects/:projectId/views', requireSession, async (req, res) => {
+  try {
+    const result = await core.createView(req.mcpSessionId, req.params.projectId, req.body);
+    return res.status(201).json(result);
+  } catch (e) {
+    console.error('POST /api/v1/projects/:projectId/views:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/views/:viewId', requireSession, async (req, res) => {
+  try {
+    const result = await core.getView(req.mcpSessionId, req.params.viewId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/views/:viewId:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/projects/:projectId/search', requireSession, async (req, res) => {
+  try {
+    const result = await core.search(req.mcpSessionId, req.params.projectId, req.query);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/projects/:projectId/search:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
 
 app.get(
   '/api/v1/property-set/me',

@@ -1410,6 +1410,28 @@ export const swaggerDocument = {
 
         }
 
+      },
+
+      post: {
+
+        tags: ['Core'],
+        summary: 'Create a folder in a Trimble Connect project',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { type: 'object' } } }
+        },
+
+        responses: {
+          201: { description: 'Folder created successfully' },
+          401: { description: 'Authentication required' }
+        }
+
       }
 
     },
@@ -1454,6 +1476,549 @@ export const swaggerDocument = {
               'Files retrieved successfully'
           }
 
+        }
+
+      }
+
+    },
+
+    '/api/v1/users/{userId}': {
+
+      get: {
+
+        tags: ['Core'],
+        summary: 'Get a Trimble Connect user by id',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'userId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'User retrieved successfully' },
+          401: { description: 'Authentication required' },
+          404: { description: 'User not found' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/projects/{projectId}/thumbnail': {
+
+      get: {
+
+        tags: ['Core'],
+        summary: 'Get a Trimble Connect project thumbnail',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Thumbnail retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/projects/{projectId}/permissions': {
+
+      get: {
+
+        tags: ['Core'],
+        summary: 'Get permissions for a Trimble Connect project',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Permissions retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/folders/{folderId}': {
+
+      get: {
+
+        tags: ['Core'],
+        summary: 'Get a Trimble Connect folder',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'folderId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Folder retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      },
+
+      put: {
+
+        tags: ['Core'],
+        summary: 'Update a Trimble Connect folder',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'folderId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { type: 'object' } } }
+        },
+
+        responses: {
+          200: { description: 'Folder updated successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      },
+
+      delete: {
+
+        tags: ['Core'],
+        summary: 'Delete a Trimble Connect folder',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'folderId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Folder deleted successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/folders/{folderId}/folders': {
+
+      get: {
+
+        tags: ['Core'],
+        summary: 'List subfolders of a Trimble Connect folder',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'folderId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Subfolders retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/folders/{folderId}/files': {
+
+      get: {
+
+        tags: ['Core'],
+        summary: 'List files inside a Trimble Connect folder',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'folderId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Files retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/files/{fileId}': {
+
+      get: {
+
+        tags: ['Core'],
+        summary: 'Get a Trimble Connect file',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'fileId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'File retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      },
+
+      put: {
+
+        tags: ['Core'],
+        summary: 'Update a Trimble Connect file',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'fileId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { type: 'object' } } }
+        },
+
+        responses: {
+          200: { description: 'File updated successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      },
+
+      delete: {
+
+        tags: ['Core'],
+        summary: 'Delete a Trimble Connect file',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'fileId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'File deleted successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/files/{fileId}/versions': {
+
+      get: {
+
+        tags: ['Core'],
+        summary: 'List versions of a Trimble Connect file',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'fileId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Versions retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      },
+
+      post: {
+
+        tags: ['Core'],
+        summary: 'Upload a new version of a Trimble Connect file',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'fileId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { type: 'object' } } }
+        },
+
+        responses: {
+          201: { description: 'Version created successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/versions/{versionId}': {
+
+      get: {
+
+        tags: ['Core'],
+        summary: 'Get a Trimble Connect file version',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'versionId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Version retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/versions/{versionId}/content': {
+
+      get: {
+
+        tags: ['Core'],
+        summary: 'Get the downloadable content location for a Trimble Connect file version',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'versionId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Version content location retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/projects/{projectId}/todos': {
+
+      get: {
+
+        tags: ['Core'],
+        summary: 'List todos for a Trimble Connect project',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Todos retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      },
+
+      post: {
+
+        tags: ['Core'],
+        summary: 'Create a todo in a Trimble Connect project',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { type: 'object' } } }
+        },
+
+        responses: {
+          201: { description: 'Todo created successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/todos/{todoId}': {
+
+      get: {
+
+        tags: ['Core'],
+        summary: 'Get a Trimble Connect todo',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'todoId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Todo retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      },
+
+      put: {
+
+        tags: ['Core'],
+        summary: 'Update a Trimble Connect todo',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'todoId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { type: 'object' } } }
+        },
+
+        responses: {
+          200: { description: 'Todo updated successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      },
+
+      delete: {
+
+        tags: ['Core'],
+        summary: 'Delete a Trimble Connect todo',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'todoId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Todo deleted successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/todos/{todoId}/comments': {
+
+      get: {
+
+        tags: ['Core'],
+        summary: 'List comments on a Trimble Connect todo',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'todoId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Comments retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      },
+
+      post: {
+
+        tags: ['Core'],
+        summary: 'Add a comment to a Trimble Connect todo',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'todoId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { type: 'object' } } }
+        },
+
+        responses: {
+          201: { description: 'Comment created successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/projects/{projectId}/views': {
+
+      get: {
+
+        tags: ['Core'],
+        summary: 'List saved views for a Trimble Connect project',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Views retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      },
+
+      post: {
+
+        tags: ['Core'],
+        summary: 'Create a saved view in a Trimble Connect project',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { type: 'object' } } }
+        },
+
+        responses: {
+          201: { description: 'View created successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/views/{viewId}': {
+
+      get: {
+
+        tags: ['Core'],
+        summary: 'Get a Trimble Connect saved view',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'viewId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'View retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/projects/{projectId}/search': {
+
+      get: {
+
+        tags: ['Core'],
+        summary: 'Search within a Trimble Connect project',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'query', in: 'query', required: false, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Search results retrieved successfully' },
+          401: { description: 'Authentication required' }
         }
 
       }
