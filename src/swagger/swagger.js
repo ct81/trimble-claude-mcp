@@ -258,6 +258,10 @@ export const swaggerDocument = {
       description: 'Core Trimble Connect workspace and service operations.'
     },
     {
+      name: 'Issues',
+      description: 'BCF issue (topic), comment, viewpoint, and document reference operations.'
+    },
+    {
       name: 'Property Set',
       description: 'Property Set library, definition, and instance operations.'
     },
@@ -2044,11 +2048,13 @@ export async function getSwaggerDocument() {
       };
 
     const tag =
-      toolName.startsWith('property_set') || toolName.includes('property_set')
+      toolName.includes('property_set')
         ? 'Property Set'
         : toolName.includes('schedule') || toolName.includes('pdf')
           ? 'PDF'
-          : 'Core';
+          : toolName.includes('issue') || toolName.includes('bcf')
+            ? 'Issues'
+            : 'Core';
 
     doc.paths[path] = {
       post: {

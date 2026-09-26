@@ -117,6 +117,378 @@ const baseDefinitions = [
   },
 
   {
+    name: 'get_issue',
+    description:
+      'Get a single Trimble Connect issue (BCF topic) by id.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        topicId: { type: 'string' }
+      },
+      required: ['projectId', 'topicId']
+    }
+  },
+
+  {
+    name: 'create_issue',
+    description:
+      'Create a Trimble Connect issue (BCF topic) in a project.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        topic: { description: 'BCF topic payload.' }
+      },
+      required: ['projectId', 'topic']
+    }
+  },
+
+  {
+    name: 'update_issue',
+    description:
+      'Update a Trimble Connect issue (BCF topic).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        topicId: { type: 'string' },
+        updates: { description: 'BCF topic update payload.' }
+      },
+      required: ['projectId', 'topicId', 'updates']
+    }
+  },
+
+  {
+    name: 'get_issue_comments',
+    description:
+      'List comments on a Trimble Connect issue.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        topicId: { type: 'string' }
+      },
+      required: ['projectId', 'topicId']
+    }
+  },
+
+  {
+    name: 'get_issue_comment',
+    description:
+      'Get a single comment on a Trimble Connect issue.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        topicId: { type: 'string' },
+        commentId: { type: 'string' }
+      },
+      required: ['projectId', 'topicId', 'commentId']
+    }
+  },
+
+  {
+    name: 'create_issue_comment',
+    description:
+      'Add a comment to a Trimble Connect issue.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        topicId: { type: 'string' },
+        comment: { description: 'Comment payload.' }
+      },
+      required: ['projectId', 'topicId', 'comment']
+    }
+  },
+
+  {
+    name: 'update_issue_comment',
+    description:
+      'Update a comment on a Trimble Connect issue.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        topicId: { type: 'string' },
+        commentId: { type: 'string' },
+        updates: { description: 'Comment update payload.' }
+      },
+      required: ['projectId', 'topicId', 'commentId', 'updates']
+    }
+  },
+
+  {
+    name: 'delete_issue_comment',
+    description:
+      'Delete a comment on a Trimble Connect issue.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        topicId: { type: 'string' },
+        commentId: { type: 'string' }
+      },
+      required: ['projectId', 'topicId', 'commentId']
+    }
+  },
+
+  {
+    name: 'get_issue_viewpoints',
+    description:
+      'List viewpoints on a Trimble Connect issue.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        topicId: { type: 'string' }
+      },
+      required: ['projectId', 'topicId']
+    }
+  },
+
+  {
+    name: 'get_issue_viewpoint',
+    description:
+      'Get a single viewpoint on a Trimble Connect issue.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        topicId: { type: 'string' },
+        viewpointId: { type: 'string' }
+      },
+      required: ['projectId', 'topicId', 'viewpointId']
+    }
+  },
+
+  {
+    name: 'create_issue_viewpoint',
+    description:
+      'Add a viewpoint to a Trimble Connect issue.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        topicId: { type: 'string' },
+        viewpoint: { description: 'BCF viewpoint payload.' }
+      },
+      required: ['projectId', 'topicId', 'viewpoint']
+    }
+  },
+
+  {
+    name: 'delete_issue_viewpoint',
+    description:
+      'Delete a viewpoint from a Trimble Connect issue.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        topicId: { type: 'string' },
+        viewpointId: { type: 'string' }
+      },
+      required: ['projectId', 'topicId', 'viewpointId']
+    }
+  },
+
+  {
+    name: 'get_issue_viewpoint_snapshot',
+    description:
+      'Get the snapshot image for an issue viewpoint.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        topicId: { type: 'string' },
+        viewpointId: { type: 'string' }
+      },
+      required: ['projectId', 'topicId', 'viewpointId']
+    }
+  },
+
+  {
+    name: 'get_issue_viewpoint_bitmap',
+    description:
+      'Get a bitmap image referenced by an issue viewpoint.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        topicId: { type: 'string' },
+        viewpointId: { type: 'string' },
+        bitmapId: { type: 'string' }
+      },
+      required: ['projectId', 'topicId', 'viewpointId', 'bitmapId']
+    }
+  },
+
+  {
+    name: 'get_issue_document_references',
+    description:
+      'List document references attached to a Trimble Connect issue.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        topicId: { type: 'string' }
+      },
+      required: ['projectId', 'topicId']
+    }
+  },
+
+  {
+    name: 'get_issue_document_reference',
+    description:
+      'Get a single document reference attached to a Trimble Connect issue.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        topicId: { type: 'string' },
+        documentReferenceId: { type: 'string' }
+      },
+      required: ['projectId', 'topicId', 'documentReferenceId']
+    }
+  },
+
+  {
+    name: 'create_issue_document_reference',
+    description:
+      'Attach a document reference to a Trimble Connect issue.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        topicId: { type: 'string' },
+        documentReference: { description: 'Document reference payload.' }
+      },
+      required: ['projectId', 'topicId', 'documentReference']
+    }
+  },
+
+  {
+    name: 'update_issue_document_reference',
+    description:
+      'Update a document reference attached to a Trimble Connect issue.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        topicId: { type: 'string' },
+        documentReferenceId: { type: 'string' },
+        updates: { description: 'Document reference update payload.' }
+      },
+      required: ['projectId', 'topicId', 'documentReferenceId', 'updates']
+    }
+  },
+
+  {
+    name: 'delete_issue_document_reference',
+    description:
+      'Remove a document reference from a Trimble Connect issue.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        topicId: { type: 'string' },
+        documentReferenceId: { type: 'string' }
+      },
+      required: ['projectId', 'topicId', 'documentReferenceId']
+    }
+  },
+
+  {
+    name: 'get_issue_related_topics',
+    description:
+      'List issues related to a Trimble Connect issue.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        topicId: { type: 'string' }
+      },
+      required: ['projectId', 'topicId']
+    }
+  },
+
+  {
+    name: 'set_issue_related_topics',
+    description:
+      'Set the issues related to a Trimble Connect issue.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        topicId: { type: 'string' },
+        relatedTopics: { description: 'Array of related topic references.' }
+      },
+      required: ['projectId', 'topicId', 'relatedTopics']
+    }
+  },
+
+  {
+    name: 'get_bcf_projects',
+    description:
+      'List projects visible to the BCF issues service.',
+    inputSchema: {
+      type: 'object',
+      properties: {}
+    }
+  },
+
+  {
+    name: 'get_issue_extensions',
+    description:
+      'Get the BCF extensions schema (allowed types, statuses, priorities) for a project.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' }
+      },
+      required: ['projectId']
+    }
+  },
+
+  {
+    name: 'get_issue_documents',
+    description:
+      'List documents available to reference from Trimble Connect issues.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' }
+      },
+      required: ['projectId']
+    }
+  },
+
+  {
+    name: 'get_issue_document',
+    description:
+      'Get a single document available to reference from Trimble Connect issues.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        documentId: { type: 'string' }
+      },
+      required: ['projectId', 'documentId']
+    }
+  },
+
+  {
+    name: 'get_bcf_version',
+    description:
+      'Get the BCF API version supported by the issues service.',
+    inputSchema: {
+      type: 'object',
+      properties: {}
+    }
+  },
+
+  {
     name: 'get_current_user',
     description:
       'Get the currently authenticated Trimble Connect user.',
@@ -1135,6 +1507,110 @@ export async function callTool(
         sessionId,
         args.projectId
       );
+      break;
+
+    case 'get_issue':
+      result = await topics.getTopic(sessionId, args.projectId, args.topicId);
+      break;
+
+    case 'create_issue':
+      result = await topics.createTopic(sessionId, args.projectId, args.topic);
+      break;
+
+    case 'update_issue':
+      result = await topics.updateTopic(sessionId, args.projectId, args.topicId, args.updates);
+      break;
+
+    case 'get_issue_comments':
+      result = await topics.getComments(sessionId, args.projectId, args.topicId);
+      break;
+
+    case 'get_issue_comment':
+      result = await topics.getComment(sessionId, args.projectId, args.topicId, args.commentId);
+      break;
+
+    case 'create_issue_comment':
+      result = await topics.createComment(sessionId, args.projectId, args.topicId, args.comment);
+      break;
+
+    case 'update_issue_comment':
+      result = await topics.updateComment(sessionId, args.projectId, args.topicId, args.commentId, args.updates);
+      break;
+
+    case 'delete_issue_comment':
+      result = await topics.deleteComment(sessionId, args.projectId, args.topicId, args.commentId);
+      break;
+
+    case 'get_issue_viewpoints':
+      result = await topics.getViewpoints(sessionId, args.projectId, args.topicId);
+      break;
+
+    case 'get_issue_viewpoint':
+      result = await topics.getViewpoint(sessionId, args.projectId, args.topicId, args.viewpointId);
+      break;
+
+    case 'create_issue_viewpoint':
+      result = await topics.createViewpoint(sessionId, args.projectId, args.topicId, args.viewpoint);
+      break;
+
+    case 'delete_issue_viewpoint':
+      result = await topics.deleteViewpoint(sessionId, args.projectId, args.topicId, args.viewpointId);
+      break;
+
+    case 'get_issue_viewpoint_snapshot':
+      result = await topics.getViewpointSnapshot(sessionId, args.projectId, args.topicId, args.viewpointId);
+      break;
+
+    case 'get_issue_viewpoint_bitmap':
+      result = await topics.getViewpointBitmap(sessionId, args.projectId, args.topicId, args.viewpointId, args.bitmapId);
+      break;
+
+    case 'get_issue_document_references':
+      result = await topics.getDocumentReferences(sessionId, args.projectId, args.topicId);
+      break;
+
+    case 'get_issue_document_reference':
+      result = await topics.getDocumentReference(sessionId, args.projectId, args.topicId, args.documentReferenceId);
+      break;
+
+    case 'create_issue_document_reference':
+      result = await topics.createDocumentReference(sessionId, args.projectId, args.topicId, args.documentReference);
+      break;
+
+    case 'update_issue_document_reference':
+      result = await topics.updateDocumentReference(sessionId, args.projectId, args.topicId, args.documentReferenceId, args.updates);
+      break;
+
+    case 'delete_issue_document_reference':
+      result = await topics.deleteDocumentReference(sessionId, args.projectId, args.topicId, args.documentReferenceId);
+      break;
+
+    case 'get_issue_related_topics':
+      result = await topics.getRelatedTopics(sessionId, args.projectId, args.topicId);
+      break;
+
+    case 'set_issue_related_topics':
+      result = await topics.setRelatedTopics(sessionId, args.projectId, args.topicId, args.relatedTopics);
+      break;
+
+    case 'get_bcf_projects':
+      result = await topics.getBcfProjects(sessionId);
+      break;
+
+    case 'get_issue_extensions':
+      result = await topics.getExtensions(sessionId, args.projectId);
+      break;
+
+    case 'get_issue_documents':
+      result = await topics.getDocuments(sessionId, args.projectId);
+      break;
+
+    case 'get_issue_document':
+      result = await topics.getDocument(sessionId, args.projectId, args.documentId);
+      break;
+
+    case 'get_bcf_version':
+      result = await topics.getVersion(sessionId);
       break;
 
     case 'get_current_user':

@@ -1,5 +1,5 @@
 // git add . 
-// git commit -m "Start MCP, Swagger, UI, SketchUp BridgeAPIs, TC Workspace API, Core & Property Set APIs #5"
+// git commit -m "Start MCP, Swagger, UI, SketchUp BridgeAPIs, TC Workspace API, Core & Property Set APIs #6"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -1397,6 +1397,276 @@ app.get('/api/v1/projects/:projectId/search', requireSession, async (req, res) =
     return res.json(result);
   } catch (e) {
     console.error('GET /api/v1/projects/:projectId/search:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/projects/:projectId/issues', requireSession, async (req, res) => {
+  try {
+    const result = await topics.getTopics(req.mcpSessionId, req.params.projectId, req.query);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/projects/:projectId/issues:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/v1/projects/:projectId/issues', requireSession, async (req, res) => {
+  try {
+    const result = await topics.createTopic(req.mcpSessionId, req.params.projectId, req.body);
+    return res.status(201).json(result);
+  } catch (e) {
+    console.error('POST /api/v1/projects/:projectId/issues:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/projects/:projectId/issues/:topicId', requireSession, async (req, res) => {
+  try {
+    const result = await topics.getTopic(req.mcpSessionId, req.params.projectId, req.params.topicId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/projects/:projectId/issues/:topicId:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.put('/api/v1/projects/:projectId/issues/:topicId', requireSession, async (req, res) => {
+  try {
+    const result = await topics.updateTopic(req.mcpSessionId, req.params.projectId, req.params.topicId, req.body);
+    return res.json(result);
+  } catch (e) {
+    console.error('PUT /api/v1/projects/:projectId/issues/:topicId:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/projects/:projectId/issues/:topicId/comments', requireSession, async (req, res) => {
+  try {
+    const result = await topics.getComments(req.mcpSessionId, req.params.projectId, req.params.topicId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/projects/:projectId/issues/:topicId/comments:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/v1/projects/:projectId/issues/:topicId/comments', requireSession, async (req, res) => {
+  try {
+    const result = await topics.createComment(req.mcpSessionId, req.params.projectId, req.params.topicId, req.body);
+    return res.status(201).json(result);
+  } catch (e) {
+    console.error('POST /api/v1/projects/:projectId/issues/:topicId/comments:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/projects/:projectId/issues/:topicId/comments/:commentId', requireSession, async (req, res) => {
+  try {
+    const result = await topics.getComment(req.mcpSessionId, req.params.projectId, req.params.topicId, req.params.commentId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/projects/:projectId/issues/:topicId/comments/:commentId:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.put('/api/v1/projects/:projectId/issues/:topicId/comments/:commentId', requireSession, async (req, res) => {
+  try {
+    const result = await topics.updateComment(req.mcpSessionId, req.params.projectId, req.params.topicId, req.params.commentId, req.body);
+    return res.json(result);
+  } catch (e) {
+    console.error('PUT /api/v1/projects/:projectId/issues/:topicId/comments/:commentId:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete('/api/v1/projects/:projectId/issues/:topicId/comments/:commentId', requireSession, async (req, res) => {
+  try {
+    const result = await topics.deleteComment(req.mcpSessionId, req.params.projectId, req.params.topicId, req.params.commentId);
+    return res.json(result);
+  } catch (e) {
+    console.error('DELETE /api/v1/projects/:projectId/issues/:topicId/comments/:commentId:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/projects/:projectId/issues/:topicId/viewpoints', requireSession, async (req, res) => {
+  try {
+    const result = await topics.getViewpoints(req.mcpSessionId, req.params.projectId, req.params.topicId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/projects/:projectId/issues/:topicId/viewpoints:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/v1/projects/:projectId/issues/:topicId/viewpoints', requireSession, async (req, res) => {
+  try {
+    const result = await topics.createViewpoint(req.mcpSessionId, req.params.projectId, req.params.topicId, req.body);
+    return res.status(201).json(result);
+  } catch (e) {
+    console.error('POST /api/v1/projects/:projectId/issues/:topicId/viewpoints:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/projects/:projectId/issues/:topicId/viewpoints/:viewpointId', requireSession, async (req, res) => {
+  try {
+    const result = await topics.getViewpoint(req.mcpSessionId, req.params.projectId, req.params.topicId, req.params.viewpointId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/projects/:projectId/issues/:topicId/viewpoints/:viewpointId:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete('/api/v1/projects/:projectId/issues/:topicId/viewpoints/:viewpointId', requireSession, async (req, res) => {
+  try {
+    const result = await topics.deleteViewpoint(req.mcpSessionId, req.params.projectId, req.params.topicId, req.params.viewpointId);
+    return res.json(result);
+  } catch (e) {
+    console.error('DELETE /api/v1/projects/:projectId/issues/:topicId/viewpoints/:viewpointId:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/projects/:projectId/issues/:topicId/viewpoints/:viewpointId/snapshot', requireSession, async (req, res) => {
+  try {
+    const result = await topics.getViewpointSnapshot(req.mcpSessionId, req.params.projectId, req.params.topicId, req.params.viewpointId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/projects/:projectId/issues/:topicId/viewpoints/:viewpointId/snapshot:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/projects/:projectId/issues/:topicId/viewpoints/:viewpointId/bitmaps/:bitmapId', requireSession, async (req, res) => {
+  try {
+    const result = await topics.getViewpointBitmap(req.mcpSessionId, req.params.projectId, req.params.topicId, req.params.viewpointId, req.params.bitmapId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/projects/:projectId/issues/:topicId/viewpoints/:viewpointId/bitmaps/:bitmapId:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/projects/:projectId/issues/:topicId/document-references', requireSession, async (req, res) => {
+  try {
+    const result = await topics.getDocumentReferences(req.mcpSessionId, req.params.projectId, req.params.topicId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/projects/:projectId/issues/:topicId/document-references:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/v1/projects/:projectId/issues/:topicId/document-references', requireSession, async (req, res) => {
+  try {
+    const result = await topics.createDocumentReference(req.mcpSessionId, req.params.projectId, req.params.topicId, req.body);
+    return res.status(201).json(result);
+  } catch (e) {
+    console.error('POST /api/v1/projects/:projectId/issues/:topicId/document-references:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/projects/:projectId/issues/:topicId/document-references/:documentReferenceId', requireSession, async (req, res) => {
+  try {
+    const result = await topics.getDocumentReference(req.mcpSessionId, req.params.projectId, req.params.topicId, req.params.documentReferenceId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/projects/:projectId/issues/:topicId/document-references/:documentReferenceId:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.put('/api/v1/projects/:projectId/issues/:topicId/document-references/:documentReferenceId', requireSession, async (req, res) => {
+  try {
+    const result = await topics.updateDocumentReference(req.mcpSessionId, req.params.projectId, req.params.topicId, req.params.documentReferenceId, req.body);
+    return res.json(result);
+  } catch (e) {
+    console.error('PUT /api/v1/projects/:projectId/issues/:topicId/document-references/:documentReferenceId:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete('/api/v1/projects/:projectId/issues/:topicId/document-references/:documentReferenceId', requireSession, async (req, res) => {
+  try {
+    const result = await topics.deleteDocumentReference(req.mcpSessionId, req.params.projectId, req.params.topicId, req.params.documentReferenceId);
+    return res.json(result);
+  } catch (e) {
+    console.error('DELETE /api/v1/projects/:projectId/issues/:topicId/document-references/:documentReferenceId:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/projects/:projectId/issues/:topicId/related-topics', requireSession, async (req, res) => {
+  try {
+    const result = await topics.getRelatedTopics(req.mcpSessionId, req.params.projectId, req.params.topicId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/projects/:projectId/issues/:topicId/related-topics:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.put('/api/v1/projects/:projectId/issues/:topicId/related-topics', requireSession, async (req, res) => {
+  try {
+    const result = await topics.setRelatedTopics(req.mcpSessionId, req.params.projectId, req.params.topicId, req.body);
+    return res.json(result);
+  } catch (e) {
+    console.error('PUT /api/v1/projects/:projectId/issues/:topicId/related-topics:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/bcf/projects', requireSession, async (req, res) => {
+  try {
+    const result = await topics.getBcfProjects(req.mcpSessionId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/bcf/projects:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/projects/:projectId/issue-extensions', requireSession, async (req, res) => {
+  try {
+    const result = await topics.getExtensions(req.mcpSessionId, req.params.projectId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/projects/:projectId/issue-extensions:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/projects/:projectId/issue-documents', requireSession, async (req, res) => {
+  try {
+    const result = await topics.getDocuments(req.mcpSessionId, req.params.projectId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/projects/:projectId/issue-documents:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/projects/:projectId/issue-documents/:documentId', requireSession, async (req, res) => {
+  try {
+    const result = await topics.getDocument(req.mcpSessionId, req.params.projectId, req.params.documentId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/projects/:projectId/issue-documents/:documentId:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/bcf/version', requireSession, async (req, res) => {
+  try {
+    const result = await topics.getVersion(req.mcpSessionId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/bcf/version:', e);
     return res.status(500).json({ error: e.message });
   }
 });
