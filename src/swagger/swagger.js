@@ -1563,5 +1563,89 @@ export async function getSwaggerDocument() {
     };
   }
 
+  // Document every non-SketchUp MCP tool (Core, Property Set, PDF, etc.)
+  // generically so new tools appear in Swagger without manual path entries.
+  const otherTools = tools.filter(
+    (tool) => !tool.name.startsWith('sketchup_')
+  );
+
+  for (const tool of otherTools) {
+
+    const toolName = tool.name;
+    const path = `/api/mcp/tools/${toolName}`;
+
+    if (doc.paths[path]) {
+      continue;
+    }
+
+    const inputSchema =
+      tool.inputSchema || {
+        type: 'object',
+        properties: {}
+      };
+
+    const tag =
+      toolName.startsWith('property_set') || toolName.includes('property_set')
+        ? 'Property Set'
+        : toolName.includes('schedule') || toolName.includes('pdf')
+          ? 'PDF'
+          : 'Core';
+
+    doc.paths[path] = {
+      post: {
+        tags: [tag],
+
+        summary:
+          tool.description ||
+          `Execute ${toolName}`,
+
+        description:
+          tool.description ||
+          `Execute MCP tool: ${toolName}`,
+
+        operationId: toolName,
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
+
+        requestBody: {
+          required: false,
+
+          content: {
+            'application/json': {
+              schema: inputSchema
+            }
+          }
+        },
+
+        responses: {
+          200: {
+            description: 'MCP tool result',
+
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: true
+                }
+              }
+            }
+          },
+
+          401: {
+            description: 'Authentication required'
+          },
+
+          500: {
+            description: 'MCP tool execution failed'
+          }
+        }
+      }
+    };
+  }
+
   return doc;
 }

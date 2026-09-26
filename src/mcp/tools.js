@@ -117,6 +117,488 @@ const baseDefinitions = [
   },
 
   {
+    name: 'get_current_user',
+    description:
+      'Get the currently authenticated Trimble Connect user.',
+    inputSchema: {
+      type: 'object',
+      properties: {}
+    }
+  },
+
+  {
+    name: 'get_user',
+    description:
+      'Get a Trimble Connect user by id.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        userId: {
+          type: 'string'
+        }
+      },
+      required: ['userId']
+    }
+  },
+
+  {
+    name: 'get_regions',
+    description:
+      'List Trimble Connect regions.',
+    inputSchema: {
+      type: 'object',
+      properties: {}
+    }
+  },
+
+  {
+    name: 'create_project',
+    description:
+      'Create a new Trimble Connect project.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        project: {
+          description: 'Project payload.'
+        }
+      },
+      required: ['project']
+    }
+  },
+
+  {
+    name: 'update_project',
+    description:
+      'Update a Trimble Connect project.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: {
+          type: 'string'
+        },
+        updates: {
+          description: 'Project update payload.'
+        }
+      },
+      required: ['projectId', 'updates']
+    }
+  },
+
+  {
+    name: 'delete_project',
+    description:
+      'Delete a Trimble Connect project.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: {
+          type: 'string'
+        }
+      },
+      required: ['projectId']
+    }
+  },
+
+  {
+    name: 'get_project_thumbnail',
+    description:
+      'Get the thumbnail for a Trimble Connect project.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: {
+          type: 'string'
+        }
+      },
+      required: ['projectId']
+    }
+  },
+
+  {
+    name: 'get_project_permissions',
+    description:
+      'List permissions for a Trimble Connect project.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: {
+          type: 'string'
+        }
+      },
+      required: ['projectId']
+    }
+  },
+
+  {
+    name: 'get_folder',
+    description:
+      'Get a Trimble Connect folder by id.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        folderId: {
+          type: 'string'
+        }
+      },
+      required: ['folderId']
+    }
+  },
+
+  {
+    name: 'create_folder',
+    description:
+      'Create a folder inside a Trimble Connect project.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: {
+          type: 'string'
+        },
+        folder: {
+          description: 'Folder payload, including parent folder id.'
+        }
+      },
+      required: ['projectId', 'folder']
+    }
+  },
+
+  {
+    name: 'update_folder',
+    description:
+      'Update a Trimble Connect folder.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        folderId: {
+          type: 'string'
+        },
+        updates: {
+          description: 'Folder update payload.'
+        }
+      },
+      required: ['folderId', 'updates']
+    }
+  },
+
+  {
+    name: 'delete_folder',
+    description:
+      'Delete a Trimble Connect folder.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        folderId: {
+          type: 'string'
+        }
+      },
+      required: ['folderId']
+    }
+  },
+
+  {
+    name: 'get_subfolders',
+    description:
+      'List subfolders of a Trimble Connect folder.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        folderId: {
+          type: 'string'
+        }
+      },
+      required: ['folderId']
+    }
+  },
+
+  {
+    name: 'get_folder_files',
+    description:
+      'List files inside a Trimble Connect folder.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        folderId: {
+          type: 'string'
+        }
+      },
+      required: ['folderId']
+    }
+  },
+
+  {
+    name: 'get_file',
+    description:
+      'Get a Trimble Connect file by id.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        fileId: {
+          type: 'string'
+        }
+      },
+      required: ['fileId']
+    }
+  },
+
+  {
+    name: 'update_file',
+    description:
+      'Update a Trimble Connect file (e.g. rename, move).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        fileId: {
+          type: 'string'
+        },
+        updates: {
+          description: 'File update payload.'
+        }
+      },
+      required: ['fileId', 'updates']
+    }
+  },
+
+  {
+    name: 'delete_file',
+    description:
+      'Delete a Trimble Connect file.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        fileId: {
+          type: 'string'
+        }
+      },
+      required: ['fileId']
+    }
+  },
+
+  {
+    name: 'get_file_versions',
+    description:
+      'List versions of a Trimble Connect file.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        fileId: {
+          type: 'string'
+        }
+      },
+      required: ['fileId']
+    }
+  },
+
+  {
+    name: 'get_version',
+    description:
+      'Get a Trimble Connect file version by id.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        versionId: {
+          type: 'string'
+        }
+      },
+      required: ['versionId']
+    }
+  },
+
+  {
+    name: 'get_version_content',
+    description:
+      'Get the downloadable content location for a Trimble Connect file version.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        versionId: {
+          type: 'string'
+        }
+      },
+      required: ['versionId']
+    }
+  },
+
+  {
+    name: 'get_todos',
+    description:
+      'List todos for a Trimble Connect project.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: {
+          type: 'string'
+        }
+      },
+      required: ['projectId']
+    }
+  },
+
+  {
+    name: 'get_todo',
+    description:
+      'Get a Trimble Connect todo by id.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        todoId: {
+          type: 'string'
+        }
+      },
+      required: ['todoId']
+    }
+  },
+
+  {
+    name: 'create_todo',
+    description:
+      'Create a todo in a Trimble Connect project.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: {
+          type: 'string'
+        },
+        todo: {
+          description: 'Todo payload.'
+        }
+      },
+      required: ['projectId', 'todo']
+    }
+  },
+
+  {
+    name: 'update_todo',
+    description:
+      'Update a Trimble Connect todo.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        todoId: {
+          type: 'string'
+        },
+        updates: {
+          description: 'Todo update payload.'
+        }
+      },
+      required: ['todoId', 'updates']
+    }
+  },
+
+  {
+    name: 'delete_todo',
+    description:
+      'Delete a Trimble Connect todo.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        todoId: {
+          type: 'string'
+        }
+      },
+      required: ['todoId']
+    }
+  },
+
+  {
+    name: 'get_todo_comments',
+    description:
+      'List comments on a Trimble Connect todo.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        todoId: {
+          type: 'string'
+        }
+      },
+      required: ['todoId']
+    }
+  },
+
+  {
+    name: 'create_todo_comment',
+    description:
+      'Add a comment to a Trimble Connect todo.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        todoId: {
+          type: 'string'
+        },
+        comment: {
+          description: 'Comment payload.'
+        }
+      },
+      required: ['todoId', 'comment']
+    }
+  },
+
+  {
+    name: 'get_views',
+    description:
+      'List saved views for a Trimble Connect project.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: {
+          type: 'string'
+        }
+      },
+      required: ['projectId']
+    }
+  },
+
+  {
+    name: 'get_view',
+    description:
+      'Get a Trimble Connect saved view by id.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        viewId: {
+          type: 'string'
+        }
+      },
+      required: ['viewId']
+    }
+  },
+
+  {
+    name: 'create_view',
+    description:
+      'Create a saved view in a Trimble Connect project.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: {
+          type: 'string'
+        },
+        view: {
+          description: 'View payload.'
+        }
+      },
+      required: ['projectId', 'view']
+    }
+  },
+
+  {
+    name: 'search_project',
+    description:
+      'Search within a Trimble Connect project.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: {
+          type: 'string'
+        },
+        query: {
+          description: 'Search query parameters.'
+        }
+      },
+      required: ['projectId']
+    }
+  },
+
+  {
     name: 'get_property_set_current_user',
     description:
       'Get the current authenticated Property Set user.',
@@ -731,6 +1213,130 @@ export async function callTool(
         sessionId,
         args.projectId
       );
+      break;
+
+    case 'get_current_user':
+      result = await core.getCurrentUser(sessionId);
+      break;
+
+    case 'get_user':
+      result = await core.getUser(sessionId, args.userId);
+      break;
+
+    case 'get_regions':
+      result = await core.getRegions(sessionId);
+      break;
+
+    case 'create_project':
+      result = await core.createProject(sessionId, args.project);
+      break;
+
+    case 'update_project':
+      result = await core.updateProject(sessionId, args.projectId, args.updates);
+      break;
+
+    case 'delete_project':
+      result = await core.deleteProject(sessionId, args.projectId);
+      break;
+
+    case 'get_project_thumbnail':
+      result = await core.getProjectThumbnail(sessionId, args.projectId);
+      break;
+
+    case 'get_project_permissions':
+      result = await core.getProjectPermissions(sessionId, args.projectId);
+      break;
+
+    case 'get_folder':
+      result = await core.getFolder(sessionId, args.folderId);
+      break;
+
+    case 'create_folder':
+      result = await core.createFolder(sessionId, args.projectId, args.folder);
+      break;
+
+    case 'update_folder':
+      result = await core.updateFolder(sessionId, args.folderId, args.updates);
+      break;
+
+    case 'delete_folder':
+      result = await core.deleteFolder(sessionId, args.folderId);
+      break;
+
+    case 'get_subfolders':
+      result = await core.getSubfolders(sessionId, args.folderId);
+      break;
+
+    case 'get_folder_files':
+      result = await core.getFolderFiles(sessionId, args.folderId);
+      break;
+
+    case 'get_file':
+      result = await core.getFile(sessionId, args.fileId);
+      break;
+
+    case 'update_file':
+      result = await core.updateFile(sessionId, args.fileId, args.updates);
+      break;
+
+    case 'delete_file':
+      result = await core.deleteFile(sessionId, args.fileId);
+      break;
+
+    case 'get_file_versions':
+      result = await core.getFileVersions(sessionId, args.fileId);
+      break;
+
+    case 'get_version':
+      result = await core.getVersion(sessionId, args.versionId);
+      break;
+
+    case 'get_version_content':
+      result = await core.getVersionContent(sessionId, args.versionId);
+      break;
+
+    case 'get_todos':
+      result = await core.getTodos(sessionId, args.projectId);
+      break;
+
+    case 'get_todo':
+      result = await core.getTodo(sessionId, args.todoId);
+      break;
+
+    case 'create_todo':
+      result = await core.createTodo(sessionId, args.projectId, args.todo);
+      break;
+
+    case 'update_todo':
+      result = await core.updateTodo(sessionId, args.todoId, args.updates);
+      break;
+
+    case 'delete_todo':
+      result = await core.deleteTodo(sessionId, args.todoId);
+      break;
+
+    case 'get_todo_comments':
+      result = await core.getTodoComments(sessionId, args.todoId);
+      break;
+
+    case 'create_todo_comment':
+      result = await core.createTodoComment(sessionId, args.todoId, args.comment);
+      break;
+
+    case 'get_views':
+      result = await core.getViews(sessionId, args.projectId);
+      break;
+
+    case 'get_view':
+      result = await core.getView(sessionId, args.viewId);
+      break;
+
+    case 'create_view':
+      result = await core.createView(sessionId, args.projectId, args.view);
+      break;
+
+    case 'search_project':
+      result = await core.search(sessionId, args.projectId, args.query);
       break;
 
     case 'get_property_set_current_user':
