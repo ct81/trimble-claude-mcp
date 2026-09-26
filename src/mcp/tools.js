@@ -1265,13 +1265,13 @@ const baseDefinitions = [
         uploadId: {
           type: 'string',
           description:
-            'Temporary PDF upload ID returned by POST /api/pdf/uploads. Preferred when the PDF has been uploaded to this MCP server.'
+            'Temporary PDF upload ID returned by POST /api/pdf/uploads. Strongly preferred over pdfBase64 — the file bytes are stored server-side and never pass through the model context, avoiding truncation/corruption.'
         },
 
         pdfBase64: {
           type: 'string',
           description:
-            'Base64-encoded PDF contents. Use when the client can provide the actual PDF bytes.'
+            'Base64-encoded PDF contents. Only use this for very small PDFs; large base64 strings can be truncated when re-typed through a chat context, producing an invalid PDF. Prefer uploadId whenever possible.'
         },
 
         pdfPath: {
@@ -1436,6 +1436,20 @@ function decodePdfBase64(value) {
     throw new Error(
       'Decoded data does not look like a PDF (missing %PDF- header). ' +
       'Did you base64-encode the wrong file?'
+    );
+  }
+
+  // A well-formed PDF ends with an EOF marker (trailer/xref before it).
+  // Its absence almost always means the base64 was truncated or mangled
+  // in transit (e.g. re-typed through a chat context) rather than a real
+  // pdfjs parsing bug — surface that distinctly so callers switch to
+  // uploadId, which passes the raw bytes instead of inline base64 text.
+  const tail = buffer.slice(-1024).toString('latin1');
+  if (!tail.includes('%%EOF')) {
+    throw new Error(
+      `pdfBase64 decoded to ${buffer.length} bytes but is missing the PDF %%EOF trailer — ` +
+      'the file was likely truncated in transit. Upload the PDF via POST /api/pdf/uploads ' +
+      'and pass the returned uploadId instead of pdfBase64.'
     );
   }
 
