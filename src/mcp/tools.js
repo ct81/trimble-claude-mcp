@@ -57,8 +57,9 @@ const sketchupFallbackDefinitions = [
 let mergedDefinitions = null;
 
 // Extraction timeout. If the extractor hangs, fail loudly instead of
-// hanging the request forever.
-const EXTRACT_TIMEOUT_MS = 60_000;
+// hanging the request forever. Kept below typical MCP client timeouts so
+// the caller gets a clear error instead of an unexplained stall.
+const EXTRACT_TIMEOUT_MS = 45_000;
 
 const baseDefinitions = [
   {

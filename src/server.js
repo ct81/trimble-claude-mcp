@@ -1,10 +1,12 @@
 // git add . 
-// git commit -m "Start MCP, Swagger, UI, SketchUp BridgeAPIs, TC Workspace API, Core & Property Set APIs #7"
+// git commit -m "Start MCP, Swagger, UI, SketchUp BridgeAPIs, TC Workspace API, Core & Property Set APIs #8"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
 // git commit -m "Fix MCP PDF input handling and diagnostics"
 // git push origin main
+
+//include all topic APIs to topics.js and use for mcp, swagger and server.js. and also tags: ['Core'],  summary:
 
 import express from 'express';
 import swaggerUi from 'swagger-ui-express';
@@ -2155,4 +2157,17 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(config.port, () => console.log(`Trimble Claude MCP listening on ${config.port}`));
+
+// Render's free plan spins the service down after ~15 min idle, causing a
+// 30-60s cold start on the next request. Self-ping /health periodically to
+// keep the instance warm.
+const KEEP_ALIVE_INTERVAL_MS = 10 * 60 * 1000;
+
+if (process.env.PUBLIC_BASE_URL) {
+  setInterval(() => {
+    fetch(`${process.env.PUBLIC_BASE_URL}/health`)
+      .catch((e) => console.error('[keep-alive] Ping failed:', e.message));
+  }, KEEP_ALIVE_INTERVAL_MS);
+}
+
 function escapeHtml(s){return String(s).replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\\':'&#39;'}[c]));}
