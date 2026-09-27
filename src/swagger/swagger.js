@@ -270,6 +270,10 @@ export const swaggerDocument = {
       description: 'Trimble Connect Organizer todos and saved view operations.'
     },
     {
+      name: 'Model',
+      description: 'Trimble Connect 3D model, entity, and group operations.'
+    },
+    {
       name: 'Property Set',
       description: 'Property Set library, definition, and instance operations.'
     },
@@ -1924,6 +1928,93 @@ export const swaggerDocument = {
 
         responses: {
           200: { description: 'Search results retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/projects/{projectId}/models/{modelId}': {
+
+      get: {
+
+        tags: ['Model'],
+        summary: 'Get a Trimble Connect model',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'modelId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Model retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/projects/{projectId}/models/{modelId}/entities': {
+
+      get: {
+
+        tags: ['Model'],
+        summary: 'List entities in a Trimble Connect model',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'modelId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Entities retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/projects/{projectId}/groups': {
+
+      get: {
+
+        tags: ['Model'],
+        summary: 'List groups (model feature sets) for a Trimble Connect project',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Groups retrieved successfully' },
+          401: { description: 'Authentication required' }
+        }
+
+      }
+
+    },
+
+    '/api/v1/projects/{projectId}/groups/{groupId}': {
+
+      get: {
+
+        tags: ['Model'],
+        summary: 'Get a single group (model feature set) for a Trimble Connect project',
+        security: [{ bearerAuth: [] }],
+
+        parameters: [
+          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'groupId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+
+        responses: {
+          200: { description: 'Group retrieved successfully' },
           401: { description: 'Authentication required' }
         }
 

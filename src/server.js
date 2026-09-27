@@ -1,6 +1,6 @@
 // git add . 
 // git commit -m "Start MCP, Swagger, HTML, SketchUp Bridge APIs, TC Workspace API, Core, Organizer, Property Set, Regions & Topics APIs 
-// #11"
+// #12"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -1401,6 +1401,46 @@ app.get('/api/v1/projects/:projectId/search', requireSession, async (req, res) =
     return res.json(result);
   } catch (e) {
     console.error('GET /api/v1/projects/:projectId/search:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/projects/:projectId/models/:modelId', requireSession, async (req, res) => {
+  try {
+    const result = await model.getModel(req.mcpSessionId, req.params.projectId, req.params.modelId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/projects/:projectId/models/:modelId:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/projects/:projectId/models/:modelId/entities', requireSession, async (req, res) => {
+  try {
+    const result = await model.getEntities(req.mcpSessionId, req.params.projectId, req.params.modelId, req.query);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/projects/:projectId/models/:modelId/entities:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/projects/:projectId/groups', requireSession, async (req, res) => {
+  try {
+    const result = await modelFeature.getGroups(req.mcpSessionId, req.params.projectId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/projects/:projectId/groups:', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/v1/projects/:projectId/groups/:groupId', requireSession, async (req, res) => {
+  try {
+    const result = await modelFeature.getGroup(req.mcpSessionId, req.params.projectId, req.params.groupId);
+    return res.json(result);
+  } catch (e) {
+    console.error('GET /api/v1/projects/:projectId/groups/:groupId:', e);
     return res.status(500).json({ error: e.message });
   }
 });

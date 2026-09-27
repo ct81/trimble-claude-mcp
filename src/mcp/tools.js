@@ -895,6 +895,64 @@ const baseDefinitions = [
   },
 
   {
+    name: 'get_model',
+    description:
+      'Get a Trimble Connect model (3D model) by id.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        modelId: { type: 'string' }
+      },
+      required: ['projectId', 'modelId']
+    }
+  },
+
+  {
+    name: 'get_model_entities',
+    description:
+      'List entities (objects) in a Trimble Connect model.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        modelId: { type: 'string' },
+        query: {
+          description: 'Query parameters for filtering entities.'
+        }
+      },
+      required: ['projectId', 'modelId']
+    }
+  },
+
+  {
+    name: 'get_model_groups',
+    description:
+      'List groups (model feature sets) for a Trimble Connect project.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' }
+      },
+      required: ['projectId']
+    }
+  },
+
+  {
+    name: 'get_model_group',
+    description:
+      'Get a single group (model feature set) for a Trimble Connect project.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+        groupId: { type: 'string' }
+      },
+      required: ['projectId', 'groupId']
+    }
+  },
+
+  {
     name: 'get_property_set_current_user',
     description:
       'Get the current authenticated Property Set user.',
@@ -1731,6 +1789,22 @@ export async function callTool(
 
     case 'search_project':
       result = await core.search(sessionId, args.projectId, args.query);
+      break;
+
+    case 'get_model':
+      result = await model.getModel(sessionId, args.projectId, args.modelId);
+      break;
+
+    case 'get_model_entities':
+      result = await model.getEntities(sessionId, args.projectId, args.modelId, args.query);
+      break;
+
+    case 'get_model_groups':
+      result = await modelFeature.getGroups(sessionId, args.projectId);
+      break;
+
+    case 'get_model_group':
+      result = await modelFeature.getGroup(sessionId, args.projectId, args.groupId);
       break;
 
     case 'get_property_set_current_user':
