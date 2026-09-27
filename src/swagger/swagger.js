@@ -271,7 +271,11 @@ export const swaggerDocument = {
     },
     {
       name: 'Model',
-      description: 'Trimble Connect 3D model, entity, and group operations.'
+      description: 'Trimble Connect 3D model and entity operations.'
+    },
+    {
+      name: 'ModelFeature',
+      description: 'Trimble Connect model feature (group) operations.'
     },
     {
       name: 'Property Set',
@@ -1983,7 +1987,7 @@ export const swaggerDocument = {
 
       get: {
 
-        tags: ['Model'],
+        tags: ['ModelFeature'],
         summary: 'List groups (model feature sets) for a Trimble Connect project',
         security: [{ bearerAuth: [] }],
 
@@ -2004,7 +2008,7 @@ export const swaggerDocument = {
 
       get: {
 
-        tags: ['Model'],
+        tags: ['ModelFeature'],
         summary: 'Get a single group (model feature set) for a Trimble Connect project',
         security: [{ bearerAuth: [] }],
 
