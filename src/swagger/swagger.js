@@ -262,6 +262,10 @@ export const swaggerDocument = {
       description: 'BCF issue (topic), comment, viewpoint, and document reference operations.'
     },
     {
+      name: 'Regions',
+      description: 'Trimble Connect region discovery operations.'
+    },
+    {
       name: 'Property Set',
       description: 'Property Set library, definition, and instance operations.'
     },
@@ -1232,7 +1236,7 @@ export const swaggerDocument = {
 
       get: {
 
-        tags: ['Core'],
+        tags: ['Regions'],
         summary:
           'Get Trimble Connect regions',
 

@@ -34,13 +34,6 @@ export const core = {
     );
   },
 
-  getRegions(sessionId) {
-    return trimbleRequest(
-      sessionId,
-      '/regions'
-    );
-  },
-
   getProjects(
     sessionId,
     query = {}

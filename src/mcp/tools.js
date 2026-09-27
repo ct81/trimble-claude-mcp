@@ -8,6 +8,7 @@ import {
   modelFeature,
   organizer,
   propertySet,
+  regions,
   topics
 } from '../trimble/index.js';
 
@@ -1637,7 +1638,7 @@ export async function callTool(
       break;
 
     case 'get_regions':
-      result = await core.getRegions(sessionId);
+      result = await regions.getRegions(sessionId);
       break;
 
     case 'create_project':

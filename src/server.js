@@ -1,5 +1,5 @@
 // git add . 
-// git commit -m "Start MCP, Swagger, UI, SketchUp BridgeAPIs, TC Workspace API, Core & Property Set APIs #9"
+// git commit -m "Start MCP, Swagger, HTML, SketchUp Bridge APIs, TC Workspace API, Core, Property Set & Topics APIs #10"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -67,6 +67,7 @@ import {
   modelFeature,
   organizer,
   propertySet,
+  regions,
   topics
 } from './trimble/index.js';
 
@@ -1019,7 +1020,7 @@ app.get(
     try {
 
       const result =
-        await core.getRegions(
+        await regions.getRegions(
           req.mcpSessionId
         );
 

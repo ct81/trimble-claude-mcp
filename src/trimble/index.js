@@ -23,5 +23,9 @@ export {
 } from './propertySet.js';
 
 export {
+  regions
+} from './regions.js';
+
+export {
   topics
 } from './topics.js';
