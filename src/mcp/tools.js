@@ -1698,35 +1698,35 @@ export async function callTool(
       break;
 
     case 'get_todos':
-      result = await core.getTodos(sessionId, args.projectId);
+      result = await organizer.getTodos(sessionId, args.projectId);
       break;
 
     case 'get_todo':
-      result = await core.getTodo(sessionId, args.todoId);
+      result = await organizer.getTodo(sessionId, args.todoId);
       break;
 
     case 'create_todo':
-      result = await core.createTodo(sessionId, args.projectId, args.todo);
+      result = await organizer.createTodo(sessionId, args.projectId, args.todo);
       break;
 
     case 'update_todo':
-      result = await core.updateTodo(sessionId, args.todoId, args.updates);
+      result = await organizer.updateTodo(sessionId, args.todoId, args.updates);
       break;
 
     case 'delete_todo':
-      result = await core.deleteTodo(sessionId, args.todoId);
+      result = await organizer.deleteTodo(sessionId, args.todoId);
       break;
 
     case 'get_views':
-      result = await core.getViews(sessionId, args.projectId);
+      result = await organizer.getViews(sessionId, args.projectId);
       break;
 
     case 'get_view':
-      result = await core.getView(sessionId, args.viewId);
+      result = await organizer.getView(sessionId, args.viewId);
       break;
 
     case 'create_view':
-      result = await core.createView(sessionId, args.projectId, args.view);
+      result = await organizer.createView(sessionId, args.projectId, args.view);
       break;
 
     case 'search_project':

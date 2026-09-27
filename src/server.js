@@ -1,5 +1,6 @@
 // git add . 
-// git commit -m "Start MCP, Swagger, HTML, SketchUp Bridge APIs, TC Workspace API, Core, Property Set & Topics APIs #10"
+// git commit -m "Start MCP, Swagger, HTML, SketchUp Bridge APIs, TC Workspace API, Core, Organizer, Property Set, Regions & Topics APIs 
+// #11"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -1316,7 +1317,7 @@ app.post('/api/v1/files/:fileId/versions', requireSession, async (req, res) => {
 
 app.get('/api/v1/projects/:projectId/todos', requireSession, async (req, res) => {
   try {
-    const result = await core.getTodos(req.mcpSessionId, req.params.projectId, req.query);
+    const result = await organizer.getTodos(req.mcpSessionId, req.params.projectId, req.query);
     return res.json(result);
   } catch (e) {
     console.error('GET /api/v1/projects/:projectId/todos:', e);
@@ -1326,7 +1327,7 @@ app.get('/api/v1/projects/:projectId/todos', requireSession, async (req, res) =>
 
 app.post('/api/v1/projects/:projectId/todos', requireSession, async (req, res) => {
   try {
-    const result = await core.createTodo(req.mcpSessionId, req.params.projectId, req.body);
+    const result = await organizer.createTodo(req.mcpSessionId, req.params.projectId, req.body);
     return res.status(201).json(result);
   } catch (e) {
     console.error('POST /api/v1/projects/:projectId/todos:', e);
@@ -1336,7 +1337,7 @@ app.post('/api/v1/projects/:projectId/todos', requireSession, async (req, res) =
 
 app.get('/api/v1/todos/:todoId', requireSession, async (req, res) => {
   try {
-    const result = await core.getTodo(req.mcpSessionId, req.params.todoId);
+    const result = await organizer.getTodo(req.mcpSessionId, req.params.todoId);
     return res.json(result);
   } catch (e) {
     console.error('GET /api/v1/todos/:todoId:', e);
@@ -1346,7 +1347,7 @@ app.get('/api/v1/todos/:todoId', requireSession, async (req, res) => {
 
 app.put('/api/v1/todos/:todoId', requireSession, async (req, res) => {
   try {
-    const result = await core.updateTodo(req.mcpSessionId, req.params.todoId, req.body);
+    const result = await organizer.updateTodo(req.mcpSessionId, req.params.todoId, req.body);
     return res.json(result);
   } catch (e) {
     console.error('PUT /api/v1/todos/:todoId:', e);
@@ -1356,7 +1357,7 @@ app.put('/api/v1/todos/:todoId', requireSession, async (req, res) => {
 
 app.delete('/api/v1/todos/:todoId', requireSession, async (req, res) => {
   try {
-    const result = await core.deleteTodo(req.mcpSessionId, req.params.todoId);
+    const result = await organizer.deleteTodo(req.mcpSessionId, req.params.todoId);
     return res.json(result);
   } catch (e) {
     console.error('DELETE /api/v1/todos/:todoId:', e);
@@ -1366,7 +1367,7 @@ app.delete('/api/v1/todos/:todoId', requireSession, async (req, res) => {
 
 app.get('/api/v1/projects/:projectId/views', requireSession, async (req, res) => {
   try {
-    const result = await core.getViews(req.mcpSessionId, req.params.projectId, req.query);
+    const result = await organizer.getViews(req.mcpSessionId, req.params.projectId, req.query);
     return res.json(result);
   } catch (e) {
     console.error('GET /api/v1/projects/:projectId/views:', e);
@@ -1376,7 +1377,7 @@ app.get('/api/v1/projects/:projectId/views', requireSession, async (req, res) =>
 
 app.post('/api/v1/projects/:projectId/views', requireSession, async (req, res) => {
   try {
-    const result = await core.createView(req.mcpSessionId, req.params.projectId, req.body);
+    const result = await organizer.createView(req.mcpSessionId, req.params.projectId, req.body);
     return res.status(201).json(result);
   } catch (e) {
     console.error('POST /api/v1/projects/:projectId/views:', e);
@@ -1386,7 +1387,7 @@ app.post('/api/v1/projects/:projectId/views', requireSession, async (req, res) =
 
 app.get('/api/v1/views/:viewId', requireSession, async (req, res) => {
   try {
-    const result = await core.getView(req.mcpSessionId, req.params.viewId);
+    const result = await organizer.getView(req.mcpSessionId, req.params.viewId);
     return res.json(result);
   } catch (e) {
     console.error('GET /api/v1/views/:viewId:', e);

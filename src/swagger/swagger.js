@@ -266,6 +266,10 @@ export const swaggerDocument = {
       description: 'Trimble Connect region discovery operations.'
     },
     {
+      name: 'Organizer',
+      description: 'Trimble Connect Organizer todos and saved view operations.'
+    },
+    {
       name: 'Property Set',
       description: 'Property Set library, definition, and instance operations.'
     },
@@ -1742,7 +1746,7 @@ export const swaggerDocument = {
 
       get: {
 
-        tags: ['Core'],
+        tags: ['Organizer'],
         summary: 'List todos for a Trimble Connect project',
         security: [{ bearerAuth: [] }],
 
@@ -1759,7 +1763,7 @@ export const swaggerDocument = {
 
       post: {
 
-        tags: ['Core'],
+        tags: ['Organizer'],
         summary: 'Create a todo in a Trimble Connect project',
         security: [{ bearerAuth: [] }],
 
@@ -1785,7 +1789,7 @@ export const swaggerDocument = {
 
       get: {
 
-        tags: ['Core'],
+        tags: ['Organizer'],
         summary: 'Get a Trimble Connect todo',
         security: [{ bearerAuth: [] }],
 
@@ -1802,7 +1806,7 @@ export const swaggerDocument = {
 
       put: {
 
-        tags: ['Core'],
+        tags: ['Organizer'],
         summary: 'Update a Trimble Connect todo',
         security: [{ bearerAuth: [] }],
 
@@ -1824,7 +1828,7 @@ export const swaggerDocument = {
 
       delete: {
 
-        tags: ['Core'],
+        tags: ['Organizer'],
         summary: 'Delete a Trimble Connect todo',
         security: [{ bearerAuth: [] }],
 
@@ -1845,7 +1849,7 @@ export const swaggerDocument = {
 
       get: {
 
-        tags: ['Core'],
+        tags: ['Organizer'],
         summary: 'List saved views for a Trimble Connect project',
         security: [{ bearerAuth: [] }],
 
@@ -1862,7 +1866,7 @@ export const swaggerDocument = {
 
       post: {
 
-        tags: ['Core'],
+        tags: ['Organizer'],
         summary: 'Create a saved view in a Trimble Connect project',
         security: [{ bearerAuth: [] }],
 
@@ -1888,7 +1892,7 @@ export const swaggerDocument = {
 
       get: {
 
-        tags: ['Core'],
+        tags: ['Organizer'],
         summary: 'Get a Trimble Connect saved view',
         security: [{ bearerAuth: [] }],
 
