@@ -64,6 +64,10 @@ const EXTRACT_TIMEOUT_MS = 45_000;
 
 const baseDefinitions = [
 
+  // ============================================================
+  // TEKLA STRUCTURES
+  // ============================================================
+
   {
     name: 'tekla_get_status',
     description:
@@ -73,6 +77,176 @@ const baseDefinitions = [
       properties: {}
     }
   },
+
+  {
+    name: 'tekla_get_model',
+    description:
+      'Get the current Tekla Structures model information through the Windows Tekla MCP bridge.',
+    inputSchema: {
+      type: 'object',
+      properties: {}
+    }
+  },
+
+  {
+    name: 'tekla_get_parts',
+    description:
+      'Get parts from the currently connected Tekla Structures model.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'object',
+          description:
+            'Optional filters for Tekla parts.'
+        },
+        limit: {
+          type: 'integer',
+          description:
+            'Optional maximum number of parts to return.'
+        }
+      }
+    }
+  },
+
+  {
+    name: 'tekla_get_object',
+    description:
+      'Get a Tekla Structures model object by identifier.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: {
+          type: 'string'
+        },
+        objectId: {
+          type: 'string'
+        },
+        query: {
+          type: 'object'
+        }
+      }
+    }
+  },
+
+  {
+    name: 'tekla_get_selection',
+    description:
+      'Get the objects currently selected in Tekla Structures.',
+    inputSchema: {
+      type: 'object',
+      properties: {}
+    }
+  },
+
+  {
+    name: 'tekla_get_assemblies',
+    description:
+      'Get assemblies from the currently connected Tekla Structures model.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'object'
+        },
+        limit: {
+          type: 'integer'
+        }
+      }
+    }
+  },
+
+  {
+    name: 'tekla_get_assembly',
+    description:
+      'Get a Tekla Structures assembly by identifier.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: {
+          type: 'string'
+        },
+        assemblyId: {
+          type: 'string'
+        }
+      }
+    }
+  },
+
+  {
+    name: 'tekla_get_bolts',
+    description:
+      'Get bolt information from the Tekla Structures model.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'object'
+        },
+        limit: {
+          type: 'integer'
+        }
+      }
+    }
+  },
+
+  {
+    name: 'tekla_get_welds',
+    description:
+      'Get weld information from the Tekla Structures model.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'object'
+        },
+        limit: {
+          type: 'integer'
+        }
+      }
+    }
+  },
+
+  {
+    name: 'tekla_get_rebar',
+    description:
+      'Get reinforcing bar information from the Tekla Structures model.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'object'
+        },
+        limit: {
+          type: 'integer'
+        }
+      }
+    }
+  },
+
+  {
+    name: 'tekla_get_rebar_group',
+    description:
+      'Get reinforcing bar group information from the Tekla Structures model.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: {
+          type: 'string'
+        },
+        rebarGroupId: {
+          type: 'string'
+        },
+        query: {
+          type: 'object'
+        }
+      }
+    }
+  },
+
+  // ============================================================
+  // TRIMBLE CONNECT TOOLS
+  // ============================================================
 
   {
     name: 'get_projects',
@@ -1404,13 +1578,34 @@ const baseDefinitions = [
   }
 ];
 
+// export const definitions = baseDefinitions.map((tool) => {
+//   const name = tool.name || '';
+//   const group = name.includes('property_set') || name.includes('property-set')
+//     ? 'Property Set'
+//     : name.includes('column_schedule') || name.includes('coord_schedule') || name.includes('pdf')
+//       ? 'PDF'
+//       : 'Trimble Connect';
+
+//   return {
+//     ...tool,
+//     tags: [group],
+//     category: group
+//   };
+// });
 export const definitions = baseDefinitions.map((tool) => {
   const name = tool.name || '';
-  const group = name.includes('property_set') || name.includes('property-set')
-    ? 'Property Set'
-    : name.includes('column_schedule') || name.includes('coord_schedule') || name.includes('pdf')
-      ? 'PDF'
-      : 'Trimble Connect';
+
+  const group =
+    name.startsWith('tekla_')
+      ? 'Tekla Structures'
+      : name.includes('property_set') ||
+        name.includes('property-set')
+        ? 'Property Set'
+        : name.includes('column_schedule') ||
+          name.includes('coord_schedule') ||
+          name.includes('pdf')
+          ? 'PDF'
+          : 'Trimble Connect';
 
   return {
     ...tool,
@@ -1619,10 +1814,57 @@ export async function callTool(
 
   switch (name) {
 
-    case 'tekla_get_status':
+  // ============================================================
+  // TEKLA STRUCTURES
+  // ============================================================
+
+  case 'tekla_get_status':
       result = await getTeklaStatus();
       break;
 
+  case 'tekla_get_model':
+    result = await getTeklaModel();
+    break;
+
+  case 'tekla_get_parts':
+    result = await getTeklaParts(args);
+    break;
+
+  case 'tekla_get_object':
+    result = await getTeklaObject(args);
+    break;
+
+  case 'tekla_get_selection':
+    result = await getTeklaSelection(args);
+    break;
+
+  case 'tekla_get_assemblies':
+    result = await getTeklaAssemblies(args);
+    break;
+
+  case 'tekla_get_assembly':
+    result = await getTeklaAssembly(args);
+    break;
+
+  case 'tekla_get_bolts':
+    result = await getTeklaBolts(args);
+    break;
+
+  case 'tekla_get_welds':
+    result = await getTeklaWelds(args);
+    break;
+
+  case 'tekla_get_rebar':
+    result = await getTeklaRebar(args);
+    break;
+
+  case 'tekla_get_rebar_group':
+    result = await getTeklaRebarGroup(args);
+    break;
+
+  // ============================================================
+  // EXISTING TRIMBLE CONNECT
+  // ============================================================
 
     case 'get_projects':
       result = await core.getProjects(

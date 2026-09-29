@@ -1,10 +1,26 @@
 ngrok http 7128
 
+=========================================================================================================
 
 set TEKLA_BRIDGE_KEY=tekla2026
 >> TeklaMcpBridge.exe
 
+=========================================================================================================
 
+cd "C:\Users\CTan\Downloads\TeklaMcpBridge_Full_API\TeklaMcpBridge_Full"
+
+Remove-Item ".\src\TeklaMcpBridge\bin" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item ".\src\TeklaMcpBridge\obj" -Recurse -Force -ErrorAction SilentlyContinue
+
+dotnet restore "src\TeklaMcpBridge\TeklaMcpBridge.csproj"
+
+dotnet build "src\TeklaMcpBridge\TeklaMcpBridge.csproj" `
+  --configuration Release `
+  --no-restore `
+  -p:PlatformTarget=x64
+
+
+=========================================================================================================
 
 cd "C:\Users\CTan\Downloads\TeklaMcpBridge_Full_API\TeklaMcpBridge_Full"
 
@@ -18,12 +34,18 @@ dotnet build "src\TeklaMcpBridge\TeklaMcpBridge.csproj" `
 
 
 
+Remove-Item .\bin -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item .\obj -Recurse -Force -ErrorAction SilentlyContinue
 
+dotnet restore
+dotnet build -c Release
+
+
+=========================================================================================================
 
 Invoke-WebRequest `
   -Uri "http://127.0.0.1:7128/api/tekla/model" `
   -Headers @{ "X-Tekla-Bridge-Key" = "tekla2026" }
-
 
 Invoke-WebRequest `
   -Uri "https://gummy-purposely-matrimony.ngrok-free.dev/api/tekla/model" `
@@ -31,9 +53,19 @@ Invoke-WebRequest `
 
 
 
+Invoke-WebRequest `
+  -Uri "http://127.0.0.1:7128/api/tekla/diagnostic" `
+  -Headers @{ "X-Tekla-Bridge-Key" = "tekla2026" }
+
+Invoke-RestMethod `
+  -Uri "https://gummy-purposely-matrimony.ngrok-free.dev/api/tekla/diagnostic" `
+  -Headers @{
+      "X-Tekla-Bridge-Key" = "tekla2026"
+      "ngrok-skip-browser-warning" = "true"
+  }
 
 
-
+=========================================================================================================
 
   cd "C:\Users\CTan\Downloads\TeklaMcpBridge_Full_API\TeklaMcpBridge_Full"
 
@@ -41,3 +73,34 @@ $env:PATH = "C:\TeklaStructures\2026.0\bin;C:\TeklaStructures\2026.0\bin\Net48Ru
 
 & ".\src\TeklaMcpBridge\bin\Release\net48\TeklaMcpBridge.exe"
 
+
+=========================================================================================================
+
+New-Item `
+  -ItemType Directory `
+  -Force `
+  "C:\ProgramData\Trimble\Tekla Structures\2026.0\Environments\common\extensions\TeklaMcpBridge"
+
+
+
+
+
+$src = "C:\Users\CTan\Downloads\TeklaMcpBridge_Full_API\TeklaMcpBridge_Full\src\TeklaMcpBridge\bin\Release\net48"
+
+$dst = "C:\ProgramData\Trimble\Tekla Structures\2026.0\Environments\common\extensions\TeklaMcpBridge"
+
+Copy-Item "$src\*" "$dst\" -Recurse -Force
+
+
+Test-Path "$dst\System.Memory.dll"
+
+
+
+
+
+$src = "C:\Users\CTan\Downloads\TeklaMcpBridge_Full_API\TeklaMcpBridge_Full\src\TeklaMcpBridge\bin\Release\net48"
+
+$dst = "C:\ProgramData\Trimble\Tekla Structures\2026.0\Environments\common\extensions\TeklaMcpBridge"
+
+Copy-Item "$src\TeklaMcpBridge.exe" "$dst\" -Force
+Copy-Item "$src\TeklaMcpBridge.exe.config" "$dst\" -Force
