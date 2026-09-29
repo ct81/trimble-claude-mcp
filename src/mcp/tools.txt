@@ -63,17 +63,6 @@ let mergedDefinitions = null;
 const EXTRACT_TIMEOUT_MS = 45_000;
 
 const baseDefinitions = [
-
-  {
-    name: 'tekla_get_status',
-    description:
-      'Get the current Tekla Structures bridge/model status. This checks the Windows Tekla MCP bridge and returns the Tekla model connection/status information.',
-    inputSchema: {
-      type: 'object',
-      properties: {}
-    }
-  },
-
   {
     name: 'get_projects',
     description:
@@ -1551,58 +1540,6 @@ async function withTimeout(promise, ms, label) {
   ]);
 }
 
-
-async function getTeklaStatus() {
-  const bridgeUrl = String(
-    process.env.TEKLA_BRIDGE_URL || 'http://127.0.0.1:7128'
-  ).replace(/\/+$/, '');
-
-  const bridgeKey = process.env.TEKLA_BRIDGE_KEY || '';
-
-  const headers = {
-    Accept: 'application/json'
-  };
-
-  if (bridgeKey) {
-    headers['X-Bridge-Key'] = bridgeKey;
-  }
-
-  const response = await fetch(
-    `${bridgeUrl}/api/tekla/model`,
-    {
-      method: 'GET',
-      headers
-    }
-  );
-
-  const text = await response.text();
-
-  let payload;
-  try {
-    payload = text ? JSON.parse(text) : {};
-  } catch {
-    payload = { raw: text };
-  }
-
-  if (!response.ok) {
-    const detail =
-      payload?.error ||
-      payload?.message ||
-      text ||
-      `HTTP ${response.status}`;
-
-    throw new Error(
-      `Tekla bridge status request failed (${response.status}): ${detail}`
-    );
-  }
-
-  return {
-    bridgeUrl,
-    connected: true,
-    status: payload
-  };
-}
-
 export async function callTool(
   sessionId,
   name,
@@ -1618,11 +1555,6 @@ export async function callTool(
   }
 
   switch (name) {
-
-    case 'tekla_get_status':
-      result = await getTeklaStatus();
-      break;
-
 
     case 'get_projects':
       result = await core.getProjects(

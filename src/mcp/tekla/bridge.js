@@ -1,0 +1,49 @@
+const BASE = (process.env.TEKLA_BRIDGE_URL || "").replace(/\/+$/, "");
+const KEY = process.env.TEKLA_BRIDGE_KEY || "";
+
+function config() {
+  if (!BASE) throw new Error("TEKLA_BRIDGE_URL is missing");
+  if (!KEY) throw new Error("TEKLA_BRIDGE_KEY is missing");
+}
+
+async function call(path, options={}) {
+  config();
+  const r = await fetch(`${BASE}${path}`, {
+    ...options,
+    headers: {"Content-Type":"application/json","X-Bridge-Key":KEY,...(options.headers||{})}
+  });
+  const text = await r.text();
+  let data; try { data = text ? JSON.parse(text) : null; } catch { throw new Error(`Non-JSON bridge response: ${text}`); }
+  if (!r.ok) throw new Error(`Tekla bridge HTTP ${r.status}: ${data?.error||""} ${data?.detail||""}`);
+  return data;
+}
+
+export const teklaHealth = async () => {
+  config();
+  const r=await fetch(`${BASE}/health`);
+  if(!r.ok) throw new Error(`Health HTTP ${r.status}`);
+  return r.json();
+};
+
+export const teklaModel = () => call("/api/tekla/model",{method:"GET"});
+export const teklaParts = (a={}) => call("/api/tekla/parts",{method:"POST",body:JSON.stringify(a)});
+export const teklaObject = (a) => call("/api/tekla/object",{method:"POST",body:JSON.stringify(a)});
+export const teklaSelection = (a={}) => call("/api/tekla/selection",{method:"POST",body:JSON.stringify(a)});
+export const teklaAssemblies = (a={}) => call("/api/tekla/assemblies",{method:"POST",body:JSON.stringify(a)});
+export const teklaAssembly = (a) => call("/api/tekla/assembly",{method:"POST",body:JSON.stringify(a)});
+export const teklaBolts = (a={}) => call("/api/tekla/bolts",{method:"POST",body:JSON.stringify(a)});
+export const teklaWelds = (a={}) => call("/api/tekla/welds",{method:"POST",body:JSON.stringify(a)});
+export const teklaRebar = (a={}) => call("/api/tekla/rebar",{method:"POST",body:JSON.stringify(a)});
+export const teklaRebarGroup = (a={}) => call("/api/tekla/rebar-group",{method:"POST",body:JSON.stringify(a)});
+export const teklaDrawings = (a={}) => call("/api/tekla/drawings",{method:"POST",body:JSON.stringify(a)});
+export const teklaDrawing = (a) => call("/api/tekla/drawing",{method:"POST",body:JSON.stringify(a)});
+export const teklaAttributes = (a) => call("/api/tekla/attributes",{method:"POST",body:JSON.stringify(a)});
+
+export const teklaCreateBeam = (a) => call("/api/tekla/create/beam",{method:"POST",body:JSON.stringify(a)});
+export const teklaCreateColumn = (a) => call("/api/tekla/create/column",{method:"POST",body:JSON.stringify(a)});
+export const teklaCreatePlate = (a) => call("/api/tekla/create/plate",{method:"POST",body:JSON.stringify(a)});
+export const teklaUpdateObject = (a) => call("/api/tekla/update/object",{method:"POST",body:JSON.stringify(a)});
+export const teklaDeleteObject = (a) => call("/api/tekla/delete/object",{method:"POST",body:JSON.stringify(a)});
+export const teklaCreateAssembly = (a) => call("/api/tekla/create/assembly",{method:"POST",body:JSON.stringify(a)});
+export const teklaCreateWeld = (a) => call("/api/tekla/create/weld",{method:"POST",body:JSON.stringify(a)});
+export const teklaCreateBolt = (a) => call("/api/tekla/create/bolt",{method:"POST",body:JSON.stringify(a)});
