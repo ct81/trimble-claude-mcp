@@ -1,0 +1,43 @@
+ngrok http 7128
+
+
+set TEKLA_BRIDGE_KEY=tekla2026
+>> TeklaMcpBridge.exe
+
+
+
+cd "C:\Users\CTan\Downloads\TeklaMcpBridge_Full_API\TeklaMcpBridge_Full"
+
+dotnet restore "src\TeklaMcpBridge\TeklaMcpBridge.csproj"
+
+dotnet build "src\TeklaMcpBridge\TeklaMcpBridge.csproj" `
+  --configuration Release `
+  --no-restore `
+  -p:PlatformTarget=x64
+
+
+
+
+
+
+Invoke-WebRequest `
+  -Uri "http://127.0.0.1:7128/api/tekla/model" `
+  -Headers @{ "X-Tekla-Bridge-Key" = "tekla2026" }
+
+
+Invoke-WebRequest `
+  -Uri "https://gummy-purposely-matrimony.ngrok-free.dev/api/tekla/model" `
+  -Headers @{ "X-Tekla-Bridge-Key" = "tekla2026" }
+
+
+
+
+
+
+
+  cd "C:\Users\CTan\Downloads\TeklaMcpBridge_Full_API\TeklaMcpBridge_Full"
+
+$env:PATH = "C:\TeklaStructures\2026.0\bin;C:\TeklaStructures\2026.0\bin\Net48Runtime;$env:PATH"
+
+& ".\src\TeklaMcpBridge\bin\Release\net48\TeklaMcpBridge.exe"
+

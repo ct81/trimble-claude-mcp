@@ -1567,13 +1567,22 @@ async function getTeklaStatus() {
     headers['X-Bridge-Key'] = bridgeKey;
   }
 
+  // const response = await fetch(
+  //   `${bridgeUrl}/api/tekla/model`,
+  //   {
+  //     method: 'GET',
+  //     headers
+  //   }
+  // );
   const response = await fetch(
-    `${bridgeUrl}/api/tekla/model`,
-    {
-      method: 'GET',
-      headers
+  `${TEKLA_BRIDGE_URL}/api/tekla/model`,
+  {
+    method: "GET",
+    headers: {
+      "X-Tekla-Bridge-Key": process.env.TEKLA_BRIDGE_KEY
     }
-  );
+  }
+);
 
   const text = await response.text();
 
