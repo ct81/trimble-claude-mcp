@@ -1615,12 +1615,29 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
             }
         }
 
+        // if (breadthValue && breadthValue.includes(" ")) {
+        //     const parts = breadthValue.split(/\s+/);
+        //     for (const part of parts) {
+        //         if (/^\d+$/.test(part) && parseInt(part) >= 100) {
+        //             breadthValue = part;
+        //             break;
+        //         }
+        //     }
+        // }
         if (breadthValue && breadthValue.includes(" ")) {
-            //const parts = breadthValue.split(/\s+/);
-            const parts = breadthValue;
+
+            const parts = breadthValue.trim().split(/\s+/);
+
             for (const part of parts) {
-                if (/^\d+$/.test(part) && parseInt(part) >= 100) {
-                    breadthValue = part;
+
+                const cleanPart = part.trim();
+
+                if (
+                    cleanPart !== "" &&
+                    /^\d+$/.test(cleanPart) &&
+                    parseInt(cleanPart, 10) >= 100
+                ) {
+                    breadthValue = cleanPart;
                     break;
                 }
             }
