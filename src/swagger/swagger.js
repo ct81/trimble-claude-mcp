@@ -1,19 +1,43 @@
 import { definitions, getDefinitions } from '../mcp/tools.js';
 
-// ============================================================
-// SKETCHUP FALLBACK DEFINITIONS
-// ============================================================
-//
-// The published SketchUp MCP server advertises these tools even
-// when the desktop SketchUp process is not currently reachable.
-// Keep Swagger useful on Render by using this catalog until live
-// definitions are available.
-//
+/*
+ * ============================================================
+ * Swagger / OpenAPI document
+ * ============================================================
+ *
+ * This file documents:
+ *
+ * 1. Existing REST APIs
+ * 2. Dynamic MCP tools
+ * 3. SketchUp MCP tools
+ * 4. Tekla Structures MCP tools
+ *
+ * IMPORTANT:
+ * Swagger documents the tools.
+ * Actual execution is implemented in ../mcp/tools.js
+ *
+ * ============================================================
+ */
+
+
+/*
+ * ============================================================
+ * SketchUp fallback definitions
+ * ============================================================
+ *
+ * These remain visible in Swagger even when the live SketchUp
+ * process is not connected to the Render server.
+ *
+ * If a live definition exists in tools.js, the live definition
+ * is used instead.
+ * ============================================================
+ */
 
 const sketchupFallbackDefinitions = [
   {
     name: 'sketchup_status',
-    description: 'Check whether SketchUp is open and reachable.',
+    description:
+      'Check whether SketchUp is open and reachable.',
     inputSchema: {
       type: 'object',
       properties: {}
@@ -22,7 +46,8 @@ const sketchupFallbackDefinitions = [
 
   {
     name: 'sketchup_get_selection',
-    description: 'List the entities currently selected in SketchUp.',
+    description:
+      'Get the objects currently selected in SketchUp.',
     inputSchema: {
       type: 'object',
       properties: {}
@@ -31,58 +56,20 @@ const sketchupFallbackDefinitions = [
 
   {
     name: 'sketchup_capture_view',
-    description: 'Render the SketchUp viewport and return it as an image.',
+    description:
+      'Capture the current SketchUp viewport.',
     inputSchema: {
       type: 'object',
       properties: {
-        view: {
-          type: 'string',
-          enum: [
-            'current',
-            'iso',
-            'top',
-            'bottom',
-            'front',
-            'back',
-            'left',
-            'right'
-          ]
-        },
-        zoom: {
-          type: 'string',
-          enum: [
-            'none',
-            'extents',
-            'selection'
-          ]
-        },
-        style: {
-          type: 'string',
-          enum: [
-            'current',
-            'shaded',
-            'textured',
-            'wireframe',
-            'hidden_line',
-            'xray'
-          ]
-        },
         width: {
           type: 'integer',
-          minimum: 256,
-          maximum: 2000
+          minimum: 100,
+          description: 'Optional image width.'
         },
         height: {
           type: 'integer',
-          minimum: 256,
-          maximum: 2000
-        },
-        format: {
-          type: 'string',
-          enum: ['png', 'jpg']
-        },
-        keep_camera: {
-          type: 'boolean'
+          minimum: 100,
+          description: 'Optional image height.'
         }
       }
     }
@@ -90,43 +77,31 @@ const sketchupFallbackDefinitions = [
 
   {
     name: 'sketchup_create_component',
-    description: 'Create a primitive solid in the active SketchUp model.',
+    description:
+      'Create a component in SketchUp.',
     inputSchema: {
       type: 'object',
       properties: {
-        type: {
-          type: 'string',
-          enum: [
-            'cube',
-            'cylinder',
-            'sphere',
-            'cone'
-          ],
-          default: 'cube'
+        name: {
+          type: 'string'
+        },
+        definition: {
+          type: 'object',
+          additionalProperties: true
         },
         position: {
-          type: 'array',
-          items: {
-            type: 'number'
-          },
-          minItems: 3,
-          maxItems: 3
-        },
-        dimensions: {
-          type: 'array',
-          items: {
-            type: 'number'
-          },
-          minItems: 3,
-          maxItems: 3
+          type: 'object',
+          additionalProperties: true
         }
-      }
+      },
+      required: ['name']
     }
   },
 
   {
     name: 'sketchup_delete_component',
-    description: 'Delete an entity from the active SketchUp model.',
+    description:
+      'Delete a component from SketchUp.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -140,65 +115,45 @@ const sketchupFallbackDefinitions = [
 
   {
     name: 'sketchup_transform_component',
-    description: 'Move, rotate, or scale an existing SketchUp entity.',
+    description:
+      'Transform a SketchUp component.',
     inputSchema: {
       type: 'object',
       properties: {
         id: {
           type: 'string'
         },
-        position: {
-          type: 'array',
-          items: {
-            type: 'number'
-          },
-          minItems: 3,
-          maxItems: 3
-        },
-        rotation: {
-          type: 'array',
-          items: {
-            type: 'number'
-          },
-          minItems: 3,
-          maxItems: 3
-        },
-        scale: {
-          type: 'array',
-          items: {
-            type: 'number'
-          },
-          minItems: 3,
-          maxItems: 3
+        transformation: {
+          type: 'object',
+          additionalProperties: true
         }
       },
-      required: ['id']
+      required: ['id', 'transformation']
     }
   },
 
   {
     name: 'sketchup_set_material',
-    description: 'Apply a material or colour to an entity.',
+    description:
+      'Set the material of a SketchUp object or component.',
     inputSchema: {
       type: 'object',
       properties: {
-        entity_id: {
+        id: {
           type: 'string'
         },
         material: {
           type: 'string'
-        },
-        color: {
-          type: 'string'
         }
       },
-      required: ['entity_id']
+      required: ['id', 'material']
     }
   },
 
   {
     name: 'sketchup_export_scene',
-    description: 'Export the active SketchUp model to a file.',
+    description:
+      'Export the current SketchUp scene/model.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -209,27 +164,22 @@ const sketchupFallbackDefinitions = [
             'obj',
             'dae',
             'stl',
-            'png',
-            'jpg'
-          ],
-          default: 'skp'
+            '3ds',
+            'dwg',
+            'dxf'
+          ]
         },
-        width: {
-          type: 'integer',
-          minimum: 1
-        },
-        height: {
-          type: 'integer',
-          minimum: 1
+        path: {
+          type: 'string'
         }
-      },
-      required: ['format']
+      }
     }
   },
 
   {
     name: 'sketchup_boolean_operation',
-    description: 'Combine or cut two solid entities.',
+    description:
+      'Perform a boolean operation between SketchUp solids.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -237,261 +187,151 @@ const sketchupFallbackDefinitions = [
           type: 'string',
           enum: [
             'union',
+            'intersection',
             'difference',
-            'intersection'
+            'outer_shell'
           ]
         },
-        target_id: {
+        targetId: {
           type: 'string'
         },
-        tool_id: {
+        toolId: {
           type: 'string'
-        },
-        delete_originals: {
-          type: 'boolean',
-          default: false
         }
       },
-      required: [
-        'operation',
-        'target_id',
-        'tool_id'
-      ]
+      required: ['operation', 'targetId', 'toolId']
     }
   },
 
   {
     name: 'sketchup_chamfer_edges',
-    description: 'Cut a flat bevel on the edges of a solid.',
+    description:
+      'Create chamfers on selected SketchUp edges.',
     inputSchema: {
       type: 'object',
       properties: {
-        entity_id: {
-          type: 'string'
-        },
-        distance: {
-          type: 'number',
-          exclusiveMinimum: 0,
-          default: 0.5
-        },
-        edge_indices: {
+        edgeIds: {
           type: 'array',
           items: {
-            type: 'integer',
-            minimum: 0
+            type: 'string'
           }
         },
-        delete_original: {
-          type: 'boolean',
-          default: false
+        distance: {
+          type: 'number'
         }
       },
-      required: ['entity_id']
+      required: ['edgeIds', 'distance']
     }
   },
 
   {
     name: 'sketchup_fillet_edges',
-    description: 'Round the edges of a solid.',
+    description:
+      'Create fillets on selected SketchUp edges.',
     inputSchema: {
       type: 'object',
       properties: {
-        entity_id: {
-          type: 'string'
-        },
-        radius: {
-          type: 'number',
-          exclusiveMinimum: 0,
-          default: 0.5
-        },
-        edge_indices: {
+        edgeIds: {
           type: 'array',
           items: {
-            type: 'integer',
-            minimum: 0
+            type: 'string'
           }
+        },
+        radius: {
+          type: 'number'
         },
         segments: {
           type: 'integer',
           minimum: 1,
-          default: 4
-        },
-        delete_original: {
-          type: 'boolean',
-          default: false
+          default: 8
         }
       },
-      required: ['entity_id']
+      required: ['edgeIds', 'radius']
     }
   },
 
   {
     name: 'sketchup_create_mortise_tenon',
-    description: 'Cut a mortise-and-tenon joint between two boards.',
+    description:
+      'Create a mortise and tenon joint in SketchUp.',
     inputSchema: {
       type: 'object',
       properties: {
-        mortise_id: {
-          type: 'string'
+        mortise: {
+          type: 'object',
+          additionalProperties: true
         },
-        tenon_id: {
-          type: 'string'
-        },
-        width: {
-          type: 'number',
-          exclusiveMinimum: 0,
-          default: 1
-        },
-        height: {
-          type: 'number',
-          exclusiveMinimum: 0,
-          default: 1
-        },
-        depth: {
-          type: 'number',
-          exclusiveMinimum: 0,
-          default: 1
-        },
-        offset_x: {
-          type: 'number',
-          default: 0
-        },
-        offset_y: {
-          type: 'number',
-          default: 0
-        },
-        offset_z: {
-          type: 'number',
-          default: 0
+        tenon: {
+          type: 'object',
+          additionalProperties: true
         }
-      },
-      required: [
-        'mortise_id',
-        'tenon_id'
-      ]
+      }
     }
   },
 
   {
     name: 'sketchup_create_dovetail',
-    description: 'Cut a dovetail joint between two boards.',
+    description:
+      'Create a dovetail joint in SketchUp.',
     inputSchema: {
       type: 'object',
       properties: {
-        tail_id: {
+        targetId: {
           type: 'string'
         },
-        pin_id: {
+        toolId: {
           type: 'string'
         },
         width: {
-          type: 'number',
-          exclusiveMinimum: 0,
-          default: 1
-        },
-        height: {
-          type: 'number',
-          exclusiveMinimum: 0,
-          default: 2
+          type: 'number'
         },
         depth: {
-          type: 'number',
-          exclusiveMinimum: 0,
-          default: 1
+          type: 'number'
         },
         angle: {
-          type: 'number',
-          minimum: 1,
-          maximum: 45,
-          default: 15
-        },
-        num_tails: {
-          type: 'integer',
-          minimum: 1,
-          default: 3
-        },
-        offset_x: {
-          type: 'number',
-          default: 0
-        },
-        offset_y: {
-          type: 'number',
-          default: 0
-        },
-        offset_z: {
-          type: 'number',
-          default: 0
+          type: 'number'
         }
-      },
-      required: [
-        'tail_id',
-        'pin_id'
-      ]
+      }
     }
   },
 
   {
     name: 'sketchup_create_finger_joint',
-    description: 'Cut a finger joint between two boards.',
+    description:
+      'Create a finger joint in SketchUp.',
     inputSchema: {
       type: 'object',
       properties: {
-        board1_id: {
+        targetId: {
           type: 'string'
         },
-        board2_id: {
+        toolId: {
           type: 'string'
+        },
+        fingers: {
+          type: 'integer',
+          minimum: 1
         },
         width: {
-          type: 'number',
-          exclusiveMinimum: 0,
-          default: 1
-        },
-        height: {
-          type: 'number',
-          exclusiveMinimum: 0,
-          default: 2
+          type: 'number'
         },
         depth: {
-          type: 'number',
-          exclusiveMinimum: 0,
-          default: 1
-        },
-        num_fingers: {
-          type: 'integer',
-          minimum: 1,
-          default: 5
-        },
-        offset_x: {
-          type: 'number',
-          default: 0
-        },
-        offset_y: {
-          type: 'number',
-          default: 0
-        },
-        offset_z: {
-          type: 'number',
-          default: 0
+          type: 'number'
         }
-      },
-      required: [
-        'board1_id',
-        'board2_id'
-      ]
+      }
     }
   },
 
   {
     name: 'sketchup_eval_ruby',
     description:
-      'Execute Ruby code inside the SketchUp process. Use only for trusted administrative testing.',
+      'Execute Ruby code in the connected SketchUp instance.',
     inputSchema: {
       type: 'object',
       properties: {
         code: {
           type: 'string',
-          minLength: 1
+          description: 'SketchUp Ruby code to execute.'
         }
       },
       required: ['code']
@@ -500,24 +340,23 @@ const sketchupFallbackDefinitions = [
 ];
 
 
-// ============================================================
-// TEKLA FALLBACK DEFINITIONS
-// ============================================================
-//
-// These definitions ensure the Tekla tools appear in Swagger even
-// when the Render service cannot currently obtain live definitions
-// from the MCP tool registry.
-//
-// Actual execution is handled by tools.js.
-//
+/*
+ * ============================================================
+ * Tekla Structures fallback definitions
+ * ============================================================
+ *
+ * These definitions guarantee that the Tekla MCP API remains
+ * visible in Swagger even when Tekla is not currently connected.
+ *
+ * Live definitions from tools.js override these fallbacks.
+ * ============================================================
+ */
 
 const teklaFallbackDefinitions = [
   {
     name: 'tekla_get_status',
-
     description:
       'Check whether the local Tekla Structures bridge is running and whether Tekla Structures is connected.',
-
     inputSchema: {
       type: 'object',
       properties: {}
@@ -526,10 +365,8 @@ const teklaFallbackDefinitions = [
 
   {
     name: 'tekla_get_model',
-
     description:
       'Get information about the currently connected Tekla Structures model.',
-
     inputSchema: {
       type: 'object',
       properties: {}
@@ -538,20 +375,16 @@ const teklaFallbackDefinitions = [
 
   {
     name: 'tekla_get_parts',
-
     description:
       'Get parts from the connected Tekla Structures model.',
-
     inputSchema: {
       type: 'object',
-
       properties: {
         filter: {
           type: 'object',
-          description:
-            'Optional Tekla part filter.'
+          description: 'Optional Tekla part filter.',
+          additionalProperties: true
         },
-
         limit: {
           type: 'integer',
           minimum: 1,
@@ -564,31 +397,24 @@ const teklaFallbackDefinitions = [
 
   {
     name: 'tekla_get_object',
-
     description:
       'Get a Tekla Structures model object by identifier.',
-
     inputSchema: {
       type: 'object',
-
       properties: {
         id: {
           type: 'string',
-          description:
-            'Tekla model object identifier.'
+          description: 'Tekla model object identifier.'
         }
       },
-
       required: ['id']
     }
   },
 
   {
     name: 'tekla_get_selection',
-
     description:
       'Get the objects currently selected in Tekla Structures.',
-
     inputSchema: {
       type: 'object',
       properties: {}
@@ -597,20 +423,16 @@ const teklaFallbackDefinitions = [
 
   {
     name: 'tekla_get_assemblies',
-
     description:
       'Get assemblies from the connected Tekla Structures model.',
-
     inputSchema: {
       type: 'object',
-
       properties: {
         filter: {
           type: 'object',
-          description:
-            'Optional Tekla assembly filter.'
+          description: 'Optional Tekla assembly filter.',
+          additionalProperties: true
         },
-
         limit: {
           type: 'integer',
           minimum: 1,
@@ -623,41 +445,32 @@ const teklaFallbackDefinitions = [
 
   {
     name: 'tekla_get_assembly',
-
     description:
       'Get a Tekla Structures assembly by identifier.',
-
     inputSchema: {
       type: 'object',
-
       properties: {
         id: {
           type: 'string',
-          description:
-            'Tekla assembly identifier.'
+          description: 'Tekla assembly identifier.'
         }
       },
-
       required: ['id']
     }
   },
 
   {
     name: 'tekla_get_bolts',
-
     description:
       'Get bolt groups and bolt information from Tekla Structures.',
-
     inputSchema: {
       type: 'object',
-
       properties: {
         filter: {
           type: 'object',
-          description:
-            'Optional bolt filter.'
+          description: 'Optional bolt filter.',
+          additionalProperties: true
         },
-
         limit: {
           type: 'integer',
           minimum: 1,
@@ -670,20 +483,16 @@ const teklaFallbackDefinitions = [
 
   {
     name: 'tekla_get_welds',
-
     description:
       'Get weld information from Tekla Structures.',
-
     inputSchema: {
       type: 'object',
-
       properties: {
         filter: {
           type: 'object',
-          description:
-            'Optional weld filter.'
+          description: 'Optional weld filter.',
+          additionalProperties: true
         },
-
         limit: {
           type: 'integer',
           minimum: 1,
@@ -696,20 +505,16 @@ const teklaFallbackDefinitions = [
 
   {
     name: 'tekla_get_rebar',
-
     description:
       'Get reinforcement objects from Tekla Structures.',
-
     inputSchema: {
       type: 'object',
-
       properties: {
         filter: {
           type: 'object',
-          description:
-            'Optional reinforcement filter.'
+          description: 'Optional reinforcement filter.',
+          additionalProperties: true
         },
-
         limit: {
           type: 'integer',
           minimum: 1,
@@ -722,3627 +527,1000 @@ const teklaFallbackDefinitions = [
 
   {
     name: 'tekla_get_rebar_group',
-
     description:
       'Get a Tekla Structures reinforcement group by identifier.',
-
     inputSchema: {
       type: 'object',
-
       properties: {
         id: {
           type: 'string',
-          description:
-            'Tekla reinforcement group identifier.'
+          description: 'Tekla reinforcement group identifier.'
         }
       },
-
       required: ['id']
     }
   }
 ];
 
 
-// ============================================================
-// SWAGGER DOCUMENT
-// ============================================================
+/*
+ * ============================================================
+ * OpenAPI document
+ * ============================================================
+ */
 
-export const swaggerDocument = {
-
+const swaggerDocument = {
   openapi: '3.0.3',
 
   info: {
-    title: 'Trimble Connect MCP Server',
-
+    title: 'Trimble MCP API',
+    version: '1.0.0',
     description:
-      'Trimble Connect API gateway and MCP server',
-
-    version: '1.0.0'
+      'Trimble Connect, SketchUp and Tekla Structures MCP API.'
   },
 
   servers: [
     {
-      url:
-        process.env.PUBLIC_BASE_URL ||
-        'http://localhost:3000'
+      url: '/'
     }
   ],
 
   tags: [
-
     {
       name: 'Core',
-      description:
-        'Core Trimble Connect workspace and service operations.'
+      description: 'Core MCP and Trimble Connect operations.'
     },
-
     {
       name: 'Issues',
-      description:
-        'BCF issue (topic), comment, viewpoint, and document reference operations.'
+      description: 'Trimble Connect / BCF issue operations.'
     },
-
     {
       name: 'Regions',
-      description:
-        'Trimble Connect region discovery operations.'
+      description: 'Trimble Connect region operations.'
     },
-
     {
       name: 'Organizer',
-      description:
-        'Trimble Connect Organizer todos and saved view operations.'
+      description: 'Trimble Connect Organizer operations.'
     },
-
     {
       name: 'Model',
-      description:
-        'Trimble Connect 3D model and entity operations.'
+      description: 'Trimble Connect model operations.'
     },
-
     {
       name: 'ModelFeature',
-      description:
-        'Trimble Connect model feature (group) operations.'
+      description: 'Trimble Connect model feature operations.'
     },
-
     {
       name: 'Property Set',
-      description:
-        'Property Set library, definition, and instance operations.'
+      description: 'Property set operations.'
     },
-
     {
       name: 'PDF',
-      description:
-        'Schedule extraction and PDF processing utilities.'
+      description: 'PDF and schedule extraction operations.'
     },
-
     {
       name: 'SketchUp',
-      description:
-        'SketchUp tools exposed by the connected SketchUp MCP backend.'
+      description: 'SketchUp MCP operations.'
     },
-
     {
       name: 'Tekla',
-      description:
-        'Tekla Structures local bridge and connectivity operations.'
+      description: 'Tekla Structures MCP operations.'
     },
-
     {
       name: 'Health',
-      description:
-        'Service health and diagnostics.'
+      description: 'Service health operations.'
     }
   ],
 
   components: {
-
     securitySchemes: {
-
       bearerAuth: {
-
         type: 'http',
-
         scheme: 'bearer',
-
-        bearerFormat:
-          'OAuth2 access token'
+        bearerFormat: 'JWT'
       }
-
     }
-
   },
 
   paths: {
 
-    // ========================================================
-    // TEKLA STATUS
-    // ========================================================
-
-    '/api/tekla/status': {
-
-      get: {
-
-        tags: ['Tekla'],
-
-        summary:
-          'Get Tekla Structures bridge status',
-
-        description:
-          'Check whether the local Tekla Bridge is running and whether Tekla Structures is connected.',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        responses: {
-
-          200: {
-
-            description:
-              'Tekla Bridge status retrieved successfully',
-
-            content: {
-
-              'application/json': {
-
-                schema: {
-
-                  type: 'object',
-
-                  properties: {
-
-                    success: {
-                      type: 'boolean',
-                      example: true
-                    },
-
-                    connected: {
-                      type: 'boolean',
-                      example: true
-                    },
-
-                    bridge: {
-                      type: 'string',
-                      example: 'Tekla Bridge'
-                    },
-
-                    teklaVersion: {
-                      type: 'string',
-                      nullable: true,
-                      example: '2026.0'
-                    },
-
-                    modelLoaded: {
-                      type: 'boolean',
-                      example: true
-                    },
-
-                    modelPath: {
-                      type: 'string',
-                      nullable: true,
-                      example:
-                        'C:\\TeklaStructuresModels\\MyModel'
-                    },
-
-                    timestamp: {
-                      type: 'string',
-                      format: 'date-time'
-                    }
-
-                  }
-
-                }
-
-              }
-
-            }
-
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          },
-
-          503: {
-            description:
-              'Tekla Bridge or Tekla Structures is unavailable'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    // ========================================================
-    // MCP TOOLS
-    // ========================================================
+    /*
+     * ========================================================
+     * MCP
+     * ========================================================
+     */
 
     '/api/mcp/tools': {
-
       get: {
-
-        tags: ['SketchUp'],
-
+        tags: ['Core'],
+        summary: 'List available MCP tools',
+        operationId: 'listMcpTools',
         security: [
           {
             bearerAuth: []
           }
         ],
-
-        summary:
-          'List Trimble and connected MCP tools',
-
-        description:
-          'Returns the current MCP tool definitions, including Trimble Connect, SketchUp, Tekla, PDF, Property Set, and other tools.',
-
         responses: {
-
           200: {
-
-            description:
-              'Available MCP tool definitions',
-
+            description: 'Available MCP tools',
             content: {
-
               'application/json': {
-
                 schema: {
-
                   type: 'object',
-
-                  properties: {
-
-                    tools: {
-
-                      type: 'array',
-
-                      items: {
-
-                        type: 'object',
-
-                        additionalProperties: true
-
-                      }
-
-                    }
-
-                  }
-
+                  additionalProperties: true
                 }
-
               }
-
             }
-
           },
-
           401: {
-            description:
-              'Authentication required'
+            description: 'Authentication required'
           }
-
         }
-
       }
-
     },
-
 
     '/api/mcp/tools/{toolName}': {
-
       post: {
-
         tags: ['Core'],
-
+        summary: 'Execute an MCP tool',
+        operationId: 'executeMcpTool',
         security: [
           {
             bearerAuth: []
           }
         ],
-
-        summary:
-          'Call an MCP tool by name',
-
-        description:
-          'Call a Trimble, SketchUp, Tekla, PDF, Property Set, or other MCP tool by name.',
-
         parameters: [
-
           {
             name: 'toolName',
-
             in: 'path',
-
             required: true,
-
             schema: {
               type: 'string'
-            },
-
-            example:
-              'tekla_get_model'
+            }
           }
-
         ],
-
         requestBody: {
-
           required: false,
-
           content: {
-
             'application/json': {
-
               schema: {
-
                 type: 'object',
-
-                description:
-                  'Arguments for the selected MCP tool.'
-
+                additionalProperties: true
               }
-
             }
-
           }
-
         },
-
         responses: {
-
           200: {
-            description:
-              'MCP tool result'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          },
-
-          500: {
-            description:
-              'MCP tool call failed'
-          },
-
-          503: {
-            description:
-              'Backend service unavailable'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    // ========================================================
-    // PDF
-    // ========================================================
-
-    '/api/pdf/uploads': {
-
-      post: {
-
-        tags: ['PDF'],
-
-        summary:
-          'Create a temporary PDF upload for MCP extraction',
-
-        description:
-          'Upload a PDF and receive an uploadId. Pass that uploadId to the extract_column_schedule MCP tool. Uploads expire after 15 minutes.',
-
-        security: [],
-
-        requestBody: {
-
-          required: true,
-
-          content: {
-
-            'multipart/form-data': {
-
-              schema: {
-
-                type: 'object',
-
-                required: [
-                  'file'
-                ],
-
-                properties: {
-
-                  file: {
-
-                    type: 'string',
-
-                    format: 'binary',
-
-                    description:
-                      'PDF file to make temporarily available to MCP'
-
-                  }
-
+            description: 'MCP tool result',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: true
                 }
-
               }
-
             }
-
-          }
-
-        },
-
-        responses: {
-
-          201: {
-            description:
-              'PDF uploaded successfully; use the returned uploadId with MCP'
           },
-
           400: {
-            description:
-              'PDF file is missing or invalid'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    // ========================================================
-    // PROPERTY SET
-    // ========================================================
-
-    '/api/v1/property-set/me': {
-
-      get: {
-
-        tags: ['Property Set'],
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        summary:
-          'Get the current authenticated property-set user.',
-
-        responses: {
-
-          200: {
-            description:
-              'Current user details from the Property Set service.'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    '/api/v1/property-set/libs': {
-
-      get: {
-
-        tags: ['Property Set'],
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        summary:
-          'List property-set libraries.',
-
-        responses: {
-
-          200: {
-            description:
-              'Property set library list.'
-          }
-
-        }
-
-      },
-
-      post: {
-
-        tags: ['Property Set'],
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        summary:
-          'Create a property-set library.',
-
-        requestBody: {
-
-          required: true,
-
-          content: {
-
-            'application/json': {
-
-              schema: {
-                type: 'object'
-              }
-
-            }
-
-          }
-
-        },
-
-        responses: {
-
-          201: {
-            description:
-              'Library created.'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    '/api/v1/property-set/libs/{libId}': {
-
-      get: {
-
-        tags: ['Property Set'],
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        summary:
-          'Get a property-set library.',
-
-        parameters: [
-          {
-            in: 'path',
-            name: 'libId',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Library details.'
-          }
-
-        }
-
-      },
-
-      patch: {
-
-        tags: ['Property Set'],
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        summary:
-          'Update a property-set library.',
-
-        parameters: [
-          {
-            in: 'path',
-            name: 'libId',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-        ],
-
-        requestBody: {
-
-          required: true,
-
-          content: {
-
-            'application/json': {
-
-              schema: {
-                type: 'object'
-              }
-
-            }
-
-          }
-
-        },
-
-        responses: {
-
-          200: {
-            description:
-              'Library updated.'
-          }
-
-        }
-
-      },
-
-      delete: {
-
-        tags: ['Property Set'],
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        summary:
-          'Delete a property-set library.',
-
-        parameters: [
-          {
-            in: 'path',
-            name: 'libId',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Library deleted.'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    '/api/v1/property-set/libs/{libId}/defs': {
-
-      get: {
-
-        tags: ['Property Set'],
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        summary:
-          'List property-set definitions for a library.',
-
-        parameters: [
-          {
-            in: 'path',
-            name: 'libId',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Definition collection.'
-          }
-
-        }
-
-      },
-
-      post: {
-
-        tags: ['Property Set'],
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        summary:
-          'Create a property-set definition.',
-
-        parameters: [
-          {
-            in: 'path',
-            name: 'libId',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-        ],
-
-        requestBody: {
-
-          required: true,
-
-          content: {
-
-            'application/json': {
-
-              schema: {
-                type: 'object'
-              }
-
-            }
-
-          }
-
-        },
-
-        responses: {
-
-          201: {
-            description:
-              'Definition created.'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    '/api/v1/property-set/psets/{link}/{libId}/{defId}': {
-
-      get: {
-
-        tags: ['Property Set'],
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        summary:
-          'Get a property set instance for a link.',
-
-        parameters: [
-
-          {
-            in: 'path',
-            name: 'link',
-            required: true,
-            schema: {
-              type: 'string'
-            }
+            description: 'Invalid request'
           },
-
-          {
-            in: 'path',
-            name: 'libId',
-            required: true,
-            schema: {
-              type: 'string'
-            }
+          401: {
+            description: 'Authentication required'
           },
-
-          {
-            in: 'path',
-            name: 'defId',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Property set instance.'
-          }
-
-        }
-
-      },
-
-      patch: {
-
-        tags: ['Property Set'],
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        summary:
-          'Update a property set instance.',
-
-        parameters: [
-
-          {
-            in: 'path',
-            name: 'link',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          },
-
-          {
-            in: 'path',
-            name: 'libId',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          },
-
-          {
-            in: 'path',
-            name: 'defId',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        requestBody: {
-
-          required: true,
-
-          content: {
-
-            'application/json': {
-
-              schema: {
-                type: 'object'
-              }
-
-            }
-
-          }
-
-        },
-
-        responses: {
-
-          200: {
-            description:
-              'Property set updated.'
-          }
-
-        }
-
-      },
-
-      delete: {
-
-        tags: ['Property Set'],
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        summary:
-          'Delete a property set instance.',
-
-        parameters: [
-
-          {
-            in: 'path',
-            name: 'link',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          },
-
-          {
-            in: 'path',
-            name: 'libId',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          },
-
-          {
-            in: 'path',
-            name: 'defId',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Property set deleted.'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    '/api/v1/property-set/psets/changeset': {
-
-      post: {
-
-        tags: ['Property Set'],
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        summary:
-          'Apply a property-set changeset.',
-
-        requestBody: {
-
-          required: true,
-
-          content: {
-
-            'application/json': {
-
-              schema: {
-                type: 'object'
-              }
-
-            }
-
-          }
-
-        },
-
-        responses: {
-
-          200: {
-            description:
-              'Changeset response.'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    '/api/v1/property-set/psets/changeset/{changesetId}': {
-
-      get: {
-
-        tags: ['Property Set'],
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        summary:
-          'Get the status of a Property Set changeset.',
-
-        parameters: [
-
-          {
-            in: 'path',
-            name: 'changesetId',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Changeset status response.'
-          },
-
           404: {
-            description:
-              'Changeset was not found.'
+            description: 'Tool not found'
+          },
+          500: {
+            description: 'Tool execution failed'
           }
-
         }
-
       }
-
     },
 
 
-    // ========================================================
-    // HEALTH
-    // ========================================================
+    /*
+     * ========================================================
+     * Trimble Connect
+     * ========================================================
+     */
 
-    '/health': {
-
+    '/api/projects': {
       get: {
-
-        tags: ['Health'],
-
-        security: [],
-
-        summary:
-          'Health check',
-
-        responses: {
-
-          200: {
-            description:
-              'Server is healthy'
+        tags: ['Core'],
+        summary: 'Get Trimble Connect projects',
+        operationId: 'getProjects',
+        security: [
+          {
+            bearerAuth: []
           }
-
+        ],
+        responses: {
+          200: {
+            description: 'Trimble Connect projects',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: true
+                }
+              }
+            }
+          },
+          401: {
+            description: 'Authentication required'
+          },
+          500: {
+            description: 'Failed to get projects'
+          }
         }
-
       }
+    },
 
+    '/api/projects/{projectId}': {
+      get: {
+        tags: ['Core'],
+        summary: 'Get Trimble Connect project',
+        operationId: 'getProject',
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
+        parameters: [
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: {
+              type: 'string'
+            }
+          }
+        ],
+        responses: {
+          200: {
+            description: 'Trimble Connect project',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: true
+                }
+              }
+            }
+          },
+          401: {
+            description: 'Authentication required'
+          },
+          404: {
+            description: 'Project not found'
+          }
+        }
+      }
     },
 
 
-    // ========================================================
-    // PDF EXTRACTION
-    // ========================================================
+    /*
+     * ========================================================
+     * Folders
+     * ========================================================
+     */
+
+    '/api/projects/{projectId}/folders': {
+      get: {
+        tags: ['Core'],
+        summary: 'Get Trimble Connect folders',
+        operationId: 'getFolders',
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
+        parameters: [
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: {
+              type: 'string'
+            }
+          }
+        ],
+        responses: {
+          200: {
+            description: 'Trimble Connect folders',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: true
+                }
+              }
+            }
+          },
+          401: {
+            description: 'Authentication required'
+          },
+          500: {
+            description: 'Failed to get folders'
+          }
+        }
+      }
+    },
+
+
+    /*
+     * ========================================================
+     * Issues / BCF
+     * ========================================================
+     */
+
+    '/api/issues': {
+      get: {
+        tags: ['Issues'],
+        summary: 'Get Trimble Connect issues',
+        operationId: 'getIssues',
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
+        parameters: [
+          {
+            name: 'projectId',
+            in: 'query',
+            required: true,
+            schema: {
+              type: 'string'
+            }
+          }
+        ],
+        responses: {
+          200: {
+            description: 'Issues',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: true
+                }
+              }
+            }
+          },
+          401: {
+            description: 'Authentication required'
+          },
+          500: {
+            description: 'Failed to get issues'
+          }
+        }
+      }
+    },
+
+    '/api/issues/{issueId}': {
+      get: {
+        tags: ['Issues'],
+        summary: 'Get a Trimble Connect issue',
+        operationId: 'getIssue',
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
+        parameters: [
+          {
+            name: 'issueId',
+            in: 'path',
+            required: true,
+            schema: {
+              type: 'string'
+            }
+          }
+        ],
+        responses: {
+          200: {
+            description: 'Issue',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: true
+                }
+              }
+            }
+          },
+          404: {
+            description: 'Issue not found'
+          }
+        }
+      }
+    },
+
+
+    /*
+     * ========================================================
+     * Regions
+     * ========================================================
+     */
+
+    '/api/regions': {
+      get: {
+        tags: ['Regions'],
+        summary: 'Get regions',
+        operationId: 'getRegions',
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
+        responses: {
+          200: {
+            description: 'Regions',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+
+    /*
+     * ========================================================
+     * Organizer
+     * ========================================================
+     */
+
+    '/api/organizer': {
+      get: {
+        tags: ['Organizer'],
+        summary: 'Get Organizer data',
+        operationId: 'getOrganizer',
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
+        parameters: [
+          {
+            name: 'projectId',
+            in: 'query',
+            required: true,
+            schema: {
+              type: 'string'
+            }
+          }
+        ],
+        responses: {
+          200: {
+            description: 'Organizer data',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+
+    /*
+     * ========================================================
+     * Model
+     * ========================================================
+     */
+
+    '/api/models': {
+      get: {
+        tags: ['Model'],
+        summary: 'Get models',
+        operationId: 'getModels',
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
+        parameters: [
+          {
+            name: 'projectId',
+            in: 'query',
+            required: true,
+            schema: {
+              type: 'string'
+            }
+          }
+        ],
+        responses: {
+          200: {
+            description: 'Models',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    '/api/models/{modelId}': {
+      get: {
+        tags: ['Model'],
+        summary: 'Get model',
+        operationId: 'getModel',
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
+        parameters: [
+          {
+            name: 'modelId',
+            in: 'path',
+            required: true,
+            schema: {
+              type: 'string'
+            }
+          }
+        ],
+        responses: {
+          200: {
+            description: 'Model',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+
+    /*
+     * ========================================================
+     * Model Features
+     * ========================================================
+     */
+
+    '/api/model-features': {
+      get: {
+        tags: ['ModelFeature'],
+        summary: 'Get model features',
+        operationId: 'getModelFeatures',
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
+        parameters: [
+          {
+            name: 'projectId',
+            in: 'query',
+            required: true,
+            schema: {
+              type: 'string'
+            }
+          },
+          {
+            name: 'modelId',
+            in: 'query',
+            required: true,
+            schema: {
+              type: 'string'
+            }
+          }
+        ],
+        responses: {
+          200: {
+            description: 'Model features',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+
+    /*
+     * ========================================================
+     * Property Sets
+     * ========================================================
+     */
+
+    '/api/property-sets': {
+      get: {
+        tags: ['Property Set'],
+        summary: 'Get property sets',
+        operationId: 'getPropertySets',
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
+        parameters: [
+          {
+            name: 'projectId',
+            in: 'query',
+            required: true,
+            schema: {
+              type: 'string'
+            }
+          }
+        ],
+        responses: {
+          200: {
+            description: 'Property sets',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    '/api/property-sets/libraries': {
+      get: {
+        tags: ['Property Set'],
+        summary: 'List property set libraries',
+        operationId: 'listPropertySetLibraries',
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
+        responses: {
+          200: {
+            description: 'Property set libraries',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: true
+                }
+              }
+            }
+          },
+          500: {
+            description: 'Failed to list property set libraries'
+          }
+        }
+      }
+    },
+
+    '/api/property-sets/current-user': {
+      get: {
+        tags: ['Property Set'],
+        summary: 'Get current user property set',
+        operationId: 'getPropertySetCurrentUser',
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
+        responses: {
+          200: {
+            description: 'Current user property set',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+
+    /*
+     * ========================================================
+     * PDF
+     * ========================================================
+     */
 
     '/api/pdf/extract-column-schedule': {
-
       post: {
-
         tags: ['PDF'],
-
-        summary:
-          'Extract column schedule from PDF',
-
-        description:
-          'Upload a Tekla structural column schedule PDF and extract normalized column schedule data.',
-
-        security: [],
-
+        summary: 'Extract column schedule from PDF',
+        operationId: 'extractColumnSchedule',
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
         requestBody: {
-
           required: true,
-
           content: {
-
             'multipart/form-data': {
-
               schema: {
-
                 type: 'object',
-
-                required: [
-                  'file'
-                ],
-
                 properties: {
-
                   file: {
-
                     type: 'string',
-
-                    format: 'binary',
-
-                    description:
-                      'PDF file containing the column schedule'
-
+                    format: 'binary'
                   }
-
-                }
-
+                },
+                required: ['file']
               }
-
             }
-
           }
-
         },
-
         responses: {
-
           200: {
-
-            description:
-              'Column schedule extracted successfully',
-
+            description: 'Extracted column schedule',
             content: {
-
               'application/json': {
-
                 schema: {
-
                   type: 'object',
-
-                  properties: {
-
-                    success: {
-                      type: 'boolean'
-                    },
-
-                    file: {
-                      type: 'string'
-                    },
-
-                    count: {
-                      type: 'integer'
-                    },
-
-                    rows: {
-
-                      type: 'array',
-
-                      items: {
-
-                        type: 'object',
-
-                        properties: {
-
-                          DetailMark: {
-                            type: 'string'
-                          },
-
-                          StartStorey: {
-                            type: 'string'
-                          },
-
-                          EndStorey: {
-                            type: 'string'
-                          },
-
-                          Width: {
-                            type: 'number'
-                          },
-
-                          Breadth: {
-                            type: 'number'
-                          },
-
-                          BottomRebar: {
-                            type: 'string'
-                          },
-
-                          TopRebar: {
-                            type: 'string'
-                          },
-
-                          Stirrups: {
-                            type: 'string'
-                          },
-
-                          Method: {
-                            type: 'string'
-                          }
-
-                        }
-
-                      }
-
-                    }
-
-                  }
-
+                  additionalProperties: true
                 }
-
               }
-
             }
-
           },
-
           400: {
-            description:
-              'PDF file is missing'
+            description: 'Invalid PDF'
           },
-
           500: {
-            description:
-              'PDF extraction failed'
+            description: 'PDF extraction failed'
           }
-
         }
-
       }
-
     },
 
-
-    '/api/pdf/column-schedule-exporter': {
-
+    '/api/pdf/extract-coordinates': {
       post: {
-
         tags: ['PDF'],
-
-        summary:
-          'Upload a column schedule JSON file',
-
-        description:
-          'Accept a JSON file containing a column schedule payload, normalize the file content, and return the extracted row data for the exporter workflow.',
-
-        security: [],
-
+        summary: 'Extract PDF coordinates',
+        operationId: 'extractPdfCoordinates',
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
         requestBody: {
-
           required: true,
-
           content: {
-
             'multipart/form-data': {
-
               schema: {
-
                 type: 'object',
-
-                required: [
-                  'file'
-                ],
-
                 properties: {
-
                   file: {
-
                     type: 'string',
-
-                    format: 'binary',
-
-                    description:
-                      'JSON file containing the column schedule data'
-
+                    format: 'binary'
                   }
-
-                }
-
+                },
+                required: ['file']
               }
-
             }
-
           }
-
         },
-
         responses: {
-
           200: {
-
-            description:
-              'JSON file accepted and processed successfully',
-
+            description: 'PDF coordinates',
             content: {
-
               'application/json': {
-
                 schema: {
-
                   type: 'object',
-
-                  properties: {
-
-                    success: {
-                      type: 'boolean'
-                    },
-
-                    file: {
-                      type: 'string'
-                    },
-
-                    count: {
-                      type: 'integer'
-                    },
-
-                    rows: {
-                      type: 'array'
-                    },
-
-                    data: {
-                      type: 'object'
-                    }
-
-                  }
-
+                  additionalProperties: true
                 }
-
               }
-
             }
-
           },
-
-          400: {
-            description:
-              'JSON file is missing or invalid'
+          500: {
+            description: 'PDF coordinate extraction failed'
           }
-
         }
-
       }
-
     },
 
 
-    '/api/pdf/coord-schedule-exporter': {
+    /*
+     * ========================================================
+     * Tekla Status
+     * ========================================================
+     *
+     * Direct bridge status endpoint.
+     * ========================================================
+     */
 
-      post: {
-
-        tags: ['PDF'],
-
+    '/api/tekla/status': {
+      get: {
+        tags: ['Tekla'],
         summary:
-          'Upload a PDF coordinate JSON file and export Excel',
-
+          'Check Tekla Structures bridge status',
         description:
-          'Accept a JSON payload produced by a PDF coordinate extraction, reconstruct the coordinate layout into an Excel workbook, and save the generated file on the server.',
-
-        security: [],
-
-        requestBody: {
-
-          required: true,
-
-          content: {
-
-            'multipart/form-data': {
-
-              schema: {
-
-                type: 'object',
-
-                required: [
-                  'file'
-                ],
-
-                properties: {
-
-                  file: {
-
-                    type: 'string',
-
-                    format: 'binary',
-
-                    description:
-                      'JSON file containing PDF coordinate data'
-
-                  }
-
-                }
-
-              }
-
-            }
-
+          'Check whether the local TeklaStatus bridge is running and whether Tekla Structures is connected.',
+        operationId:
+          'teklaStatus',
+        security: [
+          {
+            bearerAuth: []
           }
-
-        },
-
+        ],
         responses: {
-
           200: {
-
             description:
-              'Coordinate JSON processed and Excel export created successfully',
-
+              'Tekla bridge status',
             content: {
-
               'application/json': {
-
                 schema: {
-
                   type: 'object',
-
-                  properties: {
-
-                    success: {
-                      type: 'boolean'
-                    },
-
-                    file: {
-                      type: 'string'
-                    },
-
-                    outputFile: {
-                      type: 'string'
-                    },
-
-                    itemCount: {
-                      type: 'integer'
-                    },
-
-                    xClusterCount: {
-                      type: 'integer'
-                    },
-
-                    yRowCount: {
-                      type: 'integer'
-                    },
-
-                    data: {
-                      type: 'object'
-                    }
-
-                  }
-
+                  additionalProperties: true
                 }
-
-              }
-
-            }
-
-          },
-
-          400: {
-            description:
-              'JSON file is missing or invalid'
-          },
-
-          500: {
-            description:
-              'Excel export failed'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    // ========================================================
-    // TRIMBLE CONNECT CORE
-    // ========================================================
-
-    '/api/v1/users/me': {
-
-      get: {
-
-        tags: ['Core'],
-
-        summary:
-          'Get current Trimble Connect user',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Authenticated Trimble Connect user'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          },
-
-          500: {
-            description:
-              'Trimble API error'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    '/api/v1/regions': {
-
-      get: {
-
-        tags: ['Regions'],
-
-        summary:
-          'Get Trimble Connect regions',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Available Trimble Connect regions'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    '/api/v1/projects': {
-
-      get: {
-
-        tags: ['Core'],
-
-        summary:
-          'Get Trimble Connect projects',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'fullyLoaded',
-
-            in: 'query',
-
-            required: false,
-
-            schema: {
-              type: 'boolean'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Projects retrieved successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          },
-
-          500: {
-            description:
-              'Trimble API error'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    '/api/v1/projects/{projectId}': {
-
-      get: {
-
-        tags: ['Core'],
-
-        summary:
-          'Get a Trimble Connect project',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'projectId',
-
-            in: 'path',
-
-            required: true,
-
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Project retrieved successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          },
-
-          404: {
-            description:
-              'Project not found'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    '/api/v1/projects/{projectId}/folders': {
-
-      get: {
-
-        tags: ['Core'],
-
-        summary:
-          'Get project folders',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'projectId',
-
-            in: 'path',
-
-            required: true,
-
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Folders retrieved successfully'
-          }
-
-        }
-
-      },
-
-      post: {
-
-        tags: ['Core'],
-
-        summary:
-          'Create a folder in a Trimble Connect project',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'projectId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        requestBody: {
-
-          required: true,
-
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object'
               }
             }
-          }
-
-        },
-
-        responses: {
-
-          201: {
-            description:
-              'Folder created successfully'
           },
-
           401: {
             description:
               'Authentication required'
+          },
+          503: {
+            description:
+              'Tekla bridge unavailable'
           }
-
         }
-
       }
-
-    },
-
-
-    '/api/v1/projects/{projectId}/files': {
-
-      get: {
-
-        tags: ['Core'],
-
-        summary:
-          'Get project files',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'projectId',
-
-            in: 'path',
-
-            required: true,
-
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Files retrieved successfully'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    '/api/v1/users/{userId}': {
-
-      get: {
-
-        tags: ['Core'],
-
-        summary:
-          'Get a Trimble Connect user by id',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'userId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'User retrieved successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          },
-
-          404: {
-            description:
-              'User not found'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    '/api/v1/projects/{projectId}/members': {
-
-      get: {
-
-        tags: ['Core'],
-
-        summary:
-          'List members of a Trimble Connect project',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'projectId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Members retrieved successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    '/api/v1/folders/{folderId}': {
-
-      get: {
-
-        tags: ['Core'],
-
-        summary:
-          'Get a Trimble Connect folder',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'folderId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Folder retrieved successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      },
-
-      put: {
-
-        tags: ['Core'],
-
-        summary:
-          'Update a Trimble Connect folder',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'folderId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        requestBody: {
-
-          required: true,
-
-          content: {
-
-            'application/json': {
-              schema: {
-                type: 'object'
-              }
-            }
-
-          }
-
-        },
-
-        responses: {
-
-          200: {
-            description:
-              'Folder updated successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      },
-
-      delete: {
-
-        tags: ['Core'],
-
-        summary:
-          'Delete a Trimble Connect folder',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'folderId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Folder deleted successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    '/api/v1/folders/{folderId}/folders': {
-
-      get: {
-
-        tags: ['Core'],
-
-        summary:
-          'List subfolders of a Trimble Connect folder',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'folderId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Subfolders retrieved successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    '/api/v1/folders/{folderId}/files': {
-
-      get: {
-
-        tags: ['Core'],
-
-        summary:
-          'List files inside a Trimble Connect folder',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'folderId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Files retrieved successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    '/api/v1/files/{fileId}': {
-
-      get: {
-
-        tags: ['Core'],
-
-        summary:
-          'Get a Trimble Connect file',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'fileId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'File retrieved successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      },
-
-      put: {
-
-        tags: ['Core'],
-
-        summary:
-          'Update a Trimble Connect file',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'fileId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        requestBody: {
-
-          required: true,
-
-          content: {
-
-            'application/json': {
-              schema: {
-                type: 'object'
-              }
-            }
-
-          }
-
-        },
-
-        responses: {
-
-          200: {
-            description:
-              'File updated successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      },
-
-      delete: {
-
-        tags: ['Core'],
-
-        summary:
-          'Delete a Trimble Connect file',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'fileId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'File deleted successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    '/api/v1/files/{fileId}/versions': {
-
-      get: {
-
-        tags: ['Core'],
-
-        summary:
-          'List versions of a Trimble Connect file',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'fileId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Versions retrieved successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      },
-
-      post: {
-
-        tags: ['Core'],
-
-        summary:
-          'Upload a new version of a Trimble Connect file',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'fileId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        requestBody: {
-
-          required: true,
-
-          content: {
-
-            'application/json': {
-              schema: {
-                type: 'object'
-              }
-            }
-
-          }
-
-        },
-
-        responses: {
-
-          201: {
-            description:
-              'Version created successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    // ========================================================
-    // ORGANIZER
-    // ========================================================
-
-    '/api/v1/projects/{projectId}/todos': {
-
-      get: {
-
-        tags: ['Organizer'],
-
-        summary:
-          'List todos for a Trimble Connect project',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'projectId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Todos retrieved successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      },
-
-      post: {
-
-        tags: ['Organizer'],
-
-        summary:
-          'Create a todo in a Trimble Connect project',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'projectId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        requestBody: {
-
-          required: true,
-
-          content: {
-
-            'application/json': {
-              schema: {
-                type: 'object'
-              }
-            }
-
-          }
-
-        },
-
-        responses: {
-
-          201: {
-            description:
-              'Todo created successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    '/api/v1/todos/{todoId}': {
-
-      get: {
-
-        tags: ['Organizer'],
-
-        summary:
-          'Get a Trimble Connect todo',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'todoId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Todo retrieved successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      },
-
-      put: {
-
-        tags: ['Organizer'],
-
-        summary:
-          'Update a Trimble Connect todo',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'todoId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        requestBody: {
-
-          required: true,
-
-          content: {
-
-            'application/json': {
-              schema: {
-                type: 'object'
-              }
-            }
-
-          }
-
-        },
-
-        responses: {
-
-          200: {
-            description:
-              'Todo updated successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      },
-
-      delete: {
-
-        tags: ['Organizer'],
-
-        summary:
-          'Delete a Trimble Connect todo',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'todoId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Todo deleted successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    '/api/v1/projects/{projectId}/views': {
-
-      get: {
-
-        tags: ['Organizer'],
-
-        summary:
-          'List saved views for a Trimble Connect project',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'projectId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Views retrieved successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      },
-
-      post: {
-
-        tags: ['Organizer'],
-
-        summary:
-          'Create a saved view in a Trimble Connect project',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'projectId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        requestBody: {
-
-          required: true,
-
-          content: {
-
-            'application/json': {
-              schema: {
-                type: 'object'
-              }
-            }
-
-          }
-
-        },
-
-        responses: {
-
-          201: {
-            description:
-              'View created successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    '/api/v1/views/{viewId}': {
-
-      get: {
-
-        tags: ['Organizer'],
-
-        summary:
-          'Get a Trimble Connect saved view',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'viewId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'View retrieved successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    // ========================================================
-    // SEARCH
-    // ========================================================
-
-    '/api/v1/projects/{projectId}/search': {
-
-      get: {
-
-        tags: ['Core'],
-
-        summary:
-          'Search within a Trimble Connect project',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'projectId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          },
-
-          {
-            name: 'query',
-            in: 'query',
-            required: false,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Search results retrieved successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    // ========================================================
-    // MODEL
-    // ========================================================
-
-    '/api/v1/projects/{projectId}/models/{modelId}': {
-
-      get: {
-
-        tags: ['Model'],
-
-        summary:
-          'Get a Trimble Connect model',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'projectId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          },
-
-          {
-            name: 'modelId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Model retrieved successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    '/api/v1/projects/{projectId}/models/{modelId}/entities': {
-
-      get: {
-
-        tags: ['Model'],
-
-        summary:
-          'List entities in a Trimble Connect model',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'projectId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          },
-
-          {
-            name: 'modelId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Entities retrieved successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    // ========================================================
-    // MODEL FEATURE
-    // ========================================================
-
-    '/api/v1/projects/{projectId}/groups': {
-
-      get: {
-
-        tags: ['ModelFeature'],
-
-        summary:
-          'List groups (model feature sets) for a Trimble Connect project',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'projectId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Groups retrieved successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    '/api/v1/projects/{projectId}/groups/{groupId}': {
-
-      get: {
-
-        tags: ['ModelFeature'],
-
-        summary:
-          'Get a single group (model feature set) for a Trimble Connect project',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'projectId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          },
-
-          {
-            name: 'groupId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Group retrieved successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    // ========================================================
-    // ISSUES / BCF
-    // ========================================================
-
-    '/api/v1/projects/{projectId}/issues': {
-
-      get: {
-
-        tags: ['Issues'],
-
-        summary:
-          'List issues (BCF topics) for a Trimble Connect project',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'projectId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Issues retrieved successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      },
-
-      post: {
-
-        tags: ['Issues'],
-
-        summary:
-          'Create an issue (BCF topic) in a Trimble Connect project',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'projectId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        requestBody: {
-
-          required: true,
-
-          content: {
-
-            'application/json': {
-              schema: {
-                type: 'object'
-              }
-            }
-
-          }
-
-        },
-
-        responses: {
-
-          201: {
-            description:
-              'Issue created successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    '/api/v1/projects/{projectId}/issues/{topicId}': {
-
-      get: {
-
-        tags: ['Issues'],
-
-        summary:
-          'Get an issue (BCF topic) by id',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'projectId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          },
-
-          {
-            name: 'topicId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'Issue retrieved successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      },
-
-      put: {
-
-        tags: ['Issues'],
-
-        summary:
-          'Update an issue (BCF topic)',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        parameters: [
-
-          {
-            name: 'projectId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          },
-
-          {
-            name: 'topicId',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string'
-            }
-          }
-
-        ],
-
-        requestBody: {
-
-          required: true,
-
-          content: {
-
-            'application/json': {
-              schema: {
-                type: 'object'
-              }
-            }
-
-          }
-
-        },
-
-        responses: {
-
-          200: {
-            description:
-              'Issue updated successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    '/api/v1/bcf/projects': {
-
-      get: {
-
-        tags: ['Issues'],
-
-        summary:
-          'List projects visible to the BCF issues service',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'BCF projects retrieved successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      }
-
-    },
-
-
-    '/api/v1/bcf/version': {
-
-      get: {
-
-        tags: ['Issues'],
-
-        summary:
-          'Get the BCF API version supported by the issues service',
-
-        security: [
-          {
-            bearerAuth: []
-          }
-        ],
-
-        responses: {
-
-          200: {
-            description:
-              'BCF version retrieved successfully'
-          },
-
-          401: {
-            description:
-              'Authentication required'
-          }
-
-        }
-
-      }
-
     }
 
   }
-
 };
 
 
-// ============================================================
-// DYNAMIC SWAGGER DOCUMENT
-// ============================================================
+/*
+ * ============================================================
+ * Build complete Swagger document
+ * ============================================================
+ */
 
 export async function getSwaggerDocument() {
 
+  /*
+   * Clone the base document so each request receives its own
+   * document and we do not mutate the global swaggerDocument.
+   */
   const doc = structuredClone(swaggerDocument);
 
-  const tools = await getDefinitions();
+
+  /*
+   * ------------------------------------------------------------
+   * Get live MCP definitions
+   * ------------------------------------------------------------
+   */
+
+  let tools = [];
+
+  try {
+    tools = await getDefinitions();
+
+    if (!Array.isArray(tools)) {
+      tools = [];
+    }
+  } catch (error) {
+    console.error(
+      '[Swagger] Failed to get live tool definitions:',
+      error?.message || error
+    );
+
+    tools = [];
+  }
 
 
-  // ==========================================================
-  // LIVE SKETCHUP TOOLS
-  // ==========================================================
+  /*
+   * ============================================================
+   * SKETCHUP
+   * ============================================================
+   */
 
   const liveSketchupTools = new Map(
-
     tools
       .filter(
         (tool) =>
+          tool &&
+          typeof tool.name === 'string' &&
           tool.name.startsWith('sketchup_')
       )
-      .map(
-        (tool) => [
-          tool.name,
-          tool
-        ]
-      )
-
+      .map((tool) => [tool.name, tool])
   );
 
 
-  // ==========================================================
-  // LIVE TEKLA TOOLS
-  // ==========================================================
-
-  const liveTeklaTools = new Map(
-
-    tools
-      .filter(
-        (tool) =>
-          tool.name.startsWith('tekla_')
-      )
-      .map(
-        (tool) => [
-          tool.name,
-          tool
-        ]
-      )
-
-  );
-
-
-  // ==========================================================
-  // MERGE SKETCHUP FALLBACK + LIVE DEFINITIONS
-  // ==========================================================
-
+  /*
+   * Merge fallback + live definitions.
+   *
+   * If the live tool exists, use it.
+   * Otherwise use the fallback.
+   */
   const sketchupTools = [
-
     ...sketchupFallbackDefinitions.map(
-
       (tool) =>
-        liveSketchupTools.get(tool.name) ||
-        tool
-
+        liveSketchupTools.get(tool.name) || tool
     ),
 
+    /*
+     * Include any additional live SketchUp tools that are not
+     * already covered by the fallback list.
+     */
     ...tools.filter(
-
       (tool) =>
-
+        tool &&
+        typeof tool.name === 'string' &&
         tool.name.startsWith('sketchup_') &&
-
         !sketchupFallbackDefinitions.some(
-
           (fallback) =>
             fallback.name === tool.name
-
         )
-
     )
-
   ];
 
 
-  // ==========================================================
-  // MERGE TEKLA FALLBACK + LIVE DEFINITIONS
-  // ==========================================================
-
-  const teklaTools = [
-
-    ...teklaFallbackDefinitions.map(
-
-      (tool) =>
-        liveTeklaTools.get(tool.name) ||
-        tool
-
-    ),
-
-    ...tools.filter(
-
-      (tool) =>
-
-        tool.name.startsWith('tekla_') &&
-
-        !teklaFallbackDefinitions.some(
-
-          (fallback) =>
-            fallback.name === tool.name
-
-        )
-
-    )
-
-  ];
-
-
-  console.log(
-
-    `[Swagger] Building document with ${tools.length} live tools, ` +
-
-    `${sketchupTools.length} SketchUp tools and ` +
-
-    `${teklaTools.length} Tekla tools`
-
-  );
-
-
-  // ==========================================================
-  // SKETCHUP MCP TOOLS
-  // ==========================================================
+  /*
+   * Add every SketchUp tool to Swagger.
+   */
 
   for (const tool of sketchupTools) {
 
     const toolName = tool.name;
 
     const inputSchema =
-
-      tool.inputSchema ||
-
-      {
+      tool.inputSchema || {
         type: 'object',
         properties: {}
       };
-
 
     console.log(
       `[Swagger] Adding SketchUp tool: ${toolName}`
     );
 
-
     doc.paths[
-
       `/api/mcp/tools/${toolName}`
-
     ] = {
 
       post: {
 
-        tags: [
-          'SketchUp'
-        ],
+        tags: ['SketchUp'],
 
         summary:
-
           tool.description ||
-
           `Execute ${toolName}`,
 
         description:
-
           tool.description ||
-
           `Execute SketchUp MCP tool: ${toolName}`,
 
-        operationId:
-          toolName,
+        operationId: toolName,
 
         security: [
-
           {
             bearerAuth: []
           }
-
         ],
 
         requestBody: {
@@ -4353,8 +1531,7 @@ export async function getSwaggerDocument() {
 
             'application/json': {
 
-              schema:
-                inputSchema
+              schema: inputSchema
 
             }
 
@@ -4404,7 +1581,7 @@ export async function getSwaggerDocument() {
           503: {
 
             description:
-              'SketchUp backend unavailable'
+              'SketchUp is unavailable'
 
           }
 
@@ -4413,66 +1590,94 @@ export async function getSwaggerDocument() {
       }
 
     };
-
   }
 
 
-  // ==========================================================
-  // TEKLA MCP TOOLS
-  // ==========================================================
+  /*
+   * ============================================================
+   * TEKLA
+   * ============================================================
+   */
+
+  const liveTeklaTools = new Map(
+    tools
+      .filter(
+        (tool) =>
+          tool &&
+          typeof tool.name === 'string' &&
+          tool.name.startsWith('tekla_')
+      )
+      .map((tool) => [tool.name, tool])
+  );
+
+
+  /*
+   * Merge fallback Tekla definitions with live definitions.
+   */
+
+  const teklaTools = [
+    ...teklaFallbackDefinitions.map(
+      (tool) =>
+        liveTeklaTools.get(tool.name) || tool
+    ),
+
+    /*
+     * Include any additional Tekla tools that may have been
+     * added to tools.js in the future.
+     */
+    ...tools.filter(
+      (tool) =>
+        tool &&
+        typeof tool.name === 'string' &&
+        tool.name.startsWith('tekla_') &&
+        !teklaFallbackDefinitions.some(
+          (fallback) =>
+            fallback.name === tool.name
+        )
+    )
+  ];
+
+
+  /*
+   * Add every Tekla tool to Swagger.
+   */
 
   for (const tool of teklaTools) {
 
     const toolName = tool.name;
 
-    const path =
-      `/api/mcp/tools/${toolName}`;
-
-
     const inputSchema =
-
-      tool.inputSchema ||
-
-      {
+      tool.inputSchema || {
         type: 'object',
         properties: {}
       };
-
 
     console.log(
       `[Swagger] Adding Tekla tool: ${toolName}`
     );
 
-
-    doc.paths[path] = {
+    doc.paths[
+      `/api/mcp/tools/${toolName}`
+    ] = {
 
       post: {
 
-        tags: [
-          'Tekla'
-        ],
+        tags: ['Tekla'],
 
         summary:
-
           tool.description ||
-
           `Execute ${toolName}`,
 
         description:
-
           tool.description ||
-
           `Execute Tekla Structures MCP tool: ${toolName}`,
 
-        operationId:
-          toolName,
+        operationId: toolName,
 
         security: [
-
           {
             bearerAuth: []
           }
-
         ],
 
         requestBody: {
@@ -4483,8 +1688,7 @@ export async function getSwaggerDocument() {
 
             'application/json': {
 
-              schema:
-                inputSchema
+              schema: inputSchema
 
             }
 
@@ -4543,35 +1747,39 @@ export async function getSwaggerDocument() {
       }
 
     };
-
   }
 
 
-  // ==========================================================
-  // OTHER MCP TOOLS
-  // ==========================================================
+  /*
+   * ============================================================
+   * OTHER LIVE MCP TOOLS
+   * ============================================================
+   *
+   * Do not add SketchUp or Tekla here because they have already
+   * been handled above.
+   * ============================================================
+   */
 
   const otherTools = tools.filter(
-
     (tool) =>
-
+      tool &&
+      typeof tool.name === 'string' &&
       !tool.name.startsWith('sketchup_') &&
-
       !tool.name.startsWith('tekla_')
-
   );
 
 
   for (const tool of otherTools) {
 
-    const toolName =
-      tool.name;
+    const toolName = tool.name;
 
     const path =
       `/api/mcp/tools/${toolName}`;
 
 
-    // Do not overwrite an explicitly defined path.
+    /*
+     * Don't overwrite an explicitly documented API.
+     */
 
     if (doc.paths[path]) {
       continue;
@@ -4579,63 +1787,80 @@ export async function getSwaggerDocument() {
 
 
     const inputSchema =
-
-      tool.inputSchema ||
-
-      {
+      tool.inputSchema || {
         type: 'object',
         properties: {}
       };
 
 
-    const tag =
+    /*
+     * Automatically determine Swagger tag.
+     */
 
-      toolName.includes('property_set')
+    let tag = 'Core';
 
-        ? 'Property Set'
+    if (
+      toolName.includes('property_set') ||
+      toolName.includes('propertyset')
+    ) {
+      tag = 'Property Set';
 
-        : toolName.includes('schedule') ||
-          toolName.includes('pdf')
+    } else if (
+      toolName.includes('schedule') ||
+      toolName.includes('pdf') ||
+      toolName.includes('column')
+    ) {
+      tag = 'PDF';
 
-          ? 'PDF'
+    } else if (
+      toolName.includes('issue') ||
+      toolName.includes('bcf')
+    ) {
+      tag = 'Issues';
 
-          : toolName.includes('issue') ||
-            toolName.includes('bcf')
+    } else if (
+      toolName.includes('region')
+    ) {
+      tag = 'Regions';
 
-            ? 'Issues'
+    } else if (
+      toolName.includes('organizer')
+    ) {
+      tag = 'Organizer';
 
-            : 'Core';
+    } else if (
+      toolName.includes('model_feature') ||
+      toolName.includes('modelfeature')
+    ) {
+      tag = 'ModelFeature';
+
+    } else if (
+      toolName.includes('model')
+    ) {
+      tag = 'Model';
+    }
 
 
     doc.paths[path] = {
 
       post: {
 
-        tags: [
-          tag
-        ],
+        tags: [tag],
 
         summary:
-
           tool.description ||
-
           `Execute ${toolName}`,
 
         description:
-
           tool.description ||
-
           `Execute MCP tool: ${toolName}`,
 
-        operationId:
-          toolName,
+        operationId: toolName,
 
         security: [
-
           {
             bearerAuth: []
           }
-
         ],
 
         requestBody: {
@@ -4646,8 +1871,7 @@ export async function getSwaggerDocument() {
 
             'application/json': {
 
-              schema:
-                inputSchema
+              schema: inputSchema
 
             }
 
@@ -4680,10 +1904,24 @@ export async function getSwaggerDocument() {
 
           },
 
+          400: {
+
+            description:
+              'Invalid request'
+
+          },
+
           401: {
 
             description:
               'Authentication required'
+
+          },
+
+          404: {
+
+            description:
+              'MCP tool not found'
 
           },
 
@@ -4699,13 +1937,97 @@ export async function getSwaggerDocument() {
       }
 
     };
+  }
+
+
+  /*
+   * ============================================================
+   * Swagger debugging
+   * ============================================================
+   */
+
+  const swaggerPaths =
+    Object.keys(doc.paths);
+
+  const sketchupPaths =
+    swaggerPaths.filter(
+      (path) =>
+        path.includes('/sketchup_')
+    );
+
+  const teklaPaths =
+    swaggerPaths.filter(
+      (path) =>
+        path.includes('/tekla_') ||
+        path === '/api/tekla/status'
+    );
+
+
+  console.log(
+    `[Swagger] Live tools: ${tools.length}`
+  );
+
+  console.log(
+    `[Swagger] SketchUp tools: ${sketchupTools.length}`
+  );
+
+  console.log(
+    `[Swagger] Tekla tools: ${teklaTools.length}`
+  );
+
+  console.log(
+    `[Swagger] Total paths: ${swaggerPaths.length}`
+  );
+
+  console.log(
+    `[Swagger] SketchUp paths: ${sketchupPaths.length}`
+  );
+
+  console.log(
+    `[Swagger] Tekla paths: ${teklaPaths.length}`
+  );
+
+
+  console.log(
+    '[Swagger] SketchUp endpoints:'
+  );
+
+  for (const path of sketchupPaths) {
+    console.log(`  POST ${path}`);
+  }
+
+
+  console.log(
+    '[Swagger] Tekla endpoints:'
+  );
+
+  for (const path of teklaPaths) {
+
+    if (path === '/api/tekla/status') {
+      console.log(`  GET  ${path}`);
+    } else {
+      console.log(`  POST ${path}`);
+    }
 
   }
 
 
-  // ==========================================================
-  // RETURN COMPLETE SWAGGER DOCUMENT
-  // ==========================================================
+  /*
+   * Return the complete Swagger document.
+   */
 
   return doc;
 }
+
+
+/*
+ * ============================================================
+ * Export base document as well
+ * ============================================================
+ *
+ * Existing code that imports `swaggerDocument` can continue
+ * to use it.
+ * ============================================================
+ */
+
+export { swaggerDocument };
