@@ -1,6 +1,6 @@
 // git add . 
 // git commit -m "Start MCP, Swagger, HTML, Tekla OpenAPI, SketchUp Bridge APIs, TC Workspace API, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #18"
+// #30"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -144,7 +144,8 @@ app.get('/swagger/swagger.json', async (req, res) => {
 app.use(
   '/swagger',
   swaggerUi.serve,
-  swaggerUi.setup(swaggerDocument, {
+  //swaggerUi.setup(swaggerDocument, {
+  swaggerUi.setup(null, {
     explorer: true,
 
     swaggerOptions: {
@@ -2128,43 +2129,549 @@ app.get(
   }
 );
 
+// // =========================================================
+// // TEKLA MCP TOOL
+// // =========================================================
+// //
+// // This is a convenience HTTP endpoint for testing the same MCP tool
+// // that Claude/other MCP clients call through POST /mcp.
+// // The actual MCP tool name is: tekla_get_status
+// //
+// // MCP clients do NOT need this endpoint. They use:
+// //   POST /mcp
+// //   tools/call -> tekla_get_status
+// //
+// app.get(
+//   '/api/mcp/tekla/status',
+//   requireSession,
+//   async (req, res) => {
+//     try {
+//       console.log('========== TEKLA MCP STATUS ==========');
+//       console.log('Session:', req.mcpSessionId ? 'authenticated' : 'missing');
+//       console.log('Tool: tekla_get_status');
+
+//       const result = await callTool(
+//         req.mcpSessionId,
+//         'tekla_get_status',
+//         {}
+//       );
+
+//       console.log('Tekla status result:', JSON.stringify(result));
+//       console.log('======================================');
+
+//       return res.json(result);
+//     } catch (e) {
+//       console.error('GET /api/mcp/tekla/status:', e);
+//       return res.status(500).json({
+//         error: e.message
+//       });
+//     }
+//   }
+// );
 // =========================================================
-// TEKLA MCP TOOL
+// TEKLA MCP / REST TOOLS
 // =========================================================
 //
-// This is a convenience HTTP endpoint for testing the same MCP tool
-// that Claude/other MCP clients call through POST /mcp.
-// The actual MCP tool name is: tekla_get_status
+// These routes are convenience HTTP endpoints for testing the
+// same Tekla MCP tools exposed through:
 //
-// MCP clients do NOT need this endpoint. They use:
 //   POST /mcp
-//   tools/call -> tekla_get_status
 //
+// MCP:
+//
+//   tools/call
+//   {
+//     "name": "tekla_get_model",
+//     "arguments": {}
+//   }
+//
+// REST convenience:
+//
+//   GET  /api/mcp/tekla/status
+//   GET  /api/mcp/tekla/model
+//   POST /api/mcp/tekla/parts
+//   POST /api/mcp/tekla/object
+//   POST /api/mcp/tekla/selection
+//   POST /api/mcp/tekla/assemblies
+//   POST /api/mcp/tekla/assembly
+//   POST /api/mcp/tekla/bolts
+//   POST /api/mcp/tekla/welds
+//   POST /api/mcp/tekla/rebar
+//   POST /api/mcp/tekla/rebar-group
+//
+// Generic MCP/Swagger:
+//
+//   POST /api/mcp/tools/tekla_get_status
+//   POST /api/mcp/tools/tekla_get_model
+//   POST /api/mcp/tools/tekla_get_parts
+//   POST /api/mcp/tools/tekla_get_object
+//   POST /api/mcp/tools/tekla_get_selection
+//   POST /api/mcp/tools/tekla_get_assemblies
+//   POST /api/mcp/tools/tekla_get_assembly
+//   POST /api/mcp/tools/tekla_get_bolts
+//   POST /api/mcp/tools/tekla_get_welds
+//   POST /api/mcp/tools/tekla_get_rebar
+//   POST /api/mcp/tools/tekla_get_rebar_group
+//
+// =========================================================
+
+
+/**
+ * Generic helper for executing a Tekla MCP tool.
+ *
+ * All Tekla routes eventually go through:
+ *
+ *   callTool()
+ *      ↓
+ *   mcp/tools.js
+ *      ↓
+ *   TEKLA_BRIDGE_URL
+ *      ↓
+ *   ngrok
+ *      ↓
+ *   TeklaStatus.exe :7128
+ *      ↓
+ *   Tekla Structures 2026
+ */
+async function executeTeklaTool(
+  req,
+  res,
+  toolName,
+  args = {}
+) {
+  try {
+
+    console.log(
+      '================================================'
+    );
+
+    console.log(
+      `[Tekla] ${req.method} ${req.originalUrl}`
+    );
+
+    console.log(
+      `[Tekla] Tool: ${toolName}`
+    );
+
+    console.log(
+      '[Tekla] Session:',
+      req.mcpSessionId
+        ? 'authenticated'
+        : 'missing'
+    );
+
+    console.log(
+      '[Tekla] Arguments:',
+      JSON.stringify(args, null, 2)
+    );
+
+
+    const result = await callTool(
+      req.mcpSessionId,
+      toolName,
+      args
+    );
+
+
+    console.log(
+      `[Tekla] ${toolName} completed`
+    );
+
+    console.log(
+      '[Tekla] Result:',
+      JSON.stringify(result)
+    );
+
+    console.log(
+      '================================================'
+    );
+
+
+    return res.json(result);
+
+  } catch (e) {
+
+    console.error(
+      `[Tekla] ${toolName} failed:`,
+      e
+    );
+
+    console.log(
+      '================================================'
+    );
+
+    return res.status(
+      e.status ||
+      e.statusCode ||
+      500
+    ).json({
+      success: false,
+      tool: toolName,
+      error: e.message
+    });
+  }
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * GET TEKLA STATUS
+ * ---------------------------------------------------------
+ *
+ * Convenience endpoint:
+ *
+ * GET /api/mcp/tekla/status
+ *
+ * Internally:
+ *
+ * tekla_get_status
+ */
 app.get(
   '/api/mcp/tekla/status',
   requireSession,
   async (req, res) => {
-    try {
-      console.log('========== TEKLA MCP STATUS ==========');
-      console.log('Session:', req.mcpSessionId ? 'authenticated' : 'missing');
-      console.log('Tool: tekla_get_status');
 
-      const result = await callTool(
-        req.mcpSessionId,
-        'tekla_get_status',
-        {}
-      );
+    return executeTeklaTool(
+      req,
+      res,
+      'tekla_get_status',
+      {}
+    );
 
-      console.log('Tekla status result:', JSON.stringify(result));
-      console.log('======================================');
+  }
+);
 
-      return res.json(result);
-    } catch (e) {
-      console.error('GET /api/mcp/tekla/status:', e);
-      return res.status(500).json({
-        error: e.message
-      });
-    }
+
+/*
+ * ---------------------------------------------------------
+ * GET TEKLA MODEL
+ * ---------------------------------------------------------
+ *
+ * GET /api/mcp/tekla/model
+ *
+ * Internally:
+ *
+ * tekla_get_model
+ */
+app.get(
+  '/api/mcp/tekla/model',
+  requireSession,
+  async (req, res) => {
+
+    return executeTeklaTool(
+      req,
+      res,
+      'tekla_get_model',
+      {}
+    );
+
+  }
+);
+
+
+/*
+ * ---------------------------------------------------------
+ * GET TEKLA PARTS
+ * ---------------------------------------------------------
+ *
+ * POST /api/mcp/tekla/parts
+ *
+ * Body example:
+ *
+ * {
+ *   "filter": {},
+ *   "limit": 100
+ * }
+ */
+app.post(
+  '/api/mcp/tekla/parts',
+  requireSession,
+  async (req, res) => {
+
+    const args =
+      req.body?.arguments ??
+      req.body ??
+      {};
+
+    return executeTeklaTool(
+      req,
+      res,
+      'tekla_get_parts',
+      args
+    );
+
+  }
+);
+
+
+/*
+ * ---------------------------------------------------------
+ * GET TEKLA OBJECT
+ * ---------------------------------------------------------
+ *
+ * POST /api/mcp/tekla/object
+ *
+ * Body:
+ *
+ * {
+ *   "id": "123456"
+ * }
+ */
+app.post(
+  '/api/mcp/tekla/object',
+  requireSession,
+  async (req, res) => {
+
+    const args =
+      req.body?.arguments ??
+      req.body ??
+      {};
+
+    return executeTeklaTool(
+      req,
+      res,
+      'tekla_get_object',
+      args
+    );
+
+  }
+);
+
+
+/*
+ * ---------------------------------------------------------
+ * GET TEKLA SELECTION
+ * ---------------------------------------------------------
+ *
+ * POST /api/mcp/tekla/selection
+ *
+ * No body required.
+ */
+app.post(
+  '/api/mcp/tekla/selection',
+  requireSession,
+  async (req, res) => {
+
+    const args =
+      req.body?.arguments ??
+      req.body ??
+      {};
+
+    return executeTeklaTool(
+      req,
+      res,
+      'tekla_get_selection',
+      args
+    );
+
+  }
+);
+
+
+/*
+ * ---------------------------------------------------------
+ * GET TEKLA ASSEMBLIES
+ * ---------------------------------------------------------
+ *
+ * POST /api/mcp/tekla/assemblies
+ *
+ * Body example:
+ *
+ * {
+ *   "filter": {},
+ *   "limit": 100
+ * }
+ */
+app.post(
+  '/api/mcp/tekla/assemblies',
+  requireSession,
+  async (req, res) => {
+
+    const args =
+      req.body?.arguments ??
+      req.body ??
+      {};
+
+    return executeTeklaTool(
+      req,
+      res,
+      'tekla_get_assemblies',
+      args
+    );
+
+  }
+);
+
+
+/*
+ * ---------------------------------------------------------
+ * GET TEKLA ASSEMBLY
+ * ---------------------------------------------------------
+ *
+ * POST /api/mcp/tekla/assembly
+ *
+ * Body:
+ *
+ * {
+ *   "id": "123456"
+ * }
+ */
+app.post(
+  '/api/mcp/tekla/assembly',
+  requireSession,
+  async (req, res) => {
+
+    const args =
+      req.body?.arguments ??
+      req.body ??
+      {};
+
+    return executeTeklaTool(
+      req,
+      res,
+      'tekla_get_assembly',
+      args
+    );
+
+  }
+);
+
+
+/*
+ * ---------------------------------------------------------
+ * GET TEKLA BOLTS
+ * ---------------------------------------------------------
+ *
+ * POST /api/mcp/tekla/bolts
+ *
+ * Body example:
+ *
+ * {
+ *   "filter": {},
+ *   "limit": 100
+ * }
+ */
+app.post(
+  '/api/mcp/tekla/bolts',
+  requireSession,
+  async (req, res) => {
+
+    const args =
+      req.body?.arguments ??
+      req.body ??
+      {};
+
+    return executeTeklaTool(
+      req,
+      res,
+      'tekla_get_bolts',
+      args
+    );
+
+  }
+);
+
+
+/*
+ * ---------------------------------------------------------
+ * GET TEKLA WELDS
+ * ---------------------------------------------------------
+ *
+ * POST /api/mcp/tekla/welds
+ *
+ * Body example:
+ *
+ * {
+ *   "filter": {},
+ *   "limit": 100
+ * }
+ */
+app.post(
+  '/api/mcp/tekla/welds',
+  requireSession,
+  async (req, res) => {
+
+    const args =
+      req.body?.arguments ??
+      req.body ??
+      {};
+
+    return executeTeklaTool(
+      req,
+      res,
+      'tekla_get_welds',
+      args
+    );
+
+  }
+);
+
+
+/*
+ * ---------------------------------------------------------
+ * GET TEKLA REBAR
+ * ---------------------------------------------------------
+ *
+ * POST /api/mcp/tekla/rebar
+ *
+ * Body example:
+ *
+ * {
+ *   "filter": {},
+ *   "limit": 100
+ * }
+ */
+app.post(
+  '/api/mcp/tekla/rebar',
+  requireSession,
+  async (req, res) => {
+
+    const args =
+      req.body?.arguments ??
+      req.body ??
+      {};
+
+    return executeTeklaTool(
+      req,
+      res,
+      'tekla_get_rebar',
+      args
+    );
+
+  }
+);
+
+
+/*
+ * ---------------------------------------------------------
+ * GET TEKLA REBAR GROUP
+ * ---------------------------------------------------------
+ *
+ * POST /api/mcp/tekla/rebar-group
+ *
+ * Body:
+ *
+ * {
+ *   "id": "123456"
+ * }
+ */
+app.post(
+  '/api/mcp/tekla/rebar-group',
+  requireSession,
+  async (req, res) => {
+
+    const args =
+      req.body?.arguments ??
+      req.body ??
+      {};
+
+    return executeTeklaTool(
+      req,
+      res,
+      'tekla_get_rebar_group',
+      args
+    );
+
   }
 );
 

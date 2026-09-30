@@ -576,7 +576,92 @@ const teklaFallbackDefinitions = [
       },
       required: ['id']
     }
+  },
+  {
+    name: 'tekla_create_beam',
+    description: 'Create a Tekla beam. MODEL MODIFICATION: require explicit approval.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        x1: { type: 'number' }, y1: { type: 'number' }, z1: { type: 'number' },
+        x2: { type: 'number' }, y2: { type: 'number' }, z2: { type: 'number' },
+        profile: { type: 'string' }, material: { type: 'string' }, classNumber: { type: 'string' }
+      },
+      required: ['x1', 'y1', 'z1', 'x2', 'y2', 'z2']
+    }
+  },
+  {
+    name: 'tekla_create_column',
+    description: 'Create a Tekla column. MODEL MODIFICATION: require explicit approval.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        x: { type: 'number' }, y: { type: 'number' }, z1: { type: 'number' }, z2: { type: 'number' },
+        profile: { type: 'string' }, material: { type: 'string' }, classNumber: { type: 'string' }
+      },
+      required: ['x', 'y', 'z1', 'z2']
+    }
+  },
+  {
+    name: 'tekla_create_plate',
+    description: 'Create a Tekla plate. MODEL MODIFICATION: require explicit approval.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        x1: { type: 'number' }, y1: { type: 'number' }, z1: { type: 'number' },
+        x2: { type: 'number' }, y2: { type: 'number' }, z2: { type: 'number' },
+        x3: { type: 'number' }, y3: { type: 'number' }, z3: { type: 'number' },
+        profile: { type: 'string' }, material: { type: 'string' }, classNumber: { type: 'string' }
+      },
+      required: ['x1', 'y1', 'z1', 'x2', 'y2', 'z2', 'x3', 'y3', 'z3']
+    }
+  },
+  {
+    name: 'tekla_create_assembly',
+    description: 'Create a Tekla assembly. MODEL MODIFICATION: require explicit approval.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        mainPartGuid: { type: 'string' },
+        secondaryPartGuids: { type: 'array', items: { type: 'string' } }
+      },
+      required: ['mainPartGuid', 'secondaryPartGuids']
+    }
+  },
+  {
+    name: 'tekla_create_weld',
+    description: 'Create a weld between Tekla parts. MODEL MODIFICATION: require explicit approval.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        mainPartGuid: { type: 'string' },
+        secondaryPartGuid: { type: 'string' }
+      },
+      required: ['mainPartGuid', 'secondaryPartGuid']
+    }
+  },
+  {
+    name: 'tekla_create_bolt',
+    description: 'Create a bolt between Tekla parts. MODEL MODIFICATION: require explicit approval.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        part1Guid: { type: 'string' },
+        part2Guid: { type: 'string' },
+        x: { type: 'number' }, y: { type: 'number' }, z: { type: 'number' }
+      },
+      required: ['part1Guid', 'part2Guid', 'x', 'y', 'z']
+    }
   }
+];
+
+const teklaCreateRoutes = [
+  { path: '/api/mcp/tekla/create/beam', toolName: 'tekla_create_beam' },
+  { path: '/api/mcp/tekla/create/column', toolName: 'tekla_create_column' },
+  { path: '/api/mcp/tekla/create/plate', toolName: 'tekla_create_plate' },
+  { path: '/api/mcp/tekla/create/assembly', toolName: 'tekla_create_assembly' },
+  { path: '/api/mcp/tekla/create/weld', toolName: 'tekla_create_weld' },
+  { path: '/api/mcp/tekla/create/bolt', toolName: 'tekla_create_bolt' }
 ];
 
 
@@ -798,7 +883,7 @@ export const swaggerDocument = {
 
         tags: ['SketchUp'],
         security: [{ bearerAuth: [] }],
-        summary: 'List Trimble and connected SketchUp MCP tools',
+        summary: 'List Trimble Connect, Tekla, and connected SketchUp MCP tools',
         description:
           'Returns the current MCP tool definitions. SketchUp tools appear when the SketchUp MCP backend is connected to this server.',
 
@@ -835,9 +920,9 @@ export const swaggerDocument = {
 
         tags: ['SketchUp'],
         security: [{ bearerAuth: [] }],
-        summary: 'Call an MCP tool by name',
+        summary: 'Call a Trimble Connect, Tekla, or SketchUp MCP tool by name',
         description:
-          'Call a Trimble or SketchUp MCP tool. Use the prefixed SketchUp name returned by GET /api/mcp/tools, such as sketchup_get_selection.',
+          'Call a Trimble Connect, Tekla, or SketchUp MCP tool. Use the prefixed name returned by GET /api/mcp/tools, such as sketchup_get_selection or tekla_create_beam.',
 
         parameters: [
           {
@@ -4019,6 +4104,38 @@ export async function getSwaggerDocument() {
             description:
               'Tekla Bridge or Tekla Structures is unavailable'
           }
+        }
+      }
+    };
+  }
+
+  for (const route of teklaCreateRoutes) {
+    const tool = teklaTools.find(({ name }) => name === route.toolName);
+    const inputSchema = tool?.inputSchema || {
+      type: 'object',
+      properties: {}
+    };
+
+    doc.paths[route.path] = {
+      post: {
+        tags: ['Tekla'],
+        summary: tool?.description || `Execute ${route.toolName}`,
+        description: tool?.description || `Execute Tekla tool: ${route.toolName}`,
+        operationId: `${route.toolName}_rest`,
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: inputSchema
+            }
+          }
+        },
+        responses: {
+          200: { description: 'Tekla tool result' },
+          401: { description: 'Authentication required' },
+          500: { description: 'Tekla tool execution failed' },
+          503: { description: 'Tekla Bridge or Tekla Structures is unavailable' }
         }
       }
     };

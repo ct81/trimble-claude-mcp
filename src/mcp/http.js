@@ -1,5 +1,4 @@
 import {
-  definitions,
   getDefinitions,
   callTool
 } from './tools.js';
@@ -137,9 +136,7 @@ export async function handleMcp(   // <-- CHANGED: was `export function`
     const args =
       body.params?.arguments || {};
 
-    // Tekla tools, including tekla_get_status, are routed through
-    // the same MCP callTool() dispatcher as Trimble/PDF/SketchUp tools.
-    // Do not add a separate HTTP endpoint here.
+    // All tool namespaces use the shared callTool() dispatcher.
 
 
     console.log(
