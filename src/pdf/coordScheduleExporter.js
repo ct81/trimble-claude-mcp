@@ -1625,22 +1625,7 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         //     }
         // }
         if (breadthValue && breadthValue.includes(" ")) {
-
-            const parts = breadthValue.trim().split(/\s+/);
-
-            for (const part of parts) {
-
-                const cleanPart = part.trim();
-
-                if (
-                    cleanPart !== "" &&
-                    /^\d+$/.test(cleanPart) &&
-                    parseInt(cleanPart, 10) >= 100
-                ) {
-                    breadthValue = cleanPart;
-                    break;
-                }
-            }
+            breadthValue = breadthValue;
         }
 
         if (breadthValue && !isNaN(parseFloat(breadthValue))) {
