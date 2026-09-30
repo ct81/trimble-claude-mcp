@@ -1,3 +1,4 @@
+```javascript
 import { definitions, getDefinitions } from '../mcp/tools.js';
 
 // The published SketchUp MCP server advertises these tools even when the
@@ -20,13 +21,55 @@ const sketchupFallbackDefinitions = [
     inputSchema: {
       type: 'object',
       properties: {
-        view: { type: 'string', enum: ['current', 'iso', 'top', 'bottom', 'front', 'back', 'left', 'right'] },
-        zoom: { type: 'string', enum: ['none', 'extents', 'selection'] },
-        style: { type: 'string', enum: ['current', 'shaded', 'textured', 'wireframe', 'hidden_line', 'xray'] },
-        width: { type: 'integer', minimum: 256, maximum: 2000 },
-        height: { type: 'integer', minimum: 256, maximum: 2000 },
-        format: { type: 'string', enum: ['png', 'jpg'] },
-        keep_camera: { type: 'boolean' }
+        view: {
+          type: 'string',
+          enum: [
+            'current',
+            'iso',
+            'top',
+            'bottom',
+            'front',
+            'back',
+            'left',
+            'right'
+          ]
+        },
+        zoom: {
+          type: 'string',
+          enum: [
+            'none',
+            'extents',
+            'selection'
+          ]
+        },
+        style: {
+          type: 'string',
+          enum: [
+            'current',
+            'shaded',
+            'textured',
+            'wireframe',
+            'hidden_line',
+            'xray'
+          ]
+        },
+        width: {
+          type: 'integer',
+          minimum: 256,
+          maximum: 2000
+        },
+        height: {
+          type: 'integer',
+          minimum: 256,
+          maximum: 2000
+        },
+        format: {
+          type: 'string',
+          enum: ['png', 'jpg']
+        },
+        keep_camera: {
+          type: 'boolean'
+        }
       }
     }
   },
@@ -36,9 +79,32 @@ const sketchupFallbackDefinitions = [
     inputSchema: {
       type: 'object',
       properties: {
-        type: { type: 'string', enum: ['cube', 'cylinder', 'sphere', 'cone'], default: 'cube' },
-        position: { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 },
-        dimensions: { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 }
+        type: {
+          type: 'string',
+          enum: [
+            'cube',
+            'cylinder',
+            'sphere',
+            'cone'
+          ],
+          default: 'cube'
+        },
+        position: {
+          type: 'array',
+          items: {
+            type: 'number'
+          },
+          minItems: 3,
+          maxItems: 3
+        },
+        dimensions: {
+          type: 'array',
+          items: {
+            type: 'number'
+          },
+          minItems: 3,
+          maxItems: 3
+        }
       }
     }
   },
@@ -47,7 +113,11 @@ const sketchupFallbackDefinitions = [
     description: 'Delete an entity from the active SketchUp model.',
     inputSchema: {
       type: 'object',
-      properties: { id: { type: 'string' } },
+      properties: {
+        id: {
+          type: 'string'
+        }
+      },
       required: ['id']
     }
   },
@@ -57,10 +127,33 @@ const sketchupFallbackDefinitions = [
     inputSchema: {
       type: 'object',
       properties: {
-        id: { type: 'string' },
-        position: { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 },
-        rotation: { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 },
-        scale: { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 }
+        id: {
+          type: 'string'
+        },
+        position: {
+          type: 'array',
+          items: {
+            type: 'number'
+          },
+          minItems: 3,
+          maxItems: 3
+        },
+        rotation: {
+          type: 'array',
+          items: {
+            type: 'number'
+          },
+          minItems: 3,
+          maxItems: 3
+        },
+        scale: {
+          type: 'array',
+          items: {
+            type: 'number'
+          },
+          minItems: 3,
+          maxItems: 3
+        }
       },
       required: ['id']
     }
@@ -71,9 +164,15 @@ const sketchupFallbackDefinitions = [
     inputSchema: {
       type: 'object',
       properties: {
-        entity_id: { type: 'string' },
-        material: { type: 'string' },
-        color: { type: 'string' }
+        entity_id: {
+          type: 'string'
+        },
+        material: {
+          type: 'string'
+        },
+        color: {
+          type: 'string'
+        }
       },
       required: ['entity_id']
     }
@@ -84,9 +183,26 @@ const sketchupFallbackDefinitions = [
     inputSchema: {
       type: 'object',
       properties: {
-        format: { type: 'string', enum: ['skp', 'obj', 'dae', 'stl', 'png', 'jpg'], default: 'skp' },
-        width: { type: 'integer', minimum: 1 },
-        height: { type: 'integer', minimum: 1 }
+        format: {
+          type: 'string',
+          enum: [
+            'skp',
+            'obj',
+            'dae',
+            'stl',
+            'png',
+            'jpg'
+          ],
+          default: 'skp'
+        },
+        width: {
+          type: 'integer',
+          minimum: 1
+        },
+        height: {
+          type: 'integer',
+          minimum: 1
+        }
       },
       required: ['format']
     }
@@ -97,12 +213,30 @@ const sketchupFallbackDefinitions = [
     inputSchema: {
       type: 'object',
       properties: {
-        operation: { type: 'string', enum: ['union', 'difference', 'intersection'] },
-        target_id: { type: 'string' },
-        tool_id: { type: 'string' },
-        delete_originals: { type: 'boolean', default: false }
+        operation: {
+          type: 'string',
+          enum: [
+            'union',
+            'difference',
+            'intersection'
+          ]
+        },
+        target_id: {
+          type: 'string'
+        },
+        tool_id: {
+          type: 'string'
+        },
+        delete_originals: {
+          type: 'boolean',
+          default: false
+        }
       },
-      required: ['operation', 'target_id', 'tool_id']
+      required: [
+        'operation',
+        'target_id',
+        'tool_id'
+      ]
     }
   },
   {
@@ -111,10 +245,25 @@ const sketchupFallbackDefinitions = [
     inputSchema: {
       type: 'object',
       properties: {
-        entity_id: { type: 'string' },
-        distance: { type: 'number', exclusiveMinimum: 0, default: 0.5 },
-        edge_indices: { type: 'array', items: { type: 'integer', minimum: 0 } },
-        delete_original: { type: 'boolean', default: false }
+        entity_id: {
+          type: 'string'
+        },
+        distance: {
+          type: 'number',
+          exclusiveMinimum: 0,
+          default: 0.5
+        },
+        edge_indices: {
+          type: 'array',
+          items: {
+            type: 'integer',
+            minimum: 0
+          }
+        },
+        delete_original: {
+          type: 'boolean',
+          default: false
+        }
       },
       required: ['entity_id']
     }
@@ -125,11 +274,30 @@ const sketchupFallbackDefinitions = [
     inputSchema: {
       type: 'object',
       properties: {
-        entity_id: { type: 'string' },
-        radius: { type: 'number', exclusiveMinimum: 0, default: 0.5 },
-        edge_indices: { type: 'array', items: { type: 'integer', minimum: 0 } },
-        segments: { type: 'integer', minimum: 1, default: 4 },
-        delete_original: { type: 'boolean', default: false }
+        entity_id: {
+          type: 'string'
+        },
+        radius: {
+          type: 'number',
+          exclusiveMinimum: 0,
+          default: 0.5
+        },
+        edge_indices: {
+          type: 'array',
+          items: {
+            type: 'integer',
+            minimum: 0
+          }
+        },
+        segments: {
+          type: 'integer',
+          minimum: 1,
+          default: 4
+        },
+        delete_original: {
+          type: 'boolean',
+          default: false
+        }
       },
       required: ['entity_id']
     }
@@ -140,16 +308,44 @@ const sketchupFallbackDefinitions = [
     inputSchema: {
       type: 'object',
       properties: {
-        mortise_id: { type: 'string' },
-        tenon_id: { type: 'string' },
-        width: { type: 'number', exclusiveMinimum: 0, default: 1 },
-        height: { type: 'number', exclusiveMinimum: 0, default: 1 },
-        depth: { type: 'number', exclusiveMinimum: 0, default: 1 },
-        offset_x: { type: 'number', default: 0 },
-        offset_y: { type: 'number', default: 0 },
-        offset_z: { type: 'number', default: 0 }
+        mortise_id: {
+          type: 'string'
+        },
+        tenon_id: {
+          type: 'string'
+        },
+        width: {
+          type: 'number',
+          exclusiveMinimum: 0,
+          default: 1
+        },
+        height: {
+          type: 'number',
+          exclusiveMinimum: 0,
+          default: 1
+        },
+        depth: {
+          type: 'number',
+          exclusiveMinimum: 0,
+          default: 1
+        },
+        offset_x: {
+          type: 'number',
+          default: 0
+        },
+        offset_y: {
+          type: 'number',
+          default: 0
+        },
+        offset_z: {
+          type: 'number',
+          default: 0
+        }
       },
-      required: ['mortise_id', 'tenon_id']
+      required: [
+        'mortise_id',
+        'tenon_id'
+      ]
     }
   },
   {
@@ -158,18 +354,55 @@ const sketchupFallbackDefinitions = [
     inputSchema: {
       type: 'object',
       properties: {
-        tail_id: { type: 'string' },
-        pin_id: { type: 'string' },
-        width: { type: 'number', exclusiveMinimum: 0, default: 1 },
-        height: { type: 'number', exclusiveMinimum: 0, default: 2 },
-        depth: { type: 'number', exclusiveMinimum: 0, default: 1 },
-        angle: { type: 'number', minimum: 1, maximum: 45, default: 15 },
-        num_tails: { type: 'integer', minimum: 1, default: 3 },
-        offset_x: { type: 'number', default: 0 },
-        offset_y: { type: 'number', default: 0 },
-        offset_z: { type: 'number', default: 0 }
+        tail_id: {
+          type: 'string'
+        },
+        pin_id: {
+          type: 'string'
+        },
+        width: {
+          type: 'number',
+          exclusiveMinimum: 0,
+          default: 1
+        },
+        height: {
+          type: 'number',
+          exclusiveMinimum: 0,
+          default: 2
+        },
+        depth: {
+          type: 'number',
+          exclusiveMinimum: 0,
+          default: 1
+        },
+        angle: {
+          type: 'number',
+          minimum: 1,
+          maximum: 45,
+          default: 15
+        },
+        num_tails: {
+          type: 'integer',
+          minimum: 1,
+          default: 3
+        },
+        offset_x: {
+          type: 'number',
+          default: 0
+        },
+        offset_y: {
+          type: 'number',
+          default: 0
+        },
+        offset_z: {
+          type: 'number',
+          default: 0
+        }
       },
-      required: ['tail_id', 'pin_id']
+      required: [
+        'tail_id',
+        'pin_id'
+      ]
     }
   },
   {
@@ -178,26 +411,330 @@ const sketchupFallbackDefinitions = [
     inputSchema: {
       type: 'object',
       properties: {
-        board1_id: { type: 'string' },
-        board2_id: { type: 'string' },
-        width: { type: 'number', exclusiveMinimum: 0, default: 1 },
-        height: { type: 'number', exclusiveMinimum: 0, default: 2 },
-        depth: { type: 'number', exclusiveMinimum: 0, default: 1 },
-        num_fingers: { type: 'integer', minimum: 1, default: 5 },
-        offset_x: { type: 'number', default: 0 },
-        offset_y: { type: 'number', default: 0 },
-        offset_z: { type: 'number', default: 0 }
+        board1_id: {
+          type: 'string'
+        },
+        board2_id: {
+          type: 'string'
+        },
+        width: {
+          type: 'number',
+          exclusiveMinimum: 0,
+          default: 1
+        },
+        height: {
+          type: 'number',
+          exclusiveMinimum: 0,
+          default: 2
+        },
+        depth: {
+          type: 'number',
+          exclusiveMinimum: 0,
+          default: 1
+        },
+        num_fingers: {
+          type: 'integer',
+          minimum: 1,
+          default: 5
+        },
+        offset_x: {
+          type: 'number',
+          default: 0
+        },
+        offset_y: {
+          type: 'number',
+          default: 0
+        },
+        offset_z: {
+          type: 'number',
+          default: 0
+        }
       },
-      required: ['board1_id', 'board2_id']
+      required: [
+        'board1_id',
+        'board2_id'
+      ]
     }
   },
   {
     name: 'sketchup_eval_ruby',
-    description: 'Execute Ruby code inside the SketchUp process. Use only for trusted administrative testing.',
+    description:
+      'Execute Ruby code inside the SketchUp process. Use only for trusted administrative testing.',
     inputSchema: {
       type: 'object',
-      properties: { code: { type: 'string', minLength: 1 } },
+      properties: {
+        code: {
+          type: 'string',
+          minLength: 1
+        }
+      },
       required: ['code']
+    }
+  }
+];
+
+
+/*
+ * ============================================================
+ * TEKLA STRUCTURES FALLBACK CATALOG
+ * ============================================================
+ *
+ * These definitions make the complete Tekla catalog visible in
+ * Swagger even when the live Tekla bridge is not connected.
+ *
+ * If tools.js provides a live definition, the live definition
+ * takes precedence over the fallback definition.
+ * ============================================================
+ */
+
+const teklaFallbackDefinitions = [
+  {
+    name: 'tekla_get_status',
+
+    description:
+      'Check whether the local Tekla Structures bridge is running and whether Tekla Structures is connected.',
+
+    inputSchema: {
+      type: 'object',
+      properties: {}
+    }
+  },
+
+  {
+    name: 'tekla_get_model',
+
+    description:
+      'Get information about the currently connected Tekla Structures model.',
+
+    inputSchema: {
+      type: 'object',
+      properties: {}
+    }
+  },
+
+  {
+    name: 'tekla_get_parts',
+
+    description:
+      'Get parts from the connected Tekla Structures model.',
+
+    inputSchema: {
+      type: 'object',
+
+      properties: {
+
+        filter: {
+          type: 'object',
+          description:
+            'Optional Tekla part filter.',
+          additionalProperties: true
+        },
+
+        limit: {
+          type: 'integer',
+          minimum: 1,
+          maximum: 10000,
+          default: 100
+        }
+
+      }
+    }
+  },
+
+  {
+    name: 'tekla_get_object',
+
+    description:
+      'Get a Tekla Structures model object by identifier.',
+
+    inputSchema: {
+      type: 'object',
+
+      properties: {
+
+        id: {
+          type: 'string',
+          description:
+            'Tekla model object identifier.'
+        }
+
+      },
+
+      required: ['id']
+    }
+  },
+
+  {
+    name: 'tekla_get_selection',
+
+    description:
+      'Get the objects currently selected in Tekla Structures.',
+
+    inputSchema: {
+      type: 'object',
+      properties: {}
+    }
+  },
+
+  {
+    name: 'tekla_get_assemblies',
+
+    description:
+      'Get assemblies from the connected Tekla Structures model.',
+
+    inputSchema: {
+      type: 'object',
+
+      properties: {
+
+        filter: {
+          type: 'object',
+          description:
+            'Optional Tekla assembly filter.',
+          additionalProperties: true
+        },
+
+        limit: {
+          type: 'integer',
+          minimum: 1,
+          maximum: 10000,
+          default: 100
+        }
+
+      }
+    }
+  },
+
+  {
+    name: 'tekla_get_assembly',
+
+    description:
+      'Get a Tekla Structures assembly by identifier.',
+
+    inputSchema: {
+      type: 'object',
+
+      properties: {
+
+        id: {
+          type: 'string',
+          description:
+            'Tekla assembly identifier.'
+        }
+
+      },
+
+      required: ['id']
+    }
+  },
+
+  {
+    name: 'tekla_get_bolts',
+
+    description:
+      'Get bolt groups and bolt information from Tekla Structures.',
+
+    inputSchema: {
+      type: 'object',
+
+      properties: {
+
+        filter: {
+          type: 'object',
+          description:
+            'Optional bolt filter.',
+          additionalProperties: true
+        },
+
+        limit: {
+          type: 'integer',
+          minimum: 1,
+          maximum: 10000,
+          default: 100
+        }
+
+      }
+    }
+  },
+
+  {
+    name: 'tekla_get_welds',
+
+    description:
+      'Get weld information from Tekla Structures.',
+
+    inputSchema: {
+      type: 'object',
+
+      properties: {
+
+        filter: {
+          type: 'object',
+          description:
+            'Optional weld filter.',
+          additionalProperties: true
+        },
+
+        limit: {
+          type: 'integer',
+          minimum: 1,
+          maximum: 10000,
+          default: 100
+        }
+
+      }
+    }
+  },
+
+  {
+    name: 'tekla_get_rebar',
+
+    description:
+      'Get reinforcement objects from Tekla Structures.',
+
+    inputSchema: {
+      type: 'object',
+
+      properties: {
+
+        filter: {
+          type: 'object',
+          description:
+            'Optional reinforcement filter.',
+          additionalProperties: true
+        },
+
+        limit: {
+          type: 'integer',
+          minimum: 1,
+          maximum: 10000,
+          default: 100
+        }
+
+      }
+    }
+  },
+
+  {
+    name: 'tekla_get_rebar_group',
+
+    description:
+      'Get a Tekla Structures reinforcement group by identifier.',
+
+    inputSchema: {
+      type: 'object',
+
+      properties: {
+
+        id: {
+          type: 'string',
+          description:
+            'Tekla reinforcement group identifier.'
+        }
+
+      },
+
+      required: ['id']
     }
   }
 ];
@@ -1539,17 +2076,32 @@ export const swaggerDocument = {
         security: [{ bearerAuth: [] }],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { type: 'object' } } }
+          content: {
+            'application/json': {
+              schema: { type: 'object' }
+            }
+          }
         },
 
         responses: {
-          201: { description: 'Folder created successfully' },
-          401: { description: 'Authentication required' }
+          201: {
+            description:
+              'Folder created successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -1607,17 +2159,37 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Core'],
-        summary: 'Get a Trimble Connect user by id',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Get a Trimble Connect user by id',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'userId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'userId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'User retrieved successfully' },
-          401: { description: 'Authentication required' },
-          404: { description: 'User not found' }
+          200: {
+            description:
+              'User retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          },
+          404: {
+            description:
+              'User not found'
+          }
         }
 
       }
@@ -1629,16 +2201,33 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Core'],
-        summary: 'List members of a Trimble Connect project',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'List members of a Trimble Connect project',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Members retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Members retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -1650,16 +2239,33 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Core'],
-        summary: 'Get a Trimble Connect folder',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Get a Trimble Connect folder',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'folderId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'folderId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Folder retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Folder retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       },
@@ -1667,21 +2273,42 @@ export const swaggerDocument = {
       put: {
 
         tags: ['Core'],
-        summary: 'Update a Trimble Connect folder',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Update a Trimble Connect folder',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'folderId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'folderId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { type: 'object' } } }
+          content: {
+            'application/json': {
+              schema: { type: 'object' }
+            }
+          }
         },
 
         responses: {
-          200: { description: 'Folder updated successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Folder updated successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       },
@@ -1689,16 +2316,33 @@ export const swaggerDocument = {
       delete: {
 
         tags: ['Core'],
-        summary: 'Delete a Trimble Connect folder',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Delete a Trimble Connect folder',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'folderId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'folderId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Folder deleted successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Folder deleted successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -1710,16 +2354,33 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Core'],
-        summary: 'List subfolders of a Trimble Connect folder',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'List subfolders of a Trimble Connect folder',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'folderId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'folderId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Subfolders retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Subfolders retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -1731,16 +2392,33 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Core'],
-        summary: 'List files inside a Trimble Connect folder',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'List files inside a Trimble Connect folder',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'folderId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'folderId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Files retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Files retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -1752,16 +2430,33 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Core'],
-        summary: 'Get a Trimble Connect file',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Get a Trimble Connect file',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'fileId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'fileId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'File retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'File retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       },
@@ -1769,21 +2464,42 @@ export const swaggerDocument = {
       put: {
 
         tags: ['Core'],
-        summary: 'Update a Trimble Connect file',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Update a Trimble Connect file',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'fileId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'fileId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { type: 'object' } } }
+          content: {
+            'application/json': {
+              schema: { type: 'object' }
+            }
+          }
         },
 
         responses: {
-          200: { description: 'File updated successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'File updated successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       },
@@ -1791,16 +2507,33 @@ export const swaggerDocument = {
       delete: {
 
         tags: ['Core'],
-        summary: 'Delete a Trimble Connect file',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Delete a Trimble Connect file',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'fileId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'fileId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'File deleted successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'File deleted successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -1812,16 +2545,33 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Core'],
-        summary: 'List versions of a Trimble Connect file',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'List versions of a Trimble Connect file',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'fileId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'fileId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Versions retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Versions retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       },
@@ -1829,21 +2579,42 @@ export const swaggerDocument = {
       post: {
 
         tags: ['Core'],
-        summary: 'Upload a new version of a Trimble Connect file',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Upload a new version of a Trimble Connect file',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'fileId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'fileId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { type: 'object' } } }
+          content: {
+            'application/json': {
+              schema: { type: 'object' }
+            }
+          }
         },
 
         responses: {
-          201: { description: 'Version created successfully' },
-          401: { description: 'Authentication required' }
+          201: {
+            description:
+              'Version created successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -1855,16 +2626,33 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Organizer'],
-        summary: 'List todos for a Trimble Connect project',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'List todos for a Trimble Connect project',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Todos retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Todos retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       },
@@ -1872,21 +2660,42 @@ export const swaggerDocument = {
       post: {
 
         tags: ['Organizer'],
-        summary: 'Create a todo in a Trimble Connect project',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Create a todo in a Trimble Connect project',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { type: 'object' } } }
+          content: {
+            'application/json': {
+              schema: { type: 'object' }
+            }
+          }
         },
 
         responses: {
-          201: { description: 'Todo created successfully' },
-          401: { description: 'Authentication required' }
+          201: {
+            description:
+              'Todo created successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -1898,16 +2707,33 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Organizer'],
-        summary: 'Get a Trimble Connect todo',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Get a Trimble Connect todo',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'todoId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'todoId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Todo retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Todo retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       },
@@ -1915,21 +2741,42 @@ export const swaggerDocument = {
       put: {
 
         tags: ['Organizer'],
-        summary: 'Update a Trimble Connect todo',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Update a Trimble Connect todo',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'todoId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'todoId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { type: 'object' } } }
+          content: {
+            'application/json': {
+              schema: { type: 'object' }
+            }
+          }
         },
 
         responses: {
-          200: { description: 'Todo updated successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Todo updated successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       },
@@ -1937,16 +2784,33 @@ export const swaggerDocument = {
       delete: {
 
         tags: ['Organizer'],
-        summary: 'Delete a Trimble Connect todo',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Delete a Trimble Connect todo',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'todoId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'todoId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Todo deleted successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Todo deleted successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -1958,16 +2822,33 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Organizer'],
-        summary: 'List saved views for a Trimble Connect project',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'List saved views for a Trimble Connect project',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Views retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Views retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       },
@@ -1975,21 +2856,42 @@ export const swaggerDocument = {
       post: {
 
         tags: ['Organizer'],
-        summary: 'Create a saved view in a Trimble Connect project',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Create a saved view in a Trimble Connect project',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { type: 'object' } } }
+          content: {
+            'application/json': {
+              schema: { type: 'object' }
+            }
+          }
         },
 
         responses: {
-          201: { description: 'View created successfully' },
-          401: { description: 'Authentication required' }
+          201: {
+            description:
+              'View created successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -2001,16 +2903,33 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Organizer'],
-        summary: 'Get a Trimble Connect saved view',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Get a Trimble Connect saved view',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'viewId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'viewId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'View retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'View retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -2022,17 +2941,39 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Core'],
-        summary: 'Search within a Trimble Connect project',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Search within a Trimble Connect project',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'query', in: 'query', required: false, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'query',
+            in: 'query',
+            required: false,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Search results retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Search results retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -2044,17 +2985,39 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Model'],
-        summary: 'Get a Trimble Connect model',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Get a Trimble Connect model',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'modelId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'modelId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Model retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Model retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -2066,17 +3029,39 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Model'],
-        summary: 'List entities in a Trimble Connect model',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'List entities in a Trimble Connect model',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'modelId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'modelId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Entities retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Entities retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -2088,16 +3073,33 @@ export const swaggerDocument = {
       get: {
 
         tags: ['ModelFeature'],
-        summary: 'List groups (model feature sets) for a Trimble Connect project',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'List groups (model feature sets) for a Trimble Connect project',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Groups retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Groups retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -2109,17 +3111,39 @@ export const swaggerDocument = {
       get: {
 
         tags: ['ModelFeature'],
-        summary: 'Get a single group (model feature set) for a Trimble Connect project',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Get a single group (model feature set) for a Trimble Connect project',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'groupId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'groupId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Group retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Group retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -2131,16 +3155,33 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Issues'],
-        summary: 'List issues (BCF topics) for a Trimble Connect project',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'List issues (BCF topics) for a Trimble Connect project',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Issues retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Issues retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       },
@@ -2148,21 +3189,42 @@ export const swaggerDocument = {
       post: {
 
         tags: ['Issues'],
-        summary: 'Create an issue (BCF topic) in a Trimble Connect project',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Create an issue (BCF topic) in a Trimble Connect project',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { type: 'object' } } }
+          content: {
+            'application/json': {
+              schema: { type: 'object' }
+            }
+          }
         },
 
         responses: {
-          201: { description: 'Issue created successfully' },
-          401: { description: 'Authentication required' }
+          201: {
+            description:
+              'Issue created successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -2174,17 +3236,39 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Issues'],
-        summary: 'Get an issue (BCF topic) by id',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Get an issue (BCF topic) by id',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'topicId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Issue retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Issue retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       },
@@ -2192,22 +3276,48 @@ export const swaggerDocument = {
       put: {
 
         tags: ['Issues'],
-        summary: 'Update an issue (BCF topic)',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Update an issue (BCF topic)',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'topicId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { type: 'object' } } }
+          content: {
+            'application/json': {
+              schema: { type: 'object' }
+            }
+          }
         },
 
         responses: {
-          200: { description: 'Issue updated successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Issue updated successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -2219,17 +3329,39 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Issues'],
-        summary: 'List comments on an issue',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'List comments on an issue',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'topicId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Comments retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Comments retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       },
@@ -2237,22 +3369,48 @@ export const swaggerDocument = {
       post: {
 
         tags: ['Issues'],
-        summary: 'Add a comment to an issue',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Add a comment to an issue',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'topicId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { type: 'object' } } }
+          content: {
+            'application/json': {
+              schema: { type: 'object' }
+            }
+          }
         },
 
         responses: {
-          201: { description: 'Comment created successfully' },
-          401: { description: 'Authentication required' }
+          201: {
+            description:
+              'Comment created successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -2264,18 +3422,45 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Issues'],
-        summary: 'Get a single comment on an issue',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Get a single comment on an issue',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'commentId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'topicId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'commentId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Comment retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Comment retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       },
@@ -2283,23 +3468,54 @@ export const swaggerDocument = {
       put: {
 
         tags: ['Issues'],
-        summary: 'Update a comment on an issue',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Update a comment on an issue',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'commentId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'topicId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'commentId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { type: 'object' } } }
+          content: {
+            'application/json': {
+              schema: { type: 'object' }
+            }
+          }
         },
 
         responses: {
-          200: { description: 'Comment updated successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Comment updated successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       },
@@ -2307,18 +3523,45 @@ export const swaggerDocument = {
       delete: {
 
         tags: ['Issues'],
-        summary: 'Delete a comment on an issue',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Delete a comment on an issue',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'commentId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'topicId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'commentId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Comment deleted successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Comment deleted successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -2330,17 +3573,39 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Issues'],
-        summary: 'List viewpoints on an issue',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'List viewpoints on an issue',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'topicId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Viewpoints retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Viewpoints retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       },
@@ -2348,22 +3613,48 @@ export const swaggerDocument = {
       post: {
 
         tags: ['Issues'],
-        summary: 'Add a viewpoint to an issue',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Add a viewpoint to an issue',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'topicId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { type: 'object' } } }
+          content: {
+            'application/json': {
+              schema: { type: 'object' }
+            }
+          }
         },
 
         responses: {
-          201: { description: 'Viewpoint created successfully' },
-          401: { description: 'Authentication required' }
+          201: {
+            description:
+              'Viewpoint created successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -2375,18 +3666,45 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Issues'],
-        summary: 'Get a single viewpoint on an issue',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Get a single viewpoint on an issue',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'viewpointId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'topicId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'viewpointId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Viewpoint retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Viewpoint retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       },
@@ -2394,18 +3712,45 @@ export const swaggerDocument = {
       delete: {
 
         tags: ['Issues'],
-        summary: 'Delete a viewpoint from an issue',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Delete a viewpoint from an issue',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'viewpointId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'topicId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'viewpointId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Viewpoint deleted successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Viewpoint deleted successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -2417,18 +3762,45 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Issues'],
-        summary: 'Get the snapshot image for an issue viewpoint',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Get the snapshot image for an issue viewpoint',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'viewpointId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'topicId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'viewpointId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Snapshot retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Snapshot retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -2440,19 +3812,51 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Issues'],
-        summary: 'Get a bitmap image referenced by an issue viewpoint',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Get a bitmap image referenced by an issue viewpoint',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'viewpointId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'bitmapId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'topicId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'viewpointId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'bitmapId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Bitmap retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Bitmap retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -2464,17 +3868,39 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Issues'],
-        summary: 'List document references attached to an issue',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'List document references attached to an issue',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'topicId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Document references retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Document references retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       },
@@ -2482,22 +3908,48 @@ export const swaggerDocument = {
       post: {
 
         tags: ['Issues'],
-        summary: 'Attach a document reference to an issue',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Attach a document reference to an issue',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'topicId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { type: 'object' } } }
+          content: {
+            'application/json': {
+              schema: { type: 'object' }
+            }
+          }
         },
 
         responses: {
-          201: { description: 'Document reference created successfully' },
-          401: { description: 'Authentication required' }
+          201: {
+            description:
+              'Document reference created successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -2509,18 +3961,45 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Issues'],
-        summary: 'Get a single document reference attached to an issue',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Get a single document reference attached to an issue',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'documentReferenceId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'topicId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'documentReferenceId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Document reference retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Document reference retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       },
@@ -2528,23 +4007,54 @@ export const swaggerDocument = {
       put: {
 
         tags: ['Issues'],
-        summary: 'Update a document reference attached to an issue',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Update a document reference attached to an issue',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'documentReferenceId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'topicId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'documentReferenceId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { type: 'object' } } }
+          content: {
+            'application/json': {
+              schema: { type: 'object' }
+            }
+          }
         },
 
         responses: {
-          200: { description: 'Document reference updated successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Document reference updated successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       },
@@ -2552,18 +4062,45 @@ export const swaggerDocument = {
       delete: {
 
         tags: ['Issues'],
-        summary: 'Remove a document reference from an issue',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Remove a document reference from an issue',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'documentReferenceId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'topicId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'documentReferenceId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Document reference deleted successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Document reference deleted successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -2575,17 +4112,39 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Issues'],
-        summary: 'List issues related to an issue',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'List issues related to an issue',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'topicId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Related issues retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Related issues retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       },
@@ -2593,22 +4152,48 @@ export const swaggerDocument = {
       put: {
 
         tags: ['Issues'],
-        summary: 'Set the issues related to an issue',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Set the issues related to an issue',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'topicId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'topicId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { type: 'object' } } }
+          content: {
+            'application/json': {
+              schema: { type: 'object' }
+            }
+          }
         },
 
         responses: {
-          200: { description: 'Related issues updated successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Related issues updated successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -2620,12 +4205,24 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Issues'],
-        summary: 'List projects visible to the BCF issues service',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'List projects visible to the BCF issues service',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         responses: {
-          200: { description: 'BCF projects retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'BCF projects retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -2637,16 +4234,33 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Issues'],
-        summary: 'Get the BCF extensions schema (types, statuses, priorities) for a project',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Get the BCF extensions schema (types, statuses, priorities) for a project',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Extensions schema retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Extensions schema retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -2658,16 +4272,33 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Issues'],
-        summary: 'List documents available to reference from issues',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'List documents available to reference from issues',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Documents retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Documents retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -2679,17 +4310,39 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Issues'],
-        summary: 'Get a single document available to reference from issues',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Get a single document available to reference from issues',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'documentId', in: 'path', required: true, schema: { type: 'string' } }
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'documentId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
         ],
 
         responses: {
-          200: { description: 'Document retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'Document retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -2701,12 +4354,24 @@ export const swaggerDocument = {
       get: {
 
         tags: ['Issues'],
-        summary: 'Get the BCF API version supported by the issues service',
-        security: [{ bearerAuth: [] }],
+        summary:
+          'Get the BCF API version supported by the issues service',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
 
         responses: {
-          200: { description: 'BCF version retrieved successfully' },
-          401: { description: 'Authentication required' }
+          200: {
+            description:
+              'BCF version retrieved successfully'
+          },
+          401: {
+            description:
+              'Authentication required'
+          }
         }
 
       }
@@ -2727,18 +4392,29 @@ export async function getSwaggerDocument() {
   const doc = structuredClone(swaggerDocument);
 
   const tools = await getDefinitions();
+
+  // ============================================================
+  // SKETCHUP
+  // ============================================================
+
   const liveSketchupTools = new Map(
     tools
       .filter((tool) => tool.name.startsWith('sketchup_'))
       .map((tool) => [tool.name, tool])
   );
+
   const sketchupTools = [
     ...sketchupFallbackDefinitions.map((tool) =>
       liveSketchupTools.get(tool.name) || tool
     ),
+
     ...tools.filter(
-      (tool) => tool.name.startsWith('sketchup_') &&
-        !sketchupFallbackDefinitions.some((fallback) => fallback.name === tool.name)
+      (tool) =>
+        tool.name.startsWith('sketchup_') &&
+        !sketchupFallbackDefinitions.some(
+          (fallback) =>
+            fallback.name === tool.name
+        )
     )
   ];
 
@@ -2760,8 +4436,12 @@ export async function getSwaggerDocument() {
       `[Swagger] Adding SketchUp tool: ${toolName}`
     );
 
-    doc.paths[`/api/mcp/tools/${toolName}`] = {
+    doc.paths[
+      `/api/mcp/tools/${toolName}`
+    ] = {
+
       post: {
+
         tags: ['SketchUp'],
 
         summary:
@@ -2781,51 +4461,234 @@ export async function getSwaggerDocument() {
         ],
 
         requestBody: {
+
           required: true,
 
           content: {
+
             'application/json': {
+
               schema: inputSchema
+
             }
+
           }
+
         },
 
         responses: {
+
           200: {
-            description: 'SketchUp MCP tool result',
+
+            description:
+              'SketchUp MCP tool result',
 
             content: {
+
               'application/json': {
+
                 schema: {
+
                   type: 'object',
+
                   additionalProperties: true
+
                 }
+
               }
+
             }
+
           },
 
           401: {
-            description: 'Authentication required'
+
+            description:
+              'Authentication required'
+
           },
 
           500: {
-            description: 'SketchUp tool execution failed'
+
+            description:
+              'SketchUp tool execution failed'
+
           }
+
         }
+
       }
+
     };
   }
 
-  // Document every non-SketchUp MCP tool (Core, Property Set, PDF, etc.)
-  // generically so new tools appear in Swagger without manual path entries.
+
+  // ============================================================
+  // TEKLA
+  // ============================================================
+  //
+  // Same pattern as SketchUp:
+  //
+  // 1. Start with the fixed Tekla catalog.
+  // 2. Replace fallback definitions with live definitions when
+  //    available from tools.js.
+  // 3. Include any additional live tekla_* tools.
+  // ============================================================
+
+  const liveTeklaTools = new Map(
+    tools
+      .filter((tool) => tool.name.startsWith('tekla_'))
+      .map((tool) => [tool.name, tool])
+  );
+
+  const teklaTools = [
+    ...teklaFallbackDefinitions.map((tool) =>
+      liveTeklaTools.get(tool.name) || tool
+    ),
+
+    ...tools.filter(
+      (tool) =>
+        tool.name.startsWith('tekla_') &&
+        !teklaFallbackDefinitions.some(
+          (fallback) =>
+            fallback.name === tool.name
+        )
+    )
+  ];
+
+  console.log(
+    `[Swagger] Adding ${teklaTools.length} Tekla tools`
+  );
+
+  for (const tool of teklaTools) {
+
+    const toolName = tool.name;
+
+    const inputSchema =
+      tool.inputSchema || {
+        type: 'object',
+        properties: {}
+      };
+
+    console.log(
+      `[Swagger] Adding Tekla tool: ${toolName}`
+    );
+
+    doc.paths[
+      `/api/mcp/tools/${toolName}`
+    ] = {
+
+      post: {
+
+        tags: ['Tekla'],
+
+        summary:
+          tool.description ||
+          `Execute ${toolName}`,
+
+        description:
+          tool.description ||
+          `Execute Tekla Structures MCP tool: ${toolName}`,
+
+        operationId: toolName,
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
+
+        requestBody: {
+
+          required: true,
+
+          content: {
+
+            'application/json': {
+
+              schema: inputSchema
+
+            }
+
+          }
+
+        },
+
+        responses: {
+
+          200: {
+
+            description:
+              'Tekla Structures MCP tool result',
+
+            content: {
+
+              'application/json': {
+
+                schema: {
+
+                  type: 'object',
+
+                  additionalProperties: true
+
+                }
+
+              }
+
+            }
+
+          },
+
+          401: {
+
+            description:
+              'Authentication required'
+
+          },
+
+          500: {
+
+            description:
+              'Tekla Structures tool execution failed'
+
+          },
+
+          503: {
+
+            description:
+              'Tekla Bridge or Tekla Structures is unavailable'
+
+          }
+
+        }
+
+      }
+
+    };
+  }
+
+
+  // ============================================================
+  // OTHER MCP TOOLS
+  // ============================================================
+  //
+  // IMPORTANT:
+  // SketchUp and Tekla are excluded because they are handled
+  // explicitly above.
+  // ============================================================
+
   const otherTools = tools.filter(
-    (tool) => !tool.name.startsWith('sketchup_')
+    (tool) =>
+      !tool.name.startsWith('sketchup_') &&
+      !tool.name.startsWith('tekla_')
   );
 
   for (const tool of otherTools) {
 
     const toolName = tool.name;
-    const path = `/api/mcp/tools/${toolName}`;
+
+    const path =
+      `/api/mcp/tools/${toolName}`;
 
     if (doc.paths[path]) {
       continue;
@@ -2840,14 +4703,18 @@ export async function getSwaggerDocument() {
     const tag =
       toolName.includes('property_set')
         ? 'Property Set'
-        : toolName.includes('schedule') || toolName.includes('pdf')
+        : toolName.includes('schedule') ||
+          toolName.includes('pdf')
           ? 'PDF'
-          : toolName.includes('issue') || toolName.includes('bcf')
+          : toolName.includes('issue') ||
+            toolName.includes('bcf')
             ? 'Issues'
             : 'Core';
 
     doc.paths[path] = {
+
       post: {
+
         tags: [tag],
 
         summary:
@@ -2867,40 +4734,132 @@ export async function getSwaggerDocument() {
         ],
 
         requestBody: {
+
           required: false,
 
           content: {
+
             'application/json': {
+
               schema: inputSchema
+
             }
+
           }
+
         },
 
         responses: {
+
           200: {
-            description: 'MCP tool result',
+
+            description:
+              'MCP tool result',
 
             content: {
+
               'application/json': {
+
                 schema: {
+
                   type: 'object',
+
                   additionalProperties: true
+
                 }
+
               }
+
             }
+
           },
 
           401: {
-            description: 'Authentication required'
+
+            description:
+              'Authentication required'
+
           },
 
           500: {
-            description: 'MCP tool execution failed'
+
+            description:
+              'MCP tool execution failed'
+
           }
+
         }
+
       }
+
     };
+  }
+
+
+  // ============================================================
+  // DEBUG OUTPUT
+  // ============================================================
+
+  const swaggerPaths =
+    Object.keys(doc.paths);
+
+  const sketchupPaths =
+    swaggerPaths.filter(
+      (path) =>
+        path.includes('/sketchup_')
+    );
+
+  const teklaPaths =
+    swaggerPaths.filter(
+      (path) =>
+        path.includes('/tekla_') ||
+        path === '/api/tekla/status'
+    );
+
+  console.log(
+    `[Swagger] Total paths: ${swaggerPaths.length}`
+  );
+
+  console.log(
+    `[Swagger] SketchUp paths: ${sketchupPaths.length}`
+  );
+
+  console.log(
+    `[Swagger] Tekla paths: ${teklaPaths.length}`
+  );
+
+  console.log(
+    '[Swagger] SketchUp endpoints:'
+  );
+
+  for (const path of sketchupPaths) {
+    console.log(
+      `  POST ${path}`
+    );
+  }
+
+  console.log(
+    '[Swagger] Tekla endpoints:'
+  );
+
+  for (const path of teklaPaths) {
+
+    if (path === '/api/tekla/status') {
+
+      console.log(
+        `  GET  ${path}`
+      );
+
+    } else {
+
+      console.log(
+        `  POST ${path}`
+      );
+
+    }
+
   }
 
   return doc;
 }
+```
