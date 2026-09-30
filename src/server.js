@@ -1,6 +1,6 @@
 // git add . 
 // git commit -m "Start MCP, Swagger, HTML, Tekla OpenAPI, SketchUp Bridge APIs, TC Workspace API, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #24"
+// #25"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -144,7 +144,8 @@ app.get('/swagger/swagger.json', async (req, res) => {
 app.use(
   '/swagger',
   swaggerUi.serve,
-  swaggerUi.setup(swaggerDocument, {
+  //swaggerUi.setup(swaggerDocument, {
+  swaggerUi.setup(null, {
     explorer: true,
 
     swaggerOptions: {
