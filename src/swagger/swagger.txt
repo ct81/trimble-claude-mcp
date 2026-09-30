@@ -202,6 +202,7 @@ const sketchupFallbackDefinitions = [
   }
 ];
 
+
 // let mergedDefinitions = null;
 
 // export async function getDefinitions() {
@@ -290,6 +291,10 @@ export const swaggerDocument = {
       description: 'SketchUp tools exposed by the connected SketchUp MCP backend.'
     },
     {
+      name: 'Tekla',
+      description: 'Tekla Structures local bridge and connectivity operations.'
+    },
+    {
       name: 'Health',
       description: 'Service health and diagnostics.'
     }
@@ -314,6 +319,101 @@ export const swaggerDocument = {
   },
 
   paths: {
+
+    '/api/tekla/status': {
+
+      get: {
+
+        tags: ['Tekla'],
+
+        summary: 'Get Tekla Structures bridge status',
+
+        description:
+          'Check whether the local Tekla Bridge is running and whether Tekla Structures is connected.',
+
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
+
+        responses: {
+
+          200: {
+
+            description:
+              'Tekla Bridge status retrieved successfully',
+
+            content: {
+
+              'application/json': {
+
+                schema: {
+
+                  type: 'object',
+
+                  properties: {
+
+                    success: {
+                      type: 'boolean',
+                      example: true
+                    },
+
+                    connected: {
+                      type: 'boolean',
+                      example: true
+                    },
+
+                    bridge: {
+                      type: 'string',
+                      example: 'Tekla Bridge'
+                    },
+
+                    teklaVersion: {
+                      type: 'string',
+                      nullable: true,
+                      example: '2026.0'
+                    },
+
+                    modelLoaded: {
+                      type: 'boolean',
+                      example: true
+                    },
+
+                    modelPath: {
+                      type: 'string',
+                      nullable: true,
+                      example: 'C:\\TeklaStructuresModels\\MyModel'
+                    },
+
+                    timestamp: {
+                      type: 'string',
+                      format: 'date-time'
+                    }
+
+                  }
+
+                }
+
+              }
+
+            }
+
+          },
+
+          401: {
+            description: 'Authentication required'
+          },
+
+          503: {
+            description: 'Tekla Bridge or Tekla Structures is unavailable'
+          }
+
+        }
+
+      }
+
+    },
 
     '/api/mcp/tools': {
 

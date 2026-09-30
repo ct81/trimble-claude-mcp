@@ -1,6 +1,6 @@
 // git add . 
-// git commit -m "Start MCP, Swagger, HTML, SketchUp Bridge APIs, TC Workspace API, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #13"
+// git commit -m "Start MCP, Swagger, HTML, Tekla OpenAPI, SketchUp Bridge APIs, TC Workspace API, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
+// #18"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -2128,6 +2128,46 @@ app.get(
   }
 );
 
+// =========================================================
+// TEKLA MCP TOOL
+// =========================================================
+//
+// This is a convenience HTTP endpoint for testing the same MCP tool
+// that Claude/other MCP clients call through POST /mcp.
+// The actual MCP tool name is: tekla_get_status
+//
+// MCP clients do NOT need this endpoint. They use:
+//   POST /mcp
+//   tools/call -> tekla_get_status
+//
+app.get(
+  '/api/mcp/tekla/status',
+  requireSession,
+  async (req, res) => {
+    try {
+      console.log('========== TEKLA MCP STATUS ==========');
+      console.log('Session:', req.mcpSessionId ? 'authenticated' : 'missing');
+      console.log('Tool: tekla_get_status');
+
+      const result = await callTool(
+        req.mcpSessionId,
+        'tekla_get_status',
+        {}
+      );
+
+      console.log('Tekla status result:', JSON.stringify(result));
+      console.log('======================================');
+
+      return res.json(result);
+    } catch (e) {
+      console.error('GET /api/mcp/tekla/status:', e);
+      return res.status(500).json({
+        error: e.message
+      });
+    }
+  }
+);
+
 app.post(
   '/api/mcp/tools/:toolName',
   requireSession,
@@ -2147,6 +2187,8 @@ app.post(
   }
 );
 
+// Main MCP endpoint. tekla_get_status is exposed by mcp/tools.js and
+// dispatched by handleMcp() -> callTool() -> Tekla bridge.
 app.post('/mcp', requireSession, handleMcp);
 
 // REMOVE THIS before shipping
@@ -2176,7 +2218,7 @@ app.use((err, req, res, next) => {
     return next(err);
   }
 
-  const status = err.status || err.statusCode || 500;
+  let status = err.status || err.statusCode || 500;
 
   // Map body-parser errors to a clearer JSON-RPC message
   let message = err.message || 'Internal error';
