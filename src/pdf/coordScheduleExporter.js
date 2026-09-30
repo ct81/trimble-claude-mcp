@@ -1616,7 +1616,8 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         }
 
         if (breadthValue && breadthValue.includes(" ")) {
-            const parts = breadthValue.split(/\s+/);
+            //const parts = breadthValue.split(/\s+/);
+            const parts = breadthValue.replace(/\s+/g, "");
             for (const part of parts) {
                 if (/^\d+$/.test(part) && parseInt(part) >= 100) {
                     breadthValue = part;
