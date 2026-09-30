@@ -19,12 +19,11 @@ if (!fs.existsSync(TEMP_DIR)) {
 
 const X_TOLERANCE = 4.0;
 const Y_TOLERANCE = 2.5;
+const X_MARGIN = 200;
 
 
 // ============================================================
 // HEADER STYLE SWITCH
-//   "friendly" -> "Mark", "Width (mm)", ...
-//   "internal" -> "DetailMark",  "Thickness", ...
 // ============================================================
 
 const HEADER_STYLE = "friendly";
@@ -34,94 +33,45 @@ const HEADER_STYLE = "friendly";
 // CANONICAL COLUMN DEFINITIONS
 // ============================================================
 
-// const COLUMNS = [
-//     { key: "DetailMark",         friendly: "Detail Mark / Mark",               internal: "DetailMark",         prop: "detail_mark",         required: true  },
-//     { key: "DetailSpanType",     friendly: "Detail Span Type",          internal: "DetailSpanType",     prop: "span_type" },
-//     { key: "DetailStartStorey",  friendly: "Start Storey",        internal: "DetailStartStorey",  prop: "start_storey" },
-//     { key: "DetailEndstorey",    friendly: "End Storey",          internal: "DetailEndstorey",    prop: "end_storey" },
-//     { key: "MaterialGrade",      friendly: "Material Grade",      internal: "MaterialGrade",      prop: "material_grade" },
-
-//     { key: "Thickness",          friendly: "Width (mm)",          internal: "Thickness",          prop: "width_mm",
-//       aliases: ["Width"] },
-
-//     { key: "Length",             friendly: "Breadth (mm)",        internal: "Length",             prop: "breadth_mm",
-//       aliases: ["Breadth"] },
-
-//     { key: "MainRebar",          friendly: "Main Rebar",          internal: "MainRebar",          prop: "main_rebar" },
-//     { key: "VerticalRebar",      friendly: "Vertical Rebar",      internal: "VerticalRebar",      prop: "vertical_rebar" },
-//     { key: "HorizontalRebar",    friendly: "Horizontal Rebar",    internal: "HorizontalRebar",    prop: "horizontal_rebar" },
-//     { key: "Stirrups",           friendly: "Stirrups",            internal: "Stirrups",           prop: "stirrups" },
-//     { key: "ConstructionMethod", friendly: "Construction Method", internal: "ConstructionMethod", prop: "construction_method" },
-//     { key: "ArrangementType",    friendly: "Arrangement Type",    internal: "ArrangementType",    prop: "arrangement_type" },
-//     { key: "Splice/Dowels",      friendly: "Splice/Dowels",       internal: "Splice/Dowels",      prop: "splice_dowels" },
-//     { key: "Remark",             friendly: "Remark",              internal: "Remark",             prop: "remark" },
-//     { key: "ReferTo2DDetail",    friendly: "Refer To 2D Detail",  internal: "ReferTo2DDetail",    prop: "refer_to_2d_detail" }
-// ];
 const COLUMNS = [
-    { key: "DetailMark",         friendly: "Detail Mark / Mark",       internal: "DetailMark",          prop: "detail_mark",         required: true },
-    { key: "DetailSpanType",     friendly: "Detail Span Type",         internal: "DetailSpanType",      prop: "span_type" },
-    { key: "DetailStartStorey",  friendly: "Start Storey",             internal: "DetailStartStorey",   prop: "start_storey" },
-    { key: "DetailEndstorey",    friendly: "End Storey",               internal: "DetailEndstorey",     prop: "end_storey" },
-    { key: "MaterialGrade",      friendly: "Material Grade",            internal: "MaterialGrade",       prop: "material_grade" },
+    // --- Main schedule keys ---
+    { key: "DetailMark",         friendly: "Mark",                    internal: "DetailMark",          prop: "detail_mark",         required: true },
+    { key: "DetailSpanType",     friendly: "Span Type",               internal: "DetailSpanType",      prop: "span_type" },
+    { key: "DetailStartStorey",  friendly: "Start Storey",            internal: "DetailStartStorey",   prop: "start_storey" },
+    { key: "DetailEndstorey",    friendly: "End Storey",              internal: "DetailEndstorey",     prop: "end_storey" },
+    { key: "MaterialGrade",      friendly: "Material Grade",          internal: "MaterialGrade",       prop: "material_grade" },
 
-    // Dimensions
-    {
-        key: "Width",
-        friendly: "Width (mm)",
-        internal: "Width",
-        prop: "width_mm",
-        aliases: ["Width"]
-    },
+    // --- Dimensions ---
+    { key: "Width",              friendly: "Width (mm)",              internal: "Width",               prop: "width_mm",     aliases: ["Width"] },
+    { key: "Breadth",            friendly: "Breadth (mm)",            internal: "Breadth",             prop: "breadth_mm",   aliases: ["Breadth"] },
+    { key: "Length",             friendly: "Length (mm)",             internal: "Length",              prop: "length_mm",    aliases: ["Length"] },
+    { key: "Depth",              friendly: "Depth (mm)",              internal: "Depth",               prop: "depth_mm",     aliases: ["Depth"] },
+    { key: "Thickness",          friendly: "Thickness (mm)",          internal: "Thickness",           prop: "thickness_mm", aliases: ["Thickness"] },
 
-    {
-        key: "Breadth",
-        friendly: "Breadth (mm)",
-        internal: "Breadth",
-        prop: "breadth_mm",
-        aliases: ["Breadth"]
-    },
+    // --- New reinforcement sub-columns (all strings) ---
+    { key: "TopLeft",            friendly: "Top Left",                internal: "TopLeft",             prop: "top_left" },
+    { key: "TopMiddle",          friendly: "Top Middle",              internal: "TopMiddle",           prop: "top_middle" },
+    { key: "TopRight",           friendly: "Top Right",               internal: "TopRight",            prop: "top_right" },
+    { key: "BottomLeft",         friendly: "Bottom Left",             internal: "BottomLeft",          prop: "bottom_left" },
+    { key: "BottomMiddle",       friendly: "Bottom Middle",           internal: "BottomMiddle",        prop: "bottom_middle" },
+    { key: "BottomRight",        friendly: "Bottom Right",            internal: "BottomRight",         prop: "bottom_right" },
+    { key: "StirrupsLeft",       friendly: "Stirrups Left",           internal: "StirrupsLeft",        prop: "stirrups_left" },
+    { key: "StirrupsMiddle",     friendly: "Stirrups Middle",         internal: "StirrupsMiddle",      prop: "stirrups_middle" },
+    { key: "StirrupsRight",      friendly: "Stirrups Right",          internal: "StirrupsRight",       prop: "stirrups_right" },
+    { key: "SideBar",            friendly: "Side Bar",                internal: "SideBar",             prop: "side_bar" },
 
-    {
-        key: "Length",
-        friendly: "Length (mm)",
-        internal: "Length",
-        prop: "length_mm",
-        aliases: ["Length"]
-    },
+    // --- Legacy reinforcement fields (kept for compatibility) ---
+    { key: "MainRebar",          friendly: "Main Rebar",              internal: "MainRebar",           prop: "main_rebar" },
+    { key: "VerticalRebar",      friendly: "Vertical Rebar",          internal: "VerticalRebar",       prop: "vertical_rebar" },
+    { key: "HorizontalRebar",    friendly: "Horizontal Rebar",        internal: "HorizontalRebar",     prop: "horizontal_rebar" },
+    { key: "Stirrups",           friendly: "Stirrups",                internal: "Stirrups",            prop: "stirrups" },
 
-    {
-        key: "Depth",
-        friendly: "Depth (mm)",
-        internal: "Depth",
-        prop: "depth_mm",
-        aliases: ["Depth"]
-    },
-
-    {
-        key: "Thickness",
-        friendly: "Thickness (mm)",
-        internal: "Thickness",
-        prop: "thickness_mm",
-        aliases: ["Thickness"]
-    },
-
-    { key: "MainRebar",          friendly: "Main Rebar",                internal: "MainRebar",           prop: "main_rebar" },
-    { key: "VerticalRebar",      friendly: "Vertical Rebar",            internal: "VerticalRebar",       prop: "vertical_rebar" },
-    { key: "HorizontalRebar",    friendly: "Horizontal Rebar",          internal: "HorizontalRebar",     prop: "horizontal_rebar" },
-    { key: "Stirrups",           friendly: "Stirrups",                  internal: "Stirrups",            prop: "stirrups" },
-    
-    {
-        key: "SideBar",
-        friendly: "Side Bar",
-        internal: "SideBar",
-        prop: "side_bar"
-    },
-    
-    { key: "ConstructionMethod", friendly: "Construction Method",       internal: "ConstructionMethod",  prop: "construction_method" },
-    { key: "ArrangementType",    friendly: "Arrangement Type",          internal: "ArrangementType",    prop: "arrangement_type" },
-    { key: "Splice/Dowels",      friendly: "Splice/Dowels",              internal: "Splice/Dowels",      prop: "splice_dowels" },
-    { key: "Remark",             friendly: "Remark",                    internal: "Remark",             prop: "remark" },
-    { key: "ReferTo2DDetail",    friendly: "Refer To 2D Detail",         internal: "ReferTo2DDetail",    prop: "refer_to_2d_detail" }
+    // --- Misc ---
+    { key: "ConstructionMethod", friendly: "Construction Method",     internal: "ConstructionMethod",  prop: "construction_method" },
+    { key: "ArrangementType",    friendly: "Arrangement Type",        internal: "ArrangementType",     prop: "arrangement_type" },
+    { key: "Splice/Dowels",      friendly: "Splice/Dowels",           internal: "Splice/Dowels",       prop: "splice_dowels" },
+    { key: "Remark",             friendly: "Remark",                  internal: "Remark",              prop: "remark" },
+    { key: "ReferTo2DDetail",    friendly: "Refer To 2D Detail",      internal: "ReferTo2DDetail",     prop: "refer_to_2d_detail" }
 ];
 
 function headerLabel(col) {
@@ -134,7 +84,6 @@ function headerLabel(col) {
 // ============================================================
 
 async function main() {
-
     console.log("");
     console.log("==============================================");
     console.log(" PDF JSON -> EXCEL");
@@ -256,7 +205,6 @@ async function main() {
 // ============================================================
 
 function detectActiveColumns(items) {
-
     const foundHeaders = [];
 
     for (const col of COLUMNS) {
@@ -370,7 +318,6 @@ function detectActiveColumns(items) {
 // ============================================================
 
 async function exportToCsv(rows, outputPath, activeColumns) {
-
     if (!rows || rows.length === 0) {
         console.log("No data rows to export to CSV.");
         return null;
@@ -977,118 +924,44 @@ function normalizeHeaderText(text) {
 // HEADER ALIASES
 // ============================================================
 
-// const headerAliases = {
-//     "DetailMark": ["DetailMark", "Detail Mark", "Mark", "mark"],
-//     "DetailSpanType": ["DetailSpanType", "Detail Span Type", "SpanType", "Span Type", "Span"],
-//     "DetailStartStorey": ["DetailStartStorey", "Detail Start Storey"],
-//     "DetailEndstorey": ["DetailEndstorey", "DetailEndStorey", "Detail End Storey"],
-//     "MaterialGrade": ["MaterialGrade", "Material Grade"],
-//     "Breadth": ["Breadth"],
-//     "Length": ["Length"],
-//     "Width": ["Width"],
-//     "Thickness": ["Thickness"],
-//     "MainRebar": ["MainRebar", "Main Rebar"],
-//     "VerticalRebar": ["VerticalRebar", "Vertical Rebar", "V-Rebar", "V Rebar"],
-//     "HorizontalRebar": ["HorizontalRebar", "Horizontal Rebar", "H-Rebar", "H Rebar"],
-//     "Stirrups": ["Stirrups"],
-//     "ConstructionMethod": ["ConstructionMethod", "Construction Method", "ArrangementType"],
-//     "ArrangementType": ["ArrangementType", "Arrangement Type"],
-//     "Splice/Dowels": ["Splice/Dowels", "Splice / Dowels", "SpliceDowels", "Splice Dowels", "Splice"],
-//     "Remark": ["Remark"],
-//     "ReferTo2DDetail": ["ReferTo2DDetail", "Refer To 2D Detail", "ReferTo2D Details", "Refer To 2D Details"]
-// };
 const headerAliases = {
 
-    "DetailMark": [
-        "DetailMark",
-        "Detail Mark",
-        "Mark",
-        "mark"
-    ],
+    "DetailMark": ["DetailMark", "Detail Mark", "Mark", "mark"],
 
-    "DetailSpanType": [
-        "DetailSpanType",
-        "Detail Span Type",
-        "SpanType",
-        "Span Type",
-        "Span"
-    ],
+    "DetailSpanType": ["DetailSpanType", "Detail Span Type", "SpanType", "Span Type", "Span"],
 
-    "DetailStartStorey": [
-        "DetailStartStorey",
-        "Detail Start Storey"
-    ],
+    "DetailStartStorey": ["DetailStartStorey", "Detail Start Storey"],
 
-    "DetailEndstorey": [
-        "DetailEndstorey",
-        "DetailEndStorey",
-        "Detail End Storey"
-    ],
+    "DetailEndstorey": ["DetailEndstorey", "DetailEndStorey", "Detail End Storey"],
 
-    "MaterialGrade": [
-        "MaterialGrade",
-        "Material Grade"
-    ],
+    "MaterialGrade": ["MaterialGrade", "Material Grade"],
 
-    // Width and Breadth are aliases
-    "Width": [
-        "Width"
-    ],
+    "Width": ["Width"],
+    "Breadth": ["Breadth"],
+    "Length": ["Length"],
+    "Depth": ["Depth"],
+    "Thickness": ["Thickness"],
 
-    "Breadth": [
-        "Breadth"
-    ],
+    // New sub-columns
+    "TopLeft":       ["TopLeft", "Top Left"],
+    "TopMiddle":     ["TopMiddle", "Top Middle"],
+    "TopRight":      ["TopRight", "Top Right"],
+    "BottomLeft":    ["BottomLeft", "Bottom Left"],
+    "BottomMiddle":  ["BottomMiddle", "Bottom Middle"],
+    "BottomRight":   ["BottomRight", "Bottom Right"],
+    "StirrupsLeft":  ["StirrupsLeft", "Stirrups Left"],
+    "StirrupsMiddle":["StirrupsMiddle", "Stirrups Middle"],
+    "StirrupsRight": ["StirrupsRight", "Stirrups Right"],
+    "SideBar":       ["SideBar", "Side Bar"],
 
-    // Separate fields
-    "Length": [
-        "Length"
-    ],
+    // Legacy
+    "MainRebar":       ["MainRebar", "Main Rebar"],
+    "VerticalRebar":   ["VerticalRebar", "Vertical Rebar", "V-Rebar", "V Rebar"],
+    "HorizontalRebar": ["HorizontalRebar", "Horizontal Rebar", "H-Rebar", "H Rebar"],
+    "Stirrups":        ["Stirrups"],
 
-    "Depth": [
-        "Depth"
-    ],
-
-    "Thickness": [
-        "Thickness"
-    ],
-
-    "MainRebar": [
-        "MainRebar",
-        "Main Rebar"
-    ],
-
-    "VerticalRebar": [
-        "VerticalRebar",
-        "Vertical Rebar",
-        "V-Rebar",
-        "V Rebar"
-    ],
-
-    "HorizontalRebar": [
-        "HorizontalRebar",
-        "Horizontal Rebar",
-        "H-Rebar",
-        "H Rebar"
-    ],
-
-    "Stirrups": [
-        "Stirrups"
-    ],
-
-    "SideBar": [
-        "SideBar",
-        "Side Bar"
-    ],
-
-    "ConstructionMethod": [
-        "ConstructionMethod",
-        "Construction Method"
-    ],
-
-    "ArrangementType": [
-        "ArrangementType",
-        "Arrangement Type"
-    ],
+    "ConstructionMethod": ["ConstructionMethod", "Construction Method"],
+    "ArrangementType":    ["ArrangementType", "Arrangement Type"],
 
     "Splice/Dowels": [
         "Splice/Dowels",
@@ -1098,9 +971,7 @@ const headerAliases = {
         "Splice"
     ],
 
-    "Remark": [
-        "Remark"
-    ],
+    "Remark": ["Remark"],
 
     "ReferTo2DDetail": [
         "ReferTo2DDetail",
@@ -1117,7 +988,6 @@ const headerAliases = {
 
 function findHeaderMatches(items, headerName) {
     const aliases = headerAliases[headerName] || [headerName];
-
     const normalizedAliases = aliases.map(alias => normalizeHeaderText(alias));
 
     return items.filter(item => {
@@ -1128,11 +998,30 @@ function findHeaderMatches(items, headerName) {
 
 
 // ============================================================
+// COMPUTE X BOUNDS
+// ============================================================
+
+function computeXBounds(headers) {
+    const xs = (headers || [])
+        .map(h => Number(h.x))
+        .filter(Number.isFinite);
+
+    if (xs.length === 0) {
+        return { xMin: 0, xMax: Number.POSITIVE_INFINITY };
+    }
+
+    return {
+        xMin: Math.min(...xs) - X_MARGIN,
+        xMax: Math.max(...xs) + X_MARGIN
+    };
+}
+
+
+// ============================================================
 // COLUMN SCHEDULE
 // ============================================================
 
 function createScheduleSheet(sheet, items, activeColumns) {
-
     const foundHeaders = [];
 
     for (const col of activeColumns) {
@@ -1196,9 +1085,11 @@ function createScheduleSheet(sheet, items, activeColumns) {
 
     const headerY = Math.max(...foundHeaders.map(h => h.y));
 
+    const { xMin, xMax } = computeXBounds(foundHeaders);
+
     const scheduleItems = items.filter(item => {
         if (item.y > headerY + 2) return false;
-        if (item.x < 60 || item.x > 800) return false;
+        if (item.x < xMin || item.x > xMax) return false;
         return true;
     });
 
@@ -1243,8 +1134,12 @@ function createScheduleSheet(sheet, items, activeColumns) {
     }
 
     const widths = {
-        DetailMark: 25,  DetailSpanType: 15, DetailStartStorey: 20, DetailEndstorey: 20,
+        DetailMark: 25, DetailSpanType: 15, DetailStartStorey: 20, DetailEndstorey: 20,
         MaterialGrade: 16, Thickness: 14, Length: 14, Width: 14, Breadth: 14, Depth: 14,
+        TopLeft: 16, TopMiddle: 18, TopRight: 16,
+        BottomLeft: 18, BottomMiddle: 20, BottomRight: 18,
+        StirrupsLeft: 18, StirrupsMiddle: 20, StirrupsRight: 18,
+        SideBar: 18,
         MainRebar: 20, VerticalRebar: 20, HorizontalRebar: 20, Stirrups: 20,
         ConstructionMethod: 20, ArrangementType: 20, "Splice/Dowels": 18,
         Remark: 22, ReferTo2DDetail: 22
@@ -1286,25 +1181,22 @@ function findScheduleColumn(x, headers) {
     return headers.length;
 }
 
-// Parse a dimension cell into an array of clean numeric strings.
-//   "3250"                  → ["3250"]
-//   "3250, 9050"            → ["3250", "9050"]
-//   "3250, 8800, 16500"     → ["3250", "8800", "16500"]
-//   "3250 9050"             → ["3250", "9050"]
-//   "3250/9050"             → ["3250", "9050"]
-//   "  3250 , 9050 "        → ["3250", "9050"]
-//   ""                      → []
-//   null / undefined        → []
+
+// ============================================================
+// PARSE DIMENSION LIST
+// ============================================================
+
 function parseDimensionList(v) {
     if (v === null || v === undefined) return [];
 
     return String(v)
-        .replace(/[\u200B-\u200D\uFEFF]/g, "")    // strip zero-width chars
+        .replace(/[\u200B-\u200D\uFEFF]/g, "")
         .trim()
-        .split(/[\s,;\/]+/)                        // split on space, comma, semicolon, slash
+        .split(/[\s,;\/]+/)
         .map(s => s.trim())
-        .filter(Boolean);                          // drop empty tokens
+        .filter(Boolean);
 }
+
 
 // ============================================================
 // DATA SHEET
@@ -1416,9 +1308,11 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         ? Math.max(...xSortedHeaders.map(h => h.y))
         : 0;
 
+    const { xMin, xMax } = computeXBounds(xSortedHeaders);
+
     const scheduleItems = items.filter(item => {
         if (item.y > headerY + 2) return false;
-        if (item.x < 60 || item.x > 800) return false;
+        if (item.x < xMin || item.x > xMax) return false;
         return true;
     });
 
@@ -1506,25 +1400,24 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
 
     const processedRows = [];
 
+    // Precompute new sub-column indices
+    const sideBarHeaderIndex = xSortedHeaders.findIndex(h => h.key === "SideBar");
+    const stirrupsHeaderIndex = xSortedHeaders.findIndex(h => h.key === "Stirrups");
+
+    // New sub-column keys we want to extract as raw strings
+    const SUBCOLUMN_KEYS = [
+        "TopLeft", "TopMiddle", "TopRight",
+        "BottomLeft", "BottomMiddle", "BottomRight",
+        "StirrupsLeft", "StirrupsMiddle", "StirrupsRight",
+        "SideBar"
+    ];
+
     for (const row of allRows) {
         const rowData = row.rowData;
         const rowIndex = row.rowIndex;
         const currentDetailMark = row.detail_mark;
 
-        // let spanType = rowData.get("DetailSpanType") || rowData.get("SpanType") || "";
-        // let materialGrade = rowData.get("MaterialGrade") || "";
-        // let width = rowData.get("Thickness") || rowData.get("Width") || "";
-        // let breadth = rowData.get("Length") || rowData.get("Breadth") || "";
-        // let mainRebar = rowData.get("MainRebar") || "";
-        // let verticalRebar = rowData.get("VerticalRebar") || "";
-        // let horizontalRebar = rowData.get("HorizontalRebar") || "";
-        // let stirrups = rowData.get("Stirrups") || "";
-        // let constructionMethod = rowData.get("ConstructionMethod") || rowData.get("ArrangementType") || "";
-        // let arrangementType = rowData.get("ArrangementType") || "";
-        // let spliceDowels = rowData.get("Splice/Dowels") || "";
-        // let remark = rowData.get("Remark") || "";
-        // let startStorey = rowData.get("DetailStartStorey") || "";
-        // let endStorey = rowData.get("DetailEndstorey") || "";
+        // Existing extraction
         let spanType = rowData.get("DetailSpanType") || rowData.get("SpanType") || "";
         let materialGrade = rowData.get("MaterialGrade") || "";
 
@@ -1539,8 +1432,6 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         let horizontalRebar = rowData.get("HorizontalRebar") || "";
         let stirrups = rowData.get("Stirrups") || "";
 
-        let sideBar = rowData.get("SideBar") || "";
-
         let constructionMethod = rowData.get("ConstructionMethod") || "";
         let arrangementType = rowData.get("ArrangementType") || "";
 
@@ -1550,6 +1441,54 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         let startStorey = rowData.get("DetailStartStorey") || "";
         let endStorey = rowData.get("DetailEndstorey") || "";
 
+        // ------------------------------------------------------------
+        // NEW: pull the 10 raw string sub-columns directly by key
+        // ------------------------------------------------------------
+        const subColumns = {};
+        for (const key of SUBCOLUMN_KEYS) {
+            const value = rowData.get(key) || "";
+            subColumns[key] = value;
+        }
+
+        // If SideBar didn't land via rowData.get("SideBar"), rescue it
+        if (!subColumns.SideBar && sideBarHeaderIndex >= 0) {
+            const sideBarCol = sideBarHeaderIndex + 1;
+            const objects = [];
+            for (const [key, objs] of rowGroups) {
+                const [r, c] = key.split(":").map(Number);
+                if (r === rowIndex + 1 && c === sideBarCol) {
+                    objects.push(...objs);
+                }
+            }
+            if (objects.length > 0) {
+                objects.sort((a, b) => a.x - b.x);
+                subColumns.SideBar = combineText(objects);
+                console.log(`  SideBar rescued for row ${rowIndex + 1}: "${subColumns.SideBar}"`);
+            }
+        }
+
+        // Crossover: if SideBar header exists, Stirrups header doesn't,
+        // and stirrups holds H##-### → move it
+        if (!subColumns.SideBar && sideBarHeaderIndex >= 0 && stirrupsHeaderIndex < 0 && stirrups) {
+            if (/^H\d+-\d+$/.test(stirrups.trim())) {
+                subColumns.SideBar = stirrups;
+                stirrups = "";
+                console.log(`  SideBar crossover-rescued for row ${rowIndex + 1}: "${subColumns.SideBar}"`);
+            }
+        }
+
+        // Substring: extract H##-### from stirrups when safe
+        if (!subColumns.SideBar && sideBarHeaderIndex >= 0 && stirrups) {
+            const sbMatch = stirrups.match(/H\d+-\d+/g);
+            if (sbMatch && sbMatch.length > 0) {
+                const hasCombinedStirrup = /\d+[A-Z]\d+-\d+\+\d+[A-Z]\d+-\d+/.test(stirrups);
+                if (!hasCombinedStirrup) {
+                    subColumns.SideBar = sbMatch.join(" ");
+                    console.log(`  SideBar substring-rescued for row ${rowIndex + 1}: "${subColumns.SideBar}"`);
+                }
+            }
+        }
+
         let hasOtherData = false;
         for (const [, value] of rowData) {
             const trimmedValue = value.trim();
@@ -1558,7 +1497,7 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
                 break;
             }
         }
-        if (!hasOtherData) {
+        if (!hasOtherData && !subColumns.SideBar) {
             console.log(`Filter 1: Skipping row ${rowIndex + 1}`);
             continue;
         }
@@ -1677,7 +1616,8 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
         }
 
         if (breadthValue && breadthValue.includes(" ")) {
-            const parts = breadthValue.split(/\s+/);
+            //const parts = breadthValue.split(/\s+/);
+            const parts = breadthValue.replace(/\s+/g, "");
             for (const part of parts) {
                 if (/^\d+$/.test(part) && parseInt(part) >= 100) {
                     breadthValue = part;
@@ -1742,37 +1682,8 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
             }
         }
 
-        // materialGrade = materialGrade.replace(/\s+\d+.*$/, "").trim();
-        // width = width.replace(/\s+.*$/, "").trim();
-        // breadth = breadth.toString().trim();
-
-        // const valuesByProp = {
-        //     detail_mark: currentDetailMark || rowData.get("Mark") || "",
-        //     span_type: spanType, 
-        //     start_storey: startStorey,
-        //     end_storey: endStorey,
-        //     material_grade: materialGrade,
-        //     width_mm: parseFloat(width) || null,
-        //     breadth_mm: parseFloat(breadth) || null,
-        //     main_rebar: mainRebar || null,
-        //     vertical_rebar: verticalRebar || null,
-        //     horizontal_rebar: horizontalRebar || null,
-        //     stirrups: stirrups || null,
-        //     construction_method: constructionMethod || null,
-        //     arrangement_type: arrangementType || null,
-        //     splice_dowels: spliceDowels || null,
-        //     remark: remark || "",
-        //     refer_to_2d_detail: rowData.get("ReferTo2DDetail") || ""
-        // };
         materialGrade = materialGrade.replace(/\s+\d+.*$/, "").trim();
 
-        // width = width.toString().replace(/\s+.*$/, "").trim();
-        // breadth = breadth.toString().replace(/\s+.*$/, "").trim();
-        // length = length.toString().replace(/\s+.*$/, "").trim();
-        // depth = depth.toString().replace(/\s+.*$/, "").trim();
-        // thickness = thickness.toString().replace(/\s+.*$/, "").trim();
-
-        // Preserve ALL values in the cell — only collapse whitespace and trim edges.
         const widthList     = parseDimensionList(width);
         const breadthList   = parseDimensionList(breadth);
         const lengthList    = parseDimensionList(length);
@@ -1799,13 +1710,23 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
             depth_mm: parseFloat(depth) || null,
             thickness_mm: parseFloat(thickness) || null,
 
-            // Reinforcement
+            // New raw string sub-columns
+            top_left:        subColumns.TopLeft || null,
+            top_middle:      subColumns.TopMiddle || null,
+            top_right:       subColumns.TopRight || null,
+            bottom_left:     subColumns.BottomLeft || null,
+            bottom_middle:   subColumns.BottomMiddle || null,
+            bottom_right:    subColumns.BottomRight || null,
+            stirrups_left:   subColumns.StirrupsLeft || null,
+            stirrups_middle: subColumns.StirrupsMiddle || null,
+            stirrups_right:  subColumns.StirrupsRight || null,
+            side_bar:        subColumns.SideBar || null,
+
+            // Legacy reinforcement
             main_rebar: mainRebar || null,
             vertical_rebar: verticalRebar || null,
             horizontal_rebar: horizontalRebar || null,
             stirrups: stirrups || null,
-
-            side_bar: sideBar || null,
 
             // Construction
             construction_method: constructionMethod || null,
@@ -1881,7 +1802,11 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
 
     const layoutWidths = {
         DetailMark: 25, DetailStartStorey: 20, DetailEndstorey: 20,
-        MaterialGrade: 16, Thickness: 14, Length: 14,
+        MaterialGrade: 16, Thickness: 14, Length: 14, Width: 14, Breadth: 14, Depth: 14,
+        TopLeft: 16, TopMiddle: 18, TopRight: 16,
+        BottomLeft: 18, BottomMiddle: 20, BottomRight: 18,
+        StirrupsLeft: 18, StirrupsMiddle: 20, StirrupsRight: 18,
+        SideBar: 18,
         MainRebar: 20, VerticalRebar: 20, HorizontalRebar: 20, Stirrups: 20,
         ConstructionMethod: 20, ArrangementType: 18, "Splice/Dowels": 18,
         Remark: 22, ReferTo2DDetail: 22
@@ -1910,22 +1835,6 @@ function createDataSheet(sheet, items, workbook, activeColumns) {
 
 // ============================================================
 // EXPORTABLE API ENTRYPOINT
-// ------------------------------------------------------------
-// Output filenames follow the uploaded JSON filename.
-//
-// Signature:
-//   generateCoordScheduleWorkbook(json, outputPath?, csvPath?, sourceName?)
-//
-//   sourceName resolution (in order):
-//     1. Explicit 4th argument.
-//     2. basename of `outputPath` (extension stripped).
-//     3. "coord-schedule-output".
-//
-//   Directory resolution:
-//     - If outputPath ends with a separator OR points to an existing dir,
-//       use it as the directory.
-//     - Else use path.dirname(outputPath).
-//     - Else __dirname.
 // ============================================================
 
 export async function generateCoordScheduleWorkbook(
@@ -1934,14 +1843,12 @@ export async function generateCoordScheduleWorkbook(
     csvPath = null,
     sourceName = null
 ) {
-
     if (!json) {
         throw new Error("JSON input is required.");
     }
 
     const stripExt = (n) => String(n).replace(/\.(json|txt|xlsx|csv)$/i, "");
 
-    // ---------- Resolve basename ----------
     let resolvedSourceName;
 
     if (sourceName) {
@@ -1954,7 +1861,6 @@ export async function generateCoordScheduleWorkbook(
 
     if (!resolvedSourceName) resolvedSourceName = "coord-schedule-output";
 
-    // ---------- Resolve target directory ----------
     let targetDir = __dirname;
 
     if (outputPath) {
@@ -1974,7 +1880,6 @@ export async function generateCoordScheduleWorkbook(
     const finalXlsxPath = path.join(targetDir, `${resolvedSourceName}.xlsx`);
     const finalCsvPath  = path.join(targetDir, `${resolvedSourceName}.csv`);
 
-    // ---------- Build workbook ----------
     const items = extractItems(json);
 
     if (items.length === 0) {
@@ -2012,7 +1917,6 @@ export async function generateCoordScheduleWorkbook(
 
     await workbook.xlsx.writeFile(finalXlsxPath);
 
-    // ---------- CSV ----------
     let csvExported = false;
     let csvBuffer = null;
 
@@ -2076,11 +1980,3 @@ function getExcelColumnName(columnNumber) {
 
     return result;
 }
-
-
-// ============================================================
-// ERROR HANDLING
-// ============================================================
-
-// Intentionally left blank here so the module can be imported
-// safely from MCP and other server-side callers.

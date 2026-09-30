@@ -1,15 +1,3 @@
-// "column_schedule": [
-//   {
-//     "detail_mark": "",
-//     "rows": [
-//       {"start_storey": "", "end_storey": "", "material_grade": "", "width_mm": null, "breadth_mm": null, "main_rebar": "", "stirrups": "", "construction_method": "", "arrangement_type": null, "splice_dowels": null}
-//     ]
-//   }
-// ]
-
-//Read the extracted json data by columns from PDF
-
-
 // ============================================================
 // COLUMN SCHEDULE EXPORTER
 // ============================================================
@@ -33,18 +21,6 @@
 // ============================================================
 
 // ============================================================
-// COLUMN SCHEDULE EXPORTER - MCP CORE
-// ============================================================
-//
-// Pure Node.js logic.
-// No DOM.
-// No browser APIs.
-// No XLSX.
-//
-// ============================================================
-
-
-// ============================================================
 // FIXED OUTPUT STRUCTURE
 // ============================================================
 
@@ -56,6 +32,8 @@ export const EXPECTED_COLUMNS = [
     'Width',
     'Breadth',
     'MainRebar',
+    'VerticalRebar',
+    'HorizontalRebar',
     'Stirrups',
     'ConstructionMethod',
     'ArrangementType',
@@ -245,7 +223,9 @@ export function getDetailMark(item) {
         'detailmark',
         'detail-mark',
         'detail/mark',
-        'detail'
+        'detail',
+        'mark',
+        'Mark'
     ]);
 }
 
@@ -301,7 +281,9 @@ export function createRecord(
             'width',
             'column width',
             'column_width',
-            'columnwidth'
+            'columnwidth',
+            'thickness',
+            'thickness_mm'
         ]),
 
         Breadth: getValue(row, [
@@ -311,7 +293,9 @@ export function createRecord(
             'breadth',
             'depth_mm',
             'depth mm',
-            'depth'
+            'depth',
+            'length',
+            'length_mm'
         ]),
 
         MainRebar: getValue(row, [
@@ -324,6 +308,30 @@ export function createRecord(
             'mainreinforcement',
             'main bars',
             'mainbars'
+        ]),
+
+        VerticalRebar: getValue(row, [
+            'vertical_rebar',
+            'vertical rebar',
+            'verticalrebar',
+            'vertical-rebar',
+            'vertical reinforcement',
+            'vertical_reinforcement',
+            'verticalreinforcement',
+            'vertical bars',
+            'verticalbars'
+        ]),
+
+        HorizontalRebar: getValue(row, [
+            'horizontal_rebar',
+            'horizontal rebar',
+            'horizontalrebar',
+            'horizontal-rebar',
+            'horizontal reinforcement',
+            'horizontal_reinforcement',
+            'horizontalreinforcement',
+            'horizontal bars',
+            'horizontalbars'
         ]),
 
         Stirrups: getValue(row, [
