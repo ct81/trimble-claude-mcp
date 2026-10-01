@@ -27,8 +27,11 @@ import {
   callSketchUpTool,
   listSketchUpTools
 } from './sketchup/bridge.js';
+import { tools as teklaTools } from './tekla/mcp-tools.js';
+import * as teklaBridge from './tekla/bridge.js';
 
 const SKETCHUP_PREFIX = 'sketchup_';
+const teklaToolNames = new Set(teklaTools.map((tool) => tool.name));
 
 const sketchupFallbackDefinitions = [
   'status',
@@ -1592,7 +1595,10 @@ const baseDefinitions = [
 //     category: group
 //   };
 // });
-export const definitions = baseDefinitions.map((tool) => {
+export const definitions = [
+  ...baseDefinitions.filter((tool) => !teklaToolNames.has(tool.name)),
+  ...teklaTools
+].map((tool) => {
   const name = tool.name || '';
 
   const group =
@@ -1822,8 +1828,28 @@ export async function callTool(
       result = await getTeklaStatus();
       break;
 
+  case 'tekla_health':
+    result = await teklaBridge.teklaHealth();
+    break;
+
+  case 'tekla_status':
+    result = await teklaBridge.teklaStatus();
+    break;
+
+  case 'tekla_diagnostic':
+    result = await teklaBridge.teklaDiagnostic();
+    break;
+
   case 'tekla_get_model':
-    result = await getTeklaModel();
+    result = await teklaBridge.teklaModel();
+    break;
+
+  case 'tekla_find_objects':
+    result = await teklaBridge.teklaParts(args);
+    break;
+
+  case 'tekla_get_properties':
+    result = await teklaBridge.teklaObject(args);
     break;
 
   case 'tekla_get_parts':
@@ -1835,31 +1861,75 @@ export async function callTool(
     break;
 
   case 'tekla_get_selection':
-    result = await getTeklaSelection(args);
+    result = await teklaBridge.teklaSelection(args);
+    break;
+
+  case 'tekla_get_attributes':
+    result = await teklaBridge.teklaAttributes(args);
     break;
 
   case 'tekla_get_assemblies':
-    result = await getTeklaAssemblies(args);
+    result = await teklaBridge.teklaAssemblies(args);
     break;
 
   case 'tekla_get_assembly':
-    result = await getTeklaAssembly(args);
+    result = await teklaBridge.teklaAssembly(args);
     break;
 
   case 'tekla_get_bolts':
-    result = await getTeklaBolts(args);
+    result = await teklaBridge.teklaBolts(args);
     break;
 
   case 'tekla_get_welds':
-    result = await getTeklaWelds(args);
+    result = await teklaBridge.teklaWelds(args);
     break;
 
   case 'tekla_get_rebar':
-    result = await getTeklaRebar(args);
+    result = await teklaBridge.teklaRebar(args);
     break;
 
   case 'tekla_get_rebar_group':
-    result = await getTeklaRebarGroup(args);
+    result = await teklaBridge.teklaRebarGroup(args);
+    break;
+
+  case 'tekla_get_drawings':
+    result = await teklaBridge.teklaDrawings(args);
+    break;
+
+  case 'tekla_get_drawing':
+    result = await teklaBridge.teklaDrawing(args);
+    break;
+
+  case 'tekla_create_beam':
+    result = await teklaBridge.teklaCreateBeam(args);
+    break;
+
+  case 'tekla_create_column':
+    result = await teklaBridge.teklaCreateColumn(args);
+    break;
+
+  case 'tekla_create_plate':
+    result = await teklaBridge.teklaCreatePlate(args);
+    break;
+
+  case 'tekla_update_object':
+    result = await teklaBridge.teklaUpdateObject(args);
+    break;
+
+  case 'tekla_delete_object':
+    result = await teklaBridge.teklaDeleteObject(args);
+    break;
+
+  case 'tekla_create_assembly':
+    result = await teklaBridge.teklaCreateAssembly(args);
+    break;
+
+  case 'tekla_create_weld':
+    result = await teklaBridge.teklaCreateWeld(args);
+    break;
+
+  case 'tekla_create_bolt':
+    result = await teklaBridge.teklaCreateBolt(args);
     break;
 
   // ============================================================

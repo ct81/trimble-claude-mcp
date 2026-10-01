@@ -59,3 +59,5 @@ export const teklaDeleteObject = (a) => call("/api/tekla/delete/object",{method:
 export const teklaCreateAssembly = (a) => call("/api/tekla/create/assembly",{method:"POST",body:JSON.stringify(a)});
 export const teklaCreateWeld = (a) => call("/api/tekla/create/weld",{method:"POST",body:JSON.stringify(a)});
 export const teklaCreateBolt = (a) => call("/api/tekla/create/bolt",{method:"POST",body:JSON.stringify(a)});
+export const teklaCreateRebar = (a) => call("/api/tekla/create/rebar",{method:"POST",body:JSON.stringify(a)});
+export const teklaCreateRebarGroup = (a) => call("/api/tekla/create/rebar-group",{method:"POST",body:JSON.stringify(a)});

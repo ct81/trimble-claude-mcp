@@ -1932,6 +1932,14 @@ export async function callTool(
     result = await teklaBridge.teklaCreateBolt(args);
     break;
 
+  case 'tekla_create_rebar':
+    result = await teklaBridge.teklaCreateRebar(args);
+    break;
+
+  case 'tekla_create_rebar_group':
+    result = await teklaBridge.teklaCreateRebarGroup(args);
+    break;
+
   // ============================================================
   // EXISTING TRIMBLE CONNECT
   // ============================================================

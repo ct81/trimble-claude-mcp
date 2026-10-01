@@ -30,7 +30,9 @@ export const tools = [
   {name:"tekla_delete_object",description:"Delete a Tekla object. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({guid:{type:"string"}},["guid"])},
   {name:"tekla_create_assembly",description:"Create an assembly from Tekla parts. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({mainPartGuid:{type:"string"},secondaryPartGuids:{type:"array",items:{type:"string"}}},["mainPartGuid","secondaryPartGuids"])},
   {name:"tekla_create_weld",description:"Create a weld between Tekla parts. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({mainPartGuid:{type:"string"},secondaryPartGuid:{type:"string"}},["mainPartGuid","secondaryPartGuid"])},
-  {name:"tekla_create_bolt",description:"Create a bolt between Tekla parts. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({part1Guid:{type:"string"},part2Guid:{type:"string"},x:{type:"number"},y:{type:"number"},z:{type:"number"}},["part1Guid","part2Guid","x","y","z"])}
+  {name:"tekla_create_bolt",description:"Create a bolt between Tekla parts. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({part1Guid:{type:"string"},part2Guid:{type:"string"},x:{type:"number"},y:{type:"number"},z:{type:"number"}},["part1Guid","part2Guid","x","y","z"])},
+  {name:"tekla_create_rebar",description:"Create one Tekla rebar from an ordered point path. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({fatherGuid:{type:"string"},points:{type:"array",minItems:2,items:{type:"object",required:["x","y","z"],properties:{x:{type:"number"},y:{type:"number"},z:{type:"number"}}}},size:{type:"string"},grade:{type:"string"},name:{type:"string"},classNumber:{type:"integer"},bendingRadius:{type:"number"},fromPlaneOffset:{type:"number"}},["fatherGuid","points"])},
+  {name:"tekla_create_rebar_group",description:"Create a Tekla rebar group from polygon paths. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({fatherGuid:{type:"string"},polygons:{type:"array",minItems:1,maxItems:99,items:{type:"array",minItems:2,items:{type:"object",required:["x","y","z"],properties:{x:{type:"number"},y:{type:"number"},z:{type:"number"}}}}},barCount:{type:"integer",minimum:1},size:{type:"string"},grade:{type:"string"},name:{type:"string"},classNumber:{type:"integer"},bendingRadius:{type:"number"},fromPlaneOffset:{type:"number"}},["fatherGuid","polygons","barCount"])}
 ];
 
 export async function callTeklaTool(name,args={}) {
@@ -59,6 +61,8 @@ export async function callTeklaTool(name,args={}) {
     case "tekla_create_assembly": return t.teklaCreateAssembly(args);
     case "tekla_create_weld": return t.teklaCreateWeld(args);
     case "tekla_create_bolt": return t.teklaCreateBolt(args);
+    case "tekla_create_rebar": return t.teklaCreateRebar(args);
+    case "tekla_create_rebar_group": return t.teklaCreateRebarGroup(args);
     default: throw new Error(`Unknown Tekla MCP tool: ${name}`);
   }
 }

@@ -652,6 +652,72 @@ const teklaFallbackDefinitions = [
       },
       required: ['part1Guid', 'part2Guid', 'x', 'y', 'z']
     }
+  },
+  {
+    name: 'tekla_create_rebar',
+    description: 'Create one Tekla rebar from an ordered point path. MODEL MODIFICATION: require explicit approval.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        fatherGuid: { type: 'string' },
+        points: {
+          type: 'array',
+          minItems: 2,
+          items: {
+            type: 'object',
+            required: ['x', 'y', 'z'],
+            properties: {
+              x: { type: 'number' },
+              y: { type: 'number' },
+              z: { type: 'number' }
+            }
+          }
+        },
+        size: { type: 'string' },
+        grade: { type: 'string' },
+        name: { type: 'string' },
+        classNumber: { type: 'integer' },
+        bendingRadius: { type: 'number' },
+        fromPlaneOffset: { type: 'number' }
+      },
+      required: ['fatherGuid', 'points']
+    }
+  },
+  {
+    name: 'tekla_create_rebar_group',
+    description: 'Create a Tekla rebar group from polygon paths. MODEL MODIFICATION: require explicit approval.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        fatherGuid: { type: 'string' },
+        polygons: {
+          type: 'array',
+          minItems: 1,
+          maxItems: 99,
+          items: {
+            type: 'array',
+            minItems: 2,
+            items: {
+              type: 'object',
+              required: ['x', 'y', 'z'],
+              properties: {
+                x: { type: 'number' },
+                y: { type: 'number' },
+                z: { type: 'number' }
+              }
+            }
+          }
+        },
+        barCount: { type: 'integer', minimum: 1 },
+        size: { type: 'string' },
+        grade: { type: 'string' },
+        name: { type: 'string' },
+        classNumber: { type: 'integer' },
+        bendingRadius: { type: 'number' },
+        fromPlaneOffset: { type: 'number' }
+      },
+      required: ['fatherGuid', 'polygons', 'barCount']
+    }
   }
 ];
 
@@ -661,7 +727,9 @@ const teklaCreateRoutes = [
   { path: '/api/mcp/tekla/create/plate', toolName: 'tekla_create_plate' },
   { path: '/api/mcp/tekla/create/assembly', toolName: 'tekla_create_assembly' },
   { path: '/api/mcp/tekla/create/weld', toolName: 'tekla_create_weld' },
-  { path: '/api/mcp/tekla/create/bolt', toolName: 'tekla_create_bolt' }
+  { path: '/api/mcp/tekla/create/bolt', toolName: 'tekla_create_bolt' },
+  { path: '/api/mcp/tekla/create/rebar', toolName: 'tekla_create_rebar' },
+  { path: '/api/mcp/tekla/create/rebar-group', toolName: 'tekla_create_rebar_group' }
 ];
 
 

@@ -1,6 +1,6 @@
 // git add . 
 // git commit -m "Start MCP, Swagger, HTML, Tekla OpenAPI, SketchUp Bridge APIs, TC Workspace API, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #30"
+// #31"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -2198,6 +2198,12 @@ app.get(
 //   POST /api/mcp/tekla/welds
 //   POST /api/mcp/tekla/rebar
 //   POST /api/mcp/tekla/rebar-group
+//   POST /api/mcp/tekla/create/beam
+//   POST /api/mcp/tekla/create/column
+//   POST /api/mcp/tekla/create/plate
+//   POST /api/mcp/tekla/create/assembly
+//   POST /api/mcp/tekla/create/weld
+//   POST /api/mcp/tekla/create/bolt
 //
 // Generic MCP/Swagger:
 //
@@ -2212,6 +2218,12 @@ app.get(
 //   POST /api/mcp/tools/tekla_get_welds
 //   POST /api/mcp/tools/tekla_get_rebar
 //   POST /api/mcp/tools/tekla_get_rebar_group
+//   POST /api/mcp/tools/tekla_create_beam
+//   POST /api/mcp/tools/tekla_create_column
+//   POST /api/mcp/tools/tekla_create_plate
+//   POST /api/mcp/tools/tekla_create_assembly
+//   POST /api/mcp/tools/tekla_create_weld
+//   POST /api/mcp/tools/tekla_create_bolt
 //
 // =========================================================
 
@@ -2674,6 +2686,26 @@ app.post(
 
   }
 );
+
+const teklaCreateRoutes = [
+  { path: '/api/mcp/tekla/create/beam', toolName: 'tekla_create_beam' },
+  { path: '/api/mcp/tekla/create/column', toolName: 'tekla_create_column' },
+  { path: '/api/mcp/tekla/create/plate', toolName: 'tekla_create_plate' },
+  { path: '/api/mcp/tekla/create/assembly', toolName: 'tekla_create_assembly' },
+  { path: '/api/mcp/tekla/create/weld', toolName: 'tekla_create_weld' },
+  { path: '/api/mcp/tekla/create/bolt', toolName: 'tekla_create_bolt' }
+];
+
+for (const route of teklaCreateRoutes) {
+  app.post(
+    route.path,
+    requireSession,
+    async (req, res) => {
+      const args = req.body?.arguments ?? req.body ?? {};
+      return executeTeklaTool(req, res, route.toolName, args);
+    }
+  );
+}
 
 app.post(
   '/api/mcp/tools/:toolName',
