@@ -1,6 +1,6 @@
 // git add . 
-// git commit -m "Start MCP, Swagger, HTML, Tekla OpenAPI, SketchUp Bridge APIs, TC Workspace API, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #35"
+// git commit -m "Start MCP, Swagger, HTML, Tekla OpenAPI, SketchUp Bridge APIs, TC Status Sharing, Workspace API, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
+// #1"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -69,6 +69,7 @@ import {
   organizer,
   propertySet,
   regions,
+  statusSharing,
   topics
 } from './trimble/index.js';
 
@@ -1715,6 +1716,91 @@ app.get('/api/v1/bcf/version', requireSession, async (req, res) => {
     return res.status(500).json({ error: e.message });
   }
 });
+
+function addStatusSharingRoute(method, route, handler, successStatus = 200) {
+  app[method](`/api/v1/status-sharing${route}`, requireSession, async (req, res) => {
+    try {
+      const result = await handler(req);
+      return res.status(successStatus).json(result);
+    } catch (e) {
+      console.error(`${method.toUpperCase()} /api/v1/status-sharing${route}:`, e);
+      return res.status(500).json({ error: e.message });
+    }
+  });
+}
+
+addStatusSharingRoute('post', '/auth/token', (req) =>
+  statusSharing.exchangeToken(req.mcpSessionId, req.query)
+);
+addStatusSharingRoute('get', '/auth/enabled/:projectId', (req) =>
+  statusSharing.isEnabled(req.mcpSessionId, req.params.projectId)
+);
+addStatusSharingRoute('get', '/projects', (req) =>
+  statusSharing.getProjects(req.mcpSessionId)
+);
+addStatusSharingRoute('get', '/projects/:projectId', (req) =>
+  statusSharing.getProject(req.mcpSessionId, req.params.projectId)
+);
+addStatusSharingRoute('get', '/projects/:projectId/status', (req) =>
+  statusSharing.getStatuses(req.mcpSessionId, req.params.projectId, req.query)
+);
+addStatusSharingRoute('get', '/projects/:projectId/status/page', (req) =>
+  statusSharing.getStatusesPage(req.mcpSessionId, req.params.projectId, req.query)
+);
+addStatusSharingRoute('get', '/projects/:projectId/statusactions', (req) =>
+  statusSharing.getStatusActions(req.mcpSessionId, req.params.projectId)
+);
+addStatusSharingRoute('post', '/projects/:projectId/statusactions', (req) =>
+  statusSharing.createStatusAction(req.mcpSessionId, req.params.projectId, req.body),
+201
+);
+addStatusSharingRoute('get', '/projects/:projectId/statusactions/:statusActionId', (req) =>
+  statusSharing.getStatusAction(req.mcpSessionId, req.params.projectId, req.params.statusActionId)
+);
+addStatusSharingRoute('put', '/projects/:projectId/statusactions/:statusActionId', (req) =>
+  statusSharing.updateStatusAction(req.mcpSessionId, req.params.projectId, req.params.statusActionId, req.body)
+);
+addStatusSharingRoute('delete', '/projects/:projectId/statusactions/:statusActionId', (req) =>
+  statusSharing.deleteStatusAction(req.mcpSessionId, req.params.projectId, req.params.statusActionId)
+);
+addStatusSharingRoute('get', '/projects/:projectId/statusactions/:statusActionId/customstatusvalues', (req) =>
+  statusSharing.getCustomStatusValues(req.mcpSessionId, req.params.projectId, req.params.statusActionId)
+);
+addStatusSharingRoute('post', '/projects/:projectId/statusactions/:statusActionId/customstatusvalues', (req) =>
+  statusSharing.addCustomStatusValues(req.mcpSessionId, req.params.projectId, req.params.statusActionId, req.body),
+201
+);
+addStatusSharingRoute('get', '/projects/:projectId/statusactions/:statusActionId/customstatusvalues/:code', (req) =>
+  statusSharing.getCustomStatusValue(req.mcpSessionId, req.params.projectId, req.params.statusActionId, req.params.code)
+);
+addStatusSharingRoute('put', '/projects/:projectId/statusactions/:statusActionId/customstatusvalues/:code', (req) =>
+  statusSharing.updateCustomStatusValue(req.mcpSessionId, req.params.projectId, req.params.statusActionId, req.params.code, req.body)
+);
+addStatusSharingRoute('get', '/projects/:projectId/statusactions/:statusActionId/groupaccess', (req) =>
+  statusSharing.getStatusActionGroupAccess(req.mcpSessionId, req.params.projectId, req.params.statusActionId)
+);
+addStatusSharingRoute('put', '/projects/:projectId/statusactions/:statusActionId/groupaccess', (req) =>
+  statusSharing.updateStatusActionGroupAccess(req.mcpSessionId, req.params.projectId, req.params.statusActionId, req.body)
+);
+addStatusSharingRoute('get', '/license/:projectId', (req) =>
+  statusSharing.getLicense(req.mcpSessionId, req.params.projectId)
+);
+addStatusSharingRoute('get', '/projects/:projectId/groups', (req) =>
+  statusSharing.getGroups(req.mcpSessionId, req.params.projectId)
+);
+addStatusSharingRoute('get', '/projects/:projectId/statusevents', (req) =>
+  statusSharing.getStatusEvents(req.mcpSessionId, req.params.projectId, req.query)
+);
+addStatusSharingRoute('post', '/projects/:projectId/statusevents', (req) =>
+  statusSharing.createStatusEvents(req.mcpSessionId, req.params.projectId, req.body),
+201
+);
+addStatusSharingRoute('get', '/projects/:projectId/statusevents/page', (req) =>
+  statusSharing.getStatusEventsPage(req.mcpSessionId, req.params.projectId, req.query)
+);
+addStatusSharingRoute('get', '/projects/:projectId/statusevents/:eventId', (req) =>
+  statusSharing.getStatusEvent(req.mcpSessionId, req.params.projectId, req.params.eventId)
+);
 
 app.get(
   '/api/v1/property-set/me',

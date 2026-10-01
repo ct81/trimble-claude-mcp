@@ -758,6 +758,32 @@ const teklaCreateRoutes = [
   { path: '/api/mcp/tekla/create/phase', toolName: 'tekla_create_phase' }
 ];
 
+const statusSharingRestOperations = [
+  { path: '/api/v1/status-sharing/auth/token', method: 'post', operationId: 'status_sharing_exchange_token_rest', summary: 'Exchange a Status Sharing API token', query: { admin: 'boolean', projectId: 'string' } },
+  { path: '/api/v1/status-sharing/auth/enabled/{projectId}', method: 'get', operationId: 'status_sharing_is_enabled_rest', summary: 'Check whether Status Sharing is enabled' },
+  { path: '/api/v1/status-sharing/projects', method: 'get', operationId: 'status_sharing_get_projects_rest', summary: 'List Status Sharing projects' },
+  { path: '/api/v1/status-sharing/projects/{projectId}', method: 'get', operationId: 'status_sharing_get_project_rest', summary: 'Get a Status Sharing project' },
+  { path: '/api/v1/status-sharing/projects/{projectId}/status', method: 'get', operationId: 'status_sharing_get_statuses_rest', summary: 'Retrieve current project statuses', query: { options: 'string', objectId: 'string', statusActionId: 'string' } },
+  { path: '/api/v1/status-sharing/projects/{projectId}/status/page', method: 'get', operationId: 'status_sharing_get_statuses_page_rest', summary: 'Retrieve a page of current project statuses', query: { objectId: 'string', statusActionId: 'string', cursor: 'string', pageSize: 'integer' } },
+  { path: '/api/v1/status-sharing/projects/{projectId}/statusactions', method: 'get', operationId: 'status_sharing_get_status_actions_rest', summary: 'List status actions' },
+  { path: '/api/v1/status-sharing/projects/{projectId}/statusactions', method: 'post', operationId: 'status_sharing_create_status_action_rest', summary: 'Create a status action', body: 'object', created: true },
+  { path: '/api/v1/status-sharing/projects/{projectId}/statusactions/{statusActionId}', method: 'get', operationId: 'status_sharing_get_status_action_rest', summary: 'Get a status action' },
+  { path: '/api/v1/status-sharing/projects/{projectId}/statusactions/{statusActionId}', method: 'put', operationId: 'status_sharing_update_status_action_rest', summary: 'Update a status action', body: 'object' },
+  { path: '/api/v1/status-sharing/projects/{projectId}/statusactions/{statusActionId}', method: 'delete', operationId: 'status_sharing_delete_status_action_rest', summary: 'Delete a status action' },
+  { path: '/api/v1/status-sharing/projects/{projectId}/statusactions/{statusActionId}/customstatusvalues', method: 'get', operationId: 'status_sharing_get_custom_status_values_rest', summary: 'List custom status values' },
+  { path: '/api/v1/status-sharing/projects/{projectId}/statusactions/{statusActionId}/customstatusvalues', method: 'post', operationId: 'status_sharing_add_custom_status_values_rest', summary: 'Add custom status values', body: 'array', created: true },
+  { path: '/api/v1/status-sharing/projects/{projectId}/statusactions/{statusActionId}/customstatusvalues/{code}', method: 'get', operationId: 'status_sharing_get_custom_status_value_rest', summary: 'Get a custom status value' },
+  { path: '/api/v1/status-sharing/projects/{projectId}/statusactions/{statusActionId}/customstatusvalues/{code}', method: 'put', operationId: 'status_sharing_update_custom_status_value_rest', summary: 'Update a custom status value', body: 'object' },
+  { path: '/api/v1/status-sharing/projects/{projectId}/statusactions/{statusActionId}/groupaccess', method: 'get', operationId: 'status_sharing_get_status_action_group_access_rest', summary: 'Get status action group access' },
+  { path: '/api/v1/status-sharing/projects/{projectId}/statusactions/{statusActionId}/groupaccess', method: 'put', operationId: 'status_sharing_update_status_action_group_access_rest', summary: 'Update status action group access', body: 'array' },
+  { path: '/api/v1/status-sharing/license/{projectId}', method: 'get', operationId: 'status_sharing_get_license_rest', summary: 'Check the Status Sharing license' },
+  { path: '/api/v1/status-sharing/projects/{projectId}/groups', method: 'get', operationId: 'status_sharing_get_groups_rest', summary: 'List project groups' },
+  { path: '/api/v1/status-sharing/projects/{projectId}/statusevents', method: 'get', operationId: 'status_sharing_get_status_events_rest', summary: 'Retrieve status events', query: { options: 'string', objectId: 'string', statusActionId: 'string' } },
+  { path: '/api/v1/status-sharing/projects/{projectId}/statusevents', method: 'post', operationId: 'status_sharing_create_status_events_rest', summary: 'Create status events', body: 'array', created: true },
+  { path: '/api/v1/status-sharing/projects/{projectId}/statusevents/page', method: 'get', operationId: 'status_sharing_get_status_events_page_rest', summary: 'Retrieve a page of status events', query: { statusActionId: 'string', cursor: 'string', pageSize: 'integer' } },
+  { path: '/api/v1/status-sharing/projects/{projectId}/statusevents/{eventId}', method: 'get', operationId: 'status_sharing_get_status_event_rest', summary: 'Get a status event' }
+];
+
 
 // let mergedDefinitions = null;
 
@@ -837,6 +863,10 @@ export const swaggerDocument = {
     {
       name: 'Property Set',
       description: 'Property Set library, definition, and instance operations.'
+    },
+    {
+      name: 'Status Sharing',
+      description: 'Trimble Status Sharing project, status action, and event operations.'
     },
     {
       name: 'PDF',
@@ -4006,6 +4036,55 @@ export async function getSwaggerDocument() {
 
   const doc = structuredClone(swaggerDocument);
 
+  for (const route of statusSharingRestOperations) {
+    const parameters = [
+      ...[...route.path.matchAll(/\{([^}]+)\}/g)].map(([, name]) => ({
+        name,
+        in: 'path',
+        required: true,
+        schema: { type: 'string' }
+      })),
+      ...Object.entries(route.query || {}).map(([name, type]) => ({
+        name,
+        in: 'query',
+        required: false,
+        schema: { type }
+      }))
+    ];
+
+    const operation = {
+      tags: ['Status Sharing'],
+      summary: route.summary,
+      operationId: route.operationId,
+      security: [{ bearerAuth: [] }],
+      ...(parameters.length ? { parameters } : {}),
+      ...(route.body
+        ? {
+            requestBody: {
+              required: true,
+              content: {
+                'application/json': {
+                  schema: route.body === 'array'
+                    ? { type: 'array', items: { type: 'object' } }
+                    : { type: 'object' }
+                }
+              }
+            }
+          }
+        : {}),
+      responses: {
+        [route.created ? 201 : 200]: {
+          description: route.created ? 'Resource created successfully' : 'Request completed successfully'
+        },
+        401: { description: 'Authentication required' },
+        500: { description: 'Status Sharing API request failed' }
+      }
+    };
+
+    doc.paths[route.path] ||= {};
+    doc.paths[route.path][route.method] = operation;
+  }
+
   const tools = await getDefinitions();
 
   // ==========================================
@@ -4282,6 +4361,8 @@ export async function getSwaggerDocument() {
     const tag =
       toolName.includes('property_set')
         ? 'Property Set'
+        : toolName.startsWith('status_sharing_')
+          ? 'Status Sharing'
         : toolName.includes('schedule') ||
             toolName.includes('pdf')
           ? 'PDF'

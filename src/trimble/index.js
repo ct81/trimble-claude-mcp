@@ -29,3 +29,7 @@ export {
 export {
   topics
 } from './topics.js';
+
+export {
+  statusSharing
+} from './statussharing.js';

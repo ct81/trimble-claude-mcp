@@ -9,6 +9,7 @@ import {
   organizer,
   propertySet,
   regions,
+  statusSharing,
   topics
 } from '../trimble/index.js';
 
@@ -1578,7 +1579,41 @@ const baseDefinitions = [
         }
       }
     }
-  }
+  },
+
+  ...[
+    ['status_sharing_exchange_token', 'Exchange a token for Status Sharing API access.', { admin: { type: 'boolean' }, projectId: { type: 'string' } }],
+    ['status_sharing_is_enabled', 'Check whether Status Sharing is enabled for a project.', { projectId: { type: 'string' } }, ['projectId']],
+    ['status_sharing_get_statuses', 'Retrieve current statuses for a project.', { projectId: { type: 'string' }, query: { type: 'object' } }, ['projectId']],
+    ['status_sharing_get_statuses_page', 'Retrieve a page of current project statuses.', { projectId: { type: 'string' }, query: { type: 'object' } }, ['projectId']],
+    ['status_sharing_get_custom_status_values', 'List custom status values for a status action.', { projectId: { type: 'string' }, statusActionId: { type: 'string' } }, ['projectId', 'statusActionId']],
+    ['status_sharing_add_custom_status_values', 'Add custom status values to a status action.', { projectId: { type: 'string' }, statusActionId: { type: 'string' }, values: { type: 'array', items: { type: 'object' } } }, ['projectId', 'statusActionId', 'values']],
+    ['status_sharing_get_custom_status_value', 'Get a custom status value.', { projectId: { type: 'string' }, statusActionId: { type: 'string' }, code: { type: 'string' } }, ['projectId', 'statusActionId', 'code']],
+    ['status_sharing_update_custom_status_value', 'Update a custom status value.', { projectId: { type: 'string' }, statusActionId: { type: 'string' }, code: { type: 'string' }, value: { type: 'object' } }, ['projectId', 'statusActionId', 'code', 'value']],
+    ['status_sharing_get_status_action_group_access', 'Get group access for a status action.', { projectId: { type: 'string' }, statusActionId: { type: 'string' } }, ['projectId', 'statusActionId']],
+    ['status_sharing_update_status_action_group_access', 'Update group access for a status action.', { projectId: { type: 'string' }, statusActionId: { type: 'string' }, access: { type: 'array', items: { type: 'object' } } }, ['projectId', 'statusActionId', 'access']],
+    ['status_sharing_get_license', 'Check the Status Sharing license for a project.', { projectId: { type: 'string' } }, ['projectId']],
+    ['status_sharing_get_projects', 'List projects available in Status Sharing.', {}],
+    ['status_sharing_get_project', 'Get a Status Sharing project by identifier.', { projectId: { type: 'string' } }, ['projectId']],
+    ['status_sharing_get_groups', 'List groups in a Status Sharing project.', { projectId: { type: 'string' } }, ['projectId']],
+    ['status_sharing_get_status_actions', 'List status actions in a project.', { projectId: { type: 'string' } }, ['projectId']],
+    ['status_sharing_create_status_action', 'Create a status action.', { projectId: { type: 'string' }, statusAction: { type: 'object' } }, ['projectId', 'statusAction']],
+    ['status_sharing_get_status_action', 'Get a status action by identifier.', { projectId: { type: 'string' }, statusActionId: { type: 'string' } }, ['projectId', 'statusActionId']],
+    ['status_sharing_update_status_action', 'Update a status action.', { projectId: { type: 'string' }, statusActionId: { type: 'string' }, statusAction: { type: 'object' } }, ['projectId', 'statusActionId', 'statusAction']],
+    ['status_sharing_delete_status_action', 'Delete a status action.', { projectId: { type: 'string' }, statusActionId: { type: 'string' } }, ['projectId', 'statusActionId']],
+    ['status_sharing_get_status_events', 'Retrieve status events for a project.', { projectId: { type: 'string' }, query: { type: 'object' } }, ['projectId']],
+    ['status_sharing_create_status_events', 'Create status events in a project.', { projectId: { type: 'string' }, events: { type: 'array', items: { type: 'object' } } }, ['projectId', 'events']],
+    ['status_sharing_get_status_events_page', 'Retrieve a page of project status events.', { projectId: { type: 'string' }, query: { type: 'object' } }, ['projectId']],
+    ['status_sharing_get_status_event', 'Get a status event by identifier.', { projectId: { type: 'string' }, eventId: { type: 'string' } }, ['projectId', 'eventId']]
+  ].map(([name, description, properties, required = []]) => ({
+    name,
+    description,
+    inputSchema: {
+      type: 'object',
+      properties,
+      ...(required.length ? { required } : {})
+    }
+  }))
 ];
 
 // export const definitions = baseDefinitions.map((tool) => {
@@ -1607,6 +1642,8 @@ export const definitions = [
       : name.includes('property_set') ||
         name.includes('property-set')
         ? 'Property Set'
+        : name.startsWith('status_sharing_')
+          ? 'Status Sharing'
         : name.includes('column_schedule') ||
           name.includes('coord_schedule') ||
           name.includes('pdf')
@@ -1946,6 +1983,102 @@ export async function callTool(
 
   case 'tekla_create_phase':
     result = await teklaBridge.teklaCreatePhase(args);
+    break;
+
+  // ============================================================
+  // STATUS SHARING
+  // ============================================================
+
+  case 'status_sharing_exchange_token':
+    result = await statusSharing.exchangeToken(sessionId, args);
+    break;
+
+  case 'status_sharing_is_enabled':
+    result = await statusSharing.isEnabled(sessionId, args.projectId);
+    break;
+
+  case 'status_sharing_get_statuses':
+    result = await statusSharing.getStatuses(sessionId, args.projectId, args.query || {});
+    break;
+
+  case 'status_sharing_get_statuses_page':
+    result = await statusSharing.getStatusesPage(sessionId, args.projectId, args.query || {});
+    break;
+
+  case 'status_sharing_get_custom_status_values':
+    result = await statusSharing.getCustomStatusValues(sessionId, args.projectId, args.statusActionId);
+    break;
+
+  case 'status_sharing_add_custom_status_values':
+    result = await statusSharing.addCustomStatusValues(sessionId, args.projectId, args.statusActionId, args.values);
+    break;
+
+  case 'status_sharing_get_custom_status_value':
+    result = await statusSharing.getCustomStatusValue(sessionId, args.projectId, args.statusActionId, args.code);
+    break;
+
+  case 'status_sharing_update_custom_status_value':
+    result = await statusSharing.updateCustomStatusValue(sessionId, args.projectId, args.statusActionId, args.code, args.value);
+    break;
+
+  case 'status_sharing_get_status_action_group_access':
+    result = await statusSharing.getStatusActionGroupAccess(sessionId, args.projectId, args.statusActionId);
+    break;
+
+  case 'status_sharing_update_status_action_group_access':
+    result = await statusSharing.updateStatusActionGroupAccess(sessionId, args.projectId, args.statusActionId, args.access);
+    break;
+
+  case 'status_sharing_get_license':
+    result = await statusSharing.getLicense(sessionId, args.projectId);
+    break;
+
+  case 'status_sharing_get_projects':
+    result = await statusSharing.getProjects(sessionId);
+    break;
+
+  case 'status_sharing_get_project':
+    result = await statusSharing.getProject(sessionId, args.projectId);
+    break;
+
+  case 'status_sharing_get_groups':
+    result = await statusSharing.getGroups(sessionId, args.projectId);
+    break;
+
+  case 'status_sharing_get_status_actions':
+    result = await statusSharing.getStatusActions(sessionId, args.projectId);
+    break;
+
+  case 'status_sharing_create_status_action':
+    result = await statusSharing.createStatusAction(sessionId, args.projectId, args.statusAction);
+    break;
+
+  case 'status_sharing_get_status_action':
+    result = await statusSharing.getStatusAction(sessionId, args.projectId, args.statusActionId);
+    break;
+
+  case 'status_sharing_update_status_action':
+    result = await statusSharing.updateStatusAction(sessionId, args.projectId, args.statusActionId, args.statusAction);
+    break;
+
+  case 'status_sharing_delete_status_action':
+    result = await statusSharing.deleteStatusAction(sessionId, args.projectId, args.statusActionId);
+    break;
+
+  case 'status_sharing_get_status_events':
+    result = await statusSharing.getStatusEvents(sessionId, args.projectId, args.query || {});
+    break;
+
+  case 'status_sharing_create_status_events':
+    result = await statusSharing.createStatusEvents(sessionId, args.projectId, args.events);
+    break;
+
+  case 'status_sharing_get_status_events_page':
+    result = await statusSharing.getStatusEventsPage(sessionId, args.projectId, args.query || {});
+    break;
+
+  case 'status_sharing_get_status_event':
+    result = await statusSharing.getStatusEvent(sessionId, args.projectId, args.eventId);
     break;
 
   // ============================================================
