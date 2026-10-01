@@ -1584,8 +1584,8 @@ const baseDefinitions = [
   ...[
     ['status_sharing_exchange_token', 'Exchange a token for Status Sharing API access.', { admin: { type: 'boolean' }, projectId: { type: 'string' } }],
     ['status_sharing_is_enabled', 'Check whether Status Sharing is enabled for a project.', { projectId: { type: 'string' } }, ['projectId']],
-    ['status_sharing_get_statuses', 'Retrieve current statuses for a project.', { projectId: { type: 'string' }, query: { type: 'object' } }, ['projectId']],
-    ['status_sharing_get_statuses_page', 'Retrieve a page of current project statuses.', { projectId: { type: 'string' }, query: { type: 'object' } }, ['projectId']],
+    ['status_sharing_get_statuses', 'Retrieve current statuses for a project. Filter with objectId (modelId is accepted as an alias) or statusActionId.', { projectId: { type: 'string' }, query: { type: 'object', properties: { objectId: { type: 'string' }, modelId: { type: 'string', description: 'Alias for objectId.' }, statusActionId: { type: 'string' }, options: { type: 'string' } } } }, ['projectId']],
+    ['status_sharing_get_statuses_page', 'Retrieve a page of current project statuses.', { projectId: { type: 'string' }, query: { type: 'object', properties: { objectId: { type: 'string' }, modelId: { type: 'string', description: 'Alias for objectId.' }, statusActionId: { type: 'string' }, cursor: { type: 'string' }, pageSize: { type: 'integer' } } } }, ['projectId']],
     ['status_sharing_get_custom_status_values', 'List custom status values for a status action.', { projectId: { type: 'string' }, statusActionId: { type: 'string' } }, ['projectId', 'statusActionId']],
     ['status_sharing_add_custom_status_values', 'Add custom status values to a status action.', { projectId: { type: 'string' }, statusActionId: { type: 'string' }, values: { type: 'array', items: { type: 'object' } } }, ['projectId', 'statusActionId', 'values']],
     ['status_sharing_get_custom_status_value', 'Get a custom status value.', { projectId: { type: 'string' }, statusActionId: { type: 'string' }, code: { type: 'string' } }, ['projectId', 'statusActionId', 'code']],
@@ -1601,9 +1601,9 @@ const baseDefinitions = [
     ['status_sharing_get_status_action', 'Get a status action by identifier.', { projectId: { type: 'string' }, statusActionId: { type: 'string' } }, ['projectId', 'statusActionId']],
     ['status_sharing_update_status_action', 'Update a status action.', { projectId: { type: 'string' }, statusActionId: { type: 'string' }, statusAction: { type: 'object' } }, ['projectId', 'statusActionId', 'statusAction']],
     ['status_sharing_delete_status_action', 'Delete a status action.', { projectId: { type: 'string' }, statusActionId: { type: 'string' } }, ['projectId', 'statusActionId']],
-    ['status_sharing_get_status_events', 'Retrieve status events for a project.', { projectId: { type: 'string' }, query: { type: 'object' } }, ['projectId']],
+    ['status_sharing_get_status_events', 'Retrieve status events for a project. Filter with objectId (modelId is accepted as an alias) or statusActionId.', { projectId: { type: 'string' }, query: { type: 'object', properties: { objectId: { type: 'string' }, modelId: { type: 'string', description: 'Alias for objectId.' }, statusActionId: { type: 'string' }, options: { type: 'string' } } } }, ['projectId']],
     ['status_sharing_create_status_events', 'Create status events in a project.', { projectId: { type: 'string' }, events: { type: 'array', items: { type: 'object' } } }, ['projectId', 'events']],
-    ['status_sharing_get_status_events_page', 'Retrieve a page of project status events.', { projectId: { type: 'string' }, query: { type: 'object' } }, ['projectId']],
+    ['status_sharing_get_status_events_page', 'Retrieve a page of project status events.', { projectId: { type: 'string' }, query: { type: 'object', properties: { statusActionId: { type: 'string' }, cursor: { type: 'string' }, pageSize: { type: 'integer' } } } }, ['projectId']],
     ['status_sharing_get_status_event', 'Get a status event by identifier.', { projectId: { type: 'string' }, eventId: { type: 'string' } }, ['projectId', 'eventId']]
   ].map(([name, description, properties, required = []]) => ({
     name,
