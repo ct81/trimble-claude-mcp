@@ -1,6 +1,6 @@
 // git add . 
-// git commit -m "Start MCP, Swagger, HTML, Tekla OpenAPI, SketchUp Bridge APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #2"
+// git commit -m "Start MCP, Swagger, HTML & Javascript, Tekla Open APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
+// #3"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
