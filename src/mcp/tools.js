@@ -16,6 +16,7 @@ import {
   createWorkspacePairing,
   invokeWorkspace
 } from '../trimble/workspace-bridge.js';
+import { workspaceApiGroups } from '../trimble/workspace.js';
 
 // NOTE: extractColumnSchedule* and getPdfUpload are now imported lazily
 // inside the extract_column_schedule case to keep cold start fast.
@@ -1611,7 +1612,7 @@ const baseDefinitions = [
     ['status_sharing_get_status_event', 'Get a status event by identifier.', { projectId: { type: 'string' }, eventId: { type: 'string' } }, ['projectId', 'eventId']],
     ['workspace_pair', 'Create a one-time pairing link for a Trimble Connect browser extension to expose its Workspace API to this MCP session.', {}],
     ['workspace_list_api', 'List the Workspace API methods available in the paired Trimble Connect browser.', {}],
-    ['workspace_call', 'Call a method on the paired Trimble Connect browser Workspace API. Supply method arguments as an ordered array.', { group: { type: 'string', enum: ['dataTable', 'embed', 'extension', 'markup', 'modelsPanel', 'project', 'propertyPanel', 'ui', 'user', 'view', 'viewer'] }, method: { type: 'string' }, args: { type: 'array', items: {} } }, ['group', 'method']]
+    ['workspace_call', 'Call a method on the paired Trimble Connect browser Workspace API. Supply method arguments as an ordered array.', { group: { type: 'string', enum: workspaceApiGroups }, method: { type: 'string' }, args: { type: 'array', items: {} } }, ['group', 'method']]
   ].map(([name, description, properties, required = []]) => ({
     name,
     description,
