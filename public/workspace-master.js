@@ -58,7 +58,7 @@ function handleWorkspaceEvent(event, data, args) {
   }
 
   if (command?.command) command = command.command;
-  if (command === 'workspace_bridge_open') {
+  if (command === 'workspace_bridge_open' || command === 'do_config') {
     form.hidden = false;
     pairingInput.focus();
   }

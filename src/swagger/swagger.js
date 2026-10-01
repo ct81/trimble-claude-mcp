@@ -1112,6 +1112,17 @@ export const swaggerDocument = {
     '/workspace-extension-manifest.json': {
       get: {
         tags: ['Workspace'],
+        summary: 'Redirect to the Trimble Connect project extension manifest',
+        security: [],
+        responses: {
+          308: { description: 'Redirects to /workspace.json' }
+        }
+      }
+    },
+
+    '/workspace.json': {
+      get: {
+        tags: ['Workspace'],
         summary: 'Get the Trimble Connect project extension manifest',
         security: [],
         responses: {

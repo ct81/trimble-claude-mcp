@@ -53,7 +53,7 @@ export function createWorkspacePairing(sessionId) {
   let extensionManifestUrl = null;
   if (process.env.PUBLIC_BASE_URL) {
     extensionManifestUrl = new URL(
-      '/workspace-extension-manifest.json',
+      '/workspace.json',
       process.env.PUBLIC_BASE_URL
     ).toString();
   }

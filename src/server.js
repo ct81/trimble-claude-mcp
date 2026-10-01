@@ -1,6 +1,6 @@
 // git add . 
 // git commit -m "Start MCP, Swagger, HTML & Javascript, Tekla Open APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #9"
+// #10"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -90,6 +90,13 @@ app.use(express.static(path.join(process.cwd(), 'public')));
 app.use('/pages', express.static(path.join(process.cwd(), 'pages')));
 app.use('/src', express.static(path.join(process.cwd(), 'src')));
 
+app.get('/public/workspace-bridge.html', (req, res) => {
+  return res.redirect(
+    308,
+    req.originalUrl.replace(/^\/public(?=\/)/, '')
+  );
+});
+
 //app.use(express.json({limit:'2mb'}));
 app.use(express.json({ limit: '500mb' }));
 app.use(
@@ -100,16 +107,7 @@ app.use(
 app.use(cookieParser());
 
 app.get('/workspace-extension-manifest.json', (req, res) => {
-  const publicBaseUrl = (
-    process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`
-  ).replace(/\/$/, '');
-
-  return res.json({
-    title: 'Trimble MCP Workspace Bridge',
-    url: `${publicBaseUrl}/workspace-bridge.html`,
-    description: 'Connect the Trimble Connect Workspace API to this MCP session.',
-    extensionType: ['project']
-  });
+  return res.redirect(308, '/workspace.json');
 });
 // app.use(
 //     '/swagger',
