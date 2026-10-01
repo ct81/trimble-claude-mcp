@@ -43,6 +43,49 @@ function serializeResult(result) {
   }
 }
 
+function handleWorkspaceEvent(event, data, args) {
+  if (event !== 'extension.command') return;
+
+  const commandData = data?.data ?? args?.data ?? data;
+  let command = commandData;
+
+  if (typeof commandData === 'string') {
+    try {
+      command = JSON.parse(commandData);
+    } catch {
+      command = commandData.replace(/^['"]|['"]$/g, '');
+    }
+  }
+
+  if (command?.command) command = command.command;
+  if (command === 'workspace_bridge_open') {
+    form.hidden = false;
+    pairingInput.focus();
+  }
+}
+
+async function initializeWorkspaceExtension() {
+  const sdk = window.TrimbleConnectWorkspace;
+  if (!sdk || typeof sdk.connect !== 'function') {
+    throw new Error('Trimble Connect Workspace SDK did not load');
+  }
+
+  workspaceApi = await sdk.connect(window.parent, handleWorkspaceEvent);
+  workspaceClient = createWorkspaceClient(workspaceApi);
+
+  if (typeof workspaceApi.ui?.setMenu !== 'function') {
+    throw new Error('Workspace API UI menu is unavailable in this extension');
+  }
+
+  await workspaceApi.ui.setMenu({
+    title: 'Workspace Bridge',
+    icon: 'https://api.iconify.design/tabler/plug-connected.svg?color=%23FFFFFF',
+    command: 'workspace_bridge_open'
+  });
+
+  setStatus('Workspace extension ready');
+}
+
 async function callWorkspaceApi(task) {
   if (task.action === 'list') {
     return Object.fromEntries(
@@ -112,16 +155,12 @@ async function pollTasks() {
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
   pairButton.disabled = true;
-  setStatus('Connecting to Trimble Connect...');
+  setStatus('Pairing browser...');
 
   try {
-    const sdk = window.TrimbleConnectWorkspace;
-    if (!sdk || typeof sdk.connect !== 'function') {
-      throw new Error('Trimble Connect Workspace SDK did not load');
+    if (!workspaceApi || !workspaceClient) {
+      throw new Error('Workspace extension is not connected to Trimble Connect');
     }
-
-    workspaceApi = await sdk.connect(window.parent);
-    workspaceClient = createWorkspaceClient(workspaceApi);
 
     const response = await fetch('/api/workspace/bridge/connect', {
       method: 'POST',
@@ -140,4 +179,8 @@ form.addEventListener('submit', async (event) => {
     pairButton.disabled = false;
     setStatus(error.message || String(error));
   }
+});
+
+initializeWorkspaceExtension().catch((error) => {
+  setStatus(error.message || String(error));
 });
