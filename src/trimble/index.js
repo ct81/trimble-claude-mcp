@@ -33,3 +33,8 @@ export {
 export {
   statusSharing
 } from './statussharing.js';
+
+export {
+  createWorkspaceClient,
+  workspaceApiGroups
+} from './workspace.js';

@@ -869,6 +869,10 @@ export const swaggerDocument = {
       description: 'Trimble Status Sharing project, status action, and event operations.'
     },
     {
+      name: 'Workspace',
+      description: 'Trimble Connect browser Workspace API bridge and extension operations.'
+    },
+    {
       name: 'PDF',
       description: 'Schedule extraction and PDF processing utilities.'
     },
@@ -898,6 +902,12 @@ export const swaggerDocument = {
 
         bearerFormat:
           'OAuth2 access token'
+      },
+
+      workspaceBridgeAuth: {
+        type: 'http',
+        scheme: 'bearer',
+        description: 'Short-lived token issued when a Trimble Connect browser extension is paired.'
       }
 
     }
@@ -1095,6 +1105,93 @@ export const swaggerDocument = {
           500: {
             description: 'MCP tool call failed'
           }
+        }
+      }
+    },
+
+    '/workspace-extension-manifest.json': {
+      get: {
+        tags: ['Workspace'],
+        summary: 'Get the Trimble Connect project extension manifest',
+        security: [],
+        responses: {
+          200: { description: 'Workspace bridge extension manifest' }
+        }
+      }
+    },
+
+    '/api/workspace/bridge/connect': {
+      post: {
+        tags: ['Workspace'],
+        summary: 'Pair a Trimble Connect browser extension',
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['pairingCode'],
+                properties: { pairingCode: { type: 'string' } }
+              }
+            }
+          }
+        },
+        responses: {
+          200: { description: 'Bridge token issued' },
+          400: { description: 'Pairing code is invalid or expired' }
+        }
+      }
+    },
+
+    '/api/workspace/bridge/tasks': {
+      get: {
+        tags: ['Workspace'],
+        summary: 'Poll for a queued Workspace API call',
+        security: [{ workspaceBridgeAuth: [] }],
+        responses: {
+          200: { description: 'Queued task or an empty poll result' },
+          401: { description: 'Workspace bridge token is invalid' }
+        }
+      }
+    },
+
+    '/api/workspace/bridge/results': {
+      post: {
+        tags: ['Workspace'],
+        summary: 'Return a Workspace API call result',
+        security: [{ workspaceBridgeAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['id'],
+                properties: {
+                  id: { type: 'string' },
+                  result: {},
+                  error: { type: 'object' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          200: { description: 'Result accepted' },
+          401: { description: 'Workspace bridge token is invalid' }
+        }
+      }
+    },
+
+    '/api/workspace/bridge/disconnect': {
+      post: {
+        tags: ['Workspace'],
+        summary: 'Disconnect the paired Workspace browser',
+        security: [{ workspaceBridgeAuth: [] }],
+        responses: {
+          200: { description: 'Bridge disconnected' },
+          401: { description: 'Workspace bridge token is invalid' }
         }
       }
     },
@@ -4361,6 +4458,8 @@ export async function getSwaggerDocument() {
     const tag =
       toolName.includes('property_set')
         ? 'Property Set'
+        : toolName.startsWith('workspace_')
+          ? 'Workspace'
         : toolName.startsWith('status_sharing_')
           ? 'Status Sharing'
         : toolName.includes('schedule') ||

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Trimble Workspace Bridge</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Arial, sans-serif;
+        color: #1f2933;
+        background: #f3f6f8;
+      }
+
+      body {
+        margin: 0;
+        padding: 24px;
+      }
+
+      main {
+        max-width: 440px;
+        margin: 8vh auto;
+        padding: 24px;
+        background: #fff;
+        border: 1px solid #d7dee5;
+        border-radius: 6px;
+      }
+
+      h1 {
+        margin-top: 0;
+        font-size: 20px;
+      }
+
+      label {
+        display: block;
+        margin: 20px 0 6px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      input, button {
+        box-sizing: border-box;
+        width: 100%;
+        min-height: 42px;
+        padding: 9px 12px;
+        border: 1px solid #9aa8b5;
+        border-radius: 4px;
+        font: inherit;
+      }
+
+      button {
+        margin-top: 12px;
+        border-color: #005f9e;
+        color: white;
+        background: #005f9e;
+        cursor: pointer;
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: wait;
+      }
+
+      #status {
+        min-height: 24px;
+        margin-bottom: 0;
+        font-size: 14px;
+        overflow-wrap: anywhere;
+      }
+    </style>
+    <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
+    <script type="module" src="/workspace-bridge.js"></script>
+  </head>
+  <body>
+    <main>
+      <h1>Trimble Workspace Bridge</h1>
+      <form id="pair-form">
+        <label for="pairing-code">One-time pairing code</label>
+        <input id="pairing-code" name="pairingCode" autocomplete="one-time-code" required>
+        <button id="pair-button" type="submit">Pair browser</button>
+      </form>
+      <p id="status" role="status" aria-live="polite">Not connected</p>
+    </main>
+  </body>
+</html>

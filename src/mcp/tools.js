@@ -12,6 +12,10 @@ import {
   statusSharing,
   topics
 } from '../trimble/index.js';
+import {
+  createWorkspacePairing,
+  invokeWorkspace
+} from '../trimble/workspace-bridge.js';
 
 // NOTE: extractColumnSchedule* and getPdfUpload are now imported lazily
 // inside the extract_column_schedule case to keep cold start fast.
@@ -1604,7 +1608,10 @@ const baseDefinitions = [
     ['status_sharing_get_status_events', 'Retrieve status events for a project. Filter with objectId (modelId is accepted as an alias) or statusActionId.', { projectId: { type: 'string' }, query: { type: 'object', properties: { objectId: { type: 'string' }, modelId: { type: 'string', description: 'Alias for objectId.' }, statusActionId: { type: 'string' }, options: { type: 'string' } } } }, ['projectId']],
     ['status_sharing_create_status_events', 'Create status events in a project.', { projectId: { type: 'string' }, events: { type: 'array', items: { type: 'object' } } }, ['projectId', 'events']],
     ['status_sharing_get_status_events_page', 'Retrieve a page of project status events. The API accepts pageSize values from 1000 to 10000.', { projectId: { type: 'string' }, query: { type: 'object', properties: { statusActionId: { type: 'string' }, cursor: { type: 'string' }, pageSize: { type: 'integer', minimum: 1000, maximum: 10000 } } } }, ['projectId']],
-    ['status_sharing_get_status_event', 'Get a status event by identifier.', { projectId: { type: 'string' }, eventId: { type: 'string' } }, ['projectId', 'eventId']]
+    ['status_sharing_get_status_event', 'Get a status event by identifier.', { projectId: { type: 'string' }, eventId: { type: 'string' } }, ['projectId', 'eventId']],
+    ['workspace_pair', 'Create a one-time pairing link for a Trimble Connect browser extension to expose its Workspace API to this MCP session.', {}],
+    ['workspace_list_api', 'List the Workspace API methods available in the paired Trimble Connect browser.', {}],
+    ['workspace_call', 'Call a method on the paired Trimble Connect browser Workspace API. Supply method arguments as an ordered array.', { group: { type: 'string', enum: ['dataTable', 'embed', 'extension', 'markup', 'modelsPanel', 'project', 'propertyPanel', 'ui', 'user', 'view', 'viewer'] }, method: { type: 'string' }, args: { type: 'array', items: {} } }, ['group', 'method']]
   ].map(([name, description, properties, required = []]) => ({
     name,
     description,
@@ -1639,6 +1646,8 @@ export const definitions = [
   const group =
     name.startsWith('tekla_')
       ? 'Tekla Structures'
+      : name.startsWith('workspace_')
+        ? 'Workspace'
       : name.includes('property_set') ||
         name.includes('property-set')
         ? 'Property Set'
@@ -2079,6 +2088,23 @@ export async function callTool(
 
   case 'status_sharing_get_status_event':
     result = await statusSharing.getStatusEvent(sessionId, args.projectId, args.eventId);
+    break;
+
+  case 'workspace_pair':
+    result = createWorkspacePairing(sessionId);
+    break;
+
+  case 'workspace_list_api':
+    result = await invokeWorkspace(sessionId, { action: 'list' });
+    break;
+
+  case 'workspace_call':
+    result = await invokeWorkspace(sessionId, {
+      action: 'invoke',
+      group: args.group,
+      method: args.method,
+      args: args.args || []
+    });
     break;
 
   // ============================================================

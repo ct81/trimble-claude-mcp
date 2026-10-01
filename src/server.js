@@ -1,6 +1,6 @@
 // git add . 
 // git commit -m "Start MCP, Swagger, HTML & Javascript, Tekla Open APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #5"
+// #6"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -72,6 +72,12 @@ import {
   statusSharing,
   topics
 } from './trimble/index.js';
+import {
+  connectWorkspaceBridge,
+  disconnectWorkspaceBridge,
+  getNextWorkspaceTask,
+  submitWorkspaceResult
+} from './trimble/workspace-bridge.js';
 
 import pdfRouter
   from './pdf/pdf.js';
@@ -92,6 +98,19 @@ app.use(
     })
 );
 app.use(cookieParser());
+
+app.get('/workspace-extension-manifest.json', (req, res) => {
+  const publicBaseUrl = (
+    process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`
+  ).replace(/\/$/, '');
+
+  return res.json({
+    title: 'Trimble MCP Workspace Bridge',
+    url: `${publicBaseUrl}/workspace-bridge.html`,
+    description: 'Connect the Trimble Connect Workspace API to this MCP session.',
+    extensionType: ['project']
+  });
+});
 // app.use(
 //     '/swagger',
 //     swaggerUi.serve,
@@ -1801,6 +1820,55 @@ addStatusSharingRoute('get', '/projects/:projectId/statusevents/page', (req) =>
 addStatusSharingRoute('get', '/projects/:projectId/statusevents/:eventId', (req) =>
   statusSharing.getStatusEvent(req.mcpSessionId, req.params.projectId, req.params.eventId)
 );
+
+function getWorkspaceBridgeToken(req) {
+  const authorization = req.get('authorization') || '';
+  return authorization.replace(/^Bearer\s+/i, '').trim();
+}
+
+function workspaceBridgeError(res, error) {
+  const status = error.message.includes('not authorized') ? 401 : 400;
+  return res.status(status).json({ error: error.message });
+}
+
+app.post('/api/workspace/bridge/connect', (req, res) => {
+  try {
+    return res.json(connectWorkspaceBridge(req.body?.pairingCode));
+  } catch (error) {
+    return workspaceBridgeError(res, error);
+  }
+});
+
+app.get('/api/workspace/bridge/tasks', async (req, res) => {
+  try {
+    const task = await getNextWorkspaceTask(getWorkspaceBridgeToken(req));
+    return res.json({ task });
+  } catch (error) {
+    return workspaceBridgeError(res, error);
+  }
+});
+
+app.post('/api/workspace/bridge/results', (req, res) => {
+  try {
+    const result = submitWorkspaceResult(
+      getWorkspaceBridgeToken(req),
+      req.body || {}
+    );
+    return res.json(result);
+  } catch (error) {
+    return workspaceBridgeError(res, error);
+  }
+});
+
+app.post('/api/workspace/bridge/disconnect', (req, res) => {
+  try {
+    return res.json({
+      disconnected: disconnectWorkspaceBridge(getWorkspaceBridgeToken(req))
+    });
+  } catch (error) {
+    return workspaceBridgeError(res, error);
+  }
+});
 
 app.get(
   '/api/v1/property-set/me',
