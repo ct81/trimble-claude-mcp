@@ -736,7 +736,10 @@ const teklaFallbackDefinitions = [
         phaseNumber: { type: 'integer', minimum: 1 },
         phaseName: { type: 'string' },
         phaseComment: { type: 'string' },
-        isCurrentPhase: { type: 'boolean' }
+        isCurrentPhase: { type: 'boolean' },
+        DECOprogress: { type: 'string' },
+        DECOHold1: { type: 'string' },
+        DECOHold2: { type: 'string' }
       },
       required: ['phaseNumber', 'phaseName']
     }
