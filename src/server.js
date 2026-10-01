@@ -1,6 +1,6 @@
 // git add . 
 // git commit -m "Start MCP, Swagger, HTML, Tekla OpenAPI, SketchUp Bridge APIs, TC Workspace API, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #33"
+// #34"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -2206,6 +2206,8 @@ app.get(
 //   POST /api/mcp/tekla/create/bolt
 //   POST /api/mcp/tekla/create/rebar
 //   POST /api/mcp/tekla/create/rebar-group
+//   POST /api/mcp/tekla/create/phase
+//   GET  /api/mcp/tekla/phases
 //
 // Generic MCP/Swagger:
 //
@@ -2228,6 +2230,8 @@ app.get(
 //   POST /api/mcp/tools/tekla_create_bolt
 //   POST /api/mcp/tools/tekla_create_rebar
 //   POST /api/mcp/tools/tekla_create_rebar_group
+//   POST /api/mcp/tools/tekla_create_phase
+//   POST /api/mcp/tools/tekla_get_phases
 //
 // =========================================================
 
@@ -2381,6 +2385,19 @@ app.get(
       {}
     );
 
+  }
+);
+
+app.get(
+  '/api/mcp/tekla/phases',
+  requireSession,
+  async (req, res) => {
+    return executeTeklaTool(
+      req,
+      res,
+      'tekla_get_phases',
+      {}
+    );
   }
 );
 
@@ -2699,7 +2716,8 @@ const teklaCreateRoutes = [
   { path: '/api/mcp/tekla/create/weld', toolName: 'tekla_create_weld' },
   { path: '/api/mcp/tekla/create/bolt', toolName: 'tekla_create_bolt' },
   { path: '/api/mcp/tekla/create/rebar', toolName: 'tekla_create_rebar' },
-  { path: '/api/mcp/tekla/create/rebar-group', toolName: 'tekla_create_rebar_group' }
+  { path: '/api/mcp/tekla/create/rebar-group', toolName: 'tekla_create_rebar_group' },
+  { path: '/api/mcp/tekla/create/phase', toolName: 'tekla_create_phase' }
 ];
 
 for (const route of teklaCreateRoutes) {

@@ -61,3 +61,5 @@ export const teklaCreateWeld = (a) => call("/api/tekla/create/weld",{method:"POS
 export const teklaCreateBolt = (a) => call("/api/tekla/create/bolt",{method:"POST",body:JSON.stringify(a)});
 export const teklaCreateRebar = (a) => call("/api/tekla/create/rebar",{method:"POST",body:JSON.stringify(a)});
 export const teklaCreateRebarGroup = (a) => call("/api/tekla/create/rebar-group",{method:"POST",body:JSON.stringify(a)});
+export const teklaPhases = () => call("/api/tekla/phases",{method:"GET"});
+export const teklaCreatePhase = (a) => call("/api/tekla/create/phase",{method:"POST",body:JSON.stringify(a)});

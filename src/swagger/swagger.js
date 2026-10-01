@@ -578,6 +578,14 @@ const teklaFallbackDefinitions = [
     }
   },
   {
+    name: 'tekla_get_phases',
+    description: 'List phases in the open Tekla model.',
+    inputSchema: {
+      type: 'object',
+      properties: {}
+    }
+  },
+  {
     name: 'tekla_create_beam',
     description: 'Create a Tekla beam. MODEL MODIFICATION: require explicit approval.',
     inputSchema: {
@@ -718,6 +726,20 @@ const teklaFallbackDefinitions = [
       },
       required: ['fatherGuid', 'polygons', 'barCount']
     }
+  },
+  {
+    name: 'tekla_create_phase',
+    description: 'Create a phase in the Tekla model. MODEL MODIFICATION: require explicit approval.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        phaseNumber: { type: 'integer', minimum: 1 },
+        phaseName: { type: 'string' },
+        phaseComment: { type: 'string' },
+        isCurrentPhase: { type: 'boolean' }
+      },
+      required: ['phaseNumber', 'phaseName']
+    }
   }
 ];
 
@@ -729,7 +751,8 @@ const teklaCreateRoutes = [
   { path: '/api/mcp/tekla/create/weld', toolName: 'tekla_create_weld' },
   { path: '/api/mcp/tekla/create/bolt', toolName: 'tekla_create_bolt' },
   { path: '/api/mcp/tekla/create/rebar', toolName: 'tekla_create_rebar' },
-  { path: '/api/mcp/tekla/create/rebar-group', toolName: 'tekla_create_rebar_group' }
+  { path: '/api/mcp/tekla/create/rebar-group', toolName: 'tekla_create_rebar_group' },
+  { path: '/api/mcp/tekla/create/phase', toolName: 'tekla_create_phase' }
 ];
 
 
@@ -849,6 +872,21 @@ export const swaggerDocument = {
   },
 
   paths: {
+
+    '/api/mcp/tekla/phases': {
+
+      get: {
+        tags: ['Tekla'],
+        summary: 'List phases in the open Tekla model',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: { description: 'Tekla phases retrieved successfully' },
+          401: { description: 'Authentication required' },
+          503: { description: 'Tekla Bridge or Tekla Structures is unavailable' }
+        }
+      }
+
+    },
 
     '/api/tekla/status': {
 

@@ -9,6 +9,7 @@ set TEKLA_BRIDGE_KEY=tekla2026
 
 cd "C:\Users\CTan\Downloads\TeklaMcpBridge_Full_API\TeklaMcpBridge_Full"
 
+Step 1:
 Remove-Item ".\src\TeklaMcpBridge\bin" -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item ".\src\TeklaMcpBridge\obj" -Recurse -Force -ErrorAction SilentlyContinue
 
@@ -84,7 +85,7 @@ New-Item `
 
 
 
-
+Step 2:
 $src = "C:\Users\CTan\Downloads\TeklaMcpBridge_Full_API\TeklaMcpBridge_Full\src\TeklaMcpBridge\bin\Release\net48"
 
 $dst = "C:\ProgramData\Trimble\Tekla Structures\2026.0\Environments\common\extensions\TeklaMcpBridge"

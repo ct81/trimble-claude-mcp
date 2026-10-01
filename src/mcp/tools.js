@@ -1900,6 +1900,10 @@ export async function callTool(
     result = await teklaBridge.teklaDrawing(args);
     break;
 
+  case 'tekla_get_phases':
+    result = await teklaBridge.teklaPhases();
+    break;
+
   case 'tekla_create_beam':
     result = await teklaBridge.teklaCreateBeam(args);
     break;
@@ -1938,6 +1942,10 @@ export async function callTool(
 
   case 'tekla_create_rebar_group':
     result = await teklaBridge.teklaCreateRebarGroup(args);
+    break;
+
+  case 'tekla_create_phase':
+    result = await teklaBridge.teklaCreatePhase(args);
     break;
 
   // ============================================================
