@@ -764,7 +764,7 @@ const statusSharingRestOperations = [
   { path: '/api/v1/status-sharing/projects', method: 'get', operationId: 'status_sharing_get_projects_rest', summary: 'List Status Sharing projects' },
   { path: '/api/v1/status-sharing/projects/{projectId}', method: 'get', operationId: 'status_sharing_get_project_rest', summary: 'Get a Status Sharing project' },
   { path: '/api/v1/status-sharing/projects/{projectId}/status', method: 'get', operationId: 'status_sharing_get_statuses_rest', summary: 'Retrieve current project statuses', query: { options: 'string', objectId: 'string', statusActionId: 'string' } },
-  { path: '/api/v1/status-sharing/projects/{projectId}/status/page', method: 'get', operationId: 'status_sharing_get_statuses_page_rest', summary: 'Retrieve a page of current project statuses', query: { objectId: 'string', statusActionId: 'string', cursor: 'string', pageSize: 'integer' } },
+  { path: '/api/v1/status-sharing/projects/{projectId}/status/page', method: 'get', operationId: 'status_sharing_get_statuses_page_rest', summary: 'Retrieve a page of current project statuses', query: { objectId: 'string', statusActionId: 'string', cursor: 'string', pageSize: { type: 'integer', minimum: 1000, maximum: 10000 } } },
   { path: '/api/v1/status-sharing/projects/{projectId}/statusactions', method: 'get', operationId: 'status_sharing_get_status_actions_rest', summary: 'List status actions' },
   { path: '/api/v1/status-sharing/projects/{projectId}/statusactions', method: 'post', operationId: 'status_sharing_create_status_action_rest', summary: 'Create a status action', body: 'object', created: true },
   { path: '/api/v1/status-sharing/projects/{projectId}/statusactions/{statusActionId}', method: 'get', operationId: 'status_sharing_get_status_action_rest', summary: 'Get a status action' },
@@ -780,7 +780,7 @@ const statusSharingRestOperations = [
   { path: '/api/v1/status-sharing/projects/{projectId}/groups', method: 'get', operationId: 'status_sharing_get_groups_rest', summary: 'List project groups' },
   { path: '/api/v1/status-sharing/projects/{projectId}/statusevents', method: 'get', operationId: 'status_sharing_get_status_events_rest', summary: 'Retrieve status events', query: { options: 'string', objectId: 'string', statusActionId: 'string' } },
   { path: '/api/v1/status-sharing/projects/{projectId}/statusevents', method: 'post', operationId: 'status_sharing_create_status_events_rest', summary: 'Create status events', body: 'array', created: true },
-  { path: '/api/v1/status-sharing/projects/{projectId}/statusevents/page', method: 'get', operationId: 'status_sharing_get_status_events_page_rest', summary: 'Retrieve a page of status events', query: { statusActionId: 'string', cursor: 'string', pageSize: 'integer' } },
+  { path: '/api/v1/status-sharing/projects/{projectId}/statusevents/page', method: 'get', operationId: 'status_sharing_get_status_events_page_rest', summary: 'Retrieve a page of status events', query: { statusActionId: 'string', cursor: 'string', pageSize: { type: 'integer', minimum: 1000, maximum: 10000 } } },
   { path: '/api/v1/status-sharing/projects/{projectId}/statusevents/{eventId}', method: 'get', operationId: 'status_sharing_get_status_event_rest', summary: 'Get a status event' }
 ];
 
@@ -4048,7 +4048,7 @@ export async function getSwaggerDocument() {
         name,
         in: 'query',
         required: false,
-        schema: { type }
+        schema: typeof type === 'string' ? { type } : type
       }))
     ];
 

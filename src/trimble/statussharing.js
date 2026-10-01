@@ -41,6 +41,17 @@ function normalizeStatusQuery(query = {}) {
   return normalized;
 }
 
+function normalizePageQuery(query = {}) {
+  const normalized = normalizeStatusQuery(query);
+  const pageSize = Number(normalized.pageSize);
+
+  if (normalized.pageSize !== undefined && Number.isFinite(pageSize)) {
+    normalized.pageSize = Math.min(10000, Math.max(1000, Math.trunc(pageSize)));
+  }
+
+  return normalized;
+}
+
 function getTokenFromResponse(response) {
   const token = typeof response === 'string'
     ? response
@@ -190,7 +201,7 @@ export const statusSharing = {
   getStatusesPage(sessionId, projectId, query = {}) {
     return statusSharingRequest(
       sessionId,
-      `${projectPath(projectId, '/status/page')}${queryString(normalizeStatusQuery(query))}`,
+      `${projectPath(projectId, '/status/page')}${queryString(normalizePageQuery(query))}`,
       {},
       projectId
     );
@@ -377,7 +388,7 @@ export const statusSharing = {
   getStatusEventsPage(sessionId, projectId, query = {}) {
     return statusSharingRequest(
       sessionId,
-      `${projectPath(projectId, '/statusevents/page')}${queryString(normalizeStatusQuery(query))}`,
+      `${projectPath(projectId, '/statusevents/page')}${queryString(normalizePageQuery(query))}`,
       {},
       projectId
     );
