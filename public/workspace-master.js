@@ -78,8 +78,8 @@ async function initializeWorkspaceExtension() {
   }
 
   await workspaceApi.ui.setMenu({
-    title: 'Workspace Bridge',
-    icon: 'https://api.iconify.design/tabler/plug-connected.svg?color=%23FFFFFF',
+    title: 'Trimble MCP Workspace',
+    icon: 'https://api.iconify.design/tabler/3d-rotate.svg?color=%23FFFFFF',
     command: 'workspace_bridge_open'
   });
 

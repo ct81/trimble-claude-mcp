@@ -1,8 +1,8 @@
 {
 "icon": "https://api.iconify.design/tabler/3d-rotate.svg?color=%23FFFFFF",
-"title": "Trimble Workspace",
+"title": "Trimble MCP Workspace",
 "url": "https://trimble-claude-mcp-g86i.onrender.com/workspace-bridge.html",
-"description": "Trimble Workspace integration.",
+"description": "Trimble MCP Workspace integration.",
 "configCommand": "do_config",
 "enabled": true,
 "extensionType": ["project"]
