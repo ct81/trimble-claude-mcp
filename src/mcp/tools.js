@@ -1086,21 +1086,21 @@ const baseDefinitions = [
   {
     name: 'get_model',
     description:
-      'Get a Trimble Connect model (3D model) by id.',
+      'Get a Trimble Connect model by its file/model id through the Model API.',
     inputSchema: {
       type: 'object',
       properties: {
         projectId: { type: 'string' },
         modelId: { type: 'string' }
       },
-      required: ['projectId', 'modelId']
+      required: ['modelId']
     }
   },
 
   {
     name: 'get_model_entities',
     description:
-      'List entities (objects) in a Trimble Connect model.',
+      'List entities in a Trimble Connect model through the Model API.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1110,7 +1110,7 @@ const baseDefinitions = [
           description: 'Query parameters for filtering entities.'
         }
       },
-      required: ['projectId', 'modelId']
+      required: ['modelId']
     }
   },
 
