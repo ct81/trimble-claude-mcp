@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Tekla Open APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #17"
+// #18"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -2884,6 +2884,26 @@ for (const route of teklaCreateRoutes) {
     }
   );
 }
+
+app.post(
+  '/api/mcp/tender/extract',
+  requireSession,
+  async (req, res) => {
+    try {
+      const args = req.body?.arguments ?? req.body ?? {};
+      const result = await callTool(
+        req.mcpSessionId,
+        'extract_tender_project',
+        args
+      );
+      return res.json(result);
+    } catch (error) {
+      console.error('POST /api/mcp/tender/extract:', error);
+      const status = error.statusCode || (error.code === 'ETIMEDOUT' || error.killed ? 504 : 500);
+      return res.status(status).json({ success: false, error: error.message });
+    }
+  }
+);
 
 app.post(
   '/api/mcp/python/test',

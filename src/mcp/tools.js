@@ -1620,6 +1620,7 @@ const baseDefinitions = [
     ['workspace_pair', 'Create a one-time pairing link for a Trimble Connect browser extension to expose its Workspace API to this MCP session.', {}],
     ['workspace_list_api', 'List the Workspace API methods available in the paired Trimble Connect browser.', {}],
     ['workspace_call', 'Call a method on the paired Trimble Connect browser Workspace API. Supply method arguments as an ordered array.', { group: { type: 'string', enum: workspaceApiGroups }, method: { type: 'string' }, args: { type: 'array', items: {} } }, ['group', 'method']],
+    ['extract_tender_project', 'Extract project metadata, grids, levels, schedules, tables, and BOQ data from uploaded tender PDFs. Upload each PDF with POST /api/pdf/uploads, then pass the returned uploadIds.', { uploadIds: { type: 'array', minItems: 1, maxItems: 10, items: { type: 'string' }, description: 'Server-side PDF upload IDs from POST /api/pdf/uploads.' }, projectName: { type: 'string', maxLength: 120 } }, ['uploadIds']],
     ['run_python_test', 'Run the server-side Python hello-world test script.', {}]
   ].map(([name, description, properties, required = []]) => ({
     name,
@@ -1659,6 +1660,8 @@ export const definitions = [
         ? 'Workspace'
       : name === 'run_python_test'
         ? 'Python'
+      : name === 'extract_tender_project'
+        ? 'PDF'
       : name.includes('property_set') ||
         name.includes('property-set')
         ? 'Property Set'
@@ -1876,6 +1879,25 @@ export async function callTool(
   }
 
   switch (name) {
+
+  case 'extract_tender_project': {
+    const { extractTenderProjectFromFiles, getPdfUpload } = await import('../pdf/pdf.js');
+    const uploadIds = args.uploadIds;
+
+    if (
+      !Array.isArray(uploadIds) ||
+      uploadIds.length < 1 ||
+      uploadIds.length > 10 ||
+      uploadIds.some((uploadId) => typeof uploadId !== 'string' || !uploadId.trim())
+    ) {
+      throw new Error('Provide 1 to 10 valid PDF uploadIds from POST /api/pdf/uploads.');
+    }
+
+    const uploads = await Promise.all(uploadIds.map((uploadId) => getPdfUpload(uploadId)));
+    const project = await extractTenderProjectFromFiles(uploads, args.projectName);
+    result = { success: true, project };
+    break;
+  }
 
   case 'run_python_test': {
     const { stdout, stderr } = await execFileAsync(

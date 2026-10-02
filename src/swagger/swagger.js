@@ -1129,6 +1129,48 @@ export const swaggerDocument = {
 
     },
 
+    '/api/mcp/tender/extract': {
+      post: {
+        tags: ['PDF'],
+        summary: 'Extract project data from uploaded tender PDFs',
+        description: 'Upload PDFs using POST /api/pdf/uploads, then provide their uploadIds to extract project metadata, grids, levels, schedules, tables, and BOQ data.',
+        operationId: 'extract_tender_project_rest',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['uploadIds'],
+                properties: {
+                  uploadIds: {
+                    type: 'array',
+                    minItems: 1,
+                    maxItems: 10,
+                    items: { type: 'string' },
+                    description: 'PDF upload IDs returned by POST /api/pdf/uploads.'
+                  },
+                  projectName: {
+                    type: 'string',
+                    maxLength: 120
+                  }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          200: { description: 'Extracted tender project JSON' },
+          400: { description: 'Invalid upload IDs or PDF input' },
+          401: { description: 'Authentication required' },
+          413: { description: 'PDF input exceeds the size limit' },
+          500: { description: 'Tender extraction failed' },
+          504: { description: 'Tender extraction timed out' }
+        }
+      }
+    },
+
     '/workspace-extension-manifest.json': {
       get: {
         tags: ['Workspace'],
@@ -4486,9 +4528,11 @@ export async function getSwaggerDocument() {
         properties: {}
       };
 
-    const tag =
-      toolName === 'run_python_test'
+      const tag =
+        toolName === 'run_python_test'
         ? 'Python'
+        : toolName === 'extract_tender_project'
+          ? 'PDF'
         : toolName.includes('property_set')
         ? 'Property Set'
         : toolName.startsWith('workspace_')

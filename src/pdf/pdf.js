@@ -110,6 +110,65 @@ const tenderScript = fileURLToPath(
 );
 const tenderPythonPackages = path.join(path.dirname(tenderScript), '.packages');
 
+export async function extractTenderProjectFromFiles(files, projectName = '') {
+  if (!Array.isArray(files) || files.length === 0) {
+    throw Object.assign(new Error('Select at least one PDF file.'), { statusCode: 400 });
+  }
+  if (files.length > 10) {
+    throw Object.assign(new Error('A maximum of 10 PDFs can be extracted at once.'), { statusCode: 400 });
+  }
+  if (files.some((file) => !Buffer.isBuffer(file.buffer))) {
+    throw Object.assign(new Error('Every PDF input must contain a file buffer.'), { statusCode: 400 });
+  }
+
+  const totalSize = files.reduce((total, file) => total + file.buffer.length, 0);
+  if (totalSize > 100 * 1024 * 1024) {
+    throw Object.assign(new Error('The combined PDF size must be 100 MB or less.'), { statusCode: 413 });
+  }
+
+  const tempDir = await fs.promises.mkdtemp(
+    path.join(os.tmpdir(), 'tender-extract-')
+  );
+
+  try {
+    await Promise.all(files.map((file, index) => {
+      const safeName = path.basename(file.originalname || `document-${index + 1}.pdf`)
+        .replace(/[^A-Za-z0-9._-]+/g, '_') || `document-${index + 1}.pdf`;
+      const filename = `${String(index + 1).padStart(2, '0')}-${safeName}`;
+      return fs.promises.writeFile(
+        path.join(tempDir, filename),
+        file.buffer,
+        { flag: 'wx' }
+      );
+    }));
+
+    const outputPath = path.join(tempDir, 'project.json');
+    await execFileAsync(
+      process.env.PYTHON_EXECUTABLE || 'python3',
+      [tenderScript, tempDir, outputPath],
+      {
+        timeout: 120_000,
+        maxBuffer: 10 * 1024 * 1024,
+        env: {
+          ...process.env,
+          PYTHONPATH: [tenderPythonPackages, process.env.PYTHONPATH]
+            .filter(Boolean)
+            .join(path.delimiter)
+        }
+      }
+    );
+
+    const project = JSON.parse(
+      await fs.promises.readFile(outputPath, 'utf8')
+    );
+    project.project_name =
+      String(projectName || '').trim().slice(0, 120) || 'Tender project';
+    return project;
+  } finally {
+    await fs.promises.rm(tempDir, { recursive: true, force: true });
+  }
+}
+
 router.get('/downloads/:filename', (req, res) => {
   const filename = path.basename(req.params.filename);
   const filePath = path.join(
@@ -238,71 +297,19 @@ router.post(
   tenderUpload.array('files', 10),
   async (req, res) => {
     const files = req.files || [];
-    if (!files.length) {
-      return res.status(400).json({
-        success: false,
-        error: 'Select at least one PDF file.'
-      });
-    }
-
-    if (files.reduce((total, file) => total + file.size, 0) > 100 * 1024 * 1024) {
-      return res.status(413).json({
-        success: false,
-        error: 'The combined PDF size must be 100 MB or less.'
-      });
-    }
-
-    let tempDir;
     try {
-      tempDir = await fs.promises.mkdtemp(
-        path.join(os.tmpdir(), 'tender-extract-')
+      const project = await extractTenderProjectFromFiles(
+        files.map(({ buffer, originalname }) => ({ buffer, originalname })),
+        req.body?.projectName
       );
-
-      await Promise.all(files.map((file, index) => {
-        const safeName = path.basename(file.originalname)
-          .replace(/[^A-Za-z0-9._-]+/g, '_') || `document-${index + 1}.pdf`;
-        const filename = `${String(index + 1).padStart(2, '0')}-${safeName}`;
-        return fs.promises.writeFile(
-          path.join(tempDir, filename),
-          file.buffer,
-          { flag: 'wx' }
-        );
-      }));
-
-      const outputPath = path.join(tempDir, 'project.json');
-      await execFileAsync(
-        process.env.PYTHON_EXECUTABLE || 'python3',
-        [tenderScript, tempDir, outputPath],
-        {
-          timeout: 120_000,
-          maxBuffer: 10 * 1024 * 1024,
-          env: {
-            ...process.env,
-            PYTHONPATH: [tenderPythonPackages, process.env.PYTHONPATH]
-              .filter(Boolean)
-              .join(path.delimiter)
-          }
-        }
-      );
-
-      const project = JSON.parse(
-        await fs.promises.readFile(outputPath, 'utf8')
-      );
-      project.project_name =
-        String(req.body?.projectName || '').trim().slice(0, 120) || 'Tender project';
-
       return res.json({ success: true, project });
     } catch (error) {
       console.error('[Tender extraction] Failed:', error);
-      const status = error.code === 'ETIMEDOUT' || error.killed ? 504 : 500;
+      const status = error.statusCode || (error.code === 'ETIMEDOUT' || error.killed ? 504 : 500);
       return res.status(status).json({
         success: false,
         error: error.stderr?.trim() || error.message || 'Tender extraction failed.'
       });
-    } finally {
-      if (tempDir) {
-        await fs.promises.rm(tempDir, { recursive: true, force: true });
-      }
     }
   }
 );
