@@ -4,6 +4,8 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Tender PDF Extractor</title>
+    <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
+    <script src="master.js" type="module" defer></script>
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 	<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -143,6 +145,18 @@
 	</style>
 </head>
 <body>
+	<div>
+        <input type="hidden" id="hdnProjectDetail" />
+        <input type="hidden" id="hdnProjectName" />
+        <input type="hidden" id="hdnUserId" />
+        <input type="hidden" id="hdnUserEmail" />
+        <input type="hidden" id="hdnUserFirstName" />
+        <input type="hidden" id="hdnUserLastName" />
+        <input type="hidden" id="hdnUserDetail" />
+        <input type="hidden" id="hdnAccessTokenDetail" />
+        <input type="hidden" id="hdnLicenseJson" />
+        <input type="hidden" ID="hdnDefaultModel" />
+    </div>
 	<header class="masthead">
 		<div>
 			<p class="brandline">Tender tools / document intelligence</p>

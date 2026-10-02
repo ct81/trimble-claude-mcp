@@ -23,6 +23,10 @@ document.addEventListener('DOMContentLoaded', async (event) => {
                         console.log("=====GET2: " + obj);
                         window.open(locationParent + '/coordScheduleExporter.html?accessToken=' + document.getElementById('hdnAccessTokenDetail').value + '&projectId=' + document.getElementById('hdnProjectDetail').value + '&modelId=nil' + '&userId=' + document.getElementById('hdnUserId').value + '&userEmail=' + encodeURIComponent(document.getElementById('hdnUserEmail').value), '_self');
                     }
+                    if (obj == 'submenu_T1_clicked') {
+                        console.log("=====GET2: " + obj);
+                        window.open(locationParent + '/tender1.html?accessToken=' + document.getElementById('hdnAccessTokenDetail').value + '&projectId=' + document.getElementById('hdnProjectDetail').value + '&modelId=nil' + '&userId=' + document.getElementById('hdnUserId').value + '&userEmail=' + encodeURIComponent(document.getElementById('hdnUserEmail').value), '_self');
+                    }
                     break;
                 case "extension.accessToken":
                     //"Accestoken or status: args.data"
@@ -50,6 +54,11 @@ document.addEventListener('DOMContentLoaded', async (event) => {
                     title: "Upload Json",
                     icon: "https://cdn.jsdelivr.net/npm/@tabler/icons@latest/icons/file-search.svg",
                     command: "submenu_2_clicked",
+                }
+                ,{
+                    title: "Tender #1",
+                    icon: "https://cdn.jsdelivr.net/npm/@tabler/icons@latest/icons/file-upload.svg",
+                    command: "submenu_T1_clicked",
                 }
                 // , {
                 //     title: "Auth",
