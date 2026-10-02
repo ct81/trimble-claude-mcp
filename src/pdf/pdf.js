@@ -108,6 +108,7 @@ const execFileAsync = promisify(execFile);
 const tenderScript = fileURLToPath(
   new URL('../python/tender/tender1.py', import.meta.url)
 );
+const tenderPythonPackages = path.join(path.dirname(tenderScript), '.packages');
 
 router.get('/downloads/:filename', (req, res) => {
   const filename = path.basename(req.params.filename);
@@ -272,7 +273,16 @@ router.post(
       await execFileAsync(
         process.env.PYTHON_EXECUTABLE || 'python3',
         [tenderScript, tempDir, outputPath],
-        { timeout: 120_000, maxBuffer: 10 * 1024 * 1024 }
+        {
+          timeout: 120_000,
+          maxBuffer: 10 * 1024 * 1024,
+          env: {
+            ...process.env,
+            PYTHONPATH: [tenderPythonPackages, process.env.PYTHONPATH]
+              .filter(Boolean)
+              .join(path.delimiter)
+          }
+        }
       );
 
       const project = JSON.parse(
