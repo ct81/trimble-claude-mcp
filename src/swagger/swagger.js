@@ -64,6 +64,43 @@ const sketchupFallbackDefinitions = [
     }
   },
   {
+    name: 'sketchup_get_objects',
+    description: 'List SketchUp model entities with optional type filtering and nested traversal.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        types: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Optional entity types such as group, component_instance, face, or edge.'
+        },
+        include_nested: { type: 'boolean', default: true },
+        limit: { type: 'integer', minimum: 1, maximum: 5000, default: 500 }
+      }
+    }
+  },
+  {
+    name: 'sketchup_validate_model',
+    description: 'Validate the active SketchUp model for invalid entities, degenerate geometry, and non-solid groups or components.',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'sketchup_export_model',
+    description: 'Export the active SketchUp model to a host filesystem path as SKP or a supported interchange format.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file_path: { type: 'string', minLength: 1 },
+        format: {
+          type: 'string',
+          enum: ['skp', 'dae', '3ds', 'dwg', 'dxf', 'ifc', 'obj', 'stl'],
+          default: 'skp'
+        }
+      },
+      required: ['file_path']
+    }
+  },
+  {
     name: 'sketchup_capture_view',
     description: 'Render the SketchUp viewport and return it as an image.',
     inputSchema: {
@@ -1243,6 +1280,70 @@ export const swaggerDocument = {
         ],
         responses: {
           200: { description: 'Validation findings returned' },
+          401: { description: 'Authentication required' },
+          503: { description: 'SketchUp is unavailable' }
+        }
+      }
+    },
+
+    '/api/mcp/sketchup/objects': {
+      get: {
+        tags: ['SketchUp'],
+        operationId: 'sketchup_get_objects_rest',
+        summary: 'List entities in the active SketchUp model',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'types', in: 'query', description: 'Comma-separated entity types.', schema: { type: 'string', example: 'group,face,edge' } },
+          { name: 'include_nested', in: 'query', schema: { type: 'boolean', default: true } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 5000, default: 500 } }
+        ],
+        responses: {
+          200: { description: 'SketchUp objects retrieved' },
+          401: { description: 'Authentication required' },
+          503: { description: 'SketchUp is unavailable' }
+        }
+      }
+    },
+
+    '/api/mcp/sketchup/model/validate': {
+      get: {
+        tags: ['SketchUp'],
+        operationId: 'sketchup_validate_model_rest',
+        summary: 'Validate the active SketchUp model',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: { description: 'Model validation findings returned' },
+          401: { description: 'Authentication required' },
+          503: { description: 'SketchUp is unavailable' }
+        }
+      }
+    },
+
+    '/api/mcp/sketchup/model/export': {
+      post: {
+        tags: ['SketchUp'],
+        operationId: 'sketchup_export_model_rest',
+        summary: 'Export the active SketchUp model to the SketchUp host filesystem',
+        description: 'The returned file path is on the machine running SketchUp; the file contents are not transferred by this endpoint.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['file_path'],
+                properties: {
+                  file_path: { type: 'string', minLength: 1 },
+                  format: { type: 'string', enum: ['skp', 'dae', '3ds', 'dwg', 'dxf', 'ifc', 'obj', 'stl'], default: 'skp' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          200: { description: 'SketchUp model exported' },
+          400: { description: 'Invalid export path or format' },
           401: { description: 'Authentication required' },
           503: { description: 'SketchUp is unavailable' }
         }

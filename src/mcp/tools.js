@@ -120,6 +120,43 @@ const sketchupInspectionDefinitions = [
       properties: { entity_id: { type: 'string' } },
       required: ['entity_id']
     }
+  },
+  {
+    name: 'sketchup_get_objects',
+    description: 'List SketchUp model entities with optional type filtering and nested traversal.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        types: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Optional entity type names such as group, component_instance, face, or edge.'
+        },
+        include_nested: { type: 'boolean', default: true },
+        limit: { type: 'integer', minimum: 1, maximum: 5000, default: 500 }
+      }
+    }
+  },
+  {
+    name: 'sketchup_validate_model',
+    description: 'Validate the active SketchUp model for invalid entities, degenerate geometry, and non-solid groups or components.',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'sketchup_export_model',
+    description: 'Export the active SketchUp model to a host filesystem path as SKP or a supported interchange format.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file_path: { type: 'string', minLength: 1 },
+        format: {
+          type: 'string',
+          enum: ['skp', 'dae', '3ds', 'dwg', 'dxf', 'ifc', 'obj', 'stl'],
+          default: 'skp'
+        }
+      },
+      required: ['file_path']
+    }
   }
 ];
 
@@ -2936,7 +2973,13 @@ find_entity = lambda do |entity_id|
 end
 
 entity_record = lambda do |entity, parent_path|
-  type = entity.is_a?(Sketchup::Group) ? 'group' : entity.is_a?(Sketchup::ComponentInstance) ? 'component_instance' : entity.class.name
+  type = if entity.is_a?(Sketchup::Group)
+    'group'
+  elsif entity.is_a?(Sketchup::ComponentInstance)
+    'component_instance'
+  else
+    entity.class.name.split('::').last.downcase
+  end
   definition = (entity.is_a?(Sketchup::Group) || entity.is_a?(Sketchup::ComponentInstance)) ? entity.definition : nil
   {
     entity_id: entity.entityID,
@@ -3046,6 +3089,17 @@ when 'get_groups', 'get_components'
     items << entity_record.call(entity, path) if entity.is_a?(wanted_type)
   end)
   { count: items.length, returned: [items.length, limit].min, truncated: items.length > limit, items: items.first(limit) }
+when 'get_objects'
+  include_nested = params.fetch('include_nested', true)
+  limit = [[params.fetch('limit', 500).to_i, 1].max, 5000].min
+  requested_types = Array(params['types']).map { |type| type.to_s.downcase }
+  items = []
+  walk_entities.call(model.entities, [], 0, [], Geom::Transformation.new, include_nested, lambda do |entity, path, _transform|
+    record = entity_record.call(entity, path)
+    next if !requested_types.empty? && !requested_types.include?(record[:type].to_s.downcase)
+    items << record
+  end)
+  { count: items.length, returned: [items.length, limit].min, truncated: items.length > limit, items: items.first(limit) }
 when 'get_attributes'
   found = find_entity.call(params.fetch('entity_id'))
   raise 'Entity not found.' unless found
@@ -3083,6 +3137,38 @@ when 'validate_geometry'
   end)
   errors = findings.count { |finding| finding[:severity] == 'error' }
   { entity_id: target.entityID, valid: errors == 0, checked_entity_count: checked, findings: findings }
+when 'validate_model'
+  checked = 0
+  findings = []
+  walk_entities.call(model.entities, [], 0, [], Geom::Transformation.new, true, lambda do |entity, _path, transform|
+    checked += 1
+    findings << { severity: 'error', code: 'invalid_entity', entity_id: entity.entityID } if entity.respond_to?(:valid?) && !entity.valid?
+    if entity.is_a?(Sketchup::Face) && entity.area(transform).to_f <= 0
+      findings << { severity: 'error', code: 'degenerate_face', entity_id: entity.entityID }
+    elsif entity.is_a?(Sketchup::Edge)
+      length = entity.start.position.transform(transform).distance(entity.end.position.transform(transform))
+      findings << { severity: 'error', code: 'zero_length_edge', entity_id: entity.entityID } if length <= 0
+    elsif (entity.is_a?(Sketchup::Group) || entity.is_a?(Sketchup::ComponentInstance)) && entity.respond_to?(:manifold?) && !entity.manifold?
+      findings << { severity: 'warning', code: 'not_solid', entity_id: entity.entityID }
+    end
+  end)
+  errors = findings.count { |finding| finding[:severity] == 'error' }
+  { valid: errors == 0, checked_entity_count: checked, error_count: errors, warning_count: findings.length - errors, findings: findings }
+when 'export_model'
+  requested_path = params.fetch('file_path').to_s
+  raise 'file_path must not be empty.' if requested_path.strip.empty?
+  export_path = File.expand_path(requested_path)
+  extension = File.extname(export_path).delete_prefix('.').downcase
+  format = params['format'].to_s.downcase
+  format = extension if format.empty?
+  format = 'skp' if format.empty?
+  supported_formats = %w[skp dae 3ds dwg dxf ifc obj stl]
+  raise "Unsupported export format: #{format}." unless supported_formats.include?(format)
+  raise 'file_path extension must match format.' if !extension.empty? && extension != format
+  export_path += ".#{format}" if extension.empty?
+  success = format == 'skp' ? model.save_copy(export_path) : model.export(export_path)
+  raise 'SketchUp model export failed.' if success == false
+  { success: true, format: format, file_path: export_path, bytes: File.size(export_path) }
 else
   raise 'Unsupported SketchUp inspection operation.'
 end

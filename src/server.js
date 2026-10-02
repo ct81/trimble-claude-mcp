@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Tekla Open APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #24"
+// #25"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -2324,6 +2324,41 @@ addSketchUpInspectionRoute(
   '/api/mcp/sketchup/validate/:entityId',
   'sketchup_validate_geometry',
   (req) => ({ entity_id: req.params.entityId })
+);
+addSketchUpInspectionRoute(
+  '/api/mcp/sketchup/objects',
+  'sketchup_get_objects',
+  (req) => ({
+    types: req.query.types
+      ? String(req.query.types).split(',').map((type) => type.trim()).filter(Boolean)
+      : undefined,
+    include_nested: req.query.include_nested !== 'false',
+    limit: req.query.limit
+  })
+);
+addSketchUpInspectionRoute(
+  '/api/mcp/sketchup/model/validate',
+  'sketchup_validate_model',
+  () => ({})
+);
+
+app.post(
+  '/api/mcp/sketchup/model/export',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await callTool(
+        req.mcpSessionId,
+        'sketchup_export_model',
+        req.body?.arguments ?? req.body ?? {}
+      );
+      return res.json(result);
+    } catch (error) {
+      console.error('POST /api/mcp/sketchup/model/export:', error);
+      const status = error.message?.startsWith('SKETCHUP_NOT_RUNNING') ? 503 : 400;
+      return res.status(status).json({ error: error.message });
+    }
+  }
 );
 
 // // =========================================================
