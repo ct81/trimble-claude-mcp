@@ -877,6 +877,10 @@ export const swaggerDocument = {
       description: 'Schedule extraction and PDF processing utilities.'
     },
     {
+      name: 'Python',
+      description: 'Server-side Python test utilities.'
+    },
+    {
       name: 'SketchUp',
       description: 'SketchUp tools exposed by the connected SketchUp MCP backend.'
     },
@@ -1107,6 +1111,22 @@ export const swaggerDocument = {
           }
         }
       }
+    },
+
+    '/api/mcp/python/test': {
+
+      post: {
+        tags: ['Python'],
+        summary: 'Run the Python hello-world test script',
+        operationId: 'run_python_test_rest',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: { description: 'Python script output' },
+          401: { description: 'Authentication required' },
+          500: { description: 'Python script execution failed' }
+        }
+      }
+
     },
 
     '/workspace-extension-manifest.json': {
@@ -4467,7 +4487,9 @@ export async function getSwaggerDocument() {
       };
 
     const tag =
-      toolName.includes('property_set')
+      toolName === 'run_python_test'
+        ? 'Python'
+        : toolName.includes('property_set')
         ? 'Property Set'
         : toolName.startsWith('workspace_')
           ? 'Workspace'

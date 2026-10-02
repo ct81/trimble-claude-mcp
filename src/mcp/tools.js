@@ -1,6 +1,9 @@
 import fs from 'node:fs';
+import { execFile } from 'node:child_process';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
+import { promisify } from 'node:util';
+import { fileURLToPath } from 'node:url';
 
 import {
   core,
@@ -38,6 +41,10 @@ import * as teklaBridge from './tekla/bridge.js';
 
 const SKETCHUP_PREFIX = 'sketchup_';
 const teklaToolNames = new Set(teklaTools.map((tool) => tool.name));
+const execFileAsync = promisify(execFile);
+const pythonTestScript = fileURLToPath(
+  new URL('../python/tender/test.py', import.meta.url)
+);
 
 const sketchupFallbackDefinitions = [
   'status',
@@ -1612,7 +1619,8 @@ const baseDefinitions = [
     ['status_sharing_get_status_event', 'Get a status event by identifier.', { projectId: { type: 'string' }, eventId: { type: 'string' } }, ['projectId', 'eventId']],
     ['workspace_pair', 'Create a one-time pairing link for a Trimble Connect browser extension to expose its Workspace API to this MCP session.', {}],
     ['workspace_list_api', 'List the Workspace API methods available in the paired Trimble Connect browser.', {}],
-    ['workspace_call', 'Call a method on the paired Trimble Connect browser Workspace API. Supply method arguments as an ordered array.', { group: { type: 'string', enum: workspaceApiGroups }, method: { type: 'string' }, args: { type: 'array', items: {} } }, ['group', 'method']]
+    ['workspace_call', 'Call a method on the paired Trimble Connect browser Workspace API. Supply method arguments as an ordered array.', { group: { type: 'string', enum: workspaceApiGroups }, method: { type: 'string' }, args: { type: 'array', items: {} } }, ['group', 'method']],
+    ['run_python_test', 'Run the server-side Python hello-world test script.', {}]
   ].map(([name, description, properties, required = []]) => ({
     name,
     description,
@@ -1649,6 +1657,8 @@ export const definitions = [
       ? 'Tekla Structures'
       : name.startsWith('workspace_')
         ? 'Workspace'
+      : name === 'run_python_test'
+        ? 'Python'
       : name.includes('property_set') ||
         name.includes('property-set')
         ? 'Property Set'
@@ -1866,6 +1876,20 @@ export async function callTool(
   }
 
   switch (name) {
+
+  case 'run_python_test': {
+    const { stdout, stderr } = await execFileAsync(
+      process.env.PYTHON_EXECUTABLE || 'python3',
+      [pythonTestScript],
+      { timeout: 10_000, maxBuffer: 1024 * 1024 }
+    );
+    result = {
+      stdout: stdout.trimEnd(),
+      stderr: stderr.trimEnd(),
+      exitCode: 0
+    };
+    break;
+  }
 
   // ============================================================
   // TEKLA STRUCTURES

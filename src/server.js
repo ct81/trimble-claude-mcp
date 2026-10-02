@@ -1,6 +1,8 @@
+// Trimble AEC Connect (Captures Architecture, Engineering, & Construction workflows)
+
 // git add . 
-// git commit -m "Start MCP, Swagger, HTML & Javascript, Tekla Open APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #12"
+// git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Tekla Open APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
+// #13"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -2882,6 +2884,24 @@ for (const route of teklaCreateRoutes) {
     }
   );
 }
+
+app.post(
+  '/api/mcp/python/test',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await callTool(
+        req.mcpSessionId,
+        'run_python_test',
+        {}
+      );
+      return res.json(result);
+    } catch (e) {
+      console.error('POST /api/mcp/python/test:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
 
 app.post(
   '/api/mcp/tools/:toolName',
