@@ -1134,7 +1134,7 @@ export const swaggerDocument = {
         tags: ['PDF'],
         summary: 'Extract project data from uploaded tender PDFs',
         description: 'Upload PDFs using POST /api/pdf/uploads, then provide their uploadIds to extract project metadata, grids, levels, schedules, tables, and BOQ data.',
-        operationId: 'extract_tender1_project_rest',
+        operationId: 'extract_tender_project_rest',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -4531,7 +4531,7 @@ export async function getSwaggerDocument() {
       const tag =
         toolName === 'run_python_test'
         ? 'Python'
-        : toolName === 'extract_tender1_project'
+        : toolName === 'extract_tender_project'
           ? 'PDF'
         : toolName.includes('property_set')
         ? 'Property Set'

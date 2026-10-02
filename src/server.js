@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Tekla Open APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #19"
+// #20"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -2893,7 +2893,7 @@ app.post(
       const args = req.body?.arguments ?? req.body ?? {};
       const result = await callTool(
         req.mcpSessionId,
-        'extract_tender1_project',
+        'extract_tender_project',
         args
       );
       return res.json(result);
