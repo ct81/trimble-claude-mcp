@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Tekla Open APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #23"
+// #24"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -2281,6 +2281,49 @@ app.get(
       return res.status(500).json({ error: e.message });
     }
   }
+);
+
+function addSketchUpInspectionRoute(route, toolName, getArguments) {
+  app.get(route, requireSession, async (req, res) => {
+    try {
+      const result = await callTool(
+        req.mcpSessionId,
+        toolName,
+        getArguments(req)
+      );
+      return res.json(result);
+    } catch (error) {
+      console.error(`GET ${route}:`, error);
+      const status = error.message?.startsWith('SKETCHUP_NOT_RUNNING') ? 503 : 500;
+      return res.status(status).json({ error: error.message });
+    }
+  });
+}
+
+addSketchUpInspectionRoute(
+  '/api/mcp/sketchup/groups',
+  'sketchup_get_groups',
+  (req) => ({ include_nested: req.query.include_nested !== 'false', limit: req.query.limit })
+);
+addSketchUpInspectionRoute(
+  '/api/mcp/sketchup/components',
+  'sketchup_get_components',
+  (req) => ({ include_nested: req.query.include_nested !== 'false', limit: req.query.limit })
+);
+addSketchUpInspectionRoute(
+  '/api/mcp/sketchup/attributes/:entityId',
+  'sketchup_get_attributes',
+  (req) => ({ entity_id: req.params.entityId })
+);
+addSketchUpInspectionRoute(
+  '/api/mcp/sketchup/geometry/:entityId',
+  'sketchup_calculate_geometry',
+  (req) => ({ entity_id: req.params.entityId })
+);
+addSketchUpInspectionRoute(
+  '/api/mcp/sketchup/validate/:entityId',
+  'sketchup_validate_geometry',
+  (req) => ({ entity_id: req.params.entityId })
 );
 
 // // =========================================================

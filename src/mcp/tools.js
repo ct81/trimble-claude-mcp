@@ -71,6 +71,58 @@ const sketchupFallbackDefinitions = [
   }
 }));
 
+const sketchupInspectionDefinitions = [
+  {
+    name: 'sketchup_get_groups',
+    description: 'List groups in the active SketchUp model, including nested groups by default.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        include_nested: { type: 'boolean', default: true },
+        limit: { type: 'integer', minimum: 1, maximum: 5000, default: 500 }
+      }
+    }
+  },
+  {
+    name: 'sketchup_get_components',
+    description: 'List component instances in the active SketchUp model, including nested instances by default.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        include_nested: { type: 'boolean', default: true },
+        limit: { type: 'integer', minimum: 1, maximum: 5000, default: 500 }
+      }
+    }
+  },
+  {
+    name: 'sketchup_get_attributes',
+    description: 'Read the attribute dictionaries for a SketchUp entity by entity ID.',
+    inputSchema: {
+      type: 'object',
+      properties: { entity_id: { type: 'string' } },
+      required: ['entity_id']
+    }
+  },
+  {
+    name: 'sketchup_calculate_geometry',
+    description: 'Calculate bounds, face area, edge length, and solid volume for a SketchUp entity.',
+    inputSchema: {
+      type: 'object',
+      properties: { entity_id: { type: 'string' } },
+      required: ['entity_id']
+    }
+  },
+  {
+    name: 'sketchup_validate_geometry',
+    description: 'Check a SketchUp entity and its nested geometry for invalid entities and degenerate faces or edges.',
+    inputSchema: {
+      type: 'object',
+      properties: { entity_id: { type: 'string' } },
+      required: ['entity_id']
+    }
+  }
+];
+
 let mergedDefinitions = null;
 
 // Extraction timeout. If the extractor hangs, fail loudly instead of
@@ -1884,6 +1936,12 @@ export async function callTool(
 ) {
   let result;
 
+  if (sketchupInspectionDefinitions.some((tool) => tool.name === name)) {
+    const operation = name.slice(SKETCHUP_PREFIX.length);
+    const code = buildSketchUpInspectionScript(operation, args);
+    return callSketchUpTool('eval_ruby', { code });
+  }
+
   // Route SketchUp tools
   if (name.startsWith(SKETCHUP_PREFIX)) {
     const realName = name.slice(SKETCHUP_PREFIX.length);
@@ -2835,6 +2893,202 @@ export async function callTool(
   };
 }
 
+function buildSketchUpInspectionScript(operation, args) {
+  const encodedArgs = Buffer.from(JSON.stringify(args)).toString('base64');
+
+  return `require 'json'
+require 'base64'
+
+params = JSON.parse(Base64.decode64('${encodedArgs}'))
+model = Sketchup.active_model
+raise 'No active SketchUp model.' unless model
+
+walk_entities = nil
+walk_entities = lambda do |entities, parent_path, depth, active_definitions, parent_transform, include_nested, callback|
+  return if depth > 32
+  entities.each do |entity|
+    callback.call(entity, parent_path, parent_transform)
+    next unless include_nested && (entity.is_a?(Sketchup::Group) || entity.is_a?(Sketchup::ComponentInstance))
+
+    definition = entity.definition
+    definition_id = definition.entityID
+    next if active_definitions.include?(definition_id)
+
+    label = entity.respond_to?(:name) && !entity.name.empty? ? entity.name : entity.entityID.to_s
+    walk_entities.call(
+      definition.entities,
+      parent_path + [label],
+      depth + 1,
+      active_definitions + [definition_id],
+      parent_transform * entity.transformation,
+      include_nested,
+      callback
+    )
+  end
+end
+
+find_entity = lambda do |entity_id|
+  found = nil
+  walk_entities.call(model.entities, [], 0, [], Geom::Transformation.new, true, lambda do |entity, _path, transform|
+    found = [entity, transform] if entity.entityID.to_s == entity_id.to_s
+  end)
+  found
+end
+
+entity_record = lambda do |entity, parent_path|
+  type = entity.is_a?(Sketchup::Group) ? 'group' : entity.is_a?(Sketchup::ComponentInstance) ? 'component_instance' : entity.class.name
+  definition = (entity.is_a?(Sketchup::Group) || entity.is_a?(Sketchup::ComponentInstance)) ? entity.definition : nil
+  {
+    entity_id: entity.entityID,
+    type: type,
+    name: entity.respond_to?(:name) ? entity.name : nil,
+    definition_name: definition&.name,
+    definition_id: definition&.entityID,
+    parent_path: parent_path,
+    hidden: entity.respond_to?(:hidden?) ? entity.hidden? : nil,
+    tag: entity.respond_to?(:layer) && entity.layer ? entity.layer.name : nil
+  }
+end
+
+normalize_value = nil
+normalize_value = lambda do |value|
+  case value
+  when NilClass, String, Numeric, TrueClass, FalseClass
+    value
+  when Array
+    value.map { |item| normalize_value.call(item) }
+  when Hash
+    value.each_with_object({}) { |(key, item), result| result[key.to_s] = normalize_value.call(item) }
+  else
+    value.respond_to?(:to_a) ? value.to_a : value.to_s
+  end
+end
+
+geometry_for = lambda do |target, target_transform|
+  totals = { faces: 0, edges: 0, surface_area_in2: 0.0, edge_length_in: 0.0 }
+  geometry_walk = nil
+  geometry_walk = lambda do |entities, transform, active_definitions, depth|
+    return if depth > 32
+    entities.each do |child|
+      if child.is_a?(Sketchup::Face)
+        totals[:faces] += 1
+        totals[:surface_area_in2] += child.area(transform).to_f
+      elsif child.is_a?(Sketchup::Edge)
+        totals[:edges] += 1
+        start_point = child.start.position.transform(transform)
+        end_point = child.end.position.transform(transform)
+        totals[:edge_length_in] += start_point.distance(end_point)
+      elsif child.is_a?(Sketchup::Group) || child.is_a?(Sketchup::ComponentInstance)
+        definition_id = child.definition.entityID
+        next if active_definitions.include?(definition_id)
+        geometry_walk.call(
+          child.definition.entities,
+          transform * child.transformation,
+          active_definitions + [definition_id],
+          depth + 1
+        )
+      end
+    end
+  end
+
+  if target.is_a?(Sketchup::Face)
+    totals[:faces] = 1
+    totals[:surface_area_in2] = target.area(target_transform).to_f
+  elsif target.is_a?(Sketchup::Edge)
+    totals[:edges] = 1
+    start_point = target.start.position.transform(target_transform)
+    end_point = target.end.position.transform(target_transform)
+    totals[:edge_length_in] = start_point.distance(end_point)
+  elsif target.respond_to?(:definition)
+    geometry_walk.call(
+      target.definition.entities,
+      target_transform * target.transformation,
+      [target.definition.entityID],
+      0
+    )
+  end
+
+  bounds = target.bounds
+  corners = (0..7).map { |index| bounds.corner(index).transform(target_transform) }
+  world_bounds = Geom::BoundingBox.new
+  corners.each { |corner| world_bounds.add(corner) }
+  volume_in3 = nil
+  begin
+    volume_in3 = target.volume.to_f * target_transform.xaxis.dot(target_transform.yaxis.cross(target_transform.zaxis)).abs if target.respond_to?(:volume)
+  rescue StandardError
+    volume_in3 = nil
+  end
+
+  {
+    entity_id: target.entityID,
+    bounds_in: { width: world_bounds.width, height: world_bounds.height, depth: world_bounds.depth },
+    bounds_mm: { width: world_bounds.width * 25.4, height: world_bounds.height * 25.4, depth: world_bounds.depth * 25.4 },
+    face_count: totals[:faces],
+    edge_count: totals[:edges],
+    surface_area_in2: totals[:surface_area_in2],
+    surface_area_mm2: totals[:surface_area_in2] * 645.16,
+    edge_length_in: totals[:edge_length_in],
+    edge_length_mm: totals[:edge_length_in] * 25.4,
+    volume_in3: volume_in3,
+    volume_mm3: volume_in3 ? volume_in3 * 16387.064 : nil,
+    units: 'SketchUp internal inches; converted values are millimeters'
+  }
+end
+
+operation = '${operation}'
+case operation
+when 'get_groups', 'get_components'
+  include_nested = params.fetch('include_nested', true)
+  limit = [[params.fetch('limit', 500).to_i, 1].max, 5000].min
+  wanted_type = operation == 'get_groups' ? Sketchup::Group : Sketchup::ComponentInstance
+  items = []
+  walk_entities.call(model.entities, [], 0, [], Geom::Transformation.new, include_nested, lambda do |entity, path, _transform|
+    items << entity_record.call(entity, path) if entity.is_a?(wanted_type)
+  end)
+  { count: items.length, returned: [items.length, limit].min, truncated: items.length > limit, items: items.first(limit) }
+when 'get_attributes'
+  found = find_entity.call(params.fetch('entity_id'))
+  raise 'Entity not found.' unless found
+  entity = found[0]
+  dictionaries = {}
+  if entity.attribute_dictionaries
+    entity.attribute_dictionaries.each do |dictionary|
+      dictionaries[dictionary.name] = dictionary.each_pair.each_with_object({}) do |(key, value), result|
+        result[key.to_s] = normalize_value.call(value)
+      end
+    end
+  end
+  { entity_id: entity.entityID, type: entity.class.name, name: entity.respond_to?(:name) ? entity.name : nil, attributes: dictionaries }
+when 'calculate_geometry'
+  found = find_entity.call(params.fetch('entity_id'))
+  raise 'Entity not found.' unless found
+  geometry_for.call(found[0], found[1])
+when 'validate_geometry'
+  found = find_entity.call(params.fetch('entity_id'))
+  raise 'Entity not found.' unless found
+  target, target_transform = found
+  checked = 0
+  findings = []
+  walk_entities.call([target], [], 0, [], target_transform, true, lambda do |entity, _path, transform|
+    checked += 1
+    findings << { severity: 'error', code: 'invalid_entity', entity_id: entity.entityID } if entity.respond_to?(:valid?) && !entity.valid?
+    if entity.is_a?(Sketchup::Face) && entity.area(transform).to_f <= 0
+      findings << { severity: 'error', code: 'degenerate_face', entity_id: entity.entityID }
+    elsif entity.is_a?(Sketchup::Edge)
+      length = entity.start.position.transform(transform).distance(entity.end.position.transform(transform))
+      findings << { severity: 'error', code: 'zero_length_edge', entity_id: entity.entityID } if length <= 0
+    elsif (entity.is_a?(Sketchup::Group) || entity.is_a?(Sketchup::ComponentInstance)) && entity.respond_to?(:manifold?) && !entity.manifold?
+      findings << { severity: 'warning', code: 'not_solid', entity_id: entity.entityID }
+    end
+  end)
+  errors = findings.count { |finding| finding[:severity] == 'error' }
+  { entity_id: target.entityID, valid: errors == 0, checked_entity_count: checked, findings: findings }
+else
+  raise 'Unsupported SketchUp inspection operation.'
+end
+`;
+}
+
 //[Start] Route SketchUp tools
 export async function getDefinitions() {
   if (mergedDefinitions) return mergedDefinitions;
@@ -2852,9 +3106,15 @@ export async function getDefinitions() {
     description: `[SketchUp] ${tool.description}`,
   }));
 
+  const inspectionNames = new Set(
+    sketchupInspectionDefinitions.map((tool) => tool.name)
+  );
   const merged = [
     ...trimbleDefs,
-    ...(suDefs.length > 0 ? suDefs : sketchupFallbackDefinitions)
+    ...(suDefs.length > 0
+      ? suDefs.filter((tool) => !inspectionNames.has(tool.name))
+      : sketchupFallbackDefinitions),
+    ...sketchupInspectionDefinitions
   ];
 
   // Do not permanently cache a transient SketchUp startup failure.

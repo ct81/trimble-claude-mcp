@@ -15,6 +15,55 @@ const sketchupFallbackDefinitions = [
     inputSchema: { type: 'object', properties: {} }
   },
   {
+    name: 'sketchup_get_groups',
+    description: 'List groups in the active SketchUp model, including nested groups by default.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        include_nested: { type: 'boolean', default: true },
+        limit: { type: 'integer', minimum: 1, maximum: 5000, default: 500 }
+      }
+    }
+  },
+  {
+    name: 'sketchup_get_components',
+    description: 'List component instances in the active SketchUp model, including nested instances by default.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        include_nested: { type: 'boolean', default: true },
+        limit: { type: 'integer', minimum: 1, maximum: 5000, default: 500 }
+      }
+    }
+  },
+  {
+    name: 'sketchup_get_attributes',
+    description: 'Read the attribute dictionaries for a SketchUp entity by entity ID.',
+    inputSchema: {
+      type: 'object',
+      properties: { entity_id: { type: 'string' } },
+      required: ['entity_id']
+    }
+  },
+  {
+    name: 'sketchup_calculate_geometry',
+    description: 'Calculate bounds, face area, edge length, and solid volume for a SketchUp entity.',
+    inputSchema: {
+      type: 'object',
+      properties: { entity_id: { type: 'string' } },
+      required: ['entity_id']
+    }
+  },
+  {
+    name: 'sketchup_validate_geometry',
+    description: 'Check a SketchUp entity and its nested geometry for invalid entities and degenerate faces or edges.',
+    inputSchema: {
+      type: 'object',
+      properties: { entity_id: { type: 'string' } },
+      required: ['entity_id']
+    }
+  },
+  {
     name: 'sketchup_capture_view',
     description: 'Render the SketchUp viewport and return it as an image.',
     inputSchema: {
@@ -1109,6 +1158,93 @@ export const swaggerDocument = {
           500: {
             description: 'MCP tool call failed'
           }
+        }
+      }
+    },
+
+    '/api/mcp/sketchup/groups': {
+      get: {
+        tags: ['SketchUp'],
+        operationId: 'sketchup_get_groups_rest',
+        summary: 'List groups in the active SketchUp model',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'include_nested', in: 'query', schema: { type: 'boolean', default: true } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 5000, default: 500 } }
+        ],
+        responses: {
+          200: { description: 'SketchUp groups retrieved' },
+          401: { description: 'Authentication required' },
+          503: { description: 'SketchUp is unavailable' }
+        }
+      }
+    },
+
+    '/api/mcp/sketchup/components': {
+      get: {
+        tags: ['SketchUp'],
+        operationId: 'sketchup_get_components_rest',
+        summary: 'List component instances in the active SketchUp model',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'include_nested', in: 'query', schema: { type: 'boolean', default: true } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 5000, default: 500 } }
+        ],
+        responses: {
+          200: { description: 'SketchUp components retrieved' },
+          401: { description: 'Authentication required' },
+          503: { description: 'SketchUp is unavailable' }
+        }
+      }
+    },
+
+    '/api/mcp/sketchup/attributes/{entityId}': {
+      get: {
+        tags: ['SketchUp'],
+        operationId: 'sketchup_get_attributes_rest',
+        summary: 'Read attribute dictionaries for an entity',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'entityId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+        responses: {
+          200: { description: 'SketchUp attributes retrieved' },
+          401: { description: 'Authentication required' },
+          503: { description: 'SketchUp is unavailable' }
+        }
+      }
+    },
+
+    '/api/mcp/sketchup/geometry/{entityId}': {
+      get: {
+        tags: ['SketchUp'],
+        operationId: 'sketchup_calculate_geometry_rest',
+        summary: 'Calculate geometry metrics for an entity',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'entityId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+        responses: {
+          200: { description: 'Geometry metrics calculated' },
+          401: { description: 'Authentication required' },
+          503: { description: 'SketchUp is unavailable' }
+        }
+      }
+    },
+
+    '/api/mcp/sketchup/validate/{entityId}': {
+      get: {
+        tags: ['SketchUp'],
+        operationId: 'sketchup_validate_geometry_rest',
+        summary: 'Validate an entity and its nested geometry',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'entityId', in: 'path', required: true, schema: { type: 'string' } }
+        ],
+        responses: {
+          200: { description: 'Validation findings returned' },
+          401: { description: 'Authentication required' },
+          503: { description: 'SketchUp is unavailable' }
         }
       }
     },
