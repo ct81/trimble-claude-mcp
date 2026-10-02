@@ -3,7 +3,7 @@ services:
     name: trimble-claude-mcp
     runtime: node
     plan: free
-    buildCommand: npm install
+    buildCommand: npm install && python3 -m pip install -r src/python/tender/requirements.txt
     startCommand: npm start
     envVars:
       - key: NODE_ENV
