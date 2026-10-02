@@ -106,7 +106,7 @@ export async function getPdfUpload(uploadId) {
 const router = express.Router();
 const execFileAsync = promisify(execFile);
 const tenderScript = fileURLToPath(
-  new URL('../python/tender/tender1.py', import.meta.url)
+  new URL('../python/tender/tender.py', import.meta.url)
 );
 const tenderPythonPackages = path.join(path.dirname(tenderScript), '.packages');
 

@@ -4581,6 +4581,8 @@ export async function getSwaggerDocument() {
         ? 'Python'
         : toolName === 'extract_tender_project'
           ? 'PDF'
+        : toolName === 'model_tender_project_in_sketchup'
+          ? 'SketchUp'
         : toolName.includes('property_set')
         ? 'Property Set'
         : toolName.startsWith('workspace_')

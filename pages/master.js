@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', async (event) => {
                     }
                     if (obj == 'submenu_T1_clicked') {
                         console.log("=====GET2: " + obj);
-                        window.open(locationParent + '/tender1.html?accessToken=' + document.getElementById('hdnAccessTokenDetail').value + '&projectId=' + document.getElementById('hdnProjectDetail').value + '&modelId=nil' + '&userId=' + document.getElementById('hdnUserId').value + '&userEmail=' + encodeURIComponent(document.getElementById('hdnUserEmail').value), '_self');
+                        window.open(locationParent + '/tender.html?accessToken=' + document.getElementById('hdnAccessTokenDetail').value + '&projectId=' + document.getElementById('hdnProjectDetail').value + '&modelId=nil' + '&userId=' + document.getElementById('hdnUserId').value + '&userEmail=' + encodeURIComponent(document.getElementById('hdnUserEmail').value), '_self');
                     }
                     break;
                 case "extension.accessToken":

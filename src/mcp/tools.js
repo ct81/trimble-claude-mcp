@@ -1621,6 +1621,7 @@ const baseDefinitions = [
     ['workspace_list_api', 'List the Workspace API methods available in the paired Trimble Connect browser.', {}],
     ['workspace_call', 'Call a method on the paired Trimble Connect browser Workspace API. Supply method arguments as an ordered array.', { group: { type: 'string', enum: workspaceApiGroups }, method: { type: 'string' }, args: { type: 'array', items: {} } }, ['group', 'method']],
     ['extract_tender_project', 'Extract project metadata, grids, levels, schedules, tables, and BOQ data from tender PDFs. Use pdfBase64 for one small PDF, pdfBase64s for a small batch, uploadIds for server-side uploads, or textDocuments when PDF text is already available.', { pdfBase64: { type: 'string', description: 'Base64-encoded PDF contents, optionally with a data:application/pdf;base64, prefix. For small PDFs only.' }, pdfBase64s: { type: 'array', minItems: 1, maxItems: 10, items: { type: 'string' }, description: 'Base64-encoded contents for 1 to 10 PDFs. For small PDFs only.' }, filenames: { type: 'array', minItems: 1, maxItems: 10, items: { type: 'string' }, description: 'Optional filenames in the same order as pdfBase64s.' }, uploadIds: { type: 'array', minItems: 1, maxItems: 10, items: { type: 'string' }, description: 'Server-side PDF upload IDs from POST /api/pdf/uploads.' }, textDocuments: { type: 'array', minItems: 1, maxItems: 10, description: 'Use this when PDF text is readable in the conversation but cannot be uploaded. Provide extracted text and optionally extracted tables as rows of cell strings.', items: { type: 'object', required: ['filename', 'text'], properties: { filename: { type: 'string' }, text: { type: 'string', description: 'Text extracted from this PDF.' }, page_count: { type: 'integer', minimum: 1 }, tables: { type: 'array', items: { type: 'array', items: { type: 'array', items: { type: 'string' } } } } } } }, projectName: { type: 'string', maxLength: 120 } }],
+    ['model_tender_project_in_sketchup', 'Create a labeled SketchUp grid-and-level reference scaffold from extracted tender JSON. This creates geometry and a group in the active model. Schedule elements are not placed because grid-location assignments are not included in the extracted JSON.', { project: { type: 'object', description: 'The project object returned by extract_tender_project.' } }, ['project']],
     ['run_python_test', 'Run the server-side Python hello-world test script.', {}]
   ].map(([name, description, properties, required = []]) => ({
     name,
@@ -1672,6 +1673,8 @@ export const definitions = [
         ? 'Python'
       : name === 'extract_tender_project'
         ? 'PDF'
+      : name === 'model_tender_project_in_sketchup'
+        ? 'SketchUp'
       : name.includes('property_set') ||
         name.includes('property-set')
         ? 'Property Set'
@@ -1889,6 +1892,20 @@ export async function callTool(
   }
 
   switch (name) {
+
+  case 'model_tender_project_in_sketchup': {
+    const { buildTenderGridRuby } = await import('./sketchup/tenderModel.js');
+    const modelPlan = buildTenderGridRuby(args.project);
+    const sketchupResult = await callSketchUpTool('eval_ruby', {
+      code: modelPlan.code
+    });
+    result = {
+      ...modelPlan,
+      code: undefined,
+      sketchupResult
+    };
+    break;
+  }
 
   case 'extract_tender_project': {
     const {
