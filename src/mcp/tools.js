@@ -1620,7 +1620,7 @@ const baseDefinitions = [
     ['workspace_pair', 'Create a one-time pairing link for a Trimble Connect browser extension to expose its Workspace API to this MCP session.', {}],
     ['workspace_list_api', 'List the Workspace API methods available in the paired Trimble Connect browser.', {}],
     ['workspace_call', 'Call a method on the paired Trimble Connect browser Workspace API. Supply method arguments as an ordered array.', { group: { type: 'string', enum: workspaceApiGroups }, method: { type: 'string' }, args: { type: 'array', items: {} } }, ['group', 'method']],
-    ['extract_tender_project', 'Extract project metadata, grids, levels, schedules, tables, and BOQ data from tender PDFs. Use uploadIds for server-side PDF uploads, or textDocuments when the PDF text is already available to you.', { uploadIds: { type: 'array', minItems: 1, maxItems: 10, items: { type: 'string' }, description: 'Server-side PDF upload IDs from POST /api/pdf/uploads.' }, textDocuments: { type: 'array', minItems: 1, maxItems: 10, description: 'Use this when PDF text is readable in the conversation but cannot be uploaded. Provide extracted text and optionally extracted tables as rows of cell strings.', items: { type: 'object', required: ['filename', 'text'], properties: { filename: { type: 'string' }, text: { type: 'string', description: 'Text extracted from this PDF.' }, page_count: { type: 'integer', minimum: 1 }, tables: { type: 'array', items: { type: 'array', items: { type: 'array', items: { type: 'string' } } } } } } }, projectName: { type: 'string', maxLength: 120 } }],
+    ['extract_tender_project', 'Extract project metadata, grids, levels, schedules, tables, and BOQ data from tender PDFs. Use pdfBase64 for one small PDF, pdfBase64s for a small batch, uploadIds for server-side uploads, or textDocuments when PDF text is already available.', { pdfBase64: { type: 'string', description: 'Base64-encoded PDF contents, optionally with a data:application/pdf;base64, prefix. For small PDFs only.' }, pdfBase64s: { type: 'array', minItems: 1, maxItems: 10, items: { type: 'string' }, description: 'Base64-encoded contents for 1 to 10 PDFs. For small PDFs only.' }, filenames: { type: 'array', minItems: 1, maxItems: 10, items: { type: 'string' }, description: 'Optional filenames in the same order as pdfBase64s.' }, uploadIds: { type: 'array', minItems: 1, maxItems: 10, items: { type: 'string' }, description: 'Server-side PDF upload IDs from POST /api/pdf/uploads.' }, textDocuments: { type: 'array', minItems: 1, maxItems: 10, description: 'Use this when PDF text is readable in the conversation but cannot be uploaded. Provide extracted text and optionally extracted tables as rows of cell strings.', items: { type: 'object', required: ['filename', 'text'], properties: { filename: { type: 'string' }, text: { type: 'string', description: 'Text extracted from this PDF.' }, page_count: { type: 'integer', minimum: 1 }, tables: { type: 'array', items: { type: 'array', items: { type: 'array', items: { type: 'string' } } } } } } }, projectName: { type: 'string', maxLength: 120 } }],
     ['run_python_test', 'Run the server-side Python hello-world test script.', {}]
   ].map(([name, description, properties, required = []]) => ({
     name,
@@ -1629,7 +1629,14 @@ const baseDefinitions = [
       type: 'object',
       properties,
       ...(name === 'extract_tender_project'
-        ? { oneOf: [{ required: ['uploadIds'] }, { required: ['textDocuments'] }] }
+        ? {
+          oneOf: [
+            { required: ['pdfBase64'] },
+            { required: ['pdfBase64s'] },
+            { required: ['uploadIds'] },
+            { required: ['textDocuments'] }
+          ]
+        }
         : {}),
       ...(required.length ? { required } : {})
     }
@@ -1889,22 +1896,59 @@ export async function callTool(
       extractTenderProjectFromFiles,
       getPdfUpload
     } = await import('../pdf/pdf.js');
-    const hasUploadIds = args.uploadIds !== undefined;
-    const hasTextDocuments = args.textDocuments !== undefined;
+    const inputModes = [
+      'pdfBase64',
+      'pdfBase64s',
+      'uploadIds',
+      'textDocuments'
+    ].filter((key) => args[key] !== undefined);
 
-    if (hasUploadIds === hasTextDocuments) {
+    if (inputModes.length !== 1) {
       throw Object.assign(
-        new Error('Provide either uploadIds or textDocuments, but not both.'),
+        new Error('Provide exactly one of pdfBase64, pdfBase64s, uploadIds, or textDocuments.'),
         { statusCode: 400 }
       );
     }
 
+    const [inputMode] = inputModes;
     let project;
-    if (hasTextDocuments) {
+    if (inputMode === 'textDocuments') {
       project = await extractTenderProjectFromDocuments(
         args.textDocuments,
         args.projectName
       );
+    } else if (inputMode === 'pdfBase64' || inputMode === 'pdfBase64s') {
+      const base64Values = inputMode === 'pdfBase64'
+        ? [args.pdfBase64]
+        : args.pdfBase64s;
+      if (
+        !Array.isArray(base64Values) ||
+        base64Values.length < 1 ||
+        base64Values.length > 10
+      ) {
+        throw Object.assign(
+          new Error('Provide 1 to 10 base64-encoded PDF files.'),
+          { statusCode: 400 }
+        );
+      }
+
+      const filenames = args.filenames;
+      if (
+        filenames !== undefined &&
+        (!Array.isArray(filenames) || filenames.length !== base64Values.length ||
+          filenames.some((filename) => typeof filename !== 'string' || !filename.trim()))
+      ) {
+        throw Object.assign(
+          new Error('filenames must contain one non-empty filename per PDF.'),
+          { statusCode: 400 }
+        );
+      }
+
+      const files = base64Values.map((pdfBase64, index) => ({
+        buffer: decodePdfBase64(pdfBase64),
+        originalname: filenames?.[index] || `document-${index + 1}.pdf`
+      }));
+      project = await extractTenderProjectFromFiles(files, args.projectName);
     } else {
       const uploadIds = args.uploadIds;
       if (

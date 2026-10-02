@@ -1132,8 +1132,8 @@ export const swaggerDocument = {
     '/api/mcp/tender/extract': {
       post: {
         tags: ['PDF'],
-        summary: 'Extract project data from tender PDFs or extracted PDF text',
-        description: 'Provide server-side uploadIds from POST /api/pdf/uploads, or textDocuments when the PDF text is already available to the caller.',
+        summary: 'Extract project data from tender PDFs, base64 PDFs, or extracted PDF text',
+        description: 'Use pdfBase64 for a small PDF, pdfBase64s for a small batch, uploadIds for server-side uploads, or textDocuments when extracted text is available.',
         operationId: 'extract_tender_project_rest',
         security: [{ bearerAuth: [] }],
         requestBody: {
@@ -1143,10 +1143,30 @@ export const swaggerDocument = {
               schema: {
                 type: 'object',
                 oneOf: [
+                  { required: ['pdfBase64'] },
+                  { required: ['pdfBase64s'] },
                   { required: ['uploadIds'] },
                   { required: ['textDocuments'] }
                 ],
                 properties: {
+                  pdfBase64: {
+                    type: 'string',
+                    description: 'Base64-encoded PDF contents. Intended for small PDFs.'
+                  },
+                  pdfBase64s: {
+                    type: 'array',
+                    minItems: 1,
+                    maxItems: 10,
+                    items: { type: 'string' },
+                    description: 'Base64-encoded PDF contents for a small batch.'
+                  },
+                  filenames: {
+                    type: 'array',
+                    minItems: 1,
+                    maxItems: 10,
+                    items: { type: 'string' },
+                    description: 'Optional filenames corresponding to pdfBase64s, in the same order.'
+                  },
                   uploadIds: {
                     type: 'array',
                     minItems: 1,
