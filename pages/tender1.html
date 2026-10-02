@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Tender PDF Extractor</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+	<style>
+		:root {
+			color-scheme: light;
+			--ink: #182824;
+			--muted: #61706b;
+			--paper: #f1f5f1;
+			--surface: #ffffff;
+			--line: #d5dfd9;
+			--green: #1c5948;
+			--green-dark: #153d33;
+			--orange: #cf5737;
+			--yellow: #e6c65e;
+			--error: #a63832;
+			font-family: "DM Sans", "Segoe UI", sans-serif;
+		}
+
+		* { box-sizing: border-box; }
+
+		body {
+			margin: 0;
+			color: var(--ink);
+			background-color: var(--paper);
+			background-image: repeating-linear-gradient(0deg, transparent, transparent 35px, rgba(28, 89, 72, .035) 36px), repeating-linear-gradient(90deg, transparent, transparent 35px, rgba(28, 89, 72, .035) 36px);
+			min-height: 100vh;
+		}
+
+		.masthead {
+			min-height: 104px;
+			padding: 22px max(24px, calc((100vw - 1120px) / 2));
+			color: #f5f7f0;
+			background: var(--green-dark);
+			border-bottom: 5px solid var(--yellow);
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			gap: 20px;
+		}
+
+		.brandline, .eyebrow, .section-index, .stat-label, .meta-label {
+			font-family: "Space Mono", monospace;
+			text-transform: uppercase;
+			letter-spacing: 0;
+		}
+
+		.brandline { color: #c8d9cd; font-size: 11px; margin: 0 0 7px; }
+		h1 { margin: 0; font-size: 31px; line-height: 1.1; }
+		.masthead-mark { color: var(--yellow); font: 700 12px "Space Mono", monospace; white-space: nowrap; }
+
+		main { width: min(100% - 40px, 920px); margin: 42px auto 72px; }
+		.section-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 18px; }
+		.section-index { color: var(--orange); font-size: 12px; }
+		h2 { font-size: 20px; margin: 0; }
+
+		.extract-form, .results { background: var(--surface); border: 1px solid var(--line); }
+		.extract-form { padding: clamp(20px, 4vw, 34px); }
+		.field-label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+		.project-name {
+			width: min(100%, 420px);
+			height: 44px;
+			border: 1px solid var(--line);
+			border-radius: 3px;
+			padding: 0 12px;
+			color: var(--ink);
+			background: #fbfdfb;
+			font: inherit;
+		}
+		.project-name:focus, button:focus-visible, .dropzone:focus-within { outline: 3px solid rgba(207, 87, 55, .3); outline-offset: 2px; }
+
+		.dropzone {
+			display: grid;
+			place-items: center;
+			min-height: 205px;
+			margin-top: 24px;
+			padding: 24px;
+			text-align: center;
+			border: 2px dashed #8eaaa0;
+			background: #f5f9f5;
+			cursor: pointer;
+			transition: background-color .16s ease, border-color .16s ease;
+		}
+		.dropzone:hover, .dropzone.is-over { border-color: var(--orange); background: #fff9f5; }
+		.dropzone input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+		.upload-symbol { display: grid; place-items: center; width: 44px; height: 44px; margin: 0 auto 13px; border-radius: 50%; color: white; background: var(--green); font-size: 23px; }
+		.drop-title, .drop-subtitle, .limits { display: block; }
+		.drop-title { margin: 0; font-weight: 700; font-size: 17px; }
+		.drop-subtitle { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+		.select-files { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; margin-top: 16px; padding: 0 16px; border-radius: 3px; color: white; background: var(--green); font-size: 13px; font-weight: 700; cursor: pointer; }
+		.select-files:hover { background: var(--green-dark); }
+		.limits { margin: 15px 0 0; color: var(--muted); font: 11px "Space Mono", monospace; }
+
+		.selection { display: none; margin-top: 18px; border-top: 1px solid var(--line); }
+		.selection.has-files { display: block; }
+		.selection-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0 7px; }
+		.selection-count { margin: 0; font-size: 13px; font-weight: 700; }
+		.file-list { list-style: none; padding: 0; margin: 0; }
+		.file-list li { display: flex; justify-content: space-between; gap: 16px; padding: 7px 0; color: var(--muted); font-size: 13px; border-top: 1px solid #edf1ed; overflow-wrap: anywhere; }
+		.file-size { flex: 0 0 auto; font: 11px "Space Mono", monospace; }
+
+		.form-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 24px; }
+		button { font: inherit; cursor: pointer; }
+		.primary-button { min-height: 46px; padding: 0 20px; border: 0; border-radius: 3px; color: white; background: var(--green); font-weight: 700; }
+		.primary-button:hover:not(:disabled) { background: var(--green-dark); }
+		.primary-button:disabled { cursor: wait; opacity: .62; }
+		.quiet-button { padding: 7px 0; border: 0; color: var(--muted); background: transparent; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+		.status { min-height: 20px; margin: 14px 0 0; color: var(--muted); font-size: 13px; }
+		.status.error { color: var(--error); }
+		.status.success { color: var(--green); }
+
+		.results { display: none; margin-top: 30px; }
+		.results.visible { display: block; }
+		.results-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 20px 24px; border-bottom: 1px solid var(--line); }
+		.results-head .section-head { margin: 0; }
+		.download-button { min-height: 38px; padding: 0 13px; border: 1px solid var(--green); border-radius: 3px; color: var(--green); background: white; font-size: 13px; font-weight: 700; }
+		.download-button:hover { color: white; background: var(--green); }
+		.stats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); border-bottom: 1px solid var(--line); }
+		.stat { min-width: 0; padding: 17px 14px; border-right: 1px solid var(--line); }
+		.stat:last-child { border-right: 0; }
+		.stat-value { display: block; font: 700 21px "Space Mono", monospace; color: var(--green); }
+		.stat-label { display: block; margin-top: 5px; color: var(--muted); font-size: 9px; overflow-wrap: anywhere; }
+		.json-output { display: block; width: 100%; height: min(52vh, 520px); min-height: 250px; padding: 18px 22px; border: 0; resize: vertical; color: #263b34; background: #fbfdfb; font: 12px/1.55 "Space Mono", monospace; white-space: pre; overflow: auto; }
+
+		@media (max-width: 650px) {
+			.masthead { min-height: 90px; padding: 18px 20px; }
+			.masthead-mark { display: none; }
+			h1 { font-size: 23px; }
+			main { width: min(100% - 28px, 920px); margin-top: 27px; }
+			.form-actions, .results-head { align-items: flex-start; flex-direction: column; }
+			.stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+			.stat:nth-child(3) { border-right: 0; }
+			.stat:nth-child(n + 4) { border-top: 1px solid var(--line); }
+			.results-head { gap: 13px; }
+		}
+		@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: .01ms !important; } }
+	</style>
+</head>
+<body>
+	<header class="masthead">
+		<div>
+			<p class="brandline">Tender tools / document intelligence</p>
+			<h1>Project PDF extractor</h1>
+		</div>
+		<span class="masthead-mark">PDF → PROJECT JSON</span>
+	</header>
+
+	<main>
+		<div class="section-head">
+			<span class="section-index">01</span>
+			<h2>Build a project dataset</h2>
+		</div>
+
+		<form class="extract-form" id="extractForm">
+			<label class="field-label" for="projectName">Project name</label>
+			<input class="project-name" id="projectName" name="projectName" maxlength="120" value="Tender project" autocomplete="organization">
+
+			<div class="dropzone" id="dropzone">
+				<input id="pdfFiles" name="files" type="file" accept="application/pdf,.pdf" multiple>
+				<span>
+					<span class="upload-symbol" aria-hidden="true">↑</span>
+					<span class="drop-title">Drop PDF files here</span>
+					<span class="drop-subtitle">Drawings, schedules, specifications, and BOQs</span>
+					<label class="select-files" for="pdfFiles">Select PDF files</label>
+					<span class="limits">10 FILES MAX · 25 MB PER FILE · 100 MB TOTAL</span>
+				</span>
+			</div>
+
+			<div class="selection" id="selection" aria-live="polite">
+				<div class="selection-top">
+					<p class="selection-count" id="selectionCount"></p>
+					<button class="quiet-button" type="button" id="clearFiles">Clear selection</button>
+				</div>
+				<ul class="file-list" id="fileList"></ul>
+			</div>
+
+			<div class="form-actions">
+				<button class="primary-button" id="extractButton" type="submit">Extract project data</button>
+				<span class="meta-label" style="color:var(--muted);font-size:10px">JSON output</span>
+			</div>
+			<p class="status" id="status" role="status" aria-live="polite">Select one or more PDFs to begin.</p>
+		</form>
+
+		<section class="results" id="results" aria-labelledby="resultsTitle">
+			<div class="results-head">
+				<div class="section-head">
+					<span class="section-index">02</span>
+					<h2 id="resultsTitle">Extracted project</h2>
+				</div>
+				<button class="download-button" type="button" id="downloadJson">Download JSON</button>
+			</div>
+			<div class="stats" id="stats" aria-label="Extraction totals"></div>
+			<textarea class="json-output" id="jsonOutput" aria-label="Extracted project JSON" readonly spellcheck="false"></textarea>
+		</section>
+	</main>
+
+	<script>
+		const form = document.getElementById('extractForm');
+		const fileInput = document.getElementById('pdfFiles');
+		const dropzone = document.getElementById('dropzone');
+		const selection = document.getElementById('selection');
+		const fileList = document.getElementById('fileList');
+		const selectionCount = document.getElementById('selectionCount');
+		const extractButton = document.getElementById('extractButton');
+		const status = document.getElementById('status');
+		const results = document.getElementById('results');
+		const stats = document.getElementById('stats');
+		const jsonOutput = document.getElementById('jsonOutput');
+		let projectData = null;
+
+		function formatBytes(bytes) {
+			return bytes < 1024 * 1024
+				? `${Math.max(1, Math.round(bytes / 1024))} KB`
+				: `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+		}
+
+		function updateFiles() {
+			const files = Array.from(fileInput.files || []);
+			fileList.replaceChildren();
+			selection.classList.toggle('has-files', files.length > 0);
+			selectionCount.textContent = `${files.length} PDF${files.length === 1 ? '' : 's'} selected`;
+
+			for (const file of files) {
+				const item = document.createElement('li');
+				const name = document.createElement('span');
+				const size = document.createElement('span');
+				name.textContent = file.name;
+				size.className = 'file-size';
+				size.textContent = formatBytes(file.size);
+				item.append(name, size);
+				fileList.append(item);
+			}
+
+			if (files.length) {
+				status.className = 'status';
+				status.textContent = `${files.length} file${files.length === 1 ? '' : 's'} ready.`;
+			} else {
+				status.className = 'status';
+				status.textContent = 'Select one or more PDFs to begin.';
+			}
+		}
+
+		function showStats(project) {
+			const values = [
+				['documents', project.documents?.length],
+				['grid lines', project.grids?.length],
+				['levels', project.levels?.length],
+				['schedules', project.schedules?.length],
+				['tables', project.tables?.length],
+				['BOQ items', project.boq?.length]
+			];
+			stats.replaceChildren();
+			for (const [label, value] of values) {
+				const item = document.createElement('div');
+				const number = document.createElement('strong');
+				const caption = document.createElement('span');
+				item.className = 'stat';
+				number.className = 'stat-value';
+				number.textContent = String(value ?? 0);
+				caption.className = 'stat-label';
+				caption.textContent = label;
+				item.append(number, caption);
+				stats.append(item);
+			}
+		}
+
+		fileInput.addEventListener('change', updateFiles);
+		document.getElementById('clearFiles').addEventListener('click', () => {
+			fileInput.value = '';
+			updateFiles();
+			results.classList.remove('visible');
+		});
+
+		for (const eventName of ['dragenter', 'dragover']) {
+			dropzone.addEventListener(eventName, (event) => {
+				event.preventDefault();
+				dropzone.classList.add('is-over');
+			});
+		}
+		for (const eventName of ['dragleave', 'drop']) {
+			dropzone.addEventListener(eventName, (event) => {
+				event.preventDefault();
+				dropzone.classList.remove('is-over');
+			});
+		}
+		dropzone.addEventListener('drop', (event) => {
+			const pdfs = Array.from(event.dataTransfer.files).filter((file) =>
+				file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+			);
+			const transfer = new DataTransfer();
+			pdfs.forEach((file) => transfer.items.add(file));
+			fileInput.files = transfer.files;
+			updateFiles();
+		});
+
+		form.addEventListener('submit', async (event) => {
+			event.preventDefault();
+			const files = Array.from(fileInput.files || []);
+			if (!files.length) {
+				status.className = 'status error';
+				status.textContent = 'Select at least one PDF file.';
+				fileInput.focus();
+				return;
+			}
+			if (files.length > 10 || files.reduce((sum, file) => sum + file.size, 0) > 100 * 1024 * 1024) {
+				status.className = 'status error';
+				status.textContent = 'Choose up to 10 PDFs with a combined size of 100 MB or less.';
+				return;
+			}
+
+			const formData = new FormData();
+			formData.append('projectName', document.getElementById('projectName').value);
+			files.forEach((file) => formData.append('files', file));
+			extractButton.disabled = true;
+			results.classList.remove('visible');
+			status.className = 'status';
+			status.textContent = 'Extracting PDF text and tables…';
+
+			try {
+				const response = await fetch('/api/pdf/tender-extract', {
+					method: 'POST',
+					body: formData
+				});
+				const payload = await response.json();
+				if (!response.ok || !payload.success) {
+					const message = typeof payload.error === 'string'
+						? payload.error
+						: payload.error?.message;
+					throw new Error(message || 'Extraction failed.');
+				}
+
+				projectData = payload.project;
+				jsonOutput.value = JSON.stringify(projectData, null, 2);
+				showStats(projectData);
+				results.classList.add('visible');
+				status.className = 'status success';
+				status.textContent = `Extracted ${projectData.documents.length} document${projectData.documents.length === 1 ? '' : 's'}.`;
+			} catch (error) {
+				status.className = 'status error';
+				status.textContent = error.message || 'Could not reach the extraction service.';
+			} finally {
+				extractButton.disabled = false;
+			}
+		});
+
+		document.getElementById('downloadJson').addEventListener('click', () => {
+			if (!projectData) return;
+			const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' });
+			const url = URL.createObjectURL(blob);
+			const link = document.createElement('a');
+			link.href = url;
+			link.download = `${(projectData.project_name || 'tender-project').replace(/[^A-Za-z0-9_-]+/g, '-')}.json`;
+			link.click();
+			URL.revokeObjectURL(url);
+		});
+	</script>
+</body>
+</html>

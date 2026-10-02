@@ -1,8 +1,12 @@
 import express from 'express';
 import multer from 'multer';
 import crypto from 'node:crypto';
+import os from 'node:os';
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { fileURLToPath } from 'node:url';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getStorage } from 'firebase-admin/storage';
 import { config } from '../config.js';
@@ -100,6 +104,10 @@ export async function getPdfUpload(uploadId) {
 }
 
 const router = express.Router();
+const execFileAsync = promisify(execFile);
+const tenderScript = fileURLToPath(
+  new URL('../python/tender/tender1.py', import.meta.url)
+);
 
 router.get('/downloads/:filename', (req, res) => {
   const filename = path.basename(req.params.filename);
@@ -205,6 +213,89 @@ const jsonUpload = multer({
     }
 
 });
+
+const tenderUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 25 * 1024 * 1024,
+    files: 10
+  },
+  fileFilter: (req, file, cb) => {
+    if (
+      file.mimetype === 'application/pdf' ||
+      file.originalname.toLowerCase().endsWith('.pdf')
+    ) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF files are allowed'));
+    }
+  }
+});
+
+router.post(
+  '/tender-extract',
+  tenderUpload.array('files', 10),
+  async (req, res) => {
+    const files = req.files || [];
+    if (!files.length) {
+      return res.status(400).json({
+        success: false,
+        error: 'Select at least one PDF file.'
+      });
+    }
+
+    if (files.reduce((total, file) => total + file.size, 0) > 100 * 1024 * 1024) {
+      return res.status(413).json({
+        success: false,
+        error: 'The combined PDF size must be 100 MB or less.'
+      });
+    }
+
+    let tempDir;
+    try {
+      tempDir = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), 'tender-extract-')
+      );
+
+      await Promise.all(files.map((file, index) => {
+        const safeName = path.basename(file.originalname)
+          .replace(/[^A-Za-z0-9._-]+/g, '_') || `document-${index + 1}.pdf`;
+        const filename = `${String(index + 1).padStart(2, '0')}-${safeName}`;
+        return fs.promises.writeFile(
+          path.join(tempDir, filename),
+          file.buffer,
+          { flag: 'wx' }
+        );
+      }));
+
+      const outputPath = path.join(tempDir, 'project.json');
+      await execFileAsync(
+        process.env.PYTHON_EXECUTABLE || 'python3',
+        [tenderScript, tempDir, outputPath],
+        { timeout: 120_000, maxBuffer: 10 * 1024 * 1024 }
+      );
+
+      const project = JSON.parse(
+        await fs.promises.readFile(outputPath, 'utf8')
+      );
+      project.project_name =
+        String(req.body?.projectName || '').trim().slice(0, 120) || 'Tender project';
+
+      return res.json({ success: true, project });
+    } catch (error) {
+      console.error('[Tender extraction] Failed:', error);
+      const status = error.code === 'ETIMEDOUT' || error.killed ? 504 : 500;
+      return res.status(status).json({
+        success: false,
+        error: error.stderr?.trim() || error.message || 'Tender extraction failed.'
+      });
+    } finally {
+      if (tempDir) {
+        await fs.promises.rm(tempDir, { recursive: true, force: true });
+      }
+    }
+  }
+);
 
 
 // =====================================================
