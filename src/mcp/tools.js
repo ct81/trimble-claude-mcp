@@ -1620,7 +1620,7 @@ const baseDefinitions = [
     ['workspace_pair', 'Create a one-time pairing link for a Trimble Connect browser extension to expose its Workspace API to this MCP session.', {}],
     ['workspace_list_api', 'List the Workspace API methods available in the paired Trimble Connect browser.', {}],
     ['workspace_call', 'Call a method on the paired Trimble Connect browser Workspace API. Supply method arguments as an ordered array.', { group: { type: 'string', enum: workspaceApiGroups }, method: { type: 'string' }, args: { type: 'array', items: {} } }, ['group', 'method']],
-    ['extract_tender_project', 'Extract project metadata, grids, levels, schedules, tables, and BOQ data from uploaded tender PDFs. Upload each PDF with POST /api/pdf/uploads, then pass the returned uploadIds.', { uploadIds: { type: 'array', minItems: 1, maxItems: 10, items: { type: 'string' }, description: 'Server-side PDF upload IDs from POST /api/pdf/uploads.' }, projectName: { type: 'string', maxLength: 120 } }, ['uploadIds']],
+    ['extract_tender_project', 'Extract project metadata, grids, levels, schedules, tables, and BOQ data from tender PDFs. Use uploadIds for server-side PDF uploads, or textDocuments when the PDF text is already available to you.', { uploadIds: { type: 'array', minItems: 1, maxItems: 10, items: { type: 'string' }, description: 'Server-side PDF upload IDs from POST /api/pdf/uploads.' }, textDocuments: { type: 'array', minItems: 1, maxItems: 10, description: 'Use this when PDF text is readable in the conversation but cannot be uploaded. Provide extracted text and optionally extracted tables as rows of cell strings.', items: { type: 'object', required: ['filename', 'text'], properties: { filename: { type: 'string' }, text: { type: 'string', description: 'Text extracted from this PDF.' }, page_count: { type: 'integer', minimum: 1 }, tables: { type: 'array', items: { type: 'array', items: { type: 'array', items: { type: 'string' } } } } } } }, projectName: { type: 'string', maxLength: 120 } }],
     ['run_python_test', 'Run the server-side Python hello-world test script.', {}]
   ].map(([name, description, properties, required = []]) => ({
     name,
@@ -1628,6 +1628,9 @@ const baseDefinitions = [
     inputSchema: {
       type: 'object',
       properties,
+      ...(name === 'extract_tender_project'
+        ? { oneOf: [{ required: ['uploadIds'] }, { required: ['textDocuments'] }] }
+        : {}),
       ...(required.length ? { required } : {})
     }
   }))
@@ -1881,20 +1884,44 @@ export async function callTool(
   switch (name) {
 
   case 'extract_tender_project': {
-    const { extractTenderProjectFromFiles, getPdfUpload } = await import('../pdf/pdf.js');
-    const uploadIds = args.uploadIds;
+    const {
+      extractTenderProjectFromDocuments,
+      extractTenderProjectFromFiles,
+      getPdfUpload
+    } = await import('../pdf/pdf.js');
+    const hasUploadIds = args.uploadIds !== undefined;
+    const hasTextDocuments = args.textDocuments !== undefined;
 
-    if (
-      !Array.isArray(uploadIds) ||
-      uploadIds.length < 1 ||
-      uploadIds.length > 10 ||
-      uploadIds.some((uploadId) => typeof uploadId !== 'string' || !uploadId.trim())
-    ) {
-      throw new Error('Provide 1 to 10 valid PDF uploadIds from POST /api/pdf/uploads.');
+    if (hasUploadIds === hasTextDocuments) {
+      throw Object.assign(
+        new Error('Provide either uploadIds or textDocuments, but not both.'),
+        { statusCode: 400 }
+      );
     }
 
-    const uploads = await Promise.all(uploadIds.map((uploadId) => getPdfUpload(uploadId)));
-    const project = await extractTenderProjectFromFiles(uploads, args.projectName);
+    let project;
+    if (hasTextDocuments) {
+      project = await extractTenderProjectFromDocuments(
+        args.textDocuments,
+        args.projectName
+      );
+    } else {
+      const uploadIds = args.uploadIds;
+      if (
+        !Array.isArray(uploadIds) ||
+        uploadIds.length < 1 ||
+        uploadIds.length > 10 ||
+        uploadIds.some((uploadId) => typeof uploadId !== 'string' || !uploadId.trim())
+      ) {
+        throw Object.assign(
+          new Error('Provide 1 to 10 valid PDF uploadIds from POST /api/pdf/uploads.'),
+          { statusCode: 400 }
+        );
+      }
+
+      const uploads = await Promise.all(uploadIds.map((uploadId) => getPdfUpload(uploadId)));
+      project = await extractTenderProjectFromFiles(uploads, args.projectName);
+    }
     result = { success: true, project };
     break;
   }

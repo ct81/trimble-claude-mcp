@@ -110,6 +110,25 @@ const tenderScript = fileURLToPath(
 );
 const tenderPythonPackages = path.join(path.dirname(tenderScript), '.packages');
 
+async function runTenderScript(args, outputPath) {
+  await execFileAsync(
+    process.env.PYTHON_EXECUTABLE || 'python3',
+    args,
+    {
+      timeout: 120_000,
+      maxBuffer: 10 * 1024 * 1024,
+      env: {
+        ...process.env,
+        PYTHONPATH: [tenderPythonPackages, process.env.PYTHONPATH]
+          .filter(Boolean)
+          .join(path.delimiter)
+      }
+    }
+  );
+
+  return JSON.parse(await fs.promises.readFile(outputPath, 'utf8'));
+}
+
 export async function extractTenderProjectFromFiles(files, projectName = '') {
   if (!Array.isArray(files) || files.length === 0) {
     throw Object.assign(new Error('Select at least one PDF file.'), { statusCode: 400 });
@@ -143,27 +162,46 @@ export async function extractTenderProjectFromFiles(files, projectName = '') {
     }));
 
     const outputPath = path.join(tempDir, 'project.json');
-    await execFileAsync(
-      process.env.PYTHON_EXECUTABLE || 'python3',
-      [tenderScript, tempDir, outputPath],
-      {
-        timeout: 120_000,
-        maxBuffer: 10 * 1024 * 1024,
-        env: {
-          ...process.env,
-          PYTHONPATH: [tenderPythonPackages, process.env.PYTHONPATH]
-            .filter(Boolean)
-            .join(path.delimiter)
-        }
-      }
-    );
-
-    const project = JSON.parse(
-      await fs.promises.readFile(outputPath, 'utf8')
-    );
+    const project = await runTenderScript([tenderScript, tempDir, outputPath], outputPath);
     project.project_name =
       String(projectName || '').trim().slice(0, 120) || 'Tender project';
     return project;
+  } finally {
+    await fs.promises.rm(tempDir, { recursive: true, force: true });
+  }
+}
+
+export async function extractTenderProjectFromDocuments(
+  documents,
+  projectName = '',
+) {
+  if (!Array.isArray(documents) || documents.length < 1 || documents.length > 10) {
+    throw Object.assign(new Error('Provide 1 to 10 text documents.'), { statusCode: 400 });
+  }
+  if (documents.some((document) => !document || typeof document.text !== 'string' || !document.text.trim())) {
+    throw Object.assign(new Error('Each text document must include non-empty extracted PDF text.'), { statusCode: 400 });
+  }
+
+  const payload = JSON.stringify({
+    project_name: String(projectName || '').trim().slice(0, 120) || 'Tender project',
+    documents
+  });
+  if (Buffer.byteLength(payload, 'utf8') > 20 * 1024 * 1024) {
+    throw Object.assign(new Error('Combined text document input must be 20 MB or less.'), { statusCode: 413 });
+  }
+
+  const tempDir = await fs.promises.mkdtemp(
+    path.join(os.tmpdir(), 'tender-text-')
+  );
+
+  try {
+    const inputPath = path.join(tempDir, 'documents.json');
+    const outputPath = path.join(tempDir, 'project.json');
+    await fs.promises.writeFile(inputPath, payload, { flag: 'wx' });
+    return await runTenderScript(
+      [tenderScript, '--text-json', inputPath, outputPath],
+      outputPath
+    );
   } finally {
     await fs.promises.rm(tempDir, { recursive: true, force: true });
   }

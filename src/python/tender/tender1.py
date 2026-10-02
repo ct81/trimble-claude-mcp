@@ -476,13 +476,60 @@ def build_project_json(pdf_dir: str | Path) -> ProjectJSON:
     if not pdf_files:
         raise FileNotFoundError(f"No PDFs found in {pdf_dir}")
 
-    project = ProjectJSON(project_name=pdf_dir.name)
+    raw_documents = [extract_pdf(pdf_path) for pdf_path in pdf_files]
+    return _build_project_json(pdf_dir.name, raw_documents)
+
+
+def build_project_json_from_documents(
+    documents: Any,
+    project_name: str = "Tender project",
+) -> ProjectJSON:
+    """Build a project from text already extracted from tender documents."""
+    if not isinstance(documents, list) or not documents:
+        raise ValueError("Provide at least one text document.")
+    if len(documents) > 10:
+        raise ValueError("A maximum of 10 text documents can be extracted at once.")
+
+    raw_documents: list[dict[str, Any]] = []
+    for index, document in enumerate(documents):
+        if not isinstance(document, dict):
+            raise ValueError(f"Text document {index + 1} must be an object.")
+
+        text = document.get("text")
+        if not isinstance(text, str) or not text.strip():
+            raise ValueError(f"Text document {index + 1} must include non-empty text.")
+
+        filename = Path(str(document.get("filename") or f"document-{index + 1}.pdf")).name
+        tables = document.get("tables", [])
+        if not isinstance(tables, list):
+            raise ValueError(f"Tables for text document {index + 1} must be an array.")
+        for table in tables:
+            if not isinstance(table, list) or any(not isinstance(row, list) for row in table):
+                raise ValueError(f"Each table in text document {index + 1} must be an array of rows.")
+
+        raw_documents.append({
+            "filename": filename,
+            "page_count": document.get("page_count", 1),
+            "text": text,
+            "tables": [
+                [[str(cell) if cell is not None else "" for cell in row] for row in table]
+                for table in tables
+            ],
+        })
+
+    return _build_project_json(project_name or "Tender project", raw_documents)
+
+
+def _build_project_json(
+    project_name: str,
+    raw_documents: list[dict[str, Any]],
+) -> ProjectJSON:
+    project = ProjectJSON(project_name=project_name)
 
     all_text_parts: list[str] = []
     all_tables: list[list[list[str]]] = []
 
-    for pdf_path in pdf_files:
-        raw = extract_pdf(pdf_path)
+    for raw in raw_documents:
         meta = detect_metadata(raw)
         meta.document_type = classify_document(raw)
         project.documents.append(meta)
@@ -563,12 +610,21 @@ def _run_cross_checks(project: ProjectJSON) -> None:
 if __name__ == "__main__":
     import sys
 
-    pdf_dir = sys.argv[1] if len(sys.argv) > 1 else "."
-    out_file = sys.argv[2] if len(sys.argv) > 2 else "project.json"
-
     try:
-        project = build_project_json(pdf_dir)
-    except FileNotFoundError as exc:
+        if len(sys.argv) > 1 and sys.argv[1] == "--text-json":
+            input_file = sys.argv[2]
+            out_file = sys.argv[3]
+            with open(input_file, encoding="utf-8") as f:
+                input_data = json.load(f)
+            project = build_project_json_from_documents(
+                input_data.get("documents"),
+                input_data.get("project_name", "Tender project"),
+            )
+        else:
+            pdf_dir = sys.argv[1] if len(sys.argv) > 1 else "."
+            out_file = sys.argv[2] if len(sys.argv) > 2 else "project.json"
+            project = build_project_json(pdf_dir)
+    except (FileNotFoundError, ValueError, IndexError) as exc:
         print(str(exc), file=sys.stderr)
         raise SystemExit(1) from None
 

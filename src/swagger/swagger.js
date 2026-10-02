@@ -1132,8 +1132,8 @@ export const swaggerDocument = {
     '/api/mcp/tender/extract': {
       post: {
         tags: ['PDF'],
-        summary: 'Extract project data from uploaded tender PDFs',
-        description: 'Upload PDFs using POST /api/pdf/uploads, then provide their uploadIds to extract project metadata, grids, levels, schedules, tables, and BOQ data.',
+        summary: 'Extract project data from tender PDFs or extracted PDF text',
+        description: 'Provide server-side uploadIds from POST /api/pdf/uploads, or textDocuments when the PDF text is already available to the caller.',
         operationId: 'extract_tender_project_rest',
         security: [{ bearerAuth: [] }],
         requestBody: {
@@ -1142,7 +1142,10 @@ export const swaggerDocument = {
             'application/json': {
               schema: {
                 type: 'object',
-                required: ['uploadIds'],
+                oneOf: [
+                  { required: ['uploadIds'] },
+                  { required: ['textDocuments'] }
+                ],
                 properties: {
                   uploadIds: {
                     type: 'array',
@@ -1150,6 +1153,31 @@ export const swaggerDocument = {
                     maxItems: 10,
                     items: { type: 'string' },
                     description: 'PDF upload IDs returned by POST /api/pdf/uploads.'
+                  },
+                  textDocuments: {
+                    type: 'array',
+                    minItems: 1,
+                    maxItems: 10,
+                    description: 'Extracted PDF text and optional tables. Each table is an array of rows, each row an array of cell strings.',
+                    items: {
+                      type: 'object',
+                      required: ['filename', 'text'],
+                      properties: {
+                        filename: { type: 'string' },
+                        text: { type: 'string' },
+                        page_count: { type: 'integer', minimum: 1 },
+                        tables: {
+                          type: 'array',
+                          items: {
+                            type: 'array',
+                            items: {
+                              type: 'array',
+                              items: { type: 'string' }
+                            }
+                          }
+                        }
+                      }
+                    }
                   },
                   projectName: {
                     type: 'string',
