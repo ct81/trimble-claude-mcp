@@ -26,6 +26,7 @@ export const tools = [
   {name:"tekla_get_drawing",description:"Get a Tekla drawing by identifier.",inputSchema:schema({identifier:{type:"string"},limit:{type:"integer"}},["identifier"])},
   {name:"tekla_get_phases",description:"List phases in the open Tekla model.",inputSchema:schema({})},
   {name:"tekla_create_beam",description:"Create a Tekla beam. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({x1:{type:"number"},y1:{type:"number"},z1:{type:"number"},x2:{type:"number"},y2:{type:"number"},z2:{type:"number"},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"}},["x1","y1","z1","x2","y2","z2"])},
+  {name:"tekla_create_parametric_stair",description:"Insert the native TeklaMcpParametricStair plugin with placement points and property values. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({x1:{type:"number"},y1:{type:"number"},z1:{type:"number"},x2:{type:"number"},y2:{type:"number"},z2:{type:"number"},stairWidth:{type:"number",exclusiveMinimum:0},stepCount:{type:"integer",minimum:1,maximum:200},stringerProfile:{type:"string"},treadProfile:{type:"string"},steelGrade:{type:"string"}},["x1","y1","z1","x2","y2","z2"])},
   {name:"tekla_create_column",description:"Create a Tekla column. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({x:{type:"number"},y:{type:"number"},z1:{type:"number"},z2:{type:"number"},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"}},["x","y","z1","z2"])},
   {name:"tekla_create_plate",description:"Create a Tekla plate. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({x1:{type:"number"},y1:{type:"number"},z1:{type:"number"},x2:{type:"number"},y2:{type:"number"},z2:{type:"number"},x3:{type:"number"},y3:{type:"number"},z3:{type:"number"},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"}},["x1","y1","z1","x2","y2","z2","x3","y3","z3"])},
   {name:"tekla_update_object",description:"Update a Tekla part's profile, material, class, or user-defined attributes. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({guid:{type:"string"},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"},attributes:{type:"object",additionalProperties:{type:"string"}}},["guid"])},
@@ -80,6 +81,7 @@ export async function callTeklaTool(name,args={}) {
     case "tekla_get_drawing": return t.teklaDrawing(args);
     case "tekla_get_phases": return t.teklaPhases();
     case "tekla_create_beam": return t.teklaCreateBeam(args);
+    case "tekla_create_parametric_stair": return t.teklaCreateParametricStair(args);
     case "tekla_create_column": return t.teklaCreateColumn(args);
     case "tekla_create_plate": return t.teklaCreatePlate(args);
     case "tekla_update_object": return t.teklaUpdateObject(args);

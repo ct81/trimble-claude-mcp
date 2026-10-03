@@ -10,6 +10,17 @@ set TEKLA_BRIDGE_KEY=tekla2026
 cd "C:\Users\CTan\Downloads\TeklaMcpBridge_Full_API\TeklaMcpBridge_Full"
 
 Step 1:
+Remove-Item ".\src\TeklaMcpParametricStair\bin" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item ".\src\TeklaMcpParametricStair\obj" -Recurse -Force -ErrorAction SilentlyContinue
+
+dotnet restore "src\TeklaMcpParametricStair\TeklaMcpParametricStair.csproj"
+
+dotnet build "src\TeklaMcpParametricStair\TeklaMcpParametricStair.csproj" `
+  --configuration Release `
+  --no-restore `
+  -p:PlatformTarget=x64
+
+Step 2:
 Remove-Item ".\src\TeklaMcpBridge\bin" -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item ".\src\TeklaMcpBridge\obj" -Recurse -Force -ErrorAction SilentlyContinue
 
@@ -20,6 +31,22 @@ dotnet build "src\TeklaMcpBridge\TeklaMcpBridge.csproj" `
   --no-restore `
   -p:PlatformTarget=x64
 
+Step 3:
+$src = "C:\Users\CTan\Downloads\TeklaMcpBridge_Full_API\TeklaMcpBridge_Full\src\TeklaMcpParametricStair\bin\Release\net48"
+
+$dst = "C:\Users\CTan\Downloads\TeklaMcpBridge_Full_API\TeklaMcpBridge_Full\src\TeklaMcpBridge\bin\Release\net48"
+
+Copy-Item "$src\*" "$dst\" -Recurse -Force
+
+Step 4:
+$src = "C:\Users\CTan\Downloads\TeklaMcpBridge_Full_API\TeklaMcpBridge_Full\src\TeklaMcpBridge\bin\Release\net48"
+
+$dst = "C:\ProgramData\Trimble\Tekla Structures\2026.0\Environments\common\extensions\TeklaMcpBridge"
+
+Copy-Item "$src\*" "$dst\" -Recurse -Force
+
+
+Test-Path "$dst\System.Memory.dll"
 
 =========================================================================================================
 
@@ -85,7 +112,6 @@ New-Item `
 
 
 
-Step 2:
 $src = "C:\Users\CTan\Downloads\TeklaMcpBridge_Full_API\TeklaMcpBridge_Full\src\TeklaMcpBridge\bin\Release\net48"
 
 $dst = "C:\ProgramData\Trimble\Tekla Structures\2026.0\Environments\common\extensions\TeklaMcpBridge"

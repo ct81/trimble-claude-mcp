@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Tekla Open APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #30"
+// #31"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -2431,6 +2431,7 @@ app.post(
 //   POST /api/mcp/tekla/rebar
 //   POST /api/mcp/tekla/rebar-group
 //   POST /api/mcp/tekla/create/beam
+//   POST /api/mcp/tekla/create/parametric-stair
 //   POST /api/mcp/tekla/create/column
 //   POST /api/mcp/tekla/create/plate
 //   POST /api/mcp/tekla/create/assembly
@@ -2455,6 +2456,7 @@ app.post(
 //   POST /api/mcp/tools/tekla_get_rebar
 //   POST /api/mcp/tools/tekla_get_rebar_group
 //   POST /api/mcp/tools/tekla_create_beam
+//   POST /api/mcp/tools/tekla_create_parametric_stair
 //   POST /api/mcp/tools/tekla_create_column
 //   POST /api/mcp/tools/tekla_create_plate
 //   POST /api/mcp/tools/tekla_create_assembly
@@ -2960,6 +2962,7 @@ const teklaActionRoutes = [
   { path: '/api/mcp/tekla/components/update', toolName: 'tekla_component_update' },
   { path: '/api/mcp/tekla/components/delete', toolName: 'tekla_component_delete' },
   { path: '/api/mcp/tekla/create/beam', toolName: 'tekla_create_beam' },
+  { path: '/api/mcp/tekla/create/parametric-stair', toolName: 'tekla_create_parametric_stair' },
   { path: '/api/mcp/tekla/create/column', toolName: 'tekla_create_column' },
   { path: '/api/mcp/tekla/create/plate', toolName: 'tekla_create_plate' },
   { path: '/api/mcp/tekla/create/assembly', toolName: 'tekla_create_assembly' },

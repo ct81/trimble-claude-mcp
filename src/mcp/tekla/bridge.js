@@ -53,6 +53,7 @@ export const teklaDrawing = (a) => call("/api/tekla/drawing",{method:"POST",body
 export const teklaAttributes = (a) => call("/api/tekla/attributes",{method:"POST",body:JSON.stringify(a)});
 
 export const teklaCreateBeam = (a) => call("/api/tekla/create/beam",{method:"POST",body:JSON.stringify(a)});
+export const teklaCreateParametricStair = (a) => call("/api/tekla/create/parametric-stair",{method:"POST",body:JSON.stringify(a)});
 export const teklaCreateColumn = (a) => call("/api/tekla/create/column",{method:"POST",body:JSON.stringify(a)});
 export const teklaCreatePlate = (a) => call("/api/tekla/create/plate",{method:"POST",body:JSON.stringify(a)});
 export const teklaUpdateObject = (a) => call("/api/tekla/update/object",{method:"POST",body:JSON.stringify(a)});

@@ -2203,6 +2203,10 @@ export async function callTool(
     result = await teklaBridge.teklaCreateBeam(args);
     break;
 
+  case 'tekla_create_parametric_stair':
+    result = await teklaBridge.teklaCreateParametricStair(args);
+    break;
+
   case 'tekla_create_column':
     result = await teklaBridge.teklaCreateColumn(args);
     break;

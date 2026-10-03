@@ -685,6 +685,23 @@ const teklaFallbackDefinitions = [
     }
   },
   {
+    name: 'tekla_create_parametric_stair',
+    description: 'Insert the native TeklaMcpParametricStair plugin with placement points and property values. MODEL MODIFICATION: require explicit approval.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        x1: { type: 'number' }, y1: { type: 'number' }, z1: { type: 'number' },
+        x2: { type: 'number' }, y2: { type: 'number' }, z2: { type: 'number' },
+        stairWidth: { type: 'number', exclusiveMinimum: 0 },
+        stepCount: { type: 'integer', minimum: 1, maximum: 200 },
+        stringerProfile: { type: 'string' },
+        treadProfile: { type: 'string' },
+        steelGrade: { type: 'string' }
+      },
+      required: ['x1', 'y1', 'z1', 'x2', 'y2', 'z2']
+    }
+  },
+  {
     name: 'tekla_create_column',
     description: 'Create a Tekla column. MODEL MODIFICATION: require explicit approval.',
     inputSchema: {
@@ -980,6 +997,7 @@ const teklaActionRoutes = [
   { path: '/api/mcp/tekla/components/update', toolName: 'tekla_component_update' },
   { path: '/api/mcp/tekla/components/delete', toolName: 'tekla_component_delete' },
   { path: '/api/mcp/tekla/create/beam', toolName: 'tekla_create_beam' },
+  { path: '/api/mcp/tekla/create/parametric-stair', toolName: 'tekla_create_parametric_stair' },
   { path: '/api/mcp/tekla/create/column', toolName: 'tekla_create_column' },
   { path: '/api/mcp/tekla/create/plate', toolName: 'tekla_create_plate' },
   { path: '/api/mcp/tekla/create/assembly', toolName: 'tekla_create_assembly' },
