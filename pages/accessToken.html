@@ -108,6 +108,39 @@
             border-radius:6px;
             border:1px solid #dbe7ff;
         }
+
+        .token-container{
+            display:flex;
+            align-items:flex-start;
+            gap:8px;
+            min-width:0;
+        }
+
+        .token-container .token{
+            flex:1;
+        }
+
+        .copy-token-button{
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            padding:7px;
+            color:#0b5ed7;
+            background:#fff;
+            border:1px solid #dbe7ff;
+            border-radius:6px;
+            cursor:pointer;
+        }
+
+        .copy-token-button:disabled{
+            opacity:0.5;
+            cursor:not-allowed;
+        }
+
+        #copyTokenStatus{
+            color:#444;
+            font-size:12px;
+        }
     </style>
 </head>
 <body>
@@ -186,7 +219,16 @@
 
                 <div class="info-row">
                     <span class="label">Access Token</span>
-                    <span class="value token" id="lblAccessToken">Loading...</span>
+                    <div class="value token-container">
+                        <span class="token" id="lblAccessToken">Loading...</span>
+                        <button id="btnCopyAccessToken" class="copy-token-button" type="button" aria-label="Copy access token" title="Copy access token" disabled>
+                            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="8" y="8" width="13" height="13" rx="2"></rect>
+                                <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"></path>
+                            </svg>
+                        </button>
+                        <span id="copyTokenStatus" role="status" aria-live="polite"></span>
+                    </div>
                 </div>
 
             </div>
@@ -260,6 +302,8 @@
 
                 API_Ext.extension.getPermission("accesstoken").then(async (accessToken) => {
                     document.getElementById("lblAccessToken").innerText = accessToken;
+                    document.getElementById("btnCopyAccessToken").disabled = !accessToken;
+                    document.getElementById("copyTokenStatus").innerText = "";
                     //document.getElementById("lblAccessToken").innerText = "Access Token: " + accessToken.substring(0, 20) + "...";
                     console.log("**Accesstoken: " + accessToken);
                     try {
@@ -344,6 +388,22 @@
             function sleep(ms) {
                 return new Promise(resolve => setTimeout(resolve, ms));
             }
+
+            async function copyAccessToken() {
+                const token = document.getElementById("lblAccessToken").innerText;
+                const status = document.getElementById("copyTokenStatus");
+
+                try {
+                    await navigator.clipboard.writeText(token);
+                    status.innerText = "Copied";
+                }
+                catch (err) {
+                    console.error("Unable to copy access token:", err);
+                    status.innerText = "Copy failed. Select the token and copy it manually.";
+                }
+            }
+
+            document.getElementById("btnCopyAccessToken").addEventListener("click", copyAccessToken);
 
             function updateTimestamp() {
 
