@@ -2135,6 +2135,10 @@ export async function callTool(
     result = await teklaBridge.teklaModel();
     break;
 
+  case 'tekla_validate_model':
+    result = await teklaBridge.teklaValidateModel();
+    break;
+
   case 'tekla_find_objects':
     result = await teklaBridge.teklaParts(args);
     break;
@@ -2209,6 +2213,42 @@ export async function callTool(
 
   case 'tekla_update_object':
     result = await teklaBridge.teklaUpdateObject(args);
+    break;
+
+  case 'tekla_update_beam':
+    result = await teklaBridge.teklaUpdateBeam(args);
+    break;
+
+  case 'tekla_update_column':
+    result = await teklaBridge.teklaUpdateColumn(args);
+    break;
+
+  case 'tekla_update_plate':
+    result = await teklaBridge.teklaUpdatePlate(args);
+    break;
+
+  case 'tekla_update_assembly':
+    result = await teklaBridge.teklaUpdateAssembly(args);
+    break;
+
+  case 'tekla_update_weld':
+    result = await teklaBridge.teklaUpdateWeld(args);
+    break;
+
+  case 'tekla_update_bolt':
+    result = await teklaBridge.teklaUpdateBolt(args);
+    break;
+
+  case 'tekla_update_rebar':
+    result = await teklaBridge.teklaUpdateRebar(args);
+    break;
+
+  case 'tekla_update_rebar_group':
+    result = await teklaBridge.teklaUpdateRebarGroup(args);
+    break;
+
+  case 'tekla_update_phase':
+    result = await teklaBridge.teklaUpdatePhase(args);
     break;
 
   case 'tekla_delete_object':

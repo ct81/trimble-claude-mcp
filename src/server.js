@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Tekla Open APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #26"
+// #27"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -2633,6 +2633,12 @@ app.get(
   }
 );
 
+app.get(
+  '/api/mcp/tekla/model/validate',
+  requireSession,
+  async (req, res) => executeTeklaTool(req, res, 'tekla_validate_model')
+);
+
 
 /*
  * ---------------------------------------------------------
@@ -2940,7 +2946,7 @@ app.post(
   }
 );
 
-const teklaCreateRoutes = [
+const teklaActionRoutes = [
   { path: '/api/mcp/tekla/create/beam', toolName: 'tekla_create_beam' },
   { path: '/api/mcp/tekla/create/column', toolName: 'tekla_create_column' },
   { path: '/api/mcp/tekla/create/plate', toolName: 'tekla_create_plate' },
@@ -2949,10 +2955,19 @@ const teklaCreateRoutes = [
   { path: '/api/mcp/tekla/create/bolt', toolName: 'tekla_create_bolt' },
   { path: '/api/mcp/tekla/create/rebar', toolName: 'tekla_create_rebar' },
   { path: '/api/mcp/tekla/create/rebar-group', toolName: 'tekla_create_rebar_group' },
-  { path: '/api/mcp/tekla/create/phase', toolName: 'tekla_create_phase' }
+  { path: '/api/mcp/tekla/create/phase', toolName: 'tekla_create_phase' },
+  { path: '/api/mcp/tekla/update/beam', toolName: 'tekla_update_beam' },
+  { path: '/api/mcp/tekla/update/column', toolName: 'tekla_update_column' },
+  { path: '/api/mcp/tekla/update/plate', toolName: 'tekla_update_plate' },
+  { path: '/api/mcp/tekla/update/assembly', toolName: 'tekla_update_assembly' },
+  { path: '/api/mcp/tekla/update/weld', toolName: 'tekla_update_weld' },
+  { path: '/api/mcp/tekla/update/bolt', toolName: 'tekla_update_bolt' },
+  { path: '/api/mcp/tekla/update/rebar', toolName: 'tekla_update_rebar' },
+  { path: '/api/mcp/tekla/update/rebar-group', toolName: 'tekla_update_rebar_group' },
+  { path: '/api/mcp/tekla/update/phase', toolName: 'tekla_update_phase' }
 ];
 
-for (const route of teklaCreateRoutes) {
+for (const route of teklaActionRoutes) {
   app.post(
     route.path,
     requireSession,

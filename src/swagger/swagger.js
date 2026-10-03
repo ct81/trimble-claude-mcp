@@ -832,7 +832,19 @@ const teklaFallbackDefinitions = [
   }
 ];
 
-const teklaCreateRoutes = [
+const legacyTeklaToolNames = new Set(
+  teklaFallbackDefinitions.map((tool) => tool.name)
+);
+const completeTeklaFallbackDefinitions = [
+  ...teklaFallbackDefinitions,
+  ...definitions.filter(
+    (tool) =>
+      tool.name.startsWith('tekla_') &&
+      !legacyTeklaToolNames.has(tool.name)
+  )
+];
+
+const teklaActionRoutes = [
   { path: '/api/mcp/tekla/create/beam', toolName: 'tekla_create_beam' },
   { path: '/api/mcp/tekla/create/column', toolName: 'tekla_create_column' },
   { path: '/api/mcp/tekla/create/plate', toolName: 'tekla_create_plate' },
@@ -841,7 +853,16 @@ const teklaCreateRoutes = [
   { path: '/api/mcp/tekla/create/bolt', toolName: 'tekla_create_bolt' },
   { path: '/api/mcp/tekla/create/rebar', toolName: 'tekla_create_rebar' },
   { path: '/api/mcp/tekla/create/rebar-group', toolName: 'tekla_create_rebar_group' },
-  { path: '/api/mcp/tekla/create/phase', toolName: 'tekla_create_phase' }
+  { path: '/api/mcp/tekla/create/phase', toolName: 'tekla_create_phase' },
+  { path: '/api/mcp/tekla/update/beam', toolName: 'tekla_update_beam' },
+  { path: '/api/mcp/tekla/update/column', toolName: 'tekla_update_column' },
+  { path: '/api/mcp/tekla/update/plate', toolName: 'tekla_update_plate' },
+  { path: '/api/mcp/tekla/update/assembly', toolName: 'tekla_update_assembly' },
+  { path: '/api/mcp/tekla/update/weld', toolName: 'tekla_update_weld' },
+  { path: '/api/mcp/tekla/update/bolt', toolName: 'tekla_update_bolt' },
+  { path: '/api/mcp/tekla/update/rebar', toolName: 'tekla_update_rebar' },
+  { path: '/api/mcp/tekla/update/rebar-group', toolName: 'tekla_update_rebar_group' },
+  { path: '/api/mcp/tekla/update/phase', toolName: 'tekla_update_phase' }
 ];
 
 const statusSharingRestOperations = [
@@ -4576,13 +4597,13 @@ export async function getSwaggerDocument() {
   );
 
   const teklaTools = [
-    ...teklaFallbackDefinitions.map((tool) =>
+    ...completeTeklaFallbackDefinitions.map((tool) =>
       liveTeklaTools.get(tool.name) || tool
     ),
     ...tools.filter(
       (tool) =>
         tool.name.startsWith('tekla_') &&
-        !teklaFallbackDefinitions.some(
+        !completeTeklaFallbackDefinitions.some(
           (fallback) => fallback.name === tool.name
         )
     )
@@ -4752,7 +4773,26 @@ export async function getSwaggerDocument() {
     };
   }
 
-  for (const route of teklaCreateRoutes) {
+  const validateModelTool = teklaTools.find(
+    ({ name }) => name === 'tekla_validate_model'
+  );
+  doc.paths['/api/mcp/tekla/model/validate'] = {
+    get: {
+      tags: ['Tekla'],
+      summary: validateModelTool?.description || 'Validate the Tekla model',
+      description: validateModelTool?.description || 'Validate the Tekla model connection and parts.',
+      operationId: 'tekla_validate_model_rest',
+      security: [{ bearerAuth: [] }],
+      responses: {
+        200: { description: 'Tekla model validation result' },
+        401: { description: 'Authentication required' },
+        500: { description: 'Tekla model validation failed' },
+        503: { description: 'Tekla Bridge or Tekla Structures is unavailable' }
+      }
+    }
+  };
+
+  for (const route of teklaActionRoutes) {
     const tool = teklaTools.find(({ name }) => name === route.toolName);
     const inputSchema = tool?.inputSchema || {
       type: 'object',
