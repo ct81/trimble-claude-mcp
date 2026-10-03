@@ -55,10 +55,25 @@
         }
 
         #lblCountdown{
-            margin-top:5px;
             font-size:12px;
             font-weight:bold;
             opacity:0.85;
+        }
+
+        .countdown-controls{
+            display:flex;
+            align-items:center;
+            gap:8px;
+            margin-top:5px;
+        }
+
+        .auto-refresh-toggle{
+            display:flex;
+            align-items:center;
+            gap:4px;
+            font-size:12px;
+            font-weight:normal;
+            cursor:pointer;
         }
 
         .info-row{
@@ -126,8 +141,14 @@
                             Last Updated: -
                         </div>
 
-                        <div id="lblCountdown">
-                            Next refresh in 30 seconds
+                        <div class="countdown-controls">
+                            <div id="lblCountdown">
+                                Next refresh in 30 seconds
+                            </div>
+                            <label class="auto-refresh-toggle">
+                                <input id="chkAutoRefresh" type="checkbox" checked />
+                                Auto refresh
+                            </label>
                         </div>
                     </div>
 
@@ -387,8 +408,13 @@
             async function startAutoRefresh() {
 
                 const lbl = document.getElementById("lblCountdown");
+                const autoRefreshToggle = document.getElementById("chkAutoRefresh");
 
                 while (true) {
+                    while (!autoRefreshToggle.checked) {
+                        lbl.innerHTML = "Auto refresh disabled";
+                        await sleep(250);
+                    }
 
                     // Run your connection
                     try {
@@ -401,6 +427,9 @@
 
                     // Countdown to next refresh
                     for (let seconds = REFRESH_SECONDS; seconds > 0; seconds--) {
+                        if (!autoRefreshToggle.checked) {
+                            break;
+                        }
 
                         lbl.innerHTML = `Next refresh in ${seconds} second${seconds > 1 ? "s" : ""}`;
 
@@ -408,6 +437,13 @@
                     }
                 }
             }
+
+            document.getElementById("chkAutoRefresh").addEventListener("change", event => {
+                if (!event.target.checked) {
+                    document.getElementById("lblCountdown").innerHTML = "Auto refresh disabled";
+                }
+            });
+
             startAutoRefresh();
         </script>
         </div>
