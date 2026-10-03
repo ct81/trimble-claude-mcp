@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Tekla Open APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #29"
+// #30"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -2947,6 +2947,18 @@ app.post(
 );
 
 const teklaActionRoutes = [
+  { path: '/api/mcp/tekla/components/definitions', method: 'get', toolName: 'tekla_component_list' },
+  { path: '/api/mcp/tekla/components/definition/get', toolName: 'tekla_component_get_definition' },
+  { path: '/api/mcp/tekla/components/definition/save', toolName: 'tekla_component_save_definition' },
+  { path: '/api/mcp/tekla/components/definition/delete', toolName: 'tekla_component_delete_definition' },
+  { path: '/api/mcp/tekla/components/definition/clone', toolName: 'tekla_component_clone_definition' },
+  { path: '/api/mcp/tekla/components/definition/export', toolName: 'tekla_component_export_definition' },
+  { path: '/api/mcp/tekla/components/validate', toolName: 'tekla_component_validate' },
+  { path: '/api/mcp/tekla/components/create', toolName: 'tekla_component_create' },
+  { path: '/api/mcp/tekla/components/instance', toolName: 'tekla_component_get_instance' },
+  { path: '/api/mcp/tekla/components/clone', toolName: 'tekla_component_clone' },
+  { path: '/api/mcp/tekla/components/update', toolName: 'tekla_component_update' },
+  { path: '/api/mcp/tekla/components/delete', toolName: 'tekla_component_delete' },
   { path: '/api/mcp/tekla/create/beam', toolName: 'tekla_create_beam' },
   { path: '/api/mcp/tekla/create/column', toolName: 'tekla_create_column' },
   { path: '/api/mcp/tekla/create/plate', toolName: 'tekla_create_plate' },
@@ -2968,7 +2980,7 @@ const teklaActionRoutes = [
 ];
 
 for (const route of teklaActionRoutes) {
-  app.post(
+  app[route.method || 'post'](
     route.path,
     requireSession,
     async (req, res) => {

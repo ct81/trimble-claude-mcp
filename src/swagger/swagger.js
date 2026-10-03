@@ -829,6 +829,128 @@ const teklaFallbackDefinitions = [
       },
       required: ['phaseNumber', 'phaseName']
     }
+  },
+  {
+    name: 'tekla_component_list',
+    description: 'List saved custom component definitions.',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'tekla_component_get_definition',
+    description: 'Read a saved custom component definition by ID.',
+    inputSchema: {
+      type: 'object',
+      properties: { id: { type: 'string' } },
+      required: ['id']
+    }
+  },
+  {
+    name: 'tekla_component_save_definition',
+    description: 'Create or replace a parameterized component definition.',
+    inputSchema: {
+      type: 'object',
+      properties: { definition: { type: 'object' } },
+      required: ['definition']
+    }
+  },
+  {
+    name: 'tekla_component_delete_definition',
+    description: 'Delete a saved custom component definition.',
+    inputSchema: {
+      type: 'object',
+      properties: { id: { type: 'string' } },
+      required: ['id']
+    }
+  },
+  {
+    name: 'tekla_component_clone_definition',
+    description: 'Clone a component definition under a new ID.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        newId: { type: 'string' },
+        name: { type: 'string' }
+      },
+      required: ['id', 'newId']
+    }
+  },
+  {
+    name: 'tekla_component_export_definition',
+    description: 'Export a saved definition as JSON content.',
+    inputSchema: {
+      type: 'object',
+      properties: { id: { type: 'string' } },
+      required: ['id']
+    }
+  },
+  {
+    name: 'tekla_component_validate',
+    description: 'Validate a component definition and resolve typed parameters without modifying the model.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        definition: { type: 'object' },
+        parameters: { type: 'object' }
+      },
+      required: ['definition']
+    }
+  },
+  {
+    name: 'tekla_component_create',
+    description: 'Instantiate a saved component definition in the active Tekla model. MODEL MODIFICATION: require explicit approval.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        definitionId: { type: 'string' },
+        instanceId: { type: 'string' },
+        parameters: { type: 'object' }
+      },
+      required: ['definitionId']
+    }
+  },
+  {
+    name: 'tekla_component_get_instance',
+    description: 'Read a saved component instance manifest by instance ID.',
+    inputSchema: {
+      type: 'object',
+      properties: { id: { type: 'string' } },
+      required: ['id']
+    }
+  },
+  {
+    name: 'tekla_component_clone',
+    description: 'Create a new Tekla component instance from an existing instance, optionally overriding parameters. MODEL MODIFICATION: require explicit approval.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        newInstanceId: { type: 'string' },
+        parameters: { type: 'object' }
+      },
+      required: ['id']
+    }
+  },
+  {
+    name: 'tekla_component_update',
+    description: 'Rebuild a component instance using updated parameter values. MODEL MODIFICATION: require explicit approval.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        instanceId: { type: 'string' },
+        parameters: { type: 'object' }
+      },
+      required: ['instanceId']
+    }
+  },
+  {
+    name: 'tekla_component_delete',
+    description: 'Delete a component instance and the Tekla objects created by it. MODEL MODIFICATION: require explicit approval.',
+    inputSchema: {
+      type: 'object',
+      properties: { id: { type: 'string' } },
+      required: ['id']
+    }
   }
 ];
 
@@ -845,6 +967,18 @@ const completeTeklaFallbackDefinitions = [
 ];
 
 const teklaActionRoutes = [
+  { path: '/api/mcp/tekla/components/definitions', method: 'get', toolName: 'tekla_component_list' },
+  { path: '/api/mcp/tekla/components/definition/get', toolName: 'tekla_component_get_definition' },
+  { path: '/api/mcp/tekla/components/definition/save', toolName: 'tekla_component_save_definition' },
+  { path: '/api/mcp/tekla/components/definition/delete', toolName: 'tekla_component_delete_definition' },
+  { path: '/api/mcp/tekla/components/definition/clone', toolName: 'tekla_component_clone_definition' },
+  { path: '/api/mcp/tekla/components/definition/export', toolName: 'tekla_component_export_definition' },
+  { path: '/api/mcp/tekla/components/validate', toolName: 'tekla_component_validate' },
+  { path: '/api/mcp/tekla/components/create', toolName: 'tekla_component_create' },
+  { path: '/api/mcp/tekla/components/instance', toolName: 'tekla_component_get_instance' },
+  { path: '/api/mcp/tekla/components/clone', toolName: 'tekla_component_clone' },
+  { path: '/api/mcp/tekla/components/update', toolName: 'tekla_component_update' },
+  { path: '/api/mcp/tekla/components/delete', toolName: 'tekla_component_delete' },
   { path: '/api/mcp/tekla/create/beam', toolName: 'tekla_create_beam' },
   { path: '/api/mcp/tekla/create/column', toolName: 'tekla_create_column' },
   { path: '/api/mcp/tekla/create/plate', toolName: 'tekla_create_plate' },
@@ -4799,28 +4933,37 @@ export async function getSwaggerDocument() {
       properties: {}
     };
 
-    doc.paths[route.path] = {
-      post: {
-        tags: ['Tekla'],
-        summary: tool?.description || `Execute ${route.toolName}`,
-        description: tool?.description || `Execute Tekla tool: ${route.toolName}`,
-        operationId: `${route.toolName}_rest`,
-        security: [{ bearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: inputSchema
+    const method = route.method || 'post';
+    const operation = {
+      tags: ['Tekla'],
+      summary: tool?.description || `Execute ${route.toolName}`,
+      description: tool?.description || `Execute Tekla tool: ${route.toolName}`,
+      operationId: `${route.toolName}_rest`,
+      security: [{ bearerAuth: [] }],
+      ...(
+        method === 'get'
+          ? {}
+          : {
+            requestBody: {
+              required: true,
+              content: {
+                'application/json': {
+                  schema: inputSchema
+                }
+              }
             }
           }
-        },
-        responses: {
-          200: { description: 'Tekla tool result' },
-          401: { description: 'Authentication required' },
-          500: { description: 'Tekla tool execution failed' },
-          503: { description: 'Tekla Bridge or Tekla Structures is unavailable' }
-        }
+      ),
+      responses: {
+        200: { description: 'Tekla tool result' },
+        401: { description: 'Authentication required' },
+        500: { description: 'Tekla tool execution failed' },
+        503: { description: 'Tekla Bridge or Tekla Structures is unavailable' }
       }
+    };
+
+    doc.paths[route.path] = {
+      [method]: operation
     };
   }
 

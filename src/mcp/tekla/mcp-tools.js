@@ -45,6 +45,18 @@ export const tools = [
   {name:"tekla_create_rebar_group",description:"Create a Tekla rebar group from polygon paths. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({fatherGuid:{type:"string"},polygons:{type:"array",minItems:1,maxItems:99,items:{type:"array",minItems:2,items:{type:"object",required:["x","y","z"],properties:{x:{type:"number"},y:{type:"number"},z:{type:"number"}}}}},barCount:{type:"integer",minimum:1},size:{type:"string"},grade:{type:"string"},name:{type:"string"},classNumber:{type:"integer"},bendingRadius:{type:"number"},fromPlaneOffset:{type:"number"}},["fatherGuid","polygons","barCount"])},
   {name:"tekla_create_phase",description:"Create a phase in the Tekla model. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({phaseNumber:{type:"integer",minimum:1},phaseName:{type:"string"},phaseComment:{type:"string"},isCurrentPhase:{type:"boolean"}},["phaseNumber","phaseName"])},
   {name:"tekla_update_phase",description:"Update a Tekla phase by phase number. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({phaseNumber:{type:"integer",minimum:1},phaseName:{type:"string"},phaseComment:{type:"string"},isCurrentPhase:{type:"boolean"},DECOprogress:{type:"string"},DECOHold1:{type:"string"},DECOHold2:{type:"string"}},["phaseNumber"])}
+  ,{name:"tekla_component_list",description:"List saved custom component definitions.",inputSchema:schema({})}
+  ,{name:"tekla_component_get_definition",description:"Read a saved custom component definition by ID.",inputSchema:schema({id:{type:"string"}},["id"])}
+  ,{name:"tekla_component_save_definition",description:"Create or replace a parameterized component definition. Geometry supports beam, column, contourPlate, concreteBeam, and rebarGroup recipes.",inputSchema:schema({definition:{type:"object"}},["definition"])}
+  ,{name:"tekla_component_delete_definition",description:"Delete a saved custom component definition.",inputSchema:schema({id:{type:"string"}},["id"])}
+  ,{name:"tekla_component_clone_definition",description:"Clone a component definition under a new ID.",inputSchema:schema({id:{type:"string"},newId:{type:"string"},name:{type:"string"}},["id","newId"])}
+  ,{name:"tekla_component_export_definition",description:"Export a saved definition as JSON content.",inputSchema:schema({id:{type:"string"}},["id"])}
+  ,{name:"tekla_component_validate",description:"Validate a component definition and resolve typed parameters without modifying the model.",inputSchema:schema({definition:{type:"object"},parameters:{type:"object"}},["definition"])}
+  ,{name:"tekla_component_create",description:"Instantiate a saved component definition in the active Tekla model. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({definitionId:{type:"string"},instanceId:{type:"string"},parameters:{type:"object"}},["definitionId"])}
+  ,{name:"tekla_component_get_instance",description:"Read a saved component instance manifest by instance ID.",inputSchema:schema({id:{type:"string"}},["id"])}
+  ,{name:"tekla_component_clone",description:"Create a new Tekla component instance from an existing instance, optionally overriding parameters. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({id:{type:"string"},newInstanceId:{type:"string"},parameters:{type:"object"}},["id"])}
+  ,{name:"tekla_component_update",description:"Rebuild a component instance using updated parameter values. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({instanceId:{type:"string"},parameters:{type:"object"}},["instanceId"])}
+  ,{name:"tekla_component_delete",description:"Delete a component instance and the Tekla objects created by it. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({id:{type:"string"}},["id"])}
 ];
 
 export async function callTeklaTool(name,args={}) {
@@ -80,6 +92,18 @@ export async function callTeklaTool(name,args={}) {
     case "tekla_update_rebar": return t.teklaUpdateRebar(args);
     case "tekla_update_rebar_group": return t.teklaUpdateRebarGroup(args);
     case "tekla_update_phase": return t.teklaUpdatePhase(args);
+    case "tekla_component_list": return t.teklaComponentList();
+    case "tekla_component_get_definition": return t.teklaComponentGetDefinition(args);
+    case "tekla_component_save_definition": return t.teklaComponentSaveDefinition(args.definition);
+    case "tekla_component_delete_definition": return t.teklaComponentDeleteDefinition(args);
+    case "tekla_component_clone_definition": return t.teklaComponentCloneDefinition(args);
+    case "tekla_component_export_definition": return t.teklaComponentExportDefinition(args);
+    case "tekla_component_validate": return t.teklaComponentValidate(args);
+    case "tekla_component_create": return t.teklaComponentCreate(args);
+    case "tekla_component_get_instance": return t.teklaComponentGetInstance(args);
+    case "tekla_component_clone": return t.teklaComponentClone(args);
+    case "tekla_component_update": return t.teklaComponentUpdate(args);
+    case "tekla_component_delete": return t.teklaComponentDelete(args);
     case "tekla_delete_object": return t.teklaDeleteObject(args);
     case "tekla_create_assembly": return t.teklaCreateAssembly(args);
     case "tekla_create_weld": return t.teklaCreateWeld(args);

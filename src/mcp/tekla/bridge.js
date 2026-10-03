@@ -73,3 +73,15 @@ export const teklaCreateRebar = (a) => call("/api/tekla/create/rebar",{method:"P
 export const teklaCreateRebarGroup = (a) => call("/api/tekla/create/rebar-group",{method:"POST",body:JSON.stringify(a)});
 export const teklaPhases = () => call("/api/tekla/phases",{method:"GET"});
 export const teklaCreatePhase = (a) => call("/api/tekla/create/phase",{method:"POST",body:JSON.stringify(a)});
+export const teklaComponentList = () => call("/api/tekla/components/definitions",{method:"GET"});
+export const teklaComponentGetDefinition = (a) => call("/api/tekla/components/definition/get",{method:"POST",body:JSON.stringify(a)});
+export const teklaComponentSaveDefinition = (a) => call("/api/tekla/components/definition/save",{method:"POST",body:JSON.stringify(a)});
+export const teklaComponentDeleteDefinition = (a) => call("/api/tekla/components/definition/delete",{method:"POST",body:JSON.stringify(a)});
+export const teklaComponentCloneDefinition = (a) => call("/api/tekla/components/definition/clone",{method:"POST",body:JSON.stringify(a)});
+export const teklaComponentExportDefinition = (a) => call("/api/tekla/components/definition/export",{method:"POST",body:JSON.stringify(a)});
+export const teklaComponentValidate = (a) => call("/api/tekla/components/validate",{method:"POST",body:JSON.stringify(a)});
+export const teklaComponentCreate = (a) => call("/api/tekla/components/create",{method:"POST",body:JSON.stringify(a)});
+export const teklaComponentGetInstance = (a) => call("/api/tekla/components/instance",{method:"POST",body:JSON.stringify(a)});
+export const teklaComponentClone = (a) => call("/api/tekla/components/clone",{method:"POST",body:JSON.stringify(a)});
+export const teklaComponentUpdate = (a) => call("/api/tekla/components/update",{method:"POST",body:JSON.stringify(a)});
+export const teklaComponentDelete = (a) => call("/api/tekla/components/delete",{method:"POST",body:JSON.stringify(a)});

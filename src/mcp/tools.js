@@ -2251,6 +2251,54 @@ export async function callTool(
     result = await teklaBridge.teklaUpdatePhase(args);
     break;
 
+  case 'tekla_component_list':
+    result = await teklaBridge.teklaComponentList();
+    break;
+
+  case 'tekla_component_get_definition':
+    result = await teklaBridge.teklaComponentGetDefinition(args);
+    break;
+
+  case 'tekla_component_save_definition':
+    result = await teklaBridge.teklaComponentSaveDefinition(args.definition);
+    break;
+
+  case 'tekla_component_delete_definition':
+    result = await teklaBridge.teklaComponentDeleteDefinition(args);
+    break;
+
+  case 'tekla_component_clone_definition':
+    result = await teklaBridge.teklaComponentCloneDefinition(args);
+    break;
+
+  case 'tekla_component_export_definition':
+    result = await teklaBridge.teklaComponentExportDefinition(args);
+    break;
+
+  case 'tekla_component_validate':
+    result = await teklaBridge.teklaComponentValidate(args);
+    break;
+
+  case 'tekla_component_create':
+    result = await teklaBridge.teklaComponentCreate(args);
+    break;
+
+  case 'tekla_component_get_instance':
+    result = await teklaBridge.teklaComponentGetInstance(args);
+    break;
+
+  case 'tekla_component_clone':
+    result = await teklaBridge.teklaComponentClone(args);
+    break;
+
+  case 'tekla_component_update':
+    result = await teklaBridge.teklaComponentUpdate(args);
+    break;
+
+  case 'tekla_component_delete':
+    result = await teklaBridge.teklaComponentDelete(args);
+    break;
+
   case 'tekla_delete_object':
     result = await teklaBridge.teklaDeleteObject(args);
     break;
