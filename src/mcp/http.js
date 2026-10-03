@@ -81,7 +81,9 @@ export async function handleMcp(   // <-- CHANGED: was `export function`
             'trimble-connect-mcp',
           version:
             '1.0.0'
-        }
+        },
+        instructions:
+          'When a user starts a conversation without a specific task, call trimble_get_started and present its choices. If they choose SketchUp, Tekla, or Trimble Connect, help with that platform using the available tools. If they choose Later, do not call any platform tools. Do not interrupt a user who already stated a specific task.'
       }
     });
   }

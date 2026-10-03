@@ -169,6 +169,13 @@ const EXTRACT_TIMEOUT_MS = 45_000;
 
 const baseDefinitions = [
 
+  {
+    name: 'trimble_get_started',
+    description:
+      'Show the user the available Trimble connector workflows when they want to get started.',
+    inputSchema: { type: 'object', properties: {} }
+  },
+
   // ============================================================
   // TEKLA STRUCTURES
   // ============================================================
@@ -1987,6 +1994,14 @@ export async function callTool(
   }
 
   switch (name) {
+
+  case 'trimble_get_started': {
+    result = {
+      title: 'Start using the connector',
+      choices: ['SketchUp', 'Tekla', 'Trimble Connect', 'Later']
+    };
+    break;
+  }
 
   case 'model_tender_project_in_sketchup': {
     const { buildTenderGridRuby } = await import('./sketchup/tenderModel.js');
