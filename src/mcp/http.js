@@ -83,7 +83,7 @@ export async function handleMcp(   // <-- CHANGED: was `export function`
             '1.0.0'
         },
         instructions:
-          'When a user starts a conversation without a specific task, call trimble_get_started and present its choices. If they choose SketchUp, Tekla, or Trimble Connect, help with that platform using the available tools. If they choose Later, do not call any platform tools. Do not interrupt a user who already stated a specific task.'
+          'When a user starts a conversation without a specific task, call trimble_get_started and present its choices. If they choose Tekla or SketchUp, call trimble_get_started again with platform set to their choice. If it returns multiple bridge options, present them as numbered Name - URL/host choices, ask the user to choose, then call trimble_select_bridge with the platform and option number before using that platform tools. If it returns one option, it is selected automatically. If they choose Trimble Connect, help with that platform using the available tools. If they choose Later, do not call any platform tools. Do not interrupt a user who already stated a specific task.'
       }
     });
   }

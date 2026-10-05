@@ -2,34 +2,41 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import net from 'node:net';
 import { setTimeout as delay } from 'node:timers/promises';
+import { getSelectedBridge } from '../bridge-selection.js';
 
 const SKETCHUP_MCP_COMMAND = process.execPath;
 const SKETCHUP_MCP_ARGS = [
   'node_modules/@parkhill/mcp-server-for-sketchup/build/index.js'
 ];
 const SKETCHUP_CONNECT_TIMEOUT_MS = 30_000;
-const SKETCHUP_MCP_HOST = process.env.SKETCHUP_MCP_HOST || '0.tcp.ap.ngrok.io';
+const DEFAULT_SKETCHUP_MCP_HOST = (process.env.SKETCHUP_MCP_HOST || '0.tcp.ap.ngrok.io').split(',')[0].trim();
 const SKETCHUP_MCP_PORT = process.env.SKETCHUP_MCP_PORT || '16942';
 const SKETCHUP_MCP_PROTOCOL = process.env.SKETCHUP_MCP_PROTOCOL || 'legacy';
 const SKETCHUP_MCP_CLIENT_VERSION = process.env.SKETCHUP_MCP_CLIENT_VERSION || '0.3.1';
 const SKETCHUP_MCP_CALL_TIMEOUT_MS = 60_000;
 
-let sketchupClient = null;
-let sketchupClientPromise = null;
+const sketchupClients = new Map();
+const sketchupClientPromises = new Map();
+
+function getSketchUpHost() {
+  return String(
+    getSelectedBridge('SketchUp')?.value || DEFAULT_SKETCHUP_MCP_HOST
+  ).trim();
+}
 
 /**
  * Lazily connect to the SketchUp MCP server via stdio.
  */
-export async function getSketchUpClient() {
-  if (sketchupClient) return sketchupClient;
-  if (sketchupClientPromise) return sketchupClientPromise;
+export async function getSketchUpClient(host = getSketchUpHost()) {
+  if (sketchupClients.has(host)) return sketchupClients.get(host);
+  if (sketchupClientPromises.has(host)) return sketchupClientPromises.get(host);
 
-  sketchupClientPromise = (async () => {
+  const clientPromise = (async () => {
     let client;
 
     try {
       console.log('[SketchUp] MCP connection config:', {
-        host: SKETCHUP_MCP_HOST,
+        host,
         port: SKETCHUP_MCP_PORT
       });
 
@@ -38,7 +45,7 @@ export async function getSketchUpClient() {
         args: SKETCHUP_MCP_ARGS,
         env: {
           ...process.env,
-          SKETCHUP_MCP_HOST,
+          SKETCHUP_MCP_HOST: host,
           SKETCHUP_MCP_PORT,
         },
       });
@@ -57,7 +64,7 @@ export async function getSketchUpClient() {
         })
       ]);
 
-      sketchupClient = client;
+      sketchupClients.set(host, client);
       console.log('[SketchUp] Backend connected via stdio');
       return client;
     } catch (err) {
@@ -69,11 +76,12 @@ export async function getSketchUpClient() {
       }
       return null;
     } finally {
-      sketchupClientPromise = null;
+      sketchupClientPromises.delete(host);
     }
   })();
 
-  return sketchupClientPromise;
+  sketchupClientPromises.set(host, clientPromise);
+  return clientPromise;
 }
 
 /**
@@ -106,7 +114,7 @@ export async function callSketchUpTool(name, args) {
 function callLegacySketchUpTool(name, args) {
   return new Promise((resolve, reject) => {
     const socket = net.createConnection({
-      host: SKETCHUP_MCP_HOST,
+      host: getSketchUpHost(),
       port: Number(SKETCHUP_MCP_PORT)
     });
     let buffer = Buffer.alloc(0);
@@ -162,7 +170,7 @@ function callLegacySketchUpTool(name, args) {
     });
     socket.on('connect', () => {
       console.log('[SketchUp] Connected to MCP server:', {
-        host: socket.remoteAddress || SKETCHUP_MCP_HOST,
+        host: socket.remoteAddress || getSketchUpHost(),
         port: socket.remotePort || Number(SKETCHUP_MCP_PORT)
       });
       send('hello', { client_version: SKETCHUP_MCP_CLIENT_VERSION });
