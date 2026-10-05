@@ -40,6 +40,8 @@ import { tools as teklaTools } from './tekla/mcp-tools.js';
 import * as teklaBridge from './tekla/bridge.js';
 
 const SKETCHUP_PREFIX = 'sketchup_';
+const viewerTemplatesDir = path.join(process.cwd(), 'pages', 'templates', '3dviewer');
+const viewerOutputDir = path.join(process.cwd(), 'pages', 'generated');
 const teklaToolNames = new Set(teklaTools.map((tool) => tool.name));
 const execFileAsync = promisify(execFile);
 const pythonTestScript = fileURLToPath(
@@ -1646,6 +1648,49 @@ const baseDefinitions = [
   },
 
   {
+    name: 'status_sharing_list_viewer_templates',
+    description:
+      'List the 3D viewer HTML templates in pages/templates/3dviewer so the user can choose one before generating a status viewer.',
+    inputSchema: { type: 'object', properties: {} }
+  },
+
+  {
+    name: 'status_sharing_generate_viewer',
+    description:
+      'Generate a status-sharing 3D viewer HTML from a chosen template, embedding projectId, modelId and statuses (name, color, object GUIDs). Call status_sharing_list_viewer_templates first and ask the user which template to use.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        template: { type: 'string', description: 'Template file name, e.g. status-sharing-viewer-fixed-v1.html' },
+        projectId: { type: 'string' },
+        modelId: { type: 'string' },
+        statuses: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              color: {
+                type: 'object',
+                properties: {
+                  r: { type: 'integer', minimum: 0, maximum: 255 },
+                  g: { type: 'integer', minimum: 0, maximum: 255 },
+                  b: { type: 'integer', minimum: 0, maximum: 255 },
+                  a: { type: 'integer', minimum: 0, maximum: 255 }
+                },
+                required: ['r', 'g', 'b']
+              },
+              guids: { type: 'array', items: { type: 'string' } }
+            },
+            required: ['name', 'color', 'guids']
+          }
+        }
+      },
+      required: ['template', 'projectId', 'modelId', 'statuses']
+    }
+  },
+
+  {
     name: 'process_column_schedule',
     description:
       'Normalize extracted column-schedule JSON into tabular records.',
@@ -2914,6 +2959,57 @@ export async function callTool(
         'ms'
       );
 
+      break;
+    }
+
+    case 'status_sharing_list_viewer_templates': {
+      const files = fs.existsSync(viewerTemplatesDir)
+        ? fs.readdirSync(viewerTemplatesDir).filter((f) => f.endsWith('.html'))
+        : [];
+      result = { directory: 'pages/templates/3dviewer', templates: files };
+      break;
+    }
+
+    case 'status_sharing_generate_viewer': {
+      const templateName = path.basename(String(args.template || ''));
+      const templatePath = path.join(viewerTemplatesDir, templateName);
+      if (!templateName.endsWith('.html') || !fs.existsSync(templatePath)) {
+        throw new Error(`Template not found: ${templateName}`);
+      }
+      if (!Array.isArray(args.statuses) || !args.statuses.length) {
+        throw new Error('statuses must be a non-empty array.');
+      }
+
+      const statuses = args.statuses.map((s) => ({
+        name: String(s.name),
+        color: { r: s.color.r, g: s.color.g, b: s.color.b, a: s.color.a ?? 255 },
+        guids: (s.guids || []).map(String)
+      }));
+
+      // Escape so the JSON cannot terminate the inline script block.
+      const js = (v) => JSON.stringify(v, null, 2).replace(/</g, '\\u003c');
+      let html = fs.readFileSync(templatePath, 'utf8');
+      const replaceOnce = (re, text, label) => {
+        if (!re.test(html)) throw new Error(`Template is missing ${label}.`);
+        html = html.replace(re, () => text);
+      };
+      replaceOnce(/const PROJECT_ID\s*=\s*"[^"]*";/, `const PROJECT_ID = ${js(String(args.projectId))};`, 'PROJECT_ID');
+      replaceOnce(/const MODEL_ID\s*=\s*"[^"]*";/, `const MODEL_ID   = ${js(String(args.modelId))};`, 'MODEL_ID');
+      replaceOnce(/const STATUSES\s*=\s*\[[\s\S]*?\n\];/, `const STATUSES = ${js(statuses)};`, 'STATUSES');
+
+      fs.mkdirSync(viewerOutputDir, { recursive: true });
+      const outName = `status-viewer-${Date.now()}.html`;
+      fs.writeFileSync(path.join(viewerOutputDir, outName), html, 'utf8');
+
+      const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
+      result = {
+        template: templateName,
+        projectId: args.projectId,
+        modelId: args.modelId,
+        statuses: statuses.map((s) => ({ name: s.name, guidCount: s.guids.length })),
+        file: `pages/generated/${outName}`,
+        url: `${base}/pages/generated/${outName}`
+      };
       break;
     }
 

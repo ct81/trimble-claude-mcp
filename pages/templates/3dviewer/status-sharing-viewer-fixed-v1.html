@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trimble Connect Status Sharing 3D Viewer</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  #bar {
+    padding: 10px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    background: #f4f4f2;
+    border-bottom: 1px solid #ccc;
+  }
+
+  #token {
+    flex: 1;
+    min-width: 260px;
+    padding: 7px 9px;
+  }
+
+  button {
+    padding: 7px 12px;
+    cursor: pointer;
+  }
+
+  #status {
+    width: 100%;
+    font-size: 13px;
+    color: #333;
+  }
+
+  #legend {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    font-size: 13px;
+  }
+
+  #legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .swatch {
+    width: 13px;
+    height: 13px;
+    display: inline-block;
+    border: 1px solid #777;
+  }
+
+  #diagnostic {
+    width: 100%;
+    max-height: 180px;
+    overflow: auto;
+    background: #171717;
+    color: #ddd;
+    padding: 8px;
+    font-family: Consolas, monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+  }
+
+  iframe {
+    flex: 1;
+    width: 100%;
+    border: 0;
+    min-height: 0;
+  }
+</style>
+</head>
+
+<body>
+
+<div id="bar">
+  <input
+    id="token"
+    type="password"
+    placeholder="Trimble Connect access token"
+    autocomplete="off"
+  >
+
+  <button id="go" type="button">Load model + apply status</button>
+  <button id="reapply" type="button" disabled>Reapply status</button>
+  <button id="clearLog" type="button">Clear log</button>
+  <button id="inspectApi" type="button" disabled>Inspect API</button>
+
+  <div id="legend"></div>
+  <div id="status">Ready. Uses Trimble Connect embedded viewer mode.</div>
+  <pre id="diagnostic"></pre>
+</div>
+
+<iframe id="viewer" title="Trimble Connect 3D viewer"></iframe>
+
+<script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
+
+<script>
+"use strict";
+
+/* ================================================================
+   CONFIGURATION
+   ================================================================ */
+
+const PROJECT_ID = "R5ShkwaxVAo";
+const MODEL_ID   = "ke8qk7bOXLQ";
+
+/*
+ * IMPORTANT:
+ * These must be the Trimble Connect MODEL OBJECT GUIDs belonging
+ * to MODEL_ID above.
+ *
+ * The Workspace viewer cannot color these GUID strings directly.
+ * They must first be converted to viewer runtime IDs.
+ */
+const STATUSES = [
+  {
+    name: "Fabricated",
+    color: { r: 255, g: 140, b: 0, a: 255 },
+    guids: [
+      "06qOJlV4v44fdll2HA0dU4",
+      "1ius8O6Yr46Qxl8TR1SblS"
+    ]
+  },
+
+  {
+    name: "Storage Yard",
+    color: { r: 0, g: 120, b: 215, a: 255 },
+    guids: []
+  },
+
+  {
+    name: "Delivered",
+    color: { r: 160, g: 90, b: 200, a: 255 },
+    guids: []
+  },
+
+  {
+    name: "Installed",
+    color: { r: 40, g: 170, b: 80, a: 255 },
+    guids: []
+  }
+];
+
+/*
+ * Viewer loading can take considerably longer than 4 seconds.
+ * We therefore poll convertToObjectRuntimeIds() until the model
+ * actually resolves the GUIDs.
+ */
+const MAX_MODEL_WAIT_MS = 120000;
+const POLL_MS = 1000;
+
+
+/* ================================================================
+   UI
+   ================================================================ */
+
+const iframe = document.getElementById("viewer");
+const tokenInput = document.getElementById("token");
+const goButton = document.getElementById("go");
+const reapplyButton = document.getElementById("reapply");
+const clearLogButton = document.getElementById("clearLog");
+const inspectApiButton = document.getElementById("inspectApi");
+const statusEl = document.getElementById("status");
+const diagnosticEl = document.getElementById("diagnostic");
+const legendEl = document.getElementById("legend");
+
+let API = null;
+let currentToken = "";
+let viewerReady = false;
+let applying = false;
+
+function log(message, data) {
+  const time = new Date().toLocaleTimeString();
+
+  let line = "[" + time + "] " + message;
+
+  if (data !== undefined) {
+    try {
+      line += "\n" + JSON.stringify(data, null, 2);
+    } catch (_) {
+      line += "\n" + String(data);
+    }
+  }
+
+  diagnosticEl.textContent += line + "\n\n";
+  diagnosticEl.scrollTop = diagnosticEl.scrollHeight;
+
+  console.log(message, data);
+}
+
+function setStatus(message) {
+  statusEl.textContent = message;
+  log(message);
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function renderLegend() {
+  legendEl.innerHTML = STATUSES.map(s => {
+    const c = s.color;
+    return `
+      <span>
+        <i class="swatch"
+           style="background:rgb(${c.r},${c.g},${c.b})"></i>
+        ${escapeHtml(s.name)}
+      </span>
+    `;
+  }).join("");
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+renderLegend();
+
+
+/* ================================================================
+   WORKSPACE CONNECTION
+   ================================================================ */
+
+async function connectWorkspace() {
+  if (API) {
+    return API;
+  }
+
+  log("Creating embedded Trimble Connect 3D Viewer...");
+
+  /*
+   * IMPORTANT:
+   * The Workspace API embed APIs require the Connect component to
+   * be loaded in embedded mode.
+   *
+   * Do NOT use:
+   *   /projects/<projectId>/viewer/3d
+   *
+   * for the embedded Workspace API flow.
+   *
+   * Use TrimbleConnectWorkspace.getConnectEmbedUrl(), which creates
+   * the correct embedded viewer URL.
+   */
+  const embedUrl =
+    typeof TrimbleConnectWorkspace.getConnectEmbedUrl === "function"
+      ? TrimbleConnectWorkspace.getConnectEmbedUrl()
+      : "https://web.connect.trimble.com/?isEmbedded=true";
+
+  log("Embedded viewer URL: " + embedUrl);
+
+  /*
+   * Set the iframe source before connecting.
+   */
+  iframe.src = embedUrl;
+
+  /*
+   * Trimble's Workspace API documentation recommends establishing
+   * the connection after the iframe has loaded.
+   */
+  await new Promise((resolve, reject) => {
+    let settled = false;
+
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      iframe.removeEventListener("load", finish);
+      resolve();
+    };
+
+    const fail = (error) => {
+      if (settled) return;
+      settled = true;
+      iframe.removeEventListener("load", finish);
+      reject(error);
+    };
+
+    iframe.addEventListener("load", finish, { once: true });
+
+    /*
+     * If the iframe has already loaded, don't wait forever.
+     */
+    if (iframe.contentDocument && iframe.contentDocument.readyState === "complete") {
+      finish();
+    }
+
+    setTimeout(() => {
+      if (!settled) {
+        fail(new Error(
+          "Trimble Connect embedded viewer iframe did not load within 30 seconds."
+        ));
+      }
+    }, 30000);
+  });
+
+  log("Embedded viewer iframe loaded.");
+
+  API = await TrimbleConnectWorkspace.connect(
+    iframe,
+    (event, data) => {
+      log("Workspace event: " + event, data);
+
+      /*
+       * Useful session diagnostic.
+       */
+      if (
+        event === "extension.sessionInvalid" ||
+        event === "embed.session.invalid"
+      ) {
+        log("Trimble Connect session is invalid or expired.");
+      }
+    },
+    30000
+  );
+
+  log("Workspace API connected.");
+  inspectApiButton.disabled = false;
+
+  /*
+   * Explicitly verify that this is an embedded Workspace API
+   * instance before trying to use API.embed.
+   */
+  log("Workspace API capabilities:", {
+    hasEmbed: !!API.embed,
+    hasViewer: !!API.viewer,
+    hasProject: !!API.project,
+    embedMethods: API.embed
+      ? Object.keys(API.embed)
+      : [],
+    viewerMethods: API.viewer
+      ? Object.keys(API.viewer)
+      : []
+  });
+
+  if (!API.embed) {
+    throw new Error(
+      "Workspace API connected, but API.embed is undefined. " +
+      "The iframe is not running as an embedded Trimble Connect component."
+    );
+  }
+
+  if (!API.viewer) {
+    throw new Error(
+      "Workspace API connected, but API.viewer is undefined."
+    );
+  }
+
+  return API;
+}
+
+
+/* ================================================================
+   MODEL INITIALIZATION
+   ================================================================ */
+
+async function initializeViewer(token) {
+  const api = await connectWorkspace();
+
+  if (!api.embed) {
+    throw new Error(
+      "Embedded API is unavailable. API.embed was not created."
+    );
+  }
+
+  log("Setting access token...");
+
+  const tokenResult = await api.embed.setTokens({
+    accessToken: token
+  });
+
+  log("setTokens() completed.", {
+    result: tokenResult
+  });
+
+  /*
+   * Some Workspace API versions return false instead of throwing
+   * when the token is missing/invalid.
+   */
+  if (tokenResult === false) {
+    throw new Error(
+      "Trimble Connect rejected the access token. " +
+      "Check that it is a valid user-context Trimble Connect token."
+    );
+  }
+
+  log("Access token accepted.");
+
+  log("Initializing 3D viewer...", {
+    projectId: PROJECT_ID,
+    modelId: MODEL_ID
+  });
+
+  /*
+   * Explicitly load the requested project/model.
+   * This avoids manual project/model selection.
+   */
+  await api.embed.init3DViewer({
+    projectId: PROJECT_ID,
+    modelId: MODEL_ID
+  });
+
+  log("init3DViewer() completed.");
+
+  /*
+   * init3DViewer() returning does not necessarily mean that all
+   * model geometry has finished loading. The coloring code below
+   * therefore waits for actual GUID -> runtime ID resolution.
+   */
+  viewerReady = true;
+  reapplyButton.disabled = false;
+}
+
+
+/* ================================================================
+   RUNTIME-ID CONVERSION
+   ================================================================ */
+
+function normalizeRuntimeIds(result) {
+  if (result == null) {
+    return [];
+  }
+
+  if (Array.isArray(result)) {
+    return result.filter(v => v !== null && v !== undefined);
+  }
+
+  /*
+   * Be tolerant of different SDK response wrappers.
+   */
+  if (Array.isArray(result.runtimeIds)) {
+    return result.runtimeIds.filter(v => v !== null && v !== undefined);
+  }
+
+  if (Array.isArray(result.objectRuntimeIds)) {
+    return result.objectRuntimeIds.filter(v => v !== null && v !== undefined);
+  }
+
+  if (Array.isArray(result.ids)) {
+    return result.ids.filter(v => v !== null && v !== undefined);
+  }
+
+  return [result];
+}
+
+async function convertGuidsToRuntimeIds(guids, label) {
+  const cleanGuids = [...new Set(
+    (guids || [])
+      .map(g => String(g).trim())
+      .filter(Boolean)
+  )];
+
+  if (cleanGuids.length === 0) {
+    log(label + ": no GUIDs configured.");
+    return {
+      runtimeIds: [],
+      resolvedGuids: [],
+      unresolvedGuids: []
+    };
+  }
+
+  const start = Date.now();
+  let attempt = 0;
+  let lastResult = null;
+
+  while (Date.now() - start < MAX_MODEL_WAIT_MS) {
+    attempt++;
+
+    try {
+      lastResult = await API.viewer.convertToObjectRuntimeIds(
+        MODEL_ID,
+        cleanGuids
+      );
+
+      const runtimeIds = normalizeRuntimeIds(lastResult);
+
+      log(
+        label +
+        ": conversion attempt " +
+        attempt +
+        " -> " +
+        runtimeIds.length +
+        " runtime ID(s).",
+        lastResult
+      );
+
+      if (runtimeIds.length > 0) {
+        /*
+         * The API returns runtime IDs corresponding to the supplied
+         * GUID list. We cannot safely infer per-GUID correspondence
+         * if the SDK compresses/removes missing objects, so we
+         * report the overall conversion result here.
+         *
+         * We also separately test each GUID below when possible.
+         */
+        return {
+          runtimeIds,
+          resolvedGuids: cleanGuids,
+          unresolvedGuids: []
+        };
+      }
+
+    } catch (error) {
+      log(label + ": conversion attempt failed.", {
+        error: String(error)
+      });
+    }
+
+    await sleep(POLL_MS);
+  }
+
+  log(
+    label +
+    ": timed out waiting for GUIDs to become available in the viewer.",
+    {
+      modelId: MODEL_ID,
+      guids: cleanGuids,
+      lastResult
+    }
+  );
+
+  return {
+    runtimeIds: [],
+    resolvedGuids: [],
+    unresolvedGuids: cleanGuids
+  };
+}
+
+
+/* ================================================================
+   PER-GUID DIAGNOSTIC
+   ================================================================ */
+
+async function diagnoseGuid(guid) {
+  try {
+    const result = await API.viewer.convertToObjectRuntimeIds(
+      MODEL_ID,
+      [guid]
+    );
+
+    const runtimeIds = normalizeRuntimeIds(result);
+
+    if (runtimeIds.length > 0) {
+      return {
+        guid,
+        found: true,
+        runtimeIds
+      };
+    }
+
+    return {
+      guid,
+      found: false,
+      runtimeIds: []
+    };
+
+  } catch (error) {
+    return {
+      guid,
+      found: false,
+      runtimeIds: [],
+      error: String(error)
+    };
+  }
+}
+
+async function diagnoseAllGuids() {
+  log("Starting per-GUID diagnostic...");
+
+  for (const status of STATUSES) {
+    if (!status.guids.length) {
+      continue;
+    }
+
+    log("Checking status: " + status.name);
+
+    for (const guid of status.guids) {
+      const result = await diagnoseGuid(guid);
+      log(
+        result.found
+          ? "GUID FOUND: " + guid
+          : "GUID NOT FOUND: " + guid,
+        result
+      );
+    }
+  }
+
+  log("Per-GUID diagnostic completed.");
+}
+
+
+/* ================================================================
+   APPLY STATUS COLORS
+   ================================================================ */
+
+async function resetViewerColors() {
+  log("Resetting viewer object state...");
+
+  try {
+    await API.viewer.setObjectState(
+      undefined,
+      {
+        color: {
+          r: 200,
+          g: 200,
+          b: 200,
+          a: 60
+        }
+      }
+    );
+
+    log("Base/dim object state applied.");
+  } catch (error) {
+    log("Unable to apply base object state.", {
+      error: String(error)
+    });
+  }
+}
+
+async function applyStatusColors() {
+  if (!API || !viewerReady) {
+    throw new Error("Viewer is not initialized.");
+  }
+
+  if (applying) {
+    log("Status application already running; ignoring duplicate request.");
+    return;
+  }
+
+  applying = true;
+  goButton.disabled = true;
+  reapplyButton.disabled = true;
+
+  try {
+    setStatus("Waiting for model objects...");
+
+    /*
+     * First wait for at least one configured GUID to resolve.
+     * This replaces the old fixed 4-second delay.
+     */
+    let modelObjectsReady = false;
+    const start = Date.now();
+
+    while (Date.now() - start < MAX_MODEL_WAIT_MS) {
+      for (const status of STATUSES) {
+        if (!status.guids.length) continue;
+
+        try {
+          const result = await API.viewer.convertToObjectRuntimeIds(
+            MODEL_ID,
+            [status.guids[0]]
+          );
+
+          const ids = normalizeRuntimeIds(result);
+
+          if (ids.length > 0) {
+            modelObjectsReady = true;
+            break;
+          }
+        } catch (_) {
+          // Continue polling.
+        }
+      }
+
+      if (modelObjectsReady) {
+        break;
+      }
+
+      await sleep(POLL_MS);
+    }
+
+    if (!modelObjectsReady) {
+      throw new Error(
+        "The viewer initialized, but no configured GUID could be converted " +
+        "to a runtime ID within " + MAX_MODEL_WAIT_MS / 1000 + " seconds."
+      );
+    }
+
+    setStatus("Model objects ready. Applying status colors...");
+
+    await resetViewerColors();
+
+    let totalGuids = 0;
+    let totalRuntimeIds = 0;
+
+    for (const status of STATUSES) {
+      const guids = [...new Set(
+        status.guids.map(g => String(g).trim()).filter(Boolean)
+      )];
+
+      if (!guids.length) {
+        log("Skipping empty status: " + status.name);
+        continue;
+      }
+
+      totalGuids += guids.length;
+
+      /*
+       * Wait until this status has runtime IDs.
+       */
+      const conversion = await convertGuidsToRuntimeIds(
+        guids,
+        "Status [" + status.name + "]"
+      );
+
+      const runtimeIds = conversion.runtimeIds;
+
+      if (!runtimeIds.length) {
+        log(
+          "NO RUNTIME IDS: status [" + status.name + "]",
+          {
+            guids,
+            modelId: MODEL_ID
+          }
+        );
+        continue;
+      }
+
+      totalRuntimeIds += runtimeIds.length;
+
+      log(
+        "Applying color for [" + status.name + "]",
+        {
+          modelId: MODEL_ID,
+          guidCount: guids.length,
+          runtimeIdCount: runtimeIds.length,
+          runtimeIds,
+          color: status.color
+        }
+      );
+
+      await API.viewer.setObjectState(
+        {
+          modelObjectIds: [
+            {
+              modelId: MODEL_ID,
+              objectRuntimeIds: runtimeIds
+            }
+          ]
+        },
+        {
+          color: status.color
+        }
+      );
+
+      log(
+        "COLOR APPLIED: " + status.name +
+        " (" + runtimeIds.length + " runtime IDs)"
+      );
+    }
+
+    setStatus(
+      "Completed: " +
+      totalRuntimeIds +
+      " runtime object(s) colored from " +
+      totalGuids +
+      " configured GUID(s)."
+    );
+
+    /*
+     * Run the detailed diagnostic after coloring.
+     * This makes GUID mismatches obvious in the browser console/log.
+     */
+    await diagnoseAllGuids();
+
+  } finally {
+    applying = false;
+    goButton.disabled = false;
+    reapplyButton.disabled = false;
+  }
+}
+
+
+/* ================================================================
+   MAIN LOAD
+   ================================================================ */
+
+async function loadAndApply() {
+  const token = tokenInput.value.trim();
+
+  if (!token) {
+    alert("Enter a Trimble Connect access token first.");
+    return;
+  }
+
+  currentToken = token;
+
+  goButton.disabled = true;
+  reapplyButton.disabled = true;
+
+  try {
+    diagnosticEl.textContent = "";
+
+    setStatus("Connecting to Trimble Connect...");
+
+    await initializeViewer(token);
+
+    setStatus(
+      "Viewer initialized. Waiting for model geometry and object IDs..."
+    );
+
+    await applyStatusColors();
+
+  } catch (error) {
+    console.error(error);
+
+    setStatus("ERROR: " + (error && error.message
+      ? error.message
+      : String(error)));
+
+    log("FATAL ERROR", {
+      message: error && error.message
+        ? error.message
+        : String(error),
+      stack: error && error.stack
+        ? error.stack
+        : undefined,
+      projectId: PROJECT_ID,
+      modelId: MODEL_ID
+    });
+
+    goButton.disabled = false;
+    reapplyButton.disabled = !viewerReady;
+  }
+}
+
+
+/* ================================================================
+   EVENTS
+   ================================================================ */
+
+goButton.addEventListener("click", loadAndApply);
+
+reapplyButton.addEventListener("click", async () => {
+  if (!viewerReady) return;
+
+  try {
+    await applyStatusColors();
+  } catch (error) {
+    log("Reapply failed.", {
+      error: String(error)
+    });
+    setStatus("Reapply failed: " + String(error));
+  }
+});
+
+clearLogButton.addEventListener("click", () => {
+  diagnosticEl.textContent = "";
+});
+
+inspectApiButton.addEventListener("click", () => {
+  if (!API) {
+    log("Workspace API has not been connected.");
+    return;
+  }
+
+  log("Workspace API inspection", {
+    apiKeys: Object.keys(API),
+    hasEmbed: !!API.embed,
+    hasViewer: !!API.viewer,
+    embedKeys: API.embed ? Object.keys(API.embed) : [],
+    viewerKeys: API.viewer ? Object.keys(API.viewer) : []
+  });
+});
+
+
+/* ================================================================
+   OPTIONAL AUTO-LOAD FROM URL
+   ================================================================
+
+   You can optionally pass the token as:
+
+   ?token=YOUR_ACCESS_TOKEN
+
+   This is intentionally NOT recommended for production because
+   access tokens in URLs can appear in browser history/logs.
+
+   It is useful for local testing only.
+*/
+(async function autoLoadFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const urlToken = params.get("token");
+
+  if (urlToken) {
+    tokenInput.value = urlToken;
+    log("Token supplied through URL; starting automatic load.");
+    await loadAndApply();
+  }
+})();
+</script>
+
+</body>
+</html>

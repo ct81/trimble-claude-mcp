@@ -31,6 +31,16 @@ dotnet build "src\TeklaMcpBridge\TeklaMcpBridge.csproj" `
   --no-restore `
   -p:PlatformTarget=x64
 
+Remove-Item ".\src\TeklaParametricBuildingPlugin\bin" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item ".\src\TeklaParametricBuildingPlugin\obj" -Recurse -Force -ErrorAction SilentlyContinue
+
+dotnet restore "src\TeklaParametricBuildingPlugin\TeklaParametricBuildingPlugin.csproj"
+ 
+dotnet build "src\TeklaParametricBuildingPlugin\TeklaParametricBuildingPlugin.csproj" `
+  --configuration Release `
+  --no-restore `
+  -p:PlatformTarget=x64
+
 Step 3:
 $src = "C:\Users\CTan\Downloads\TeklaMcpBridge_Full_API\TeklaMcpBridge_Full\src\TeklaMcpParametricStair\bin\Release\net48"
 
@@ -41,7 +51,7 @@ Copy-Item "$src\*" "$dst\" -Recurse -Force
 Step 4:
 $src = "C:\Users\CTan\Downloads\TeklaMcpBridge_Full_API\TeklaMcpBridge_Full\src\TeklaMcpBridge\bin\Release\net48"
 
-$dst = "C:\ProgramData\Trimble\Tekla Structures\2026.0\Environments\common\extensions\TeklaMcpBridge"
+$dst = "C:\TeklaStructures\2026.0\Environments\common\extensions\TeklaMcpBridge"
 
 Copy-Item "$src\*" "$dst\" -Recurse -Force
 
