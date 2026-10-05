@@ -1,8 +1,8 @@
 // Trimble AEC Connect (Captures Architecture, Engineering, & Construction workflows)
 
 // git add . 
-// git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Tekla Open APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #32"
+// git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Tekla Open APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
+// #33"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -3009,6 +3009,43 @@ app.post(
       console.error('POST /api/mcp/tender/extract:', error);
       const status = error.statusCode || (error.code === 'ETIMEDOUT' || error.killed ? 504 : 500);
       return res.status(status).json({ success: false, error: error.message });
+    }
+  }
+);
+
+app.get(
+  '/api/mcp/status-sharing/viewer/templates',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await callTool(
+        req.mcpSessionId,
+        'status_sharing_list_viewer_templates',
+        {}
+      );
+      return res.json(result);
+    } catch (e) {
+      console.error('GET /api/mcp/status-sharing/viewer/templates:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.post(
+  '/api/mcp/status-sharing/viewer/generate',
+  requireSession,
+  async (req, res) => {
+    try {
+      const args = req.body?.arguments ?? req.body ?? {};
+      const result = await callTool(
+        req.mcpSessionId,
+        'status_sharing_generate_viewer',
+        args
+      );
+      return res.json(result);
+    } catch (e) {
+      console.error('POST /api/mcp/status-sharing/viewer/generate:', e);
+      return res.status(500).json({ error: e.message });
     }
   }
 );

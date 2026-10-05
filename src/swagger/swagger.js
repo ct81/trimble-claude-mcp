@@ -1539,6 +1539,71 @@ export const swaggerDocument = {
 
     },
 
+    '/api/mcp/status-sharing/viewer/templates': {
+      get: {
+        tags: ['Status Sharing'],
+        summary: 'List 3D viewer HTML templates available for status sharing',
+        operationId: 'status_sharing_list_viewer_templates_rest',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: { description: 'Available templates' },
+          401: { description: 'Authentication required' }
+        }
+      }
+    },
+
+    '/api/mcp/status-sharing/viewer/generate': {
+      post: {
+        tags: ['Status Sharing'],
+        summary: 'Generate a status-sharing 3D viewer HTML from a template',
+        description: 'Embeds projectId, modelId and statuses (name, color, object GUIDs) into the chosen template and returns the URL of the generated HTML.',
+        operationId: 'status_sharing_generate_viewer_rest',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['template', 'projectId', 'modelId', 'statuses'],
+                properties: {
+                  template: { type: 'string', example: 'status-sharing-viewer-fixed-v1.html' },
+                  projectId: { type: 'string' },
+                  modelId: { type: 'string' },
+                  statuses: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      required: ['name', 'color', 'guids'],
+                      properties: {
+                        name: { type: 'string', example: 'Fabricated' },
+                        color: {
+                          type: 'object',
+                          required: ['r', 'g', 'b'],
+                          properties: {
+                            r: { type: 'integer', minimum: 0, maximum: 255 },
+                            g: { type: 'integer', minimum: 0, maximum: 255 },
+                            b: { type: 'integer', minimum: 0, maximum: 255 },
+                            a: { type: 'integer', minimum: 0, maximum: 255 }
+                          }
+                        },
+                        guids: { type: 'array', items: { type: 'string' } }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          200: { description: 'Generated viewer file path and URL' },
+          401: { description: 'Authentication required' },
+          500: { description: 'Generation failed' }
+        }
+      }
+    },
+
     '/api/mcp/tender/extract': {
       post: {
         tags: ['PDF'],
