@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Tekla Open APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #34"
+// #35"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -3064,6 +3064,44 @@ app.post(
     } catch (e) {
       console.error('POST /api/mcp/python/test:', e);
       return res.status(500).json({ error: e.message });
+    }
+  }
+);
+
+app.post(
+  '/api/mcp/bridge/options',
+  requireSession,
+  async (req, res) => {
+    try {
+      const args = req.body?.arguments ?? req.body ?? {};
+      const result = await callTool(
+        req.mcpSessionId,
+        'trimble_get_started',
+        args
+      );
+      return res.json(result);
+    } catch (error) {
+      console.error('POST /api/mcp/bridge/options:', error);
+      return res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+app.post(
+  '/api/mcp/bridge/select',
+  requireSession,
+  async (req, res) => {
+    try {
+      const args = req.body?.arguments ?? req.body ?? {};
+      const result = await callTool(
+        req.mcpSessionId,
+        'trimble_select_bridge',
+        args
+      );
+      return res.json(result);
+    } catch (error) {
+      console.error('POST /api/mcp/bridge/select:', error);
+      return res.status(500).json({ error: error.message });
     }
   }
 );

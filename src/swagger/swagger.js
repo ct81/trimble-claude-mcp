@@ -1372,6 +1372,65 @@ export const swaggerDocument = {
       }
     },
 
+    '/api/mcp/bridge/options': {
+      post: {
+        tags: ['Tekla', 'SketchUp'],
+        summary: 'List configured bridge choices for Tekla or SketchUp',
+        operationId: 'trimble_get_started_bridge_options_rest',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['platform'],
+                properties: {
+                  platform: { type: 'string', enum: ['Tekla', 'SketchUp'] }
+                },
+                example: { platform: 'Tekla' }
+              }
+            }
+          }
+        },
+        responses: {
+          200: { description: 'Configured named bridge options' },
+          401: { description: 'Authentication required' },
+          500: { description: 'Unable to read bridge configuration' }
+        }
+      }
+    },
+
+    '/api/mcp/bridge/select': {
+      post: {
+        tags: ['Tekla', 'SketchUp'],
+        summary: 'Select the bridge option for the current MCP session',
+        operationId: 'trimble_select_bridge_rest',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['platform', 'option'],
+                properties: {
+                  platform: { type: 'string', enum: ['Tekla', 'SketchUp'] },
+                  option: { type: 'integer', minimum: 1, description: '1-based option number returned by POST /api/mcp/bridge/options.' }
+                },
+                example: { platform: 'Tekla', option: 2 }
+              }
+            }
+          }
+        },
+        responses: {
+          200: { description: 'Selected bridge for the current session' },
+          400: { description: 'Invalid platform or option number' },
+          401: { description: 'Authentication required' }
+        }
+      }
+    },
+
     '/api/mcp/sketchup/groups': {
       get: {
         tags: ['SketchUp'],
