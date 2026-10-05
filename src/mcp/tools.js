@@ -38,6 +38,7 @@ import {
 } from './sketchup/bridge.js';
 import { tools as teklaTools } from './tekla/mcp-tools.js';
 import * as teklaBridge from './tekla/bridge.js';
+import { refreshIfNeeded } from '../oauth/oauth.js';
 import {
   getSelectedBridge,
   selectBridge,
@@ -820,6 +821,13 @@ const baseDefinitions = [
       type: 'object',
       properties: {}
     }
+  },
+
+  {
+    name: 'get_trimble_access_token',
+    description:
+      'Return the current authenticated session Trimble Connect access token, refreshing it if needed. This returns a sensitive bearer credential; do not share or expose it beyond the requested authenticated workflow.',
+    inputSchema: { type: 'object', properties: {} }
   },
 
   {
@@ -2724,6 +2732,23 @@ async function callToolInBridgeSession(
     case 'get_current_user':
       result = await core.getCurrentUser(sessionId);
       break;
+
+    case 'get_trimble_access_token': {
+      const session = await refreshIfNeeded(sessionId);
+      if (!session?.trimble?.access_token) {
+        throw Object.assign(
+          new Error('No Trimble Connect access token is available for this session.'),
+          { statusCode: 401 }
+        );
+      }
+      result = {
+        access_token: session.trimble.access_token,
+        token_type: 'Bearer',
+        obtained_at: session.trimble.obtained_at,
+        expires_in: session.trimble.expires_in
+      };
+      break;
+    }
 
     case 'get_user':
       result = await core.getUser(sessionId, args.userId);

@@ -2660,6 +2660,21 @@ export const swaggerDocument = {
 
     },
 
+    '/api/v1/auth/trimble/access-token': {
+      get: {
+        tags: ['Core'],
+        summary: 'Get the current Trimble Connect access token',
+        description: 'Returns the authenticated session access token and refreshes it if needed. The response contains a sensitive bearer credential; protect it and do not expose it publicly.',
+        operationId: 'get_trimble_access_token_rest',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: { description: 'Trimble Connect access token and token metadata' },
+          401: { description: 'Authentication required or no Trimble token is available' },
+          500: { description: 'Token refresh failed' }
+        }
+      }
+    },
+
     '/api/v1/users/me': {
 
       get: {

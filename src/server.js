@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Tekla Open APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #35"
+// #36"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -1006,6 +1006,24 @@ app.get('/auth/status', requireSession, (req,res) => res.json({authenticated:tru
 // =========================================================
 // GET TRIMBLE CONNECT APIs
 // =========================================================
+
+app.get(
+  '/api/v1/auth/trimble/access-token',
+  requireSession,
+  async (req, res) => {
+    try {
+      const result = await callTool(
+        req.mcpSessionId,
+        'get_trimble_access_token',
+        {}
+      );
+      return res.json(result);
+    } catch (error) {
+      console.error('GET /api/v1/auth/trimble/access-token:', error);
+      return res.status(error.statusCode || 500).json({ error: error.message });
+    }
+  }
+);
 
 app.get(
   '/api/v1/users/me',
