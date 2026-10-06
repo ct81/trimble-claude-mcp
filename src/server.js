@@ -1,8 +1,8 @@
 // Trimble AEC Connect (Captures Architecture, Engineering, & Construction workflows)
 
 // git add . 
-// git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble AI Studio MCP, Tekla Open APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #37"
+// git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
+// #38"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -203,7 +203,7 @@ function requireMcpAuth(req, res, next) {
 const app = express();
 
 app.set('trust proxy', 1);
-app.use(cors({origin: config.extensionOrigin === '*' ? true : config.extensionOrigin, credentials:true}));
+app.use(cors({origin: config.extensionOrigin === '*' ? true : config.extensionOrigin, credentials:true, exposedHeaders:['WWW-Authenticate','Mcp-Session-Id']}));
 app.use(express.static(path.join(process.cwd(), 'public')));
 app.use('/pages', express.static(path.join(process.cwd(), 'pages')));
 app.use('/src', express.static(path.join(process.cwd(), 'src')));
@@ -3262,7 +3262,47 @@ app.post(
 // Main MCP endpoint. tekla_get_status is exposed by mcp/tools.js and
 // dispatched by handleMcp() -> callTool() -> Tekla bridge.
 //app.post('/mcp', requireSession, handleMcp);
-app.post('/mcp', requireMcpAuth, handleMcp);
+
+// Registry compatibility: advertise OAuth discovery on 401 and answer non-POST probes.
+const mcpBaseUrl = req =>
+  process.env.PUBLIC_BASE_URL ||
+  `${req.headers['x-forwarded-proto'] || req.protocol}://${req.get('host')}`;
+
+app.get(
+  [
+    '/.well-known/oauth-protected-resource/mcp',
+    '/mcp/.well-known/oauth-protected-resource'
+  ],
+  (req, res) => {
+    const baseUrl = mcpBaseUrl(req);
+    res.json({
+      resource: `${baseUrl}/mcp`,
+      authorization_servers: [baseUrl]
+    });
+  }
+);
+
+app.get('/mcp', (req, res) => {
+  res.setHeader('Allow', 'POST, OPTIONS');
+  res.status(405).json({
+    jsonrpc: '2.0',
+    id: null,
+    error: { code: -32000, message: 'Method not allowed. Use POST.' }
+  });
+});
+
+app.post(
+  '/mcp',
+  (req, res, next) => {
+    res.setHeader(
+      'WWW-Authenticate',
+      `Bearer resource_metadata="${mcpBaseUrl(req)}/.well-known/oauth-protected-resource"`
+    );
+    next();
+  },
+  requireMcpAuth,
+  handleMcp
+);
 
 // REMOVE THIS before shipping
 //app.post('/mcp-debug', handleMcp);
