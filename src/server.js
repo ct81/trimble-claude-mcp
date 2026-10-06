@@ -1,8 +1,8 @@
 // Trimble AEC Connect (Captures Architecture, Engineering, & Construction workflows)
 
 // git add . 
-// git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Tekla Open APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #36"
+// git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble AI Studio MCP, Tekla Open APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
+// #37"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -83,6 +83,122 @@ import {
 
 import pdfRouter
   from './pdf/pdf.js';
+
+// =========================================================
+// MCP BEARER AUTHENTICATION
+// =========================================================
+
+function requireMcpBearer(req, res, next) {
+  try {
+    const authorization =
+      req.headers.authorization || '';
+
+    if (!authorization) {
+      return res.status(401).json({
+        error: 'invalid_token',
+        error_description: 'Missing Authorization header'
+      });
+    }
+
+    const match =
+      authorization.match(/^Bearer\s+(.+)$/i);
+
+    if (!match) {
+      return res.status(401).json({
+        error: 'invalid_token',
+        error_description: 'Authorization header must use Bearer authentication'
+      });
+    }
+
+    const accessToken =
+      match[1].trim();
+
+    if (!accessToken) {
+      return res.status(401).json({
+        error: 'invalid_token',
+        error_description: 'Missing Bearer token'
+      });
+    }
+
+    // Convert MCP access token → existing Trimble session ID
+    const sessionId =
+      getSessionIdFromMcpToken(accessToken);
+
+    if (!sessionId) {
+      return res.status(401).json({
+        error: 'invalid_token',
+        error_description: 'Invalid or expired MCP access token'
+      });
+    }
+
+    // Make the MCP handler see the same session
+    // that requireSession normally provides.
+    req.mcpSessionId = sessionId;
+
+    console.log(
+      '[MCP Bearer] Authentication successful'
+    );
+
+    return next();
+
+  } catch (error) {
+
+    console.error(
+      '[MCP Bearer] Authentication failed:',
+      error
+    );
+
+    return res.status(401).json({
+      error: 'invalid_token',
+      error_description: 'Invalid MCP access token'
+    });
+  }
+}
+
+// =========================================================
+// MCP AUTH AUTO-DETECTION
+// =========================================================
+
+function requireMcpAuth(req, res, next) {
+
+  const authorization =
+    req.headers.authorization || '';
+
+  // -----------------------------------------
+  // Bearer token
+  // -----------------------------------------
+
+  if (
+    /^Bearer\s+/i.test(
+      authorization
+    )
+  ) {
+
+    console.log(
+      '[MCP Auth] Bearer authentication detected'
+    );
+
+    return requireMcpBearer(
+      req,
+      res,
+      next
+    );
+  }
+
+  // -----------------------------------------
+  // Existing session / cookie authentication
+  // -----------------------------------------
+
+  console.log(
+    '[MCP Auth] Session authentication detected'
+  );
+
+  return requireSession(
+    req,
+    res,
+    next
+  );
+}
 
 const app = express();
 
@@ -3145,7 +3261,8 @@ app.post(
 
 // Main MCP endpoint. tekla_get_status is exposed by mcp/tools.js and
 // dispatched by handleMcp() -> callTool() -> Tekla bridge.
-app.post('/mcp', requireSession, handleMcp);
+//app.post('/mcp', requireSession, handleMcp);
+app.post('/mcp', requireMcpAuth, handleMcp);
 
 // REMOVE THIS before shipping
 //app.post('/mcp-debug', handleMcp);
