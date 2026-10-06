@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #38"
+// #39"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -203,7 +203,11 @@ function requireMcpAuth(req, res, next) {
 const app = express();
 
 app.set('trust proxy', 1);
-app.use(cors({origin: config.extensionOrigin === '*' ? true : config.extensionOrigin, credentials:true, exposedHeaders:['WWW-Authenticate','Mcp-Session-Id']}));
+// Browser-based MCP registries call these cross-origin; other routes keep the original CORS policy.
+const openCors = cors({ origin: true, exposedHeaders: ['WWW-Authenticate', 'Mcp-Session-Id'] });
+const openCorsPaths = /^\/(mcp|\.well-known|oauth\/(register|token))(\/|$|\?)/;
+const restrictedCors = cors({origin: config.extensionOrigin === '*' ? true : config.extensionOrigin, credentials:true, exposedHeaders:['WWW-Authenticate','Mcp-Session-Id']});
+app.use((req, res, next) => (openCorsPaths.test(req.url) ? openCors : restrictedCors)(req, res, next));
 app.use(express.static(path.join(process.cwd(), 'public')));
 app.use('/pages', express.static(path.join(process.cwd(), 'pages')));
 app.use('/src', express.static(path.join(process.cwd(), 'src')));
