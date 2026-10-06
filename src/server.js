@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #39"
+// #40"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -198,6 +198,18 @@ function requireMcpAuth(req, res, next) {
     res,
     next
   );
+}
+
+function requireMcpAuthForRequest(req, res, next) {
+  if (
+    ['initialize', 'notifications/initialized', 'tools/list'].includes(
+      req.body?.method
+    )
+  ) {
+    return next();
+  }
+
+  return requireMcpAuth(req, res, next);
 }
 
 const app = express();
@@ -3304,7 +3316,7 @@ app.post(
     );
     next();
   },
-  requireMcpAuth,
+  requireMcpAuthForRequest,
   handleMcp
 );
 
