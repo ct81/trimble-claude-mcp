@@ -255,12 +255,12 @@ export async function callTsdTool(name, args = {}) {
         'Content-Type': 'application/json',
         'X-TSD-Bridge-Key': apiKey
       },
-      body: JSON.stringify([{
+      body: JSON.stringify({
         jsonrpc: '2.0',
         id: 1,
         method: 'tools/call',
         params: { name, arguments: args }
-      }])
+      })
     });
   } catch (error) {
     const reason = error.cause?.code || error.message;
@@ -279,9 +279,8 @@ export async function callTsdTool(name, args = {}) {
     throw new Error(`TSD bridge HTTP ${response.status}: ${payload?.error?.message || text}`);
   }
 
-  const result = Array.isArray(payload) ? payload[0] : payload;
-  if (result?.error) {
-    throw new Error(result.error.message || 'TSD tool call failed.');
+  if (payload?.error) {
+    throw new Error(payload.error.message || 'TSD tool call failed.');
   }
-  return result?.result;
+  return payload?.result;
 }
