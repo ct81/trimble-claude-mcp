@@ -1,3 +1,5 @@
+import { getSelectedBridge } from '../bridge-selection.js';
+
 export const requestExamples = [
   {
     jsonrpc: '2.0',
@@ -237,7 +239,10 @@ export const tools = requestExamples.map(({ params }) => {
 });
 
 export async function callTsdTool(name, args = {}) {
-  const bridgeUrl = process.env.TSD_BRIDGE_URL?.trim();
+  const bridgeUrl = (
+    getSelectedBridge('TSD')?.value ||
+    String(process.env.TSD_BRIDGE_URL || '').split(',')[0]
+  ).trim();
   if (!bridgeUrl) {
     throw new Error('TSD_BRIDGE_URL is not configured. Set it to a publicly reachable TSD bridge URL ending in /mcp.');
   }

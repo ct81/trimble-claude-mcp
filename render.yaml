@@ -42,5 +42,7 @@ services:
         sync: false
       - key: TSD_BRIDGE_URL
         sync: false
+      - key: TSD_BRIDGE_URL_NAME
+        sync: false
       - key: TSD_BRIDGE_KEY
         sync: false

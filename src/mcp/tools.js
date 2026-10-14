@@ -176,27 +176,33 @@ let mergedDefinitions = null;
 // the caller gets a clear error instead of an unexplained stall.
 const EXTRACT_TIMEOUT_MS = 45_000;
 
+const BRIDGE_PLATFORMS = {
+  Tekla: { valueEnv: 'TEKLA_BRIDGE_URL', nameEnv: 'TEKLA_BRIDGE_URL_NAME' },
+  SketchUp: { valueEnv: 'SKETCHUP_MCP_HOST', nameEnv: 'SKETCHUP_MCP_HOST_NAME' },
+  TSD: { valueEnv: 'TSD_BRIDGE_URL', nameEnv: 'TSD_BRIDGE_URL_NAME' }
+};
+
 const baseDefinitions = [
 
   {
     name: 'trimble_get_started',
     description:
-      'Show the user the available Trimble connector workflows when they want to get started. When the user selects Tekla or SketchUp, call this tool again with platform set to their choice to get configured bridge options, then ask them to choose if multiple options are returned.',
+      'Show the user the available Trimble connector workflows when they want to get started. When the user selects Tekla, SketchUp, or Tekla Structural Designer (TSD), call this tool again with platform set to their choice to get configured bridge options, then ask them to choose if multiple options are returned.',
     inputSchema: {
       type: 'object',
       properties: {
-        platform: { type: 'string', enum: ['Tekla', 'SketchUp'] }
+        platform: { type: 'string', enum: ['Tekla', 'SketchUp', 'TSD'] }
       }
     }
   },
   {
     name: 'trimble_select_bridge',
     description:
-      'Apply the user-selected Tekla or SketchUp bridge option returned by trimble_get_started. Use the 1-based option number and only call after the user chooses.',
+      'Apply the user-selected Tekla, SketchUp, or TSD bridge option returned by trimble_get_started. Use the 1-based option number and only call after the user chooses.',
     inputSchema: {
       type: 'object',
       properties: {
-        platform: { type: 'string', enum: ['Tekla', 'SketchUp'] },
+        platform: { type: 'string', enum: ['Tekla', 'SketchUp', 'TSD'] },
         option: { type: 'integer', minimum: 1 },
       },
       required: ['platform', 'option']
@@ -2081,32 +2087,32 @@ async function callToolInBridgeSession(
   switch (name) {
 
   case 'trimble_get_started': {
-    if (args.platform && !['Tekla', 'SketchUp'].includes(args.platform)) {
-      throw new Error('platform must be Tekla or SketchUp.');
+    if (args.platform && !BRIDGE_PLATFORMS[args.platform]) {
+      throw new Error('platform must be Tekla, SketchUp, or TSD.');
     }
     if (!args.platform) {
       result = {
         title: 'Start using the connector',
-        choices: ['SketchUp', 'Tekla Structural Designer', 'Tekla Structures', 'Trimble Connect', 'Later']
+        choices: ['SketchUp', 'Tekla Structural Designer (TSD)', 'Tekla Structures', 'Trimble Connect', 'Later']
       };
       break;
     }
 
     const platform = args.platform;
-    const isTekla = platform === 'Tekla';
+    const { valueEnv, nameEnv } = BRIDGE_PLATFORMS[platform];
     const values = String(
-      process.env[isTekla ? 'TEKLA_BRIDGE_URL' : 'SKETCHUP_MCP_HOST'] || ''
+      process.env[valueEnv] || ''
     ).split(',').map((value) => value.trim()).filter(Boolean);
     const names = String(
-      process.env[isTekla ? 'TEKLA_BRIDGE_URL_NAME' : 'SKETCHUP_MCP_HOST_NAME'] || ''
+      process.env[nameEnv] || ''
     ).split(',').map((value) => value.trim()).filter(Boolean);
 
     if (!values.length) {
-      result = { platform, configured: false, message: `No ${isTekla ? 'TEKLA_BRIDGE_URL' : 'SKETCHUP_MCP_HOST'} is configured.` };
+      result = { platform, configured: false, message: `No ${valueEnv} is configured.` };
       break;
     }
     if (names.length && names.length !== values.length) {
-      throw new Error(`${isTekla ? 'TEKLA_BRIDGE_URL_NAME' : 'SKETCHUP_MCP_HOST_NAME'} must have the same number of comma-separated entries as the bridge values.`);
+      throw new Error(`${nameEnv} must have the same number of comma-separated entries as the bridge values.`);
     }
 
     const options = values.map((value, index) => ({
@@ -2132,19 +2138,19 @@ async function callToolInBridgeSession(
   }
 
   case 'trimble_select_bridge': {
-    if (!['Tekla', 'SketchUp'].includes(args.platform)) {
-      throw new Error('platform must be Tekla or SketchUp.');
+    if (!BRIDGE_PLATFORMS[args.platform]) {
+      throw new Error('platform must be Tekla, SketchUp, or TSD.');
     }
-    const isTekla = args.platform === 'Tekla';
+    const { valueEnv, nameEnv } = BRIDGE_PLATFORMS[args.platform];
     const values = String(
-      process.env[isTekla ? 'TEKLA_BRIDGE_URL' : 'SKETCHUP_MCP_HOST'] || ''
+      process.env[valueEnv] || ''
     ).split(',').map((value) => value.trim()).filter(Boolean);
     const names = String(
-      process.env[isTekla ? 'TEKLA_BRIDGE_URL_NAME' : 'SKETCHUP_MCP_HOST_NAME'] || ''
+      process.env[nameEnv] || ''
     ).split(',').map((value) => value.trim()).filter(Boolean);
 
     if (names.length && names.length !== values.length) {
-      throw new Error(`${isTekla ? 'TEKLA_BRIDGE_URL_NAME' : 'SKETCHUP_MCP_HOST_NAME'} must have the same number of comma-separated entries as the bridge values.`);
+      throw new Error(`${nameEnv} must have the same number of comma-separated entries as the bridge values.`);
     }
     const option = Number(args.option);
     if (!Number.isInteger(option) || option < 1 || option > values.length) {

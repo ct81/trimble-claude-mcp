@@ -1390,7 +1390,7 @@ export const swaggerDocument = {
                 type: 'object',
                 required: ['platform'],
                 properties: {
-                  platform: { type: 'string', enum: ['Tekla', 'SketchUp'] }
+                  platform: { type: 'string', enum: ['Tekla', 'SketchUp', 'TSD'] }
                 },
                 example: { platform: 'Tekla' }
               }
@@ -1419,7 +1419,7 @@ export const swaggerDocument = {
                 type: 'object',
                 required: ['platform', 'option'],
                 properties: {
-                  platform: { type: 'string', enum: ['Tekla', 'SketchUp'] },
+                  platform: { type: 'string', enum: ['Tekla', 'SketchUp', 'TSD'] },
                   option: { type: 'integer', minimum: 1, description: '1-based option number returned by POST /api/mcp/bridge/options.' }
                 },
                 example: { platform: 'Tekla', option: 2 }
