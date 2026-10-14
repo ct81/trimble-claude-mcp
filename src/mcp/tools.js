@@ -38,6 +38,7 @@ import {
 } from './sketchup/bridge.js';
 import { tools as teklaTools } from './tekla/mcp-tools.js';
 import * as teklaBridge from './tekla/bridge.js';
+import { tools as tsdTools, callTsdTool } from './tsd/mcp-all-tools.js';
 import { refreshIfNeeded } from '../oauth/oauth.js';
 import {
   getSelectedBridge,
@@ -1832,13 +1833,16 @@ const baseDefinitions = [
 // });
 export const definitions = [
   ...baseDefinitions.filter((tool) => !teklaToolNames.has(tool.name)),
-  ...teklaTools
+  ...teklaTools,
+  ...tsdTools
 ].map((tool) => {
   const name = tool.name || '';
 
   const group =
     name.startsWith('tekla_')
       ? 'Tekla Structures'
+      : name.startsWith('tsd_')
+        ? 'TSD'
       : name.startsWith('workspace_')
         ? 'Workspace'
       : name === 'run_python_test'
@@ -2056,6 +2060,10 @@ async function callToolInBridgeSession(
   args = {}
 ) {
   let result;
+
+  if (name.startsWith('tsd_')) {
+    return callTsdTool(name, args);
+  }
 
   if (sketchupInspectionDefinitions.some((tool) => tool.name === name)) {
     const operation = name.slice(SKETCHUP_PREFIX.length);

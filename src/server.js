@@ -1,8 +1,8 @@
 // Trimble AEC Connect (Captures Architecture, Engineering, & Construction workflows)
 
 // git add . 
-// git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #40"
+// git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
+// #1"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -3251,6 +3251,24 @@ app.post(
       return res.json(result);
     } catch (error) {
       console.error('POST /api/mcp/bridge/select:', error);
+      return res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+app.post(
+  '/api/mcp/tsd/:toolName',
+  requireSession,
+  async (req, res) => {
+    try {
+      const args = req.body?.arguments ?? req.body ?? {};
+      const toolName = req.params.toolName.startsWith('tsd_')
+        ? req.params.toolName
+        : `tsd_${req.params.toolName}`;
+      const result = await callTool(req.mcpSessionId, toolName, args);
+      return res.json(result);
+    } catch (error) {
+      console.error('POST /api/mcp/tsd/:toolName:', error);
       return res.status(500).json({ error: error.message });
     }
   }

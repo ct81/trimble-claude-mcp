@@ -1148,6 +1148,10 @@ export const swaggerDocument = {
       description: 'Tekla Structures local bridge and connectivity operations.'
     },
     {
+      name: 'TSD',
+      description: 'Trimble Structural Designer tools exposed by the TSD MCP bridge.'
+    },
+    {
       name: 'Health',
       description: 'Service health and diagnostics.'
     }
@@ -4854,6 +4858,35 @@ export async function getSwaggerDocument() {
 
   const tools = await getDefinitions();
 
+  for (const tool of tools.filter(({ name }) => name.startsWith('tsd_'))) {
+    const inputSchema = tool.inputSchema || {
+      type: 'object',
+      properties: {}
+    };
+    const toolPath = `/api/mcp/tsd/${tool.name.slice('tsd_'.length)}`;
+
+    doc.paths[toolPath] = {
+      post: {
+        tags: ['TSD'],
+        summary: tool.description || `Execute ${tool.name}`,
+        description: tool.description || `Execute TSD MCP tool: ${tool.name}`,
+        operationId: `${tool.name}_rest`,
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': { schema: inputSchema }
+          }
+        },
+        responses: {
+          200: { description: 'TSD MCP tool result' },
+          401: { description: 'Authentication required' },
+          500: { description: 'TSD tool execution failed' }
+        }
+      }
+    };
+  }
+
   // ==========================================
   // SKETCHUP LIVE + FALLBACK TOOLS
   // ==========================================
@@ -5154,7 +5187,9 @@ export async function getSwaggerDocument() {
       };
 
       const tag =
-        toolName === 'run_python_test'
+        toolName.startsWith('tsd_')
+        ? 'TSD'
+        : toolName === 'run_python_test'
         ? 'Python'
         : toolName === 'extract_tender_project'
           ? 'PDF'
