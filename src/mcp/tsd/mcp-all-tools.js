@@ -237,25 +237,36 @@ export const tools = requestExamples.map(({ params }) => {
 });
 
 export async function callTsdTool(name, args = {}) {
-  const bridgeUrl = process.env.TSD_BRIDGE_URL || 'http://127.0.0.1:7129/mcp';
+  const bridgeUrl = process.env.TSD_BRIDGE_URL?.trim();
+  if (!bridgeUrl) {
+    throw new Error('TSD_BRIDGE_URL is not configured. Set it to a publicly reachable TSD bridge URL ending in /mcp.');
+  }
+
   const apiKey = process.env.TSD_BRIDGE_KEY;
   if (!apiKey) {
     throw new Error('TSD_BRIDGE_KEY is not configured.');
   }
 
-  const response = await fetch(bridgeUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-TSD-Bridge-Key': apiKey
-    },
-    body: JSON.stringify([{
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'tools/call',
-      params: { name, arguments: args }
-    }])
-  });
+  let response;
+  try {
+    response = await fetch(bridgeUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-TSD-Bridge-Key': apiKey
+      },
+      body: JSON.stringify([{
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: { name, arguments: args }
+      }])
+    });
+  } catch (error) {
+    const reason = error.cause?.code || error.message;
+    throw new Error(`Cannot reach the TSD bridge at ${bridgeUrl} (${reason}). On Render, localhost refers to the Render service; configure a publicly reachable TSD_BRIDGE_URL and keep its tunnel online.`);
+  }
+
   const text = await response.text();
   let payload;
   try {
