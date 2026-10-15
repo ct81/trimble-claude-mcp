@@ -338,6 +338,51 @@
 
                         await API_Ext.extension.setStatusMessage("Running...");
 
+                        const request = API_Ext.extension.requestPermission || API_Ext.extension.getPermission;
+
+                        request.call(API_Ext.extension, "accesstoken").then(token => {
+                            console.log("Avatar Obtained Access Token:", token);
+
+                            //document.getElementById("hdnAccessTokenDetail").value = token;
+
+                            // Optional: Immediately use the token to call a Workspace API endpoint
+                            fetch(`https://app.connect.trimble.com/tc/api/2.0/users/me`, {
+                                method: "GET",
+                                headers: {
+                                    "Authorization": `Bearer ${token}`,
+                                    "Content-Type": "application/json"
+                                }
+                            })
+                                .then(res => res.json())
+                                //.then(data => console.log("Logged-in User Info:", data))
+                                .then(data => {
+                                    const userInfo = {
+                                        firstName: data.firstName,
+                                        lastName: data.lastName,
+                                        id: data.id,
+                                        email: data.email,
+                                        podLocation: data.podLocation,
+                                        thumbnail: data.thumbnail,
+                                        // company: {
+                                        //     id: data.company?.id || data.companies?.[0]?.id || null,
+                                        //     name: data.company?.name || data.companies?.[0]?.name || null
+                                        // }
+                                    };
+
+                                    userInfo.companyId = data.company?.id;
+                                    userInfo.companyName = data.company?.name;
+                                    userInfo.projectId = document.getElementById('hdnProjectDetail').value;
+                                    userInfo.accessToken = document.getElementById('hdnAccessTokenDetail').value;
+
+                                    console.log("Avatar Logged-in User Data:", data)
+                                    console.log("Avatar Logged-in User Info:", userInfo);
+                                    return userInfo; // Optional if you need it later in the chain
+                                })
+                                .catch(err => console.error("API error:", err));
+                        }).catch(err => {
+                            console.error("Failed to get access token:", err);
+                        });
+
                         // ===========================================
                         // Save Access Token to ASP.NET WebMethod
                         // ===========================================
