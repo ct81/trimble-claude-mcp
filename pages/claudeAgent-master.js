@@ -28,8 +28,8 @@ document.addEventListener('DOMContentLoaded', async (event) => {
         });
 
         API_Ext.ui.setMenu({
-            title: "Claude Agent"
-            , icon: "https://api.iconify.design/simple-icons/claude.svg?color=%23FFFFFF"
+            title: "CHES Agent"
+            , icon: "https://ct81.github.io/trimble-claude-mcp/images/svg/ches.svg?color=%23FFFFFF"
             , command: "main_nav_menu_clicked"
             , subMenus: [
                 // , {
