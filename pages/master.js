@@ -23,8 +23,12 @@ document.addEventListener('DOMContentLoaded', async (event) => {
                         console.log("=====GET2: " + obj);
                         window.open(locationParent + '/coordScheduleExporter.html?accessToken=' + document.getElementById('hdnAccessTokenDetail').value + '&projectId=' + document.getElementById('hdnProjectDetail').value + '&modelId=nil' + '&userId=' + document.getElementById('hdnUserId').value + '&userEmail=' + encodeURIComponent(document.getElementById('hdnUserEmail').value), '_self');
                     }
+                    if (obj == 'submenu_3_clicked') {
+                        console.log("=====GET3: " + obj);
+                        window.open(locationParent + '/dxfCsvExporter.html?accessToken=' + document.getElementById('hdnAccessTokenDetail').value + '&projectId=' + document.getElementById('hdnProjectDetail').value + '&modelId=nil' + '&userId=' + document.getElementById('hdnUserId').value + '&userEmail=' + encodeURIComponent(document.getElementById('hdnUserEmail').value), '_self');
+                    }
                     if (obj == 'submenu_T1_clicked') {
-                        console.log("=====GET2: " + obj);
+                        console.log("=====GET_T1: " + obj);
                         window.open(locationParent + '/tender.html?accessToken=' + document.getElementById('hdnAccessTokenDetail').value + '&projectId=' + document.getElementById('hdnProjectDetail').value + '&modelId=nil' + '&userId=' + document.getElementById('hdnUserId').value + '&userEmail=' + encodeURIComponent(document.getElementById('hdnUserEmail').value), '_self');
                     }
                     break;
@@ -54,6 +58,11 @@ document.addEventListener('DOMContentLoaded', async (event) => {
                     title: "Upload Json",
                     icon: "https://cdn.jsdelivr.net/npm/@tabler/icons@latest/icons/file-search.svg",
                     command: "submenu_2_clicked",
+                }
+                ,{
+                    title: "DXF to CSV",
+                    icon: "https://api.iconify.design/tabler/file-symlink.svg",
+                    command: "submenu_3_clicked",
                 }
                 ,{
                     title: "Tender #1",
