@@ -37,9 +37,26 @@
             align-items:center;
         }
 
+        .header-title{
+            display:flex;
+            align-items:center;
+            gap:10px;
+        }
+
         .header-title span{
             font-size:22px;
             font-weight:600;
+        }
+
+        .header-thumbnail{
+            width:32px;
+            height:32px;
+            border-radius:50%;
+            object-fit:cover;
+        }
+
+        .header-thumbnail[hidden]{
+            display:none;
         }
 
         .header-status{
@@ -166,6 +183,7 @@
                 <div class="card-header">
 
                     <div class="header-title">
+                        <img id="userThumbnail" class="header-thumbnail" alt="" hidden />
                         <span>Trimble Connect Information</span>
                     </div>
 
@@ -356,6 +374,15 @@
                                 .then(res => res.json())
                                 //.then(data => console.log("Logged-in User Info:", data))
                                 .then(data => {
+                                    const thumbnail = document.getElementById("userThumbnail");
+                                    if (typeof data.thumbnail === "string" && data.thumbnail) {
+                                        thumbnail.onerror = () => {
+                                            thumbnail.hidden = true;
+                                        };
+                                        thumbnail.src = data.thumbnail;
+                                        thumbnail.hidden = false;
+                                    }
+
                                     const userInfo = {
                                         firstName: data.firstName,
                                         lastName: data.lastName,
