@@ -2093,7 +2093,7 @@ async function callToolInBridgeSession(
     if (!args.platform) {
       result = {
         title: 'Start using the connector',
-        choices: ['SketchUp', 'Tekla Structural Designer (TSD)', 'Tekla Structures', 'Trimble Connect', 'Later']
+        choices: ['SketchUp', 'Tekla Structural Designer', 'Tekla Structures', 'Trimble Connect', 'Later']
       };
       break;
     }

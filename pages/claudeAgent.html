@@ -1,0 +1,3239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Agent</title>
+    <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
+    <script src="claudeAgent-master.js" type="module" defer></script>
+    <style>
+        :root {
+            --bg: #f7f7f8;
+            --surface: #fff;
+            --surface-2: #f0f0f2;
+            --border: #e5e5e8;
+            --text: #1a1a1a;
+            --text-muted: #6b6b70;
+            --accent: #c96442;
+            --error: #c53030;
+            --ok: #065f46;
+            --ok-bg: #d1fae5;
+            --ok-border: #6ee7b7;
+            --warn: #92400e;
+            --warn-bg: #fef3c7;
+            --warn-border: #fcd34d;
+            --stop: #dc2626;
+            --stop-hover: #b91c1c;
+            --radius: 14px;
+            --radius-sm: 10px;
+        }
+
+        [data-theme="dark"] {
+            --bg: #1a1a1c;
+            --surface: #242428;
+            --surface-2: #2c2c30;
+            --border: #35353a;
+            --text: #f0f0f0;
+            --text-muted: #9a9aa0;
+            --accent: #e08360;
+            --error: #f56565;
+            --ok: #6ee7b7;
+            --ok-bg: #064e3b;
+            --ok-border: #10b981;
+            --warn: #fcd34d;
+            --warn-bg: #78350f;
+            --warn-border: #f59e0b;
+            --stop: #f87171;
+            --stop-hover: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        html, body {
+            height: 100%
+        }
+
+        body {
+            font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 15px;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            display: flex;
+            flex-direction: column
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+            position: sticky;
+            top: 0;
+            z-index: 10
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: .65rem
+        }
+
+        .logo {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            background: linear-gradient(135deg,var(--accent),#e0a87f);
+            display: grid;
+            place-items: center;
+            color: #fff;
+            font-weight: 700;
+            font-size: .85rem
+        }
+
+        .brand-text h1 {
+            font-size: .98rem;
+            font-weight: 600
+        }
+
+        .brand-text p {
+            font-size: .75rem;
+            color: var(--text-muted)
+        }
+
+        .header-actions {
+            display: flex;
+            gap: .4rem;
+            align-items: center
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 9px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text);
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+            font-size: 1rem;
+            transition: background .15s
+        }
+
+            .icon-btn:hover {
+                background: var(--surface-2)
+            }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            font-size: .75rem;
+            font-weight: 600;
+            padding: .3rem .7rem;
+            border-radius: 999px;
+            background: var(--surface-2);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: opacity .15s
+        }
+
+            .status-pill:hover {
+                opacity: .8
+            }
+
+            .status-pill.ok {
+                background: var(--ok-bg);
+                color: var(--ok);
+                border-color: var(--ok-border)
+            }
+
+            .status-pill.err {
+                background: #fee2e2;
+                color: #991b1b;
+                border-color: #fca5a5
+            }
+
+            .status-pill.warn {
+                background: var(--warn-bg);
+                color: var(--warn);
+                border-color: var(--warn-border)
+            }
+
+            .status-pill .dot {
+                width: 7px;
+                height: 7px;
+                border-radius: 50%;
+                background: currentColor
+            }
+
+        /* ============================================================
+           CREDIT BANNER
+           ============================================================ */
+        .credit-banner {
+            display: none;
+            align-items: center;
+            gap: .75rem;
+            max-width: 760px;
+            margin: .75rem auto 0;
+            padding: .65rem .9rem;
+            background: var(--warn-bg);
+            border: 1px solid var(--warn-border);
+            border-radius: var(--radius-sm);
+            color: var(--warn);
+            font-size: .82rem;
+            animation: fadeUp .35s cubic-bezier(.16,1,.3,1)
+        }
+
+            .credit-banner.visible {
+                display: flex
+            }
+
+            .credit-banner .ic {
+                flex-shrink: 0;
+                width: 22px;
+                height: 22px;
+                border-radius: 6px;
+                background: var(--warn);
+                color: var(--warn-bg);
+                display: grid;
+                place-items: center;
+                font-weight: 700;
+                font-size: .8rem
+            }
+
+            .credit-banner .txt {
+                flex: 1;
+                min-width: 0;
+                line-height: 1.4
+            }
+
+                .credit-banner .txt strong {
+                    font-weight: 700
+                }
+
+            .credit-banner a.topup {
+                flex-shrink: 0;
+                padding: .35rem .7rem;
+                border-radius: 6px;
+                background: var(--warn);
+                color: var(--warn-bg);
+                text-decoration: none;
+                font-weight: 600;
+                font-size: .78rem;
+                transition: opacity .15s
+            }
+
+                .credit-banner a.topup:hover {
+                    opacity: .85
+                }
+
+            .credit-banner .x {
+                flex-shrink: 0;
+                background: transparent;
+                border: none;
+                color: var(--warn);
+                cursor: pointer;
+                padding: 0 .15rem;
+                font-size: .9rem;
+                line-height: 1;
+                font-family: inherit;
+                opacity: .7
+            }
+
+                .credit-banner .x:hover {
+                    opacity: 1
+                }
+
+        .chat-wrap {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem 1rem
+        }
+
+        .chat {
+            max-width: 760px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem
+        }
+
+        .msg {
+            display: flex;
+            gap: .85rem;
+            animation: fadeUp .35s cubic-bezier(.16,1,.3,1)
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(8px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        .avatar {
+            flex-shrink: 0;
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
+            display: grid;
+            place-items: center;
+            font-size: .72rem;
+            font-weight: 700;
+            margin-top: 2px
+        }
+
+            .avatar.assistant {
+                background: linear-gradient(135deg,var(--accent),#e0a87f);
+                color: #fff
+            }
+
+            .avatar.user {
+                background: var(--surface-2);
+                color: var(--text-muted);
+                border: 1px solid var(--border)
+            }
+
+            .avatar.tool {
+                background: #fff9ec;
+                color: #b8941f;
+                border: 1px solid #e6b800
+            }
+
+            .avatar.system {
+                background: var(--surface-2);
+                color: var(--text-muted);
+                border: 1px solid var(--border)
+            }
+
+        .bubble {
+            flex: 1;
+            min-width: 0;
+            padding: .85rem 1.1rem;
+            border-radius: var(--radius);
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            position: relative
+        }
+
+            .bubble.user {
+                background: #1a1a1a;
+                color: #fff;
+                border-bottom-right-radius: 4px
+            }
+
+            .bubble.assistant {
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-bottom-left-radius: 4px
+            }
+
+            .bubble.tool {
+                background: #fff9ec;
+                border: 1px solid #e6b800;
+                font-family: ui-monospace,monospace;
+                font-size: .78rem;
+                line-height: 1.5;
+                border-bottom-left-radius: 4px;
+                white-space: pre-wrap
+            }
+
+            .bubble.system {
+                background: var(--surface-2);
+                color: var(--text-muted);
+                border: 1px dashed var(--border);
+                font-size: .82rem;
+                text-align: center;
+                border-radius: var(--radius)
+            }
+
+            .bubble.error {
+                background: #fee;
+                border: 1px solid #fcc;
+                color: var(--error)
+            }
+
+            .bubble.cancelled {
+                background: var(--surface-2);
+                color: var(--text-muted);
+                border: 1px dashed var(--border);
+                font-size: .82rem;
+                text-align: center;
+                border-radius: var(--radius);
+                font-style: italic
+            }
+
+            /* Credit-error bubble variant */
+            .bubble.credit {
+                background: var(--warn-bg);
+                border: 1px solid var(--warn-border);
+                color: var(--warn);
+                font-size: .88rem
+            }
+
+                .bubble.credit a {
+                    color: inherit;
+                    font-weight: 700;
+                    text-decoration: underline;
+                    text-underline-offset: 2px
+                }
+
+                    .bubble.credit a:hover {
+                        opacity: .85
+                    }
+
+        .bubble-attachments {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .4rem;
+            margin-bottom: .5rem
+        }
+
+        .bubble.user .bubble-attachments {
+            margin-bottom: .6rem
+        }
+
+        .bubble-attachment {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            background: rgba(255,255,255,.1);
+            border: 1px solid rgba(255,255,255,.2);
+            padding: .3rem .55rem;
+            border-radius: 8px;
+            font-size: .72rem;
+            font-weight: 500;
+            max-width: 260px
+        }
+
+            .bubble-attachment .name {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap
+            }
+
+            .bubble-attachment .size {
+                opacity: .6;
+                flex-shrink: 0
+            }
+
+            .bubble-attachment img {
+                width: 100%;
+                max-width: 320px;
+                border-radius: 6px;
+                display: block;
+                margin-top: .3rem
+            }
+
+            .bubble-attachment.thumb {
+                display: block;
+                background: transparent;
+                border: none;
+                padding: 0
+            }
+
+                .bubble-attachment.thumb img {
+                    width: auto;
+                    max-width: 320px;
+                    max-height: 320px;
+                    border-radius: 8px;
+                    border: 1px solid rgba(255,255,255,.2);
+                    margin: 0
+                }
+
+        .bubble.assistant p {
+            margin: .5rem 0
+        }
+
+            .bubble.assistant p:first-child {
+                margin-top: 0
+            }
+
+            .bubble.assistant p:last-child {
+                margin-bottom: 0
+            }
+
+        .bubble.assistant h1, .bubble.assistant h2, .bubble.assistant h3 {
+            margin: 1rem 0 .5rem;
+            font-weight: 600
+        }
+
+        .bubble.assistant h1 {
+            font-size: 1.15rem
+        }
+
+        .bubble.assistant h2 {
+            font-size: 1.05rem
+        }
+
+        .bubble.assistant h3 {
+            font-size: .98rem
+        }
+
+        .bubble.assistant ul, .bubble.assistant ol {
+            margin: .5rem 0;
+            padding-left: 1.35rem
+        }
+
+        .bubble.assistant code {
+            font-family: ui-monospace,monospace;
+            font-size: .85em;
+            background: var(--surface-2);
+            padding: .15em .4em;
+            border-radius: 4px;
+            border: 1px solid var(--border)
+        }
+
+        .bubble.assistant pre {
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: .85rem 1rem;
+            margin: .6rem 0;
+            overflow-x: auto;
+            font-size: .82rem;
+            line-height: 1.55
+        }
+
+            .bubble.assistant pre code {
+                background: none;
+                border: none;
+                padding: 0;
+                font-size: inherit
+            }
+
+        .bubble.assistant strong {
+            font-weight: 600
+        }
+
+        .msg-actions {
+            display: flex;
+            gap: .35rem;
+            margin-top: .5rem;
+            opacity: 0;
+            transition: opacity .15s;
+            pointer-events: none
+        }
+
+        .msg:hover .msg-actions {
+            opacity: 1;
+            pointer-events: auto
+        }
+
+        .msg-actions button {
+            background: transparent;
+            border: 1px solid transparent;
+            color: inherit;
+            font-family: inherit;
+            font-size: .72rem;
+            font-weight: 600;
+            padding: .25rem .55rem;
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+            transition: background .15s,border-color .15s,opacity .15s;
+            opacity: .65
+        }
+
+            .msg-actions button:hover {
+                opacity: 1;
+                background: rgba(255,255,255,.12);
+                border-color: rgba(255,255,255,.25)
+            }
+
+        .bubble.assistant .msg-actions button,
+        .bubble.tool .msg-actions button {
+            border-color: var(--border);
+            color: var(--text-muted)
+        }
+
+            .bubble.assistant .msg-actions button:hover,
+            .bubble.tool .msg-actions button:hover {
+                background: var(--surface-2);
+                border-color: var(--border);
+                color: var(--text)
+            }
+
+        .msg-actions button:disabled {
+            opacity: .3;
+            cursor: not-allowed
+        }
+
+        .msg-actions svg {
+            width: 12px;
+            height: 12px
+        }
+
+        .typing {
+            display: flex;
+            gap: 4px;
+            padding: .35rem 0
+        }
+
+            .typing span {
+                width: 7px;
+                height: 7px;
+                border-radius: 50%;
+                background: var(--text-muted);
+                animation: bounce 1.2s infinite
+            }
+
+                .typing span:nth-child(2) {
+                    animation-delay: .15s
+                }
+
+                .typing span:nth-child(3) {
+                    animation-delay: .3s
+                }
+
+        @keyframes bounce {
+            0%,60%,100% {
+                transform: translateY(0);
+                opacity: .4
+            }
+
+            30% {
+                transform: translateY(-5px);
+                opacity: 1
+            }
+        }
+
+        .activity {
+            max-width: 760px;
+            margin: 0 auto .6rem;
+            padding: .55rem .85rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            display: none;
+            align-items: center;
+            gap: .65rem;
+            font-size: .82rem;
+            color: var(--text-muted);
+            box-shadow: 0 1px 3px rgba(0,0,0,.04);
+            animation: activityIn .25s cubic-bezier(.16,1,.3,1)
+        }
+
+            .activity.visible {
+                display: flex
+            }
+
+        @keyframes activityIn {
+            from {
+                opacity: 0;
+                transform: translateY(4px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        .activity .arrow {
+            flex-shrink: 0;
+            color: var(--accent);
+            font-weight: 700;
+            animation: arrowPulse 1.2s ease-in-out infinite;
+            font-family: ui-monospace,monospace;
+            font-size: .95rem;
+            line-height: 1
+        }
+
+        @keyframes arrowPulse {
+            0%,100% {
+                transform: translateX(0);
+                opacity: .6
+            }
+
+            50% {
+                transform: translateX(3px);
+                opacity: 1
+            }
+        }
+
+        .activity .spinner {
+            flex-shrink: 0;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            animation: spin .7s linear infinite
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg)
+            }
+        }
+
+        .activity .tool-name {
+            font-family: ui-monospace,monospace;
+            font-size: .78rem;
+            font-weight: 600;
+            color: var(--text);
+            background: var(--surface-2);
+            padding: .1rem .45rem;
+            border-radius: 5px;
+            border: 1px solid var(--border)
+        }
+
+        .activity .label {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap
+        }
+
+        .activity .count {
+            flex-shrink: 0;
+            font-size: .7rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            background: var(--surface-2);
+            padding: .1rem .5rem;
+            border-radius: 999px;
+            border: 1px solid var(--border)
+        }
+
+        .activity.done .arrow {
+            animation: none;
+            transform: none;
+            color: var(--ok)
+        }
+
+        .activity.done .spinner {
+            display: none
+        }
+
+        .composer-wrap {
+            border-top: 1px solid var(--border);
+            background: var(--surface);
+            padding: 1rem
+        }
+
+        .attach-tray {
+            max-width: 760px;
+            margin: 0 auto .5rem;
+            display: none;
+            flex-wrap: wrap;
+            gap: .4rem;
+            padding: .5rem .6rem;
+            background: var(--surface-2);
+            border: 1px dashed var(--border);
+            border-radius: var(--radius-sm)
+        }
+
+            .attach-tray.visible {
+                display: flex
+            }
+
+        .attach-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: .3rem .5rem;
+            border-radius: 8px;
+            font-size: .75rem;
+            max-width: 260px
+        }
+
+            .attach-chip .ico {
+                flex-shrink: 0;
+                font-size: .85rem
+            }
+
+            .attach-chip .name {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                font-weight: 500
+            }
+
+            .attach-chip .size {
+                flex-shrink: 0;
+                color: var(--text-muted);
+                font-size: .68rem
+            }
+
+            .attach-chip .x {
+                flex-shrink: 0;
+                background: transparent;
+                border: none;
+                color: var(--text-muted);
+                cursor: pointer;
+                padding: 0 .15rem;
+                font-size: .85rem;
+                line-height: 1;
+                font-family: inherit
+            }
+
+                .attach-chip .x:hover {
+                    color: var(--error)
+                }
+
+            .attach-chip img {
+                width: 28px;
+                height: 28px;
+                object-fit: cover;
+                border-radius: 5px;
+                flex-shrink: 0
+            }
+
+        .composer {
+            max-width: 760px;
+            margin: 0 auto;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: .5rem .5rem .5rem .65rem;
+            display: flex;
+            align-items: flex-end;
+            gap: .4rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,.04);
+            transition: border-color .2s,box-shadow .2s
+        }
+
+            .composer:focus-within {
+                border-color: var(--accent);
+                box-shadow: 0 0 0 3px color-mix(in srgb,var(--accent) 15%,transparent)
+            }
+
+            .composer.dragover {
+                border-color: var(--accent);
+                border-style: dashed;
+                background: color-mix(in srgb,var(--accent) 5%,var(--surface))
+            }
+
+            .composer textarea {
+                flex: 1;
+                border: none;
+                background: transparent;
+                color: var(--text);
+                font-family: inherit;
+                font-size: .95rem;
+                line-height: 1.5;
+                resize: none;
+                outline: none;
+                max-height: 200px;
+                padding: .4rem 0
+            }
+
+                .composer textarea::placeholder {
+                    color: var(--text-muted)
+                }
+
+        .attach-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: 9px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-muted);
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+            flex-shrink: 0;
+            transition: background .15s,color .15s,border-color .15s;
+            align-self: flex-end
+        }
+
+            .attach-btn:hover {
+                background: var(--surface-2);
+                color: var(--text);
+                border-color: var(--accent)
+            }
+
+            .attach-btn svg {
+                width: 16px;
+                height: 16px
+            }
+
+        .send-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            border: none;
+            background: var(--accent);
+            color: #fff;
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+            flex-shrink: 0;
+            transition: background .15s,transform .1s,opacity .15s
+        }
+
+            .send-btn:hover:not(:disabled) {
+                background: color-mix(in srgb,var(--accent) 85%,#000)
+            }
+
+            .send-btn:active:not(:disabled) {
+                transform: scale(.94)
+            }
+
+            .send-btn.stop {
+                background: var(--stop)
+            }
+
+                .send-btn.stop:hover {
+                    background: var(--stop-hover)
+                }
+
+            .send-btn:disabled {
+                opacity: .4;
+                cursor: not-allowed
+            }
+
+        .composer-hint {
+            max-width: 760px;
+            margin: .6rem auto 0;
+            font-size: .72rem;
+            color: var(--text-muted);
+            text-align: center
+        }
+
+            .composer-hint kbd {
+                background: var(--surface-2);
+                border: 1px solid var(--border);
+                border-radius: 4px;
+                padding: .05em .35em;
+                font-family: inherit;
+                font-size: .9em
+            }
+
+        .drawer-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.35);
+            backdrop-filter: blur(2px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .25s;
+            z-index: 40
+        }
+
+            .drawer-overlay.open {
+                opacity: 1;
+                pointer-events: auto
+            }
+
+        .drawer {
+            position: fixed;
+            top: 0;
+            right: 0;
+            height: 100%;
+            width: min(480px,100%);
+            background: var(--surface);
+            border-left: 1px solid var(--border);
+            transform: translateX(100%);
+            transition: transform .3s cubic-bezier(.16,1,.3,1);
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            box-shadow: -10px 0 30px rgba(0,0,0,.08)
+        }
+
+            .drawer.open {
+                transform: translateX(0)
+            }
+
+        .drawer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.1rem 1.25rem;
+            border-bottom: 1px solid var(--border)
+        }
+
+            .drawer-header h2 {
+                font-size: .98rem;
+                font-weight: 600
+            }
+
+        .drawer-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.25rem
+        }
+
+        .field {
+            margin-bottom: 1.1rem
+        }
+
+            .field label {
+                display: block;
+                font-size: .78rem;
+                font-weight: 600;
+                color: var(--text-muted);
+                margin-bottom: .35rem
+            }
+
+            .field input, .field textarea, .field select {
+                width: 100%;
+                padding: .6rem .8rem;
+                background: var(--surface-2);
+                border: 1px solid var(--border);
+                border-radius: var(--radius-sm);
+                color: var(--text);
+                font-family: inherit;
+                font-size: .88rem;
+                outline: none;
+                transition: border-color .15s,background .15s
+            }
+
+            .field select {
+                cursor: pointer;
+                appearance: none;
+                -webkit-appearance: none;
+                background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b6b70' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+                background-repeat: no-repeat;
+                background-position: right .75rem center;
+                padding-right: 2rem
+            }
+
+        [data-theme="dark"] .field select {
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239a9aa0' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>")
+        }
+
+        .field textarea {
+            font-family: ui-monospace,monospace;
+            font-size: .78rem;
+            resize: vertical;
+            min-height: 60px
+        }
+
+            .field input:focus, .field textarea:focus, .field select:focus {
+                border-color: var(--accent);
+                background: var(--surface)
+            }
+
+        .field .hint {
+            font-size: .72rem;
+            color: var(--text-muted);
+            margin-top: .3rem;
+            line-height: 1.4
+        }
+
+            .field .hint code {
+                background: var(--surface-2);
+                padding: .05em .35em;
+                border-radius: 3px;
+                font-family: ui-monospace,monospace;
+                font-size: .95em;
+                border: 1px solid var(--border)
+            }
+
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 1.5rem 0
+        }
+
+        .btn {
+            width: 100%;
+            padding: .65rem 1rem;
+            border-radius: var(--radius-sm);
+            border: none;
+            background: var(--accent);
+            color: #fff;
+            cursor: pointer;
+            font-size: .88rem;
+            font-weight: 600;
+            transition: background .15s,transform .1s,opacity .15s
+        }
+
+            .btn:hover:not(:disabled) {
+                background: color-mix(in srgb,var(--accent) 85%,#000)
+            }
+
+            .btn:active:not(:disabled) {
+                transform: scale(.98)
+            }
+
+            .btn:disabled {
+                opacity: .5;
+                cursor: not-allowed
+            }
+
+            .btn.secondary {
+                background: var(--surface-2);
+                color: var(--text);
+                border: 1px solid var(--border)
+            }
+
+                .btn.secondary:hover:not(:disabled) {
+                    background: var(--border)
+                }
+
+        .probe-results {
+            margin-top: .75rem;
+            padding: .75rem;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-family: ui-monospace,monospace;
+            font-size: .72rem;
+            line-height: 1.6;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            color: var(--text-muted)
+        }
+
+        .empty-state {
+            max-width: 600px;
+            margin: 4rem auto 0;
+            text-align: center;
+            animation: fadeUp .5s cubic-bezier(.16,1,.3,1)
+        }
+
+            .empty-state .logo-lg {
+                width: 56px;
+                height: 56px;
+                border-radius: 16px;
+                background: linear-gradient(135deg,var(--accent),#e0a87f);
+                display: grid;
+                place-items: center;
+                color: #fff;
+                font-weight: 700;
+                font-size: 1.4rem;
+                margin: 0 auto 1.25rem;
+                box-shadow: 0 8px 24px color-mix(in srgb,var(--accent) 30%,transparent)
+            }
+
+            .empty-state h2 {
+                font-size: 1.35rem;
+                font-weight: 600;
+                letter-spacing: -.02em;
+                margin-bottom: .4rem
+            }
+
+            .empty-state p {
+                color: var(--text-muted);
+                font-size: .92rem;
+                margin-bottom: 1.75rem
+            }
+
+        .suggestions {
+            display: grid;
+            gap: .6rem;
+            text-align: left
+        }
+
+        .suggestion {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: .8rem 1rem;
+            cursor: pointer;
+            font-size: .88rem;
+            color: var(--text);
+            transition: border-color .15s,transform .1s;
+            text-align: left;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: .65rem
+        }
+
+            .suggestion:hover {
+                border-color: var(--accent);
+                transform: translateY(-1px)
+            }
+
+            .suggestion .ico {
+                color: var(--accent);
+                flex-shrink: 0;
+                font-size: .95rem
+            }
+
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: var(--text);
+            color: var(--bg);
+            padding: .6rem 1.1rem;
+            border-radius: 999px;
+            font-size: .82rem;
+            font-weight: 500;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .25s,transform .25s;
+            z-index: 100;
+            box-shadow: 0 8px 24px rgba(0,0,0,.15)
+        }
+
+            .toast.show {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0)
+            }
+
+        @media(max-width:640px) {
+            body {
+                font-size: 14px
+            }
+
+            header {
+                padding: .85rem 1rem
+            }
+
+            .chat-wrap {
+                padding: 1rem .75rem
+            }
+
+            .composer-wrap {
+                padding: .75rem
+            }
+
+            .msg {
+                gap: .6rem
+            }
+
+            .avatar {
+                width: 28px;
+                height: 28px;
+                font-size: .68rem
+            }
+
+            .msg-actions {
+                opacity: 1;
+                pointer-events: auto
+            }
+
+            .activity {
+                font-size: .78rem
+            }
+
+            .credit-banner {
+                flex-wrap: wrap
+            }
+        }
+
+        @media(prefers-reduced-motion:reduce) {
+            *, *::before, *::after {
+                animation-duration: .01ms !important;
+                transition-duration: .01ms !important
+            }
+        }
+    </style>
+</head>
+<body>
+	<div>
+        <input type="hidden" id="hdnProjectDetail" />
+        <input type="hidden" id="hdnProjectName" />
+        <input type="hidden" id="hdnUserId" />
+        <input type="hidden" id="hdnUserEmail" />
+        <input type="hidden" id="hdnUserFirstName" />
+        <input type="hidden" id="hdnUserLastName" />
+        <input type="hidden" id="hdnUserDetail" />
+        <input type="hidden" id="hdnAccessTokenDetail" />
+        <input type="hidden" id="hdnLicenseJson" />
+        <input type="hidden" ID="hdnDefaultModel" />
+    </div>
+    <header>
+        <div class="brand">
+            <div class="logo">C</div>
+            <div class="brand-text">
+                <h1>Claude Agent</h1>
+                <p id="modeLabel">Chat mode · no tools</p>
+            </div>
+        </div>
+        <div class="header-actions">
+            <span class="status-pill" id="mcpStatus" title="Click to open settings"><span class="dot"></span> MCP off</span>
+            <button class="icon-btn" id="themeBtn" title="Theme">◐</button>
+            <button class="icon-btn" id="settingsBtn" title="Settings">⚙</button>
+        </div>
+    </header>
+
+    <div class="credit-banner" id="creditBanner">
+        <div class="ic">!</div>
+        <div class="txt" id="creditText">
+            <strong>Out of credits.</strong> Add funds to your Anthropic account to keep chatting.
+        </div>
+        <a class="topup" id="creditLink" href="https://platform.claude.com/settings/billing" target="_blank" rel="noopener">Add credits</a>
+        <button class="x" id="creditDismiss" title="Dismiss" aria-label="Dismiss">✕</button>
+    </div>
+
+    <div class="chat-wrap" id="chatWrap">
+        <div class="chat" id="chat"></div>
+        <div class="empty-state" id="emptyState">
+            <div class="logo-lg">C</div>
+            <h2>How can I help you today?</h2>
+            <p>Works as plain chat. Connect MCP in Settings to unlock tools. Attach files with the 📎 button.</p>
+            <div class="suggestions">
+                <button class="suggestion" data-prompt="Explain how MCP works in one paragraph.">
+                    <span class="ico">◇</span> Explain how MCP works
+                </button>
+                <button class="suggestion" data-prompt="Write a JavaScript debounce function with a usage example.">
+                    <span class="ico">◇</span> Write a debounce function
+                </button>
+                <button class="suggestion" data-prompt="What tools do you have available right now?">
+                    <span class="ico">◇</span> List available tools
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="composer-wrap">
+        <div class="activity" id="activity">
+            <div class="arrow">▶</div>
+            <div class="spinner"></div>
+            <span class="label">Using <span class="tool-name" id="activityTool">…</span></span>
+            <span class="count" id="activityCount" style="display:none"></span>
+        </div>
+        <div class="attach-tray" id="attachTray"></div>
+        <div class="composer" id="composer">
+            <button class="attach-btn" id="attachBtn" title="Attach files" aria-label="Attach files">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                </svg>
+            </button>
+            <input type="file" id="fileInput" multiple
+                   accept="image/*,application/pdf,text/*,.md,.json,.csv,.log,.yaml,.yml,.xml,.html,.css,.js,.ts,.py,.rb,.go,.rs,.java,.c,.cpp,.h,.sh"
+                   style="display:none">
+            <textarea id="userInput" placeholder="Message Claude..." rows="1"></textarea>
+            <button class="send-btn" id="sendBtn" aria-label="Send">
+                <svg id="sendIcon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 19V5M5 12l7-7 7 7" />
+                </svg>
+            </button>
+        </div>
+        <div class="composer-hint" id="composerHint">
+            <kbd>Enter</kbd> to send · <kbd>Shift</kbd>+<kbd>Enter</kbd> for new line · drag files onto the box
+        </div>
+    </div>
+
+    <div class="drawer-overlay" id="overlay"></div>
+    <aside class="drawer" id="drawer">
+        <div class="drawer-header">
+            <h2>Settings</h2>
+            <button class="icon-btn" id="closeDrawer" aria-label="Close">✕</button>
+        </div>
+        <div class="drawer-body">
+            <div class="field">
+                <label for="apiKey">Anthropic API Key</label>
+                <input type="password" id="apiKey" placeholder="sk-ant-..." autocomplete="off">
+                <div class="hint">
+                    Stored only in this page. Check balance and buy credits at
+                    <a href="https://platform.claude.com/settings/billing" target="_blank" rel="noopener"
+                       style="color:var(--accent);font-weight:600">platform.claude.com/settings/billing</a>.
+                </div>
+            </div>
+            <div class="field">
+                <label for="model">Model</label>
+                <select id="model">
+                    <option value="claude-opus-4-7">Claude Opus 4.7 — most capable</option>
+                    <option value="claude-sonnet-5-5" selected>Claude Sonnet 5.5 — balanced (default)</option>
+                    <option value="claude-haiku-4-5">Claude Haiku 4.5 — fastest</option>
+                    <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
+                    <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
+                    <option value="claude-3-opus-20240229">Claude 3 Opus</option>
+                </select>
+                <div class="hint">Model IDs must match what your Anthropic account has access to.</div>
+            </div>
+            <div class="divider"></div>
+            <div class="field">
+                <label for="mcpUrl">MCP Server URL (HTTPS)</label>
+                <input type="text" id="mcpUrl" placeholder="https://your-mcp.example/mcp" value="https://trimble-claude-mcp-g86i.onrender.com/mcp">
+            </div>
+            <div class="field">
+                <label for="resourceOverride">Resource / Audience override (optional)</label>
+                <input type="text" id="resourceOverride" placeholder="Auto-derived from .well-known">
+            </div>
+            <button class="btn secondary" id="probeBtn">Probe server endpoints</button>
+            <div class="probe-results" id="probeResults" style="display:none"></div>
+            <div class="divider"></div>
+            <div class="field">
+                <label for="trimbleClientId">OAuth Client ID</label>
+                <input type="text" id="trimbleClientId" placeholder="Leave blank for DCR" autocomplete="off">
+                <div class="hint">
+                    Register redirect URI <code id="redirectDisplay"></code>
+                </div>
+                <div style="height:.5rem"></div>
+                <button class="btn secondary" id="registerClientBtn">Register new client (DCR)</button>
+                <div style="height:.5rem"></div>
+                <button class="btn secondary" id="clearClientBtn">Clear stored client</button>
+                <div class="probe-results" id="dcrResults" style="display:none"></div>
+            </div>
+            <div class="field">
+                <label for="trimbleScope">OAuth Scopes (space-separated)</label>
+                <input type="text" id="trimbleScope" placeholder="openid profile email" value="openid TSEA_APP">
+            </div>
+            <div class="divider"></div>
+            <button class="btn" id="connectBtn">Connect MCP</button>
+            <div style="height:.5rem"></div>
+            <button class="btn secondary" id="reauthBtn">Re-authenticate MCP</button>
+            <div style="height:.5rem"></div>
+            <button class="btn secondary" id="disconnectBtn">Disconnect MCP</button>
+            <div class="divider"></div>
+            <div class="field">
+                <label for="manualToken">Manual Access Token (advanced)</label>
+                <textarea id="manualToken" placeholder="Paste the hex MCP token from the server log here"></textarea>
+                <div class="hint">
+                    The MCP server issues its own opaque token
+                    (a 96-character hex string). Paste it here if the OAuth flow
+                    gives you a Trimble JWT instead.
+                </div>
+                <div style="height:.5rem"></div>
+                <button class="btn secondary" id="applyTokenBtn">Apply manual token</button>
+            </div>
+            <div class="divider"></div>
+            <button class="btn secondary" id="tokenDebugBtn">Decode current token</button>
+            <div class="probe-results" id="tokenDebug" style="display:none"></div>
+            <div class="divider"></div>
+            <button class="btn secondary" id="resetBtn">Reset conversation</button>
+        </div>
+    </aside>
+
+    <div class="toast" id="toast"></div>
+
+    <script type="module">
+        const __params = new URLSearchParams(location.search);
+        const __isCallback = window.opener && (__params.has('code') || __params.has('error'));
+
+        if (__isCallback) {
+            const payload = { type: 'oauth-callback', query: location.search };
+            for (const [k, v] of __params) payload[k] = v;
+            window.opener.postMessage(payload, location.origin);
+            setTimeout(() => window.close(), 50);
+        } else {
+            boot();
+        }
+
+        function boot() {
+            const API_URL = 'https://api.anthropic.com/v1/messages';
+            const ANTHROPIC_VERSION = '2023-06-01';
+            const MCP_PROTOCOL_VERSION = '2024-11-05';
+            const BILLING_URL = 'https://platform.claude.com/settings/billing';
+            const MAX_FILE_BYTES = 20 * 1024 * 1024;
+            const MAX_FILES = 10;
+            const LS = {
+                mcpTokens: 'agent:mcp:tokens',
+                mcpVerifier: 'agent:mcp:verifier',
+                mcpState: 'agent:mcp:state',
+                theme: 'agent-theme',
+                trimbleClientId: 'agent:trimble:clientId',
+                trimbleScope: 'agent:trimble:scope',
+                mcpUrl: 'agent:mcp:url',
+                apiKey: 'agent:anthropic:key',
+                model: 'agent:anthropic:model',
+                manualToken: 'agent:mcp:manualToken',
+                resourceOverride: 'agent:mcp:resourceOverride',
+                discoveredResource: 'agent:mcp:discoveredResource',
+                authServer: 'agent:mcp:authServer',
+                dynamicClient: 'agent:mcp:dynamicClient',
+                creditBannerDismissed: 'agent:credit:bannerDismissed'
+            };
+
+            const AGENT_SYSTEM_PROMPT = `You are Claude, an AI assistant created by Anthropic. You are helpful, harmless, and honest.
+
+# Core behavior
+- Be direct and honest. Do not flatter or pad responses. If you don't know something, say so.
+- Match the user's formality and technical depth.
+- If a request is ambiguous, ask one focused question or state your assumption.
+- Correct factual errors politely.
+
+# Reasoning
+Think through problems step by step. Identify what the user actually wants, break the problem down, check your work, then answer.
+
+# Responding
+- Lead with the answer.
+- Use Markdown for code with language tags.
+- Produce complete, runnable examples unless the user asks for a snippet.
+- Keep tone warm but not performative.
+
+# Tool use
+- Use a tool when the request maps to its capability. If no tools are available, answer from your own knowledge.
+- Before calling a tool, state briefly what you're about to do.
+- After a tool returns, summarize the result in plain language.
+- Never fabricate tool output.
+- If a tool fails with a permission or auth error, tell the user plainly and try to help without it. Do not retry the same tool.
+
+# Style
+- Concise by default. No emoji unless the user uses them first.
+- End responses when the answer is complete.`;
+
+            const app = {
+                mcp: { url: null, sessionId: null, protocol: null, tools: [], connected: false },
+                history: [],
+                pendingAttachments: [],
+                sending: false,
+                connecting: false,
+                pendingAuth: false,
+                authFlowInProgress: false,
+                accessToken: null,
+                refreshToken: null,
+                tokenExpiry: 0,
+                refreshing: null,
+                abortController: null,
+                cancelled: false,
+                currentTool: null,
+                toolCallCount: 0,
+                failedTools: new Set()
+            };
+
+            const $ = id => document.getElementById(id);
+            const chatEl = $('chat');
+            const chatWrap = $('chatWrap');
+            const emptyState = $('emptyState');
+            const sendBtn = $('sendBtn');
+            const sendIcon = $('sendIcon');
+            const composerHint = $('composerHint');
+            const userInput = $('userInput');
+            const composer = $('composer');
+            const drawer = $('drawer');
+            const overlay = $('overlay');
+            const toast = $('toast');
+            const mcpStatus = $('mcpStatus');
+            const modeLabel = $('modeLabel');
+            const probeResults = $('probeResults');
+            const tokenDebug = $('tokenDebug');
+            const dcrResults = $('dcrResults');
+            const activity = $('activity');
+            const activityTool = $('activityTool');
+            const activityCount = $('activityCount');
+            const attachBtn = $('attachBtn');
+            const fileInput = $('fileInput');
+            const attachTray = $('attachTray');
+            const creditBanner = $('creditBanner');
+            const creditText = $('creditText');
+            const creditLink = $('creditLink');
+            const creditDismiss = $('creditDismiss');
+
+            let toastTimer;
+            function showToast(msg) {
+                toast.textContent = msg;
+                toast.classList.add('show');
+                clearTimeout(toastTimer);
+                toastTimer = setTimeout(() => toast.classList.remove('show'), 2400);
+            }
+
+            // ============================================================
+            //  CREDIT / BILLING BANNER
+            //  Shown when the Anthropic API returns a credit or billing
+            //  error. The link points at the user's billing page.
+            // ============================================================
+            function showCreditBanner(message) {
+                creditText.innerHTML =
+                    '<strong>Out of credits.</strong> ' +
+                    (message ? escapeHtml(message) : 'Add funds to your Anthropic account to keep chatting.');
+                creditLink.href = BILLING_URL;
+                creditBanner.classList.add('visible');
+                // Scroll into view if hidden behind header
+                requestAnimationFrame(() => {
+                    creditBanner.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                });
+            }
+
+            function hideCreditBanner() {
+                creditBanner.classList.remove('visible');
+            }
+
+            creditDismiss.addEventListener('click', () => {
+                hideCreditBanner();
+                sessionStorage.setItem(LS.creditBannerDismissed, '1');
+            });
+
+            function escapeHtml(s) {
+                return String(s).replace(/[&<>"']/g, c => ({
+                    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+                }[c]));
+            }
+
+            // Heuristic: does this API error body look like a billing issue?
+            function isCreditError(status, bodyText) {
+                if (status === 402) return true;
+                const t = (bodyText || '').toLowerCase();
+                return /credit balance|insufficient|out of credits|billing|payment required|quota exceeded|exceeded.*quota/.test(t);
+            }
+
+            function setPill(el, text, kind) {
+                el.className = 'status-pill' + (kind ? ' ' + kind : '');
+                el.innerHTML = `<span class="dot"></span> ${text}`;
+            }
+
+            function updateModeLabel() {
+                const usable = app.mcp.tools.filter(t => !app.failedTools.has(t.name));
+                if (app.mcp.connected && usable.length > 0) {
+                    const failed = app.failedTools.size;
+                    modeLabel.textContent = `Tool mode · ${usable.length} tool${usable.length === 1 ? '' : 's'}` +
+                        (failed ? ` · ${failed} unavailable` : '');
+                } else if (app.mcp.connected) {
+                    modeLabel.textContent = 'MCP connected · no usable tools';
+                } else {
+                    modeLabel.textContent = 'Chat mode · no tools';
+                }
+            }
+
+            function showActivity(toolName) {
+                app.currentTool = toolName || null;
+                if (toolName) app.toolCallCount++;
+                activityTool.textContent = toolName || 'thinking';
+                if (app.toolCallCount > 1) {
+                    activityCount.textContent = `${app.toolCallCount} calls`;
+                    activityCount.style.display = '';
+                } else {
+                    activityCount.style.display = 'none';
+                }
+                activity.classList.remove('done');
+                activity.classList.add('visible');
+            }
+
+            function showActivityDone() {
+                if (!activity.classList.contains('visible')) return;
+                activity.classList.add('done');
+                activity.querySelector('.label').innerHTML =
+                    app.toolCallCount > 0
+                        ? `Finished <span class="tool-name">${app.toolCallCount} tool call${app.toolCallCount === 1 ? '' : 's'}</span>`
+                        : 'Finished';
+                activityCount.style.display = 'none';
+                setTimeout(() => {
+                    activity.classList.remove('visible', 'done');
+                    activity.querySelector('.label').innerHTML =
+                        'Using <span class="tool-name" id="activityTool">…</span>';
+                }, 600);
+            }
+
+            function resetActivity() {
+                app.currentTool = null;
+                app.toolCallCount = 0;
+                activity.classList.remove('visible', 'done');
+                activity.querySelector('.label').innerHTML =
+                    'Using <span class="tool-name" id="activityTool">…</span>';
+            }
+
+            const SEND_ICON_SVG = `<path d="M12 19V5M5 12l7-7 7 7"/>`;
+            const STOP_ICON_SVG = `<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none"/>`;
+
+            function setSendMode(isSending) {
+                sendBtn.disabled = false;
+                if (isSending) {
+                    sendBtn.classList.add('stop');
+                    sendBtn.setAttribute('aria-label', 'Stop');
+                    sendBtn.title = 'Stop generating';
+                    sendIcon.innerHTML = STOP_ICON_SVG;
+                    composerHint.innerHTML = '<kbd>Esc</kbd> to stop';
+                } else {
+                    sendBtn.classList.remove('stop');
+                    sendBtn.setAttribute('aria-label', 'Send');
+                    sendBtn.title = 'Send';
+                    sendIcon.innerHTML = SEND_ICON_SVG;
+                    composerHint.innerHTML = '<kbd>Enter</kbd> to send · <kbd>Shift</kbd>+<kbd>Enter</kbd> for new line · drag files onto the box';
+                }
+            }
+
+            function cancelProcessing() {
+                if (!app.sending) return;
+                app.cancelled = true;
+                if (app.abortController) {
+                    try { app.abortController.abort(); } catch { }
+                }
+            }
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && app.sending) {
+                    e.preventDefault();
+                    cancelProcessing();
+                }
+            });
+
+            function normalizeScope(raw) {
+                if (!raw) return 'openid profile email';
+                let parts = raw.trim().split(/\s+/);
+                const expanded = [];
+                for (const p of parts) {
+                    const sub = p.split(/(?<=[a-z])(?=[A-Z])/);
+                    expanded.push(...sub);
+                }
+                const seen = new Set();
+                const out = [];
+                for (const s of expanded) {
+                    const key = s.toLowerCase();
+                    if (!seen.has(key) && s) { seen.add(key); out.push(s); }
+                }
+                return out.join(' ');
+            }
+
+            function randomString(len = 64) {
+                const bytes = new Uint8Array(len);
+                crypto.getRandomValues(bytes);
+                return Array.from(bytes, b => ('0' + (b & 0xff).toString(16)).slice(-2)).join('');
+            }
+            async function sha256Base64Url(str) {
+                const data = new TextEncoder().encode(str);
+                const hash = await crypto.subtle.digest('SHA-256', data);
+                return btoa(String.fromCharCode(...new Uint8Array(hash)))
+                    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            }
+
+            function decodeJwtPayload(token) {
+                if (!token || token.split('.').length !== 3) return null;
+                try {
+                    const p = token.split('.')[1];
+                    return JSON.parse(atob(p.replace(/-/g, '+').replace(/_/g, '/')));
+                } catch { return null; }
+            }
+
+            function isJwt(token) {
+                return typeof token === 'string' && token.split('.').length === 3;
+            }
+
+            // ============================================================
+            //  FILE ATTACHMENTS
+            // ============================================================
+            function formatBytes(n) {
+                if (n < 1024) return n + ' B';
+                if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+                return (n / 1024 / 1024).toFixed(1) + ' MB';
+            }
+
+            function isTextMime(mime, name) {
+                if (!mime) {
+                    return /\.(txt|md|json|csv|log|yaml|yml|xml|html|css|js|ts|jsx|tsx|py|rb|go|rs|java|c|cpp|h|hpp|sh|bat|ps1)$/i.test(name || '');
+                }
+                return mime.startsWith('text/') ||
+                    /application\/(json|xml|x-yaml|yaml|x-sh|javascript|x-httpd-php)/.test(mime);
+            }
+
+            function readFileAsDataURL(file) {
+                return new Promise((resolve, reject) => {
+                    const r = new FileReader();
+                    r.onload = () => resolve(r.result);
+                    r.onerror = () => reject(r.error || new Error('read failed'));
+                    r.readAsDataURL(file);
+                });
+            }
+
+            function readFileAsText(file) {
+                return new Promise((resolve, reject) => {
+                    const r = new FileReader();
+                    r.onload = () => resolve(r.result);
+                    r.onerror = () => reject(r.error || new Error('read failed'));
+                    r.readAsText(file);
+                });
+            }
+
+            async function stageFile(file) {
+                if (!file) return;
+                if (file.size > MAX_FILE_BYTES) {
+                    showToast(`"${file.name}" is too large (max ${formatBytes(MAX_FILE_BYTES)})`);
+                    return;
+                }
+                if (app.pendingAttachments.length >= MAX_FILES) {
+                    showToast(`Max ${MAX_FILES} files per message`);
+                    return;
+                }
+                if (app.pendingAttachments.some(a => a.name === file.name && a.size === file.size)) {
+                    showToast(`"${file.name}" already attached`);
+                    return;
+                }
+                const mime = file.type || '';
+                const kind = mime.startsWith('image/') ? 'image'
+                    : mime === 'application/pdf' ? 'pdf'
+                        : isTextMime(mime, file.name) ? 'text'
+                            : 'binary';
+                let dataUrl = null, textContent = null, dataBase64 = null;
+                try {
+                    if (kind === 'image' || kind === 'pdf') {
+                        dataUrl = await readFileAsDataURL(file);
+                        dataBase64 = dataUrl.split(',')[1] || '';
+                    } else if (kind === 'text') {
+                        textContent = await readFileAsText(file);
+                    }
+                } catch (e) {
+                    showToast(`Could not read "${file.name}"`);
+                    return;
+                }
+                app.pendingAttachments.push({
+                    id: crypto.randomUUID(),
+                    name: file.name,
+                    size: file.size,
+                    mime,
+                    kind,
+                    dataUrl,
+                    dataBase64,
+                    textContent
+                });
+                renderAttachTray();
+            }
+
+            function removeAttachment(id) {
+                app.pendingAttachments = app.pendingAttachments.filter(a => a.id !== id);
+                renderAttachTray();
+            }
+
+            function renderAttachTray() {
+                attachTray.innerHTML = '';
+                if (app.pendingAttachments.length === 0) {
+                    attachTray.classList.remove('visible');
+                    return;
+                }
+                attachTray.classList.add('visible');
+                for (const a of app.pendingAttachments) {
+                    const chip = document.createElement('div');
+                    chip.className = 'attach-chip';
+                    if (a.kind === 'image' && a.dataUrl) {
+                        const img = document.createElement('img');
+                        img.src = a.dataUrl; img.alt = '';
+                        chip.appendChild(img);
+                    } else {
+                        const ico = document.createElement('span');
+                        ico.className = 'ico';
+                        ico.textContent = a.kind === 'pdf' ? '📄'
+                            : a.kind === 'text' ? '📝'
+                                : '📎';
+                        chip.appendChild(ico);
+                    }
+                    const name = document.createElement('span');
+                    name.className = 'name';
+                    name.textContent = a.name;
+                    name.title = a.name;
+                    chip.appendChild(name);
+                    const size = document.createElement('span');
+                    size.className = 'size';
+                    size.textContent = formatBytes(a.size);
+                    chip.appendChild(size);
+                    const x = document.createElement('button');
+                    x.className = 'x';
+                    x.type = 'button';
+                    x.title = 'Remove';
+                    x.textContent = '✕';
+                    x.addEventListener('click', () => removeAttachment(a.id));
+                    chip.appendChild(x);
+                    attachTray.appendChild(chip);
+                }
+            }
+
+            function attachmentToBlocks(a) {
+                if (a.kind === 'image') {
+                    return [{
+                        type: 'image',
+                        source: {
+                            type: 'base64',
+                            media_type: a.mime || 'image/png',
+                            data: a.dataBase64
+                        }
+                    }];
+                }
+                if (a.kind === 'pdf') {
+                    return [{
+                        type: 'document',
+                        source: {
+                            type: 'base64',
+                            media_type: 'application/pdf',
+                            data: a.dataBase64
+                        },
+                        title: a.name
+                    }];
+                }
+                if (a.kind === 'text') {
+                    const body = a.textContent || '';
+                    return [{
+                        type: 'text',
+                        text: `\`\`\`${a.name}\n${body}\n\`\`\``
+                    }];
+                }
+                return [{
+                    type: 'text',
+                    text: `[Attached file: ${a.name} · ${formatBytes(a.size)} · not previewable]`
+                }];
+            }
+
+            // ============================================================
+            //  OAUTH ENDPOINT + RESOURCE DISCOVERY
+            // ============================================================
+            function getMcpOrigin() {
+                const url = $('mcpUrl').value.trim() || localStorage.getItem(LS.mcpUrl) || '';
+                try { return new URL(url).origin; }
+                catch { return null; }
+            }
+
+            function getOAuthEndpoints() {
+                const override = localStorage.getItem(LS.authServer);
+                const origin = override || getMcpOrigin() || 'https://trimble-claude-mcp-g86i.onrender.com';
+                return {
+                    authorizeEndpoint: origin.replace(/\/$/, '') + '/oauth/authorize',
+                    tokenEndpoint: origin.replace(/\/$/, '') + '/oauth/token',
+                    registerEndpoint: origin.replace(/\/$/, '') + '/oauth/register',
+                    origin
+                };
+            }
+
+            function getResourceValue() {
+                const override = $('resourceOverride').value.trim();
+                if (override) return override;
+                const discovered = localStorage.getItem(LS.discoveredResource);
+                if (discovered) return discovered;
+                return $('mcpUrl').value.trim();
+            }
+
+            async function discoverEndpoints() {
+                const origin = getMcpOrigin();
+                if (!origin) return null;
+                const wkUrl = origin + '/.well-known/oauth-protected-resource';
+                try {
+                    const r = await fetch(wkUrl);
+                    if (!r.ok) return null;
+                    const data = await r.json();
+                    if (data.resource) {
+                        localStorage.setItem(LS.discoveredResource, data.resource);
+                    }
+                    if (Array.isArray(data.authorization_servers) && data.authorization_servers[0]) {
+                        localStorage.setItem(LS.authServer, data.authorization_servers[0]);
+                    }
+                    console.log('[discovery] resource =', data.resource,
+                        '· authServer =', data.authorization_servers?.[0],
+                        '· scopes =', data.scopes_supported);
+                    return data;
+                } catch (e) {
+                    console.warn('[discovery] failed', e.message);
+                    return null;
+                }
+            }
+
+            async function runDcrManually() {
+                dcrResults.style.display = 'block';
+                dcrResults.textContent = 'Registering…\n';
+                const lines = [];
+                const ep = getOAuthEndpoints();
+                lines.push('Endpoint: ' + ep.registerEndpoint);
+                const redirectUri = location.origin + location.pathname;
+                lines.push('Redirect: ' + redirectUri);
+                const body = {
+                    client_name: 'Claude Agent Browser',
+                    redirect_uris: [redirectUri],
+                    grant_types: ['authorization_code', 'refresh_token'],
+                    response_types: ['code'],
+                    token_endpoint_auth_method: 'none',
+                    scope: normalizeScope($('trimbleScope').value)
+                };
+                lines.push('');
+                try {
+                    const r = await fetch(ep.registerEndpoint, {
+                        method: 'POST',
+                        headers: { 'content-type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                    lines.push('Status: ' + r.status + ' ' + r.statusText);
+                    const text = await r.text();
+                    lines.push('Body: ' + text.slice(0, 800));
+                    if (r.ok) {
+                        try {
+                            const info = JSON.parse(text);
+                            if (info.client_id) {
+                                localStorage.setItem(LS.dynamicClient, JSON.stringify(info));
+                                lines.push('');
+                                lines.push('✓ Registered client_id = ' + info.client_id);
+                                showToast('Client registered');
+                            } else {
+                                lines.push('');
+                                lines.push('⚠ Response had no client_id field');
+                            }
+                        } catch (e) {
+                            lines.push('⚠ Response was not JSON: ' + e.message);
+                        }
+                    } else {
+                        lines.push('');
+                        lines.push('⚠ Registration failed — the server may not support DCR.');
+                        lines.push('You may need a client_id from whoever runs the server.');
+                    }
+                } catch (e) {
+                    lines.push('Error: ' + e.message);
+                }
+                dcrResults.textContent = lines.join('\n');
+                console.log('[dcr]', lines.join('\n'));
+            }
+
+            function clearStoredClient() {
+                localStorage.removeItem(LS.dynamicClient);
+                localStorage.removeItem(LS.trimbleClientId);
+                $('trimbleClientId').value = '';
+                dcrResults.style.display = 'block';
+                dcrResults.textContent = 'Cleared stored client id and dynamic client.\n' +
+                    'You can now click "Register new client" to get a fresh one.';
+                showToast('Stored client cleared');
+            }
+
+            async function registerDynamicClient() {
+                const { registerEndpoint } = getOAuthEndpoints();
+                const redirectUri = location.origin + location.pathname;
+                const body = {
+                    client_name: 'Claude Agent Browser',
+                    redirect_uris: [redirectUri],
+                    grant_types: ['authorization_code', 'refresh_token'],
+                    response_types: ['code'],
+                    token_endpoint_auth_method: 'none',
+                    scope: normalizeScope($('trimbleScope').value)
+                };
+                try {
+                    const r = await fetch(registerEndpoint, {
+                        method: 'POST',
+                        headers: { 'content-type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                    if (!r.ok) {
+                        const text = await r.text().catch(() => '');
+                        console.warn('[dcr] register failed', r.status, text);
+                        return null;
+                    }
+                    const info = await r.json();
+                    if (info.client_id) {
+                        localStorage.setItem(LS.dynamicClient, JSON.stringify(info));
+                        console.log('[dcr] registered client_id =', info.client_id);
+                        return info.client_id;
+                    }
+                } catch (e) {
+                    console.warn('[dcr] error', e.message);
+                }
+                return null;
+            }
+
+            function getClientId() {
+                const manual = $('trimbleClientId').value.trim();
+                if (manual) return manual;
+                try {
+                    const dyn = JSON.parse(localStorage.getItem(LS.dynamicClient) || 'null');
+                    if (dyn?.client_id) return dyn.client_id;
+                } catch { }
+                return null;
+            }
+
+            function persistSettings() {
+                const scopeNorm = normalizeScope($('trimbleScope').value.trim());
+                $('trimbleScope').value = scopeNorm;
+                localStorage.setItem(LS.trimbleClientId, $('trimbleClientId').value.trim());
+                localStorage.setItem(LS.trimbleScope, scopeNorm);
+                localStorage.setItem(LS.mcpUrl, $('mcpUrl').value.trim());
+                localStorage.setItem(LS.apiKey, $('apiKey').value.trim());
+                localStorage.setItem(LS.model, $('model').value);
+                localStorage.setItem(LS.resourceOverride, $('resourceOverride').value.trim());
+            }
+            function loadSettings() {
+                $('apiKey').value = localStorage.getItem(LS.apiKey) || '';
+                const storedModel = localStorage.getItem(LS.model) || 'claude-sonnet-5-5';
+                const sel = $('model');
+                if (!Array.from(sel.options).some(o => o.value === storedModel)) {
+                    const opt = document.createElement('option');
+                    opt.value = storedModel;
+                    opt.textContent = storedModel + ' (custom)';
+                    sel.appendChild(opt);
+                }
+                sel.value = storedModel;
+                $('trimbleClientId').value = localStorage.getItem(LS.trimbleClientId) || '';
+                const stored = localStorage.getItem(LS.trimbleScope) || 'openid profile email';
+                $('trimbleScope').value = normalizeScope(stored);
+                $('mcpUrl').value = localStorage.getItem(LS.mcpUrl) || '';
+                $('manualToken').value = localStorage.getItem(LS.manualToken) || '';
+                $('resourceOverride').value = localStorage.getItem(LS.resourceOverride) || '';
+            }
+
+            function loadTokens() {
+                const manual = localStorage.getItem(LS.manualToken);
+                if (manual) {
+                    app.accessToken = manual;
+                    app.tokenExpiry = 0;
+                    app.refreshToken = null;
+                    return;
+                }
+                try {
+                    const t = JSON.parse(localStorage.getItem(LS.mcpTokens) || 'null');
+                    if (!t?.access_token) return;
+                    const payload = decodeJwtPayload(t.access_token);
+                    const expFromJwt = payload?.exp ? payload.exp * 1000 : 0;
+                    const expFromStore = t.expires_at || 0;
+                    app.accessToken = t.access_token;
+                    app.refreshToken = t.refresh_token || null;
+                    app.tokenExpiry = Math.max(expFromJwt, expFromStore);
+                } catch (e) { console.warn('[token] load failed', e); }
+            }
+
+            function saveTokens(t) {
+                const payload = decodeJwtPayload(t.access_token || '');
+                const expFromJwt = payload?.exp ? payload.exp * 1000 : 0;
+                const expFromExpiresIn = t.expires_in ? Date.now() + t.expires_in * 1000 : 0;
+                app.accessToken = t.access_token || null;
+                app.refreshToken = t.refresh_token || null;
+                app.tokenExpiry = Math.max(expFromJwt, expFromExpiresIn) || Date.now() + 3600_000;
+                localStorage.setItem(LS.mcpTokens, JSON.stringify({ ...t, expires_at: app.tokenExpiry }));
+                console.log('[token] saved · shape:',
+                    isJwt(t.access_token) ? 'JWT' : 'opaque',
+                    '· prefix:', (t.access_token || '').slice(0, 20));
+            }
+
+            function clearAuthCache() {
+                localStorage.removeItem(LS.mcpTokens);
+                localStorage.removeItem(LS.discoveredResource);
+                sessionStorage.removeItem(LS.mcpVerifier);
+                sessionStorage.removeItem(LS.mcpState);
+                app.accessToken = null;
+                app.refreshToken = null;
+                app.tokenExpiry = 0;
+                app.failedTools.clear();
+            }
+
+            async function refreshAccessToken() {
+                if (app.refreshing) return app.refreshing;
+                if (!app.refreshToken) throw new Error('No refresh token — sign in again');
+                app.refreshing = (async () => {
+                    const { tokenEndpoint } = getOAuthEndpoints();
+                    const body = new URLSearchParams({
+                        grant_type: 'refresh_token',
+                        refresh_token: app.refreshToken,
+                        client_id: getClientId() || ''
+                    });
+                    const res = await fetch(tokenEndpoint, {
+                        method: 'POST',
+                        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+                        body: body.toString()
+                    });
+                    if (!res.ok) throw new Error(`Refresh failed (${res.status}): ${await res.text()}`);
+                    const tokens = await res.json();
+                    if (!tokens.access_token) throw new Error('No access_token in refresh response');
+                    saveTokens(tokens);
+                    return tokens;
+                })();
+                try { return await app.refreshing; }
+                finally { app.refreshing = null; }
+            }
+
+            function sanitizePropSchema(s) {
+                if (!s || typeof s !== 'object') return s;
+                const out = { ...s };
+                for (const key of ['anyOf', 'oneOf']) {
+                    if (Array.isArray(out[key])) {
+                        const nonNull = out[key].filter(b => b && b.type !== 'null');
+                        const hasNull = out[key].some(b => b && b.type === 'null');
+                        if (nonNull.length === 1) {
+                            const merged = { ...nonNull[0] };
+                            if (hasNull) merged.nullable = true;
+                            delete out[key];
+                            Object.assign(out, merged);
+                        } else if (nonNull.length === 0) {
+                            delete out[key];
+                            out.type = 'string';
+                            out.nullable = true;
+                        }
+                    }
+                }
+                if (out.properties) {
+                    const cleaned = {};
+                    for (const [k, v] of Object.entries(out.properties)) {
+                        cleaned[k] = sanitizePropSchema(v);
+                    }
+                    out.properties = cleaned;
+                }
+                if (out.items) out.items = sanitizePropSchema(out.items);
+                return out;
+            }
+
+            function sanitizeSchema(schema) {
+                if (!schema || typeof schema !== 'object') return { type: 'object', properties: {} };
+                const out = { ...schema };
+                const variants = [];
+                if (Array.isArray(schema.oneOf)) variants.push(...schema.oneOf);
+                if (Array.isArray(schema.anyOf)) variants.push(...schema.anyOf);
+                if (Array.isArray(schema.allOf)) variants.push(...schema.allOf);
+                if (variants.length > 0) {
+                    const mergedProps = { ...(schema.properties || {}) };
+                    const mergedRequired = new Set(Array.isArray(schema.required) ? schema.required : []);
+                    for (const v of variants) {
+                        if (v && typeof v === 'object') {
+                            if (v.properties && typeof v.properties === 'object') {
+                                for (const [k, pv] of Object.entries(v.properties)) {
+                                    if (!(k in mergedProps)) mergedProps[k] = pv;
+                                }
+                            }
+                            if (Array.isArray(v.required)) {
+                                for (const r of v.required) mergedRequired.add(r);
+                            }
+                        }
+                    }
+                    delete out.oneOf; delete out.anyOf; delete out.allOf;
+                    out.type = 'object';
+                    out.properties = mergedProps;
+                    if (mergedRequired.size > 0) out.required = Array.from(mergedRequired);
+                    else delete out.required;
+                }
+                if (out.type !== 'object') out.type = 'object';
+                if (!out.properties) out.properties = {};
+                const cleanedProps = {};
+                for (const [k, v] of Object.entries(out.properties)) {
+                    cleanedProps[k] = sanitizePropSchema(v);
+                }
+                out.properties = cleanedProps;
+                if (out.items) out.items = sanitizePropSchema(out.items);
+                return out;
+            }
+
+            function toolsToAnthropic(tools) {
+                if (!tools || tools.length === 0) return [];
+                const usable = tools.filter(t => !app.failedTools.has(t.name));
+                return usable.map(t => ({
+                    name: t.name,
+                    description: t.description || '',
+                    input_schema: sanitizeSchema(t.inputSchema || { type: 'object', properties: {} })
+                }));
+            }
+
+            const mcp = {
+                _id: 0,
+                async ensureFreshToken() {
+                    const manual = localStorage.getItem(LS.manualToken);
+                    if (manual && app.accessToken === manual) return;
+                    if (!app.accessToken) throw new Error('No access token — sign in again');
+                    if (!app.tokenExpiry) return;
+                    const now = Date.now();
+                    if (now > app.tokenExpiry - 30_000) {
+                        console.warn('[token] nearing expiry — refreshing');
+                        try { await refreshAccessToken(); }
+                        catch (e) {
+                            console.error('[token] refresh failed', e);
+                            throw new Error('Token expired and refresh failed — Re-authenticate');
+                        }
+                    }
+                },
+                async send(method, params = {}, { notify = false, signal } = {}) {
+                    const url = app.mcp.url;
+                    if (!url) throw new Error('MCP not connected');
+                    await mcp.ensureFreshToken();
+                    const id = notify ? undefined : ++mcp._id;
+                    const payload = {
+                        jsonrpc: '2.0',
+                        ...(id !== undefined ? { id } : {}),
+                        method,
+                        params
+                    };
+                    const headers = {
+                        'content-type': 'application/json',
+                        'accept': 'application/json, text/event-stream',
+                        'authorization': `Bearer ${app.accessToken}`
+                    };
+                    if (app.mcp.sessionId) headers['mcp-session-id'] = app.mcp.sessionId;
+                    console.log('[mcp]', method, '· token',
+                        app.accessToken ? app.accessToken.slice(0, 16) + '…' : 'MISSING');
+                    const res = await fetch(url, {
+                        method: 'POST', headers, body: JSON.stringify(payload), signal
+                    });
+                    const sid = res.headers.get('mcp-session-id');
+                    if (sid) app.mcp.sessionId = sid;
+                    if (notify) return null;
+                    if (res.status === 202) return null;
+                    if (!res.ok) {
+                        const text = await res.text().catch(() => '');
+                        const err = new Error(`HTTP ${res.status}: ${text.slice(0, 300)}`);
+                        err.status = res.status;
+                        err.wwwAuth = res.headers.get('www-authenticate') || null;
+                        throw err;
+                    }
+                    const ct = res.headers.get('content-type') || '';
+                    if (ct.includes('text/event-stream')) return await mcp._readSseJsonRpc(res, id);
+                    const data = await res.json();
+                    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+                    return data.result;
+                },
+                async _readSseJsonRpc(res, wantId) {
+                    const reader = res.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+                    try {
+                        while (true) {
+                            const { value, done } = await reader.read();
+                            if (done) break;
+                            buffer += decoder.decode(value, { stream: true });
+                            const events = buffer.split('\n\n');
+                            buffer = events.pop();
+                            for (const evt of events) {
+                                const dataLine = evt.split('\n').find(l => l.startsWith('data:'));
+                                if (!dataLine) continue;
+                                try {
+                                    const msg = JSON.parse(dataLine.slice(5).trim());
+                                    if (msg.id === wantId) {
+                                        if (msg.error) throw new Error(msg.error.message || JSON.stringify(msg.error));
+                                        return msg.result;
+                                    }
+                                } catch { }
+                            }
+                        }
+                    } finally { reader.cancel().catch(() => { }); }
+                    throw new Error('SSE stream ended without a matching response');
+                },
+                async connect(rawUrl) {
+                    const url = rawUrl.replace(/\/$/, '');
+                    app.mcp.url = url;
+                    app.mcp.sessionId = null;
+                    app.failedTools.clear();
+                    const init = await mcp.send('initialize', {
+                        protocolVersion: MCP_PROTOCOL_VERSION,
+                        capabilities: {},
+                        clientInfo: { name: 'claude-agent', version: '1.0.0' }
+                    });
+                    console.log('[mcp] initialize →', init);
+                    await mcp.send('notifications/initialized', {}, { notify: true });
+                    const list = await mcp.send('tools/list', {});
+                    app.mcp.tools = list?.tools || [];
+                    app.mcp.protocol = 'streamable-http';
+                    app.mcp.connected = true;
+                    console.log('[mcp] tools:', app.mcp.tools.map(t => t.name));
+                    app.mcp.tools.forEach((t, i) => {
+                        const s = t.inputSchema;
+                        if (s && (s.oneOf || s.anyOf || s.allOf)) {
+                            console.warn('[schema] tool', i, t.name, 'uses top-level combinator');
+                        }
+                    });
+                },
+                async callTool(name, args, { signal } = {}) {
+                    return await mcp.send('tools/call', { name, arguments: args || {} }, { signal });
+                },
+                async isSessionAlive() {
+                    try { await mcp.send('tools/list', {}); return true; }
+                    catch (e) { return false; }
+                },
+                disconnect() {
+                    app.mcp.url = null;
+                    app.mcp.sessionId = null;
+                    app.mcp.protocol = null;
+                    app.mcp.tools = [];
+                    app.mcp.connected = false;
+                    app.failedTools.clear();
+                }
+            };
+
+            function showTokenDebug() {
+                tokenDebug.style.display = 'block';
+                if (!app.accessToken) { tokenDebug.textContent = 'No access token loaded.'; return; }
+                const lines = [];
+                lines.push('token prefix: ' + app.accessToken.slice(0, 24) + '…');
+                lines.push('length: ' + app.accessToken.length);
+                lines.push('shape: ' + (isJwt(app.accessToken) ? 'JWT' : 'opaque'));
+                const payload = decodeJwtPayload(app.accessToken);
+                if (payload) {
+                    lines.push('iss: ' + (payload.iss || '(none)'));
+                    lines.push('aud: ' + JSON.stringify(payload.aud || null));
+                    lines.push('sub: ' + (payload.sub || '(none)'));
+                    lines.push('scope: ' + (payload.scope || '(none)'));
+                    lines.push('azp: ' + (payload.azp || '(none)'));
+                    lines.push('exp: ' + new Date(payload.exp * 1000).toISOString());
+                    lines.push('now: ' + new Date().toISOString());
+                    const remaining = payload.exp * 1000 - Date.now();
+                    lines.push('remaining: ' + Math.round(remaining / 1000) + 's');
+                } else {
+                    lines.push('(opaque — cannot decode; this is what /mcp expects)');
+                    if (app.tokenExpiry) {
+                        lines.push('local exp: ' + new Date(app.tokenExpiry).toISOString());
+                        const remaining = app.tokenExpiry - Date.now();
+                        lines.push('remaining: ' + Math.round(remaining / 1000) + 's');
+                    }
+                }
+                lines.push('source: ' + (localStorage.getItem(LS.manualToken) ? 'manual' : 'oauth'));
+                lines.push('');
+                lines.push('Expected resource: ' + getResourceValue());
+                lines.push('Auth server: ' + (localStorage.getItem(LS.authServer) || '(auto)'));
+                const ep = getOAuthEndpoints();
+                lines.push('Authorize endpoint: ' + ep.authorizeEndpoint);
+                lines.push('Token endpoint:     ' + ep.tokenEndpoint);
+                lines.push('Register endpoint:  ' + ep.registerEndpoint);
+                lines.push('Client ID:          ' + (getClientId() || '(none)'));
+                lines.push('');
+                lines.push('Failed tools (removed from tool list):');
+                if (app.failedTools.size === 0) lines.push('  (none)');
+                else for (const t of app.failedTools) lines.push('  · ' + t);
+                tokenDebug.textContent = lines.join('\n');
+            }
+
+            function applyManualToken() {
+                const t = $('manualToken').value.trim();
+                if (!t) {
+                    localStorage.removeItem(LS.manualToken);
+                    app.accessToken = null;
+                    app.failedTools.clear();
+                    showToast('Manual token cleared');
+                    loadTokens();
+                    setPill(mcpStatus, app.accessToken ? 'MCP token set' : 'MCP off',
+                        app.accessToken ? '' : '');
+                    return;
+                }
+                localStorage.setItem(LS.manualToken, t);
+                app.accessToken = t;
+                app.tokenExpiry = 0;
+                app.refreshToken = null;
+                app.failedTools.clear();
+                showToast('Manual token applied');
+                setPill(mcpStatus, 'MCP token set', '');
+                updateModeLabel();
+            }
+
+            async function probeEndpoints() {
+                const base = $('mcpUrl').value.trim();
+                if (!base) { showToast('Enter an MCP URL first'); return; }
+                let origin;
+                try { origin = new URL(base).origin; } catch { showToast('Invalid URL'); return; }
+                const paths = ['/mcp', '/sse', '/messages', '/', '/api/mcp',
+                    '/oauth/authorize', '/oauth/token', '/oauth/register'];
+                probeResults.style.display = 'block';
+                probeResults.textContent = 'Probing…\n';
+                const lines = [];
+                const authHeader = app.accessToken ? { authorization: `Bearer ${app.accessToken}` } : {};
+                lines.push('Token: ' + (app.accessToken ? app.accessToken.slice(0, 20) + '…' : 'NONE'));
+                lines.push('Expected resource: ' + getResourceValue());
+                lines.push('Auth server: ' + (localStorage.getItem(LS.authServer) || '(auto)'));
+                lines.push('Client ID: ' + (getClientId() || '(none)'));
+                for (const p of paths) {
+                    const url = origin + p;
+                    lines.push(`\n▸ ${p}`);
+                    try {
+                        const r = await fetch(url, { method: 'OPTIONS' });
+                        lines.push(`  OPTIONS → ${r.status} · Allow: ${r.headers.get('allow') || '(none)'}`);
+                    } catch (e) { lines.push(`  OPTIONS → network error: ${e.message}`); }
+                    if (p.startsWith('/oauth/')) {
+                        try {
+                            const r = await fetch(url, { method: 'GET', redirect: 'manual' });
+                            lines.push(`  GET     → ${r.status} · Location: ${r.headers.get('location') || '(none)'}`);
+                        } catch (e) { lines.push(`  GET     → network error: ${e.message}`); }
+                        continue;
+                    }
+                    try {
+                        const r = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'content-type': 'application/json', ...authHeader },
+                            body: JSON.stringify({
+                                jsonrpc: '2.0', id: 1, method: 'initialize',
+                                params: {
+                                    protocolVersion: MCP_PROTOCOL_VERSION,
+                                    capabilities: {},
+                                    clientInfo: { name: 'probe', version: '0' }
+                                }
+                            })
+                        });
+                        const sid = r.headers.get('mcp-session-id');
+                        let body = '';
+                        try { body = (await r.text()).slice(0, 200); } catch { }
+                        lines.push(`  POST    → ${r.status}${sid ? ' · session=' + sid.slice(0, 8) + '…' : ''}`);
+                        if (body) lines.push(`            ${body.replace(/\s+/g, ' ')}`);
+                    } catch (e) { lines.push(`  POST    → network error: ${e.message}`); }
+                }
+                for (const wk of ['/.well-known/oauth-protected-resource', '/.well-known/oauth-authorization-server']) {
+                    lines.push(`\n▸ ${wk}`);
+                    try {
+                        const r = await fetch(origin + wk);
+                        const body = (await r.text()).slice(0, 500);
+                        lines.push(`  → ${r.status}`);
+                        if (body) lines.push(`  ${body.replace(/\s+/g, ' ')}`);
+                    } catch (e) { lines.push(`  → network error: ${e.message}`); }
+                }
+                probeResults.textContent = lines.join('\n');
+                console.log('[probe]', lines.join('\n'));
+            }
+
+            function openAuthPopup(authorizeUrl) {
+                app.pendingAuth = true;
+                setPill(mcpStatus, 'Sign-in required…', '');
+                const popup = window.open(authorizeUrl, 'oauth-popup',
+                    'width=600,height=740,scrollbars=yes,resizable=yes');
+                if (!popup || popup.closed) {
+                    app.pendingAuth = false;
+                    throw new Error('Popup blocked. Allow popups for this site.');
+                }
+            }
+
+            async function startAuth() {
+                if (app.authFlowInProgress) return;
+                app.authFlowInProgress = true;
+                try {
+                    await discoverEndpoints();
+                    const resource = getResourceValue();
+                    let clientId = getClientId();
+                    const scope = normalizeScope($('trimbleScope').value);
+
+                    if (!clientId) {
+                        console.log('[auth] no client ID — attempting dynamic registration');
+                        clientId = await registerDynamicClient();
+                        if (!clientId) {
+                            app.authFlowInProgress = false;
+                            showToast('No client ID and DCR failed — see Settings');
+                            openDrawer();
+                            dcrResults.style.display = 'block';
+                            dcrResults.textContent =
+                                'DCR failed. The server may not support it.\n' +
+                                'Either register at the server homepage, or paste\n' +
+                                'an existing client_id into the OAuth Client ID field.';
+                            return;
+                        }
+                    }
+
+                    const verifier = randomString(64);
+                    const challenge = await sha256Base64Url(verifier);
+                    const state = randomString(32);
+                    sessionStorage.setItem(LS.mcpVerifier, verifier);
+                    sessionStorage.setItem(LS.mcpState, state);
+
+                    const { authorizeEndpoint } = getOAuthEndpoints();
+                    const u = new URL(authorizeEndpoint);
+                    u.searchParams.set('response_type', 'code');
+                    u.searchParams.set('client_id', clientId);
+                    u.searchParams.set('redirect_uri', location.origin + location.pathname);
+                    u.searchParams.set('scope', scope);
+                    u.searchParams.set('state', state);
+                    u.searchParams.set('code_challenge', challenge);
+                    u.searchParams.set('code_challenge_method', 'S256');
+                    u.searchParams.set('resource', resource);
+
+                    console.log('[oauth] opening:', u.toString());
+                    console.log('[oauth] authServer =', getOAuthEndpoints().origin,
+                        '· resource =', resource,
+                        '· client_id =', clientId);
+                    openAuthPopup(u.toString());
+                } catch (e) {
+                    app.authFlowInProgress = false;
+                    throw e;
+                }
+            }
+
+            async function exchangeCodeForTokens(code) {
+                const clientId = getClientId();
+                const verifier = sessionStorage.getItem(LS.mcpVerifier);
+                if (!verifier) throw new Error('Missing PKCE verifier');
+                const { tokenEndpoint } = getOAuthEndpoints();
+                const body = new URLSearchParams({
+                    grant_type: 'authorization_code',
+                    code,
+                    redirect_uri: location.origin + location.pathname,
+                    client_id: clientId || '',
+                    code_verifier: verifier
+                });
+                console.log('[oauth] exchanging code at', tokenEndpoint);
+                const res = await fetch(tokenEndpoint, {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+                    body: body.toString()
+                });
+                if (!res.ok) throw new Error(`Token exchange failed (${res.status}): ${await res.text()}`);
+                const tokens = await res.json();
+                console.log('[oauth] token response keys:', Object.keys(tokens));
+                console.log('[oauth] access_token prefix:', (tokens.access_token || '').slice(0, 24));
+                console.log('[oauth] shape:', isJwt(tokens.access_token) ? 'JWT' : 'opaque');
+                if (!tokens.access_token) throw new Error('No access_token');
+                localStorage.removeItem(LS.manualToken);
+                $('manualToken').value = '';
+                saveTokens(tokens);
+                return tokens;
+            }
+
+            window.addEventListener('message', async (e) => {
+                if (e.origin !== location.origin) return;
+                if (!e.data || e.data.type !== 'oauth-callback') return;
+                if (e.data.error) {
+                    app.pendingAuth = false; app.authFlowInProgress = false;
+                    setPill(mcpStatus, 'Auth failed', 'err');
+                    const desc = e.data.error_description ? ' — ' + e.data.error_description : '';
+                    showToast('Sign-in failed: ' + e.data.error + desc);
+                    console.error('[oauth] callback error', e.data);
+                    return;
+                }
+                const expectedState = sessionStorage.getItem(LS.mcpState);
+                if (!e.data.state || e.data.state !== expectedState) {
+                    app.pendingAuth = false; app.authFlowInProgress = false;
+                    setPill(mcpStatus, 'Auth failed', 'err');
+                    showToast('Sign-in state mismatch');
+                    return;
+                }
+                if (!e.data.code) {
+                    app.pendingAuth = false; app.authFlowInProgress = false;
+                    setPill(mcpStatus, 'Auth failed', 'err');
+                    showToast('No code returned');
+                    return;
+                }
+                setPill(mcpStatus, 'Exchanging code…', '');
+                try {
+                    await exchangeCodeForTokens(e.data.code);
+                    sessionStorage.removeItem(LS.mcpVerifier);
+                    sessionStorage.removeItem(LS.mcpState);
+                    app.pendingAuth = false; app.authFlowInProgress = false;
+                    await connectMcpWithToken();
+                } catch (err) {
+                    console.error('[oauth] exchange failed', err);
+                    app.pendingAuth = false; app.authFlowInProgress = false;
+                    setPill(mcpStatus, 'Error', 'err');
+                    showToast('Sign-in failed: ' + err.message);
+                }
+            });
+
+            async function connectMcp({ forceFresh = false } = {}) {
+                if (app.connecting) return;
+                if (app.pendingAuth) { showToast('Sign-in window is already open'); return; }
+                persistSettings();
+                const url = $('mcpUrl').value.trim();
+                if (!url) { showToast('Enter an MCP URL first'); return; }
+                if (!url.startsWith('https://')) { showToast('MCP URL must be HTTPS'); return; }
+                if (forceFresh) clearAuthCache();
+
+                if (app.accessToken && !forceFresh) {
+                    app.connecting = true;
+                    setPill(mcpStatus, 'Connecting…', '');
+                    try { await connectMcpWithToken(); return; }
+                    catch (e) {
+                        console.warn('[connect] cached token failed:', e.message);
+                        if (localStorage.getItem(LS.manualToken)) {
+                            setPill(mcpStatus, 'Auth expired', 'err');
+                            throw e;
+                        }
+                    } finally { app.connecting = false; }
+                }
+                await startAuth();
+            }
+
+            async function connectMcpWithToken() {
+                const rawUrl = $('mcpUrl').value.trim();
+                setPill(mcpStatus, 'Connecting…', '');
+                mcp.disconnect();
+                const candidates = [rawUrl];
+                if (!/\/mcp\/?$/.test(rawUrl)) candidates.push(rawUrl.replace(/\/$/, '') + '/mcp');
+                let lastErr = null;
+                for (const candidate of candidates) {
+                    try {
+                        console.log('[connect] trying', candidate);
+                        await mcp.connect(candidate);
+                        $('mcpUrl').value = candidate;
+                        persistSettings();
+                        setPill(mcpStatus, `MCP on (${app.mcp.tools.length})`, 'ok');
+                        showToast(`MCP connected · ${app.mcp.tools.length} tools`);
+                        updateModeLabel();
+                        return;
+                    } catch (e) {
+                        console.warn('[connect] failed for', candidate, e.message);
+                        lastErr = e;
+                        if (e.status === 401 || /unauthor|invalid.*token/i.test(e.message)) {
+                            setPill(mcpStatus, 'Auth expired', 'err');
+                            showToast('Server rejected token — Re-authenticate or paste manual token');
+                            throw e;
+                        }
+                    }
+                }
+                setPill(mcpStatus, 'Error', 'err');
+                showToast('MCP connect failed — click Probe to diagnose');
+                if (lastErr) throw lastErr;
+            }
+
+            function disconnectMcp() {
+                mcp.disconnect();
+                app.pendingAuth = false;
+                app.authFlowInProgress = false;
+                clearAuthCache();
+                localStorage.removeItem(LS.manualToken);
+                $('manualToken').value = '';
+                setPill(mcpStatus, 'MCP off', '');
+                updateModeLabel();
+                showToast('MCP disconnected · switched to chat mode');
+            }
+
+            async function reauthenticateMcp() {
+                showToast('Clearing cache · starting fresh sign-in…');
+                app.authFlowInProgress = false;
+                mcp.disconnect();
+                clearAuthCache();
+                localStorage.removeItem(LS.manualToken);
+                $('manualToken').value = '';
+                app.pendingAuth = false;
+                setPill(mcpStatus, 'MCP off', '');
+                updateModeLabel();
+                await new Promise(r => setTimeout(r, 200));
+                await connectMcp({ forceFresh: true });
+            }
+
+            function esc(s) {
+                return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            }
+            function md(text) {
+                let src = esc(text);
+                const blocks = [];
+                src = src.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+                    const i = blocks.length;
+                    blocks.push(`<pre><code>${code.replace(/\n$/, '')}</code></pre>`);
+                    return `\u0000C${i}\u0000`;
+                });
+                src = src.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+                src = src.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+                src = src.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+                src = src.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+                src = src.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+                const lines = src.split('\n');
+                const out = [];
+                let listType = null;
+                const closeList = () => { if (listType) { out.push(`</${listType}>`); listType = null; } };
+                for (const line of lines) {
+                    const ul = line.match(/^[-*] (.+)$/);
+                    const ol = line.match(/^\d+\. (.+)$/);
+                    if (ul) { if (listType !== 'ul') { closeList(); out.push('<ul>'); listType = 'ul'; } out.push(`<li>${ul[1]}</li>`); }
+                    else if (ol) { if (listType !== 'ol') { closeList(); out.push('<ol>'); listType = 'ol'; } out.push(`<li>${ol[1]}</li>`); }
+                    else { closeList(); out.push(line); }
+                }
+                closeList();
+                let html = out.join('\n');
+                html = html.split(/\n{2,}/).map(chunk => {
+                    const t = chunk.trim();
+                    if (!t) return '';
+                    if (/^<(h[1-3]|ul|ol|pre|blockquote)/.test(t)) return t;
+                    if (/^\u0000C\d+\u0000$/.test(t)) return t;
+                    return `<p>${t.replace(/\n/g, '<br>')}</p>`;
+                }).join('\n');
+                return html.replace(/\u0000C(\d+)\u0000/g, (_, i) => blocks[+i]);
+            }
+
+            function hideEmpty() { emptyState?.remove(); }
+
+            const ICON_RETRY = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>`;
+            const ICON_EDIT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`;
+
+            function renderBubbleAttachments(container, attachments) {
+                if (!attachments || attachments.length === 0) return;
+                const row = document.createElement('div');
+                row.className = 'bubble-attachments';
+                for (const a of attachments) {
+                    if (a.kind === 'image' && a.dataUrl) {
+                        const thumb = document.createElement('div');
+                        thumb.className = 'bubble-attachment thumb';
+                        const img = document.createElement('img');
+                        img.src = a.dataUrl;
+                        img.alt = a.name;
+                        thumb.appendChild(img);
+                        row.appendChild(thumb);
+                    } else {
+                        const chip = document.createElement('div');
+                        chip.className = 'bubble-attachment';
+                        const ico = document.createElement('span');
+                        ico.textContent = a.kind === 'pdf' ? '📄'
+                            : a.kind === 'text' ? '📝'
+                                : '📎';
+                        const name = document.createElement('span');
+                        name.className = 'name';
+                        name.textContent = a.name;
+                        name.title = a.name;
+                        const size = document.createElement('span');
+                        size.className = 'size';
+                        size.textContent = formatBytes(a.size);
+                        chip.append(ico, name, size);
+                        row.appendChild(chip);
+                    }
+                }
+                container.appendChild(row);
+            }
+
+            function addUserMessage(text, historyIndex, attachments = []) {
+                hideEmpty();
+                const wrap = document.createElement('div');
+                wrap.className = 'msg';
+                wrap.dataset.historyIndex = historyIndex;
+                const av = document.createElement('div');
+                av.className = 'avatar user'; av.textContent = 'You';
+                const bub = document.createElement('div');
+                bub.className = 'bubble user';
+                renderBubbleAttachments(bub, attachments);
+                if (text) {
+                    const txt = document.createElement('div');
+                    txt.textContent = text;
+                    bub.appendChild(txt);
+                }
+                const actions = document.createElement('div');
+                actions.className = 'msg-actions';
+                const retryBtn = document.createElement('button');
+                retryBtn.type = 'button'; retryBtn.title = 'Retry this prompt';
+                retryBtn.innerHTML = ICON_RETRY + '<span>Retry</span>';
+                retryBtn.addEventListener('click', () => retryFrom(historyIndex));
+                const editBtn = document.createElement('button');
+                editBtn.type = 'button'; editBtn.title = 'Edit and resend';
+                editBtn.innerHTML = ICON_EDIT + '<span>Edit</span>';
+                editBtn.addEventListener('click', () => editAndResend(historyIndex));
+                actions.append(retryBtn, editBtn);
+                bub.appendChild(actions);
+                wrap.append(av, bub);
+                chatEl.appendChild(wrap);
+                requestAnimationFrame(() => { chatWrap.scrollTop = chatWrap.scrollHeight; });
+                return wrap;
+            }
+
+            function addMessage(role, content, isHtml = false) {
+                hideEmpty();
+                const wrap = document.createElement('div');
+                wrap.className = 'msg';
+                const av = document.createElement('div');
+                av.className = `avatar ${role}`;
+                av.textContent = role === 'user' ? 'You' :
+                    role === 'tool' ? '⚙' :
+                        role === 'system' ? 'i' : 'C';
+                const bub = document.createElement('div');
+                bub.className = `bubble ${role}`;
+                if (isHtml) bub.innerHTML = content; else bub.textContent = content;
+                wrap.append(av, bub);
+                chatEl.appendChild(wrap);
+                requestAnimationFrame(() => { chatWrap.scrollTop = chatWrap.scrollHeight; });
+                return bub;
+            }
+
+            // Credit-specific bubble. Renders a friendly "out of credits"
+            // message with a link to the billing page.
+            function addCreditMessage(reason) {
+                hideEmpty();
+                const wrap = document.createElement('div');
+                wrap.className = 'msg';
+                const av = document.createElement('div');
+                av.className = 'avatar assistant'; av.textContent = 'C';
+                const bub = document.createElement('div');
+                bub.className = 'bubble credit';
+                bub.innerHTML =
+                    `<div style="margin-bottom:.4rem"><strong>You're out of Anthropic credits.</strong></div>` +
+                    `<div style="margin-bottom:.5rem;font-size:.85rem">` +
+                    `The request was rejected: <em>${escapeHtml(reason || 'credit balance too low')}</em>. ` +
+                    `Top up your account to keep chatting.</div>` +
+                    `<a href="${BILLING_URL}" target="_blank" rel="noopener">` +
+                    `Open billing settings → platform.claude.com/settings/billing</a>`;
+                wrap.append(av, bub);
+                chatEl.appendChild(wrap);
+                requestAnimationFrame(() => { chatWrap.scrollTop = chatWrap.scrollHeight; });
+            }
+
+            function addTyping() {
+                hideEmpty();
+                const w = document.createElement('div');
+                w.className = 'msg'; w.id = 'typingIndicator';
+                const av = document.createElement('div');
+                av.className = 'avatar assistant'; av.textContent = 'C';
+                const bub = document.createElement('div');
+                bub.className = 'bubble assistant';
+                bub.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
+                w.append(av, bub);
+                chatEl.appendChild(w);
+                requestAnimationFrame(() => { chatWrap.scrollTop = chatWrap.scrollHeight; });
+            }
+            function removeTyping() { document.getElementById('typingIndicator')?.remove(); }
+
+            function truncateAfter(historyIndex) {
+                app.history = app.history.slice(0, historyIndex);
+                const allMsgs = Array.from(chatEl.querySelectorAll('.msg'));
+                let started = false;
+                for (const m of allMsgs) {
+                    if (started) { m.remove(); continue; }
+                    if (m.dataset.historyIndex === String(historyIndex)) {
+                        m.remove(); started = true;
+                    }
+                }
+            }
+
+            async function retryFrom(historyIndex) {
+                if (app.sending) { showToast('Wait for the current response to finish'); return; }
+                const entry = app.history[historyIndex];
+                if (!entry || entry.role !== 'user') return;
+                const text = entry.text || '';
+                const attachments = entry._attachments || [];
+                truncateAfter(historyIndex);
+                await sendText(text, { attachments });
+            }
+
+            function editAndResend(historyIndex) {
+                if (app.sending) { showToast('Wait for the current response to finish'); return; }
+                const entry = app.history[historyIndex];
+                if (!entry || entry.role !== 'user') return;
+                const text = entry.text || '';
+                const attachments = entry._attachments || [];
+                truncateAfter(historyIndex);
+                userInput.value = text;
+                autoResize();
+                app.pendingAttachments = attachments.slice();
+                renderAttachTray();
+                userInput.focus();
+                showToast('Edit your message and press Enter');
+            }
+
+            async function runToolLoop(messages, tools, apiKey, model, signal) {
+                const MAX_ROUNDS = 8;
+                let activeTools = tools ? [...tools] : [];
+
+                for (let round = 0; round < MAX_ROUNDS; round++) {
+                    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+                    showActivity(null);
+                    const body = { model, max_tokens: 4096, system: AGENT_SYSTEM_PROMPT, messages };
+                    if (activeTools.length > 0) body.tools = activeTools;
+                    const res = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'content-type': 'application/json',
+                            'x-api-key': apiKey,
+                            'anthropic-version': ANTHROPIC_VERSION,
+                            'anthropic-dangerous-direct-browser-access': 'true'
+                        },
+                        body: JSON.stringify(body),
+                        signal
+                    });
+                    if (!res.ok) {
+                        const errText = await res.text().catch(() => '');
+                        // Detect credit/billing errors and show the banner
+                        if (isCreditError(res.status, errText)) {
+                            let shortReason = `HTTP ${res.status}`;
+                            try {
+                                const parsed = JSON.parse(errText);
+                                shortReason = parsed?.error?.message || shortReason;
+                            } catch { }
+                            showCreditBanner(shortReason);
+                            addCreditMessage(shortReason);
+                        }
+                        throw new Error(`API ${res.status}: ${errText}`);
+                    }
+                    const data = await res.json();
+                    const clean = data.content.filter(b => b.type !== 'thinking' && b.type !== 'redacted_thinking');
+                    messages.push({ role: 'assistant', content: clean });
+                    for (const b of data.content) {
+                        if (b.type === 'text' && b.text) addMessage('assistant', md(b.text), true);
+                    }
+                    const uses = data.content.filter(b => b.type === 'tool_use');
+                    if (!uses.length) { showActivityDone(); return; }
+
+                    const results = [];
+                    for (const tu of uses) {
+                        if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+                        showActivity(tu.name);
+                        if (!app.mcp.connected) {
+                            addMessage('tool', `✗ ${tu.name}\nMCP disconnected`);
+                            results.push({
+                                type: 'tool_result', tool_use_id: tu.id, is_error: true,
+                                content: [{ type: 'text', text: 'MCP server is disconnected. Answer without this tool.' }]
+                            });
+                            continue;
+                        }
+                        addMessage('tool', `→ ${tu.name}(${JSON.stringify(tu.input)})`);
+                        try {
+                            const r = await mcp.callTool(tu.name, tu.input || {}, { signal });
+                            const text = (r.content || [])
+                                .filter(c => c.type === 'text')
+                                .map(c => c.text).join('\n') || JSON.stringify(r);
+                            addMessage('tool', `← ${tu.name}\n${text}`);
+                            results.push({
+                                type: 'tool_result', tool_use_id: tu.id,
+                                content: [{ type: 'text', text }]
+                            });
+                        } catch (e) {
+                            if (e.name === 'AbortError') throw e;
+                            addMessage('tool', `✗ ${tu.name}\n${e.message}`);
+
+                            const isAuthError = e.status === 401 ||
+                                /unauthor|invalid.*token|expired.*token/i.test(e.message);
+
+                            let sessionDead = false;
+                            if (isAuthError) {
+                                const alive = await mcp.isSessionAlive();
+                                sessionDead = !alive;
+                                if (sessionDead) {
+                                    setPill(mcpStatus, 'Auth expired', 'err');
+                                    showToast('MCP session expired — Re-authenticate');
+                                } else {
+                                    app.failedTools.add(tu.name);
+                                    activeTools = activeTools.filter(t => t.name !== tu.name);
+                                    setPill(mcpStatus, `MCP on (${app.mcp.tools.length})`, 'ok');
+                                    showToast(`"${tu.name}" unavailable — removed from this session`);
+                                }
+                                updateModeLabel();
+                            }
+
+                            const hint = sessionDead
+                                ? 'The MCP session has expired. Tell the user to click Re-authenticate. Do not retry this tool.'
+                                : `Tool "${tu.name}" was rejected by the server. Tell the user the tool is unavailable and answer their question using what you know. Do NOT attempt any further tool calls that require it.`;
+
+                            results.push({
+                                type: 'tool_result',
+                                tool_use_id: tu.id,
+                                is_error: true,
+                                content: [{ type: 'text', text: `Tool "${tu.name}" failed: ${e.message}\n\n${hint}` }]
+                            });
+                        }
+                    }
+                    messages.push({ role: 'user', content: results });
+
+                    if (activeTools.length === 0) {
+                        showActivityDone();
+                        return;
+                    }
+                }
+                showActivityDone();
+                addMessage('error', 'Tool loop exceeded maximum rounds.');
+            }
+
+            async function sendText(text, { attachments = null } = {}) {
+                const apiKey = $('apiKey').value.trim();
+                const model = $('model').value;
+                if (!apiKey) { showToast('Add your API key in Settings'); openDrawer(); return; }
+                if (!model) { showToast('Model required'); return; }
+
+                const atts = attachments !== null
+                    ? attachments
+                    : app.pendingAttachments.slice();
+
+                if (!text && atts.length === 0) return;
+                if (app.sending) { showToast('Already processing'); return; }
+
+                app.sending = true;
+                app.cancelled = false;
+                app.abortController = new AbortController();
+                app.toolCallCount = 0;
+                setSendMode(true);
+
+                const userBlocks = [];
+                for (const a of atts) {
+                    userBlocks.push(...attachmentToBlocks(a));
+                }
+                if (text) {
+                    userBlocks.push({ type: 'text', text });
+                }
+                if (userBlocks.length === 0) {
+                    userBlocks.push({ type: 'text', text: '(empty message)' });
+                }
+
+                const historyIndex = app.history.length;
+                const historyEntry = {
+                    role: 'user',
+                    content: userBlocks,
+                    text,
+                    _attachments: atts.slice()
+                };
+                app.history.push(historyEntry);
+
+                addUserMessage(text, historyIndex, atts);
+
+                app.pendingAttachments = [];
+                renderAttachTray();
+
+                addTyping();
+                showActivity(null);
+
+                try {
+                    const tools = toolsToAnthropic(app.mcp.tools);
+                    const cleanHistory = app.history.map(h => ({
+                        role: h.role,
+                        content: h.content
+                    }));
+                    await runToolLoop(cleanHistory, tools, apiKey, model, app.abortController.signal);
+                    app.history = cleanHistory.map((h, i) => {
+                        if (i < historyIndex) return app.history[i];
+                        return h;
+                    });
+                } catch (e) {
+                    if (e.name === 'AbortError' || app.cancelled) {
+                        removeTyping();
+                        addMessage('cancelled', 'Stopped.');
+                        app.history.pop();
+                        const lastUser = chatEl.querySelector('.bubble.user:last-of-type');
+                        lastUser?.closest('.msg')?.remove();
+                    } else if (/API 4\d\d/.test(e.message) && isCreditError(0, e.message)) {
+                        // Credit message was already added inside runToolLoop.
+                        // Just remove the typing indicator.
+                        removeTyping();
+                    } else {
+                        console.error(e);
+                        addMessage('assistant', 'Error: ' + e.message);
+                    }
+                } finally {
+                    removeTyping();
+                    showActivityDone();
+                    app.sending = false;
+                    app.cancelled = false;
+                    app.abortController = null;
+                    setSendMode(false);
+                    userInput.focus();
+                }
+            }
+
+            async function handleSend() {
+                if (app.sending) { cancelProcessing(); return; }
+                const text = userInput.value.trim();
+                const hasFiles = app.pendingAttachments.length > 0;
+                if (!text && !hasFiles) return;
+                userInput.value = '';
+                autoResize();
+                await sendText(text);
+            }
+
+            function resetConversation() {
+                app.history = [];
+                app.pendingAttachments = [];
+                app.failedTools.clear();
+                chatEl.innerHTML = '';
+                renderAttachTray();
+                resetActivity();
+                hideCreditBanner();
+                sessionStorage.removeItem(LS.creditBannerDismissed);
+                updateModeLabel();
+                const empty = document.createElement('div');
+                empty.className = 'empty-state';
+                empty.id = 'emptyState';
+                empty.innerHTML = `
+                      <div class="logo-lg">C</div>
+                      <h2>How can I help you today?</h2>
+                      <p>Works as plain chat. Connect MCP in Settings to unlock tools. Attach files with the 📎 button.</p>
+                      <div class="suggestions">
+                        <button class="suggestion" data-prompt="Explain how MCP works in one paragraph.">
+                          <span class="ico">◇</span> Explain how MCP works
+                        </button>
+                        <button class="suggestion" data-prompt="Write a JavaScript debounce function with a usage example.">
+                          <span class="ico">◇</span> Write a debounce function
+                        </button>
+                        <button class="suggestion" data-prompt="What tools do you have available right now?">
+                          <span class="ico">◇</span> List available tools
+                        </button>
+                      </div>`;
+                chatWrap.appendChild(empty);
+                empty.querySelectorAll('.suggestion').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        userInput.value = btn.dataset.prompt;
+                        autoResize();
+                        userInput.focus();
+                    });
+                });
+                showToast('Conversation cleared');
+            }
+
+            function autoResize() {
+                userInput.style.height = 'auto';
+                userInput.style.height = Math.min(userInput.scrollHeight, 200) + 'px';
+            }
+            userInput.addEventListener('input', autoResize);
+            userInput.addEventListener('keydown', e => {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+            });
+            sendBtn.addEventListener('click', handleSend);
+
+            attachBtn.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', async (e) => {
+                const files = Array.from(e.target.files || []);
+                for (const f of files) await stageFile(f);
+                e.target.value = '';
+                userInput.focus();
+            });
+
+            let dragDepth = 0;
+            composer.addEventListener('dragenter', (e) => {
+                if (!e.dataTransfer?.types?.includes('Files')) return;
+                e.preventDefault();
+                dragDepth++;
+                composer.classList.add('dragover');
+            });
+            composer.addEventListener('dragover', (e) => {
+                if (!e.dataTransfer?.types?.includes('Files')) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+            });
+            composer.addEventListener('dragleave', (e) => {
+                if (!e.dataTransfer?.types?.includes('Files')) return;
+                dragDepth--;
+                if (dragDepth <= 0) { dragDepth = 0; composer.classList.remove('dragover'); }
+            });
+            composer.addEventListener('drop', async (e) => {
+                if (!e.dataTransfer?.files?.length) return;
+                e.preventDefault();
+                dragDepth = 0;
+                composer.classList.remove('dragover');
+                const files = Array.from(e.dataTransfer.files);
+                for (const f of files) await stageFile(f);
+                userInput.focus();
+            });
+
+            userInput.addEventListener('paste', async (e) => {
+                const items = Array.from(e.clipboardData?.items || []);
+                const files = [];
+                for (const it of items) {
+                    if (it.kind !== 'file') continue;
+                    const f = it.getAsFile();
+                    if (f) files.push(f);
+                }
+                if (files.length === 0) return;
+                e.preventDefault();
+                for (const f of files) {
+                    if (!f.name || f.name === 'image.png') {
+                        const ext = (f.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+                        const named = new File([f], `pasted-${Date.now()}.${ext}`, { type: f.type });
+                        await stageFile(named);
+                    } else {
+                        await stageFile(f);
+                    }
+                }
+                userInput.focus();
+            });
+
+            function openDrawer() { drawer.classList.add('open'); overlay.classList.add('open'); }
+            function closeDrawer() { drawer.classList.remove('open'); overlay.classList.remove('open'); }
+            $('settingsBtn').addEventListener('click', openDrawer);
+            $('closeDrawer').addEventListener('click', closeDrawer);
+            overlay.addEventListener('click', closeDrawer);
+            mcpStatus.addEventListener('click', openDrawer);
+
+            ['trimbleClientId', 'trimbleScope', 'mcpUrl', 'apiKey', 'model', 'resourceOverride'].forEach(id => {
+                $(id).addEventListener('blur', persistSettings);
+            });
+            $('model').addEventListener('change', persistSettings);
+
+            $('connectBtn').addEventListener('click', () => connectMcp());
+            $('reauthBtn').addEventListener('click', reauthenticateMcp);
+            $('disconnectBtn').addEventListener('click', disconnectMcp);
+            $('resetBtn').addEventListener('click', resetConversation);
+            $('probeBtn').addEventListener('click', () => probeEndpoints());
+            $('tokenDebugBtn').addEventListener('click', showTokenDebug);
+            $('applyTokenBtn').addEventListener('click', applyManualToken);
+            $('registerClientBtn').addEventListener('click', runDcrManually);
+            $('clearClientBtn').addEventListener('click', clearStoredClient);
+
+            function applyTheme(t) {
+                document.documentElement.setAttribute('data-theme', t);
+                $('themeBtn').textContent = t === 'dark' ? '☀' : '◐';
+                localStorage.setItem(LS.theme, t);
+            }
+            applyTheme(localStorage.getItem(LS.theme) ||
+                (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+            $('themeBtn').addEventListener('click', () => {
+                applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+            });
+
+            document.querySelectorAll('.suggestion').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    userInput.value = btn.dataset.prompt;
+                    autoResize();
+                    userInput.focus();
+                });
+            });
+
+            loadSettings();
+            loadTokens();
+
+            // Restore dismissed banner state per session
+            if (sessionStorage.getItem(LS.creditBannerDismissed)) {
+                // Banner stays hidden — it will reappear only after a new credit error
+            }
+
+            $('redirectDisplay').textContent = location.origin + location.pathname;
+            if (app.accessToken) setPill(mcpStatus, 'MCP token set', '');
+            updateModeLabel();
+            userInput.focus();
+        }
+    </script>
+
+</body>
+</html>
