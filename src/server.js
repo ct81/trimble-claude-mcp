@@ -2,12 +2,17 @@
 
 // git add . 
 // git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #18"
+// #19"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
 // git commit -m "Fix MCP PDF input handling and diagnostics"
 // git push origin main
+
+// Redeploy on Render.
+// Open https://trimble-claude-mcp-g86i.onrender.com/oauth/login and sign in with Trimble.
+// Copy the x-mcp-session header from the success page into the Agent Studio connector's custom headers.
+// Retry. The Render log should show hasBearer: false, and the call should authenticate through the session header.
 
 //include all topic APIs to topics.js and use for mcp, swagger and server.js. and also tags: ['Core'],  summary:
 
