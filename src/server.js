@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #17"
+// #18"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -250,6 +250,32 @@ function requireMcpAuthForRequest(req, res, next) {
     !req.body?.params?.arguments?.platform
   ) {
     return next();
+  }
+
+  // Clients such as Agent Studio treat an HTTP 401 as a fatal transport error.
+  // With no credentials at all, answer with a readable tool error instead.
+  if (
+    req.body?.method === 'tools/call' &&
+    !req.headers.authorization &&
+    !req.headers['x-mcp-session'] &&
+    !req.cookies?.mcp_session
+  ) {
+    const loginUrl = `${mcpBaseUrl(req)}/oauth/login`;
+
+    return res.status(200).json({
+      jsonrpc: '2.0',
+      id: req.body.id ?? null,
+      result: {
+        isError: true,
+        content: [{
+          type: 'text',
+          text:
+            `Not signed in to Trimble. Open ${loginUrl} in a browser, sign in, ` +
+            'then send the session value shown on the success page as the ' +
+            '"x-mcp-session" header on this connector, or connect the server with OAuth.'
+        }]
+      }
+    });
   }
 
   return requireMcpAuth(req, res, next);
@@ -1327,7 +1353,18 @@ app.get(
     }
   }
 );
-app.get('/auth/success', (_, res) => res.send('<h2>Trimble authentication successful.</h2><p>You can close this window and return to Claude.</p>'));
+app.get('/auth/success', (req, res) => {
+  const sessionId = req.cookies?.mcp_session;
+  res.setHeader('Cache-Control', 'no-store');
+  res.send(
+    '<h2>Trimble authentication successful.</h2>' +
+    '<p>You can close this window and return to your client.</p>' +
+    (sessionId
+      ? '<p>For clients without OAuth (e.g. Agent Studio), add this header to the MCP connector. Keep it private:</p>' +
+        `<pre>x-mcp-session: ${escapeHtml(sessionId)}</pre>`
+      : '')
+  );
+});
 app.get('/auth/status', requireSession, (req,res) => res.json({authenticated:true}));
 
 // =========================================================
