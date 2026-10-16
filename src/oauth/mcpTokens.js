@@ -166,17 +166,17 @@ export function createMcpRefreshToken(
     expiresAt: now + expiresIn * 1000
   });
 
-  refreshTokens.set(
-    token,
-    {
-      sessionId,
-      resource,
-      clientId,
-      expiresAt:
-        Date.now() +
-        30 * 24 * 60 * 60 * 1000
-    }
-  );
+  // refreshTokens.set(
+  //   token,
+  //   {
+  //     sessionId,
+  //     resource,
+  //     clientId,
+  //     expiresAt:
+  //       Date.now() +
+  //       30 * 24 * 60 * 60 * 1000
+  //   }
+  // );
 
   return token;
 }
