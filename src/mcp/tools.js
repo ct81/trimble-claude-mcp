@@ -3521,6 +3521,23 @@ end
 }
 
 //[Start] Route SketchUp tools
+// Anthropic-backed clients reject oneOf/allOf/anyOf at the top level of input_schema.
+function sanitizeInputSchema(tool) {
+  const schema = tool.inputSchema;
+  if (!schema || !['oneOf', 'allOf', 'anyOf'].some((k) => k in schema)) return tool;
+  const { oneOf, allOf, anyOf, ...rest } = schema;
+  const alternatives = (oneOf || anyOf || [])
+    .map((alt) => (alt.required || []).join(' + '))
+    .filter(Boolean);
+  return {
+    ...tool,
+    description: alternatives.length
+      ? `${tool.description} Provide at least one of: ${alternatives.join(', ')}.`
+      : tool.description,
+    inputSchema: rest
+  };
+}
+
 export async function getDefinitions() {
   if (mergedDefinitions) return mergedDefinitions;
 
@@ -3546,7 +3563,7 @@ export async function getDefinitions() {
       ? suDefs.filter((tool) => !inspectionNames.has(tool.name))
       : sketchupFallbackDefinitions),
     ...sketchupInspectionDefinitions
-  ];
+  ].map(sanitizeInputSchema);
 
   // Do not permanently cache a transient SketchUp startup failure.
   if (suTools.length > 0) {
