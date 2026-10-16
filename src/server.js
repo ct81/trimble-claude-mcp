@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #13"
+// #14"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -86,6 +86,37 @@ import {
 
 import pdfRouter
   from './pdf/pdf.js';
+
+// =========================================================
+// REQUEST ORIGIN LOGGING (which client / agent is calling)
+// =========================================================
+
+const AGENT_STUDIO_PATTERN = /trimble|agent[\s-]?studio/i;
+
+function describeCaller(req, extra = {}) {
+  const h = req.headers;
+  const hints = [
+    h['user-agent'],
+    h.origin,
+    h.referer,
+    extra.clientName,
+    extra.redirectUri
+  ].filter(Boolean).join(' ');
+
+  return {
+    isAgentStudio: AGENT_STUDIO_PATTERN.test(hints),
+    userAgent: h['user-agent'],
+    origin: h.origin,
+    referer: h.referer,
+    ip: req.ip,
+    forwardedFor: h['x-forwarded-for'],
+    ...extra
+  };
+}
+
+function logCaller(label, req, extra) {
+  console.log(`[${label}] Caller:`, JSON.stringify(describeCaller(req, extra)));
+}
 
 // =========================================================
 // MCP BEARER AUTHENTICATION
@@ -396,6 +427,13 @@ app.get(
         '========== MCP AUTHORIZE =========='
       );
 
+      logCaller('MCP Authorize', req, {
+        clientId: client_id,
+        clientName: getClient(client_id)?.clientName,
+        redirectUri: redirect_uri,
+        resource
+      });
+
       console.log(
         'Query:',
         req.query
@@ -593,6 +631,14 @@ app.post(
       console.log(
         '========== MCP TOKEN =========='
       );
+
+      logCaller('MCP Token', req, {
+        clientId: req.body?.client_id,
+        clientName: getClient(req.body?.client_id)?.clientName,
+        redirectUri: req.body?.redirect_uri,
+        grantType: req.body?.grant_type,
+        hasBasicAuth: /^Basic\s/i.test(req.headers.authorization || '')
+      });
 
       console.log(
         'Token request:',
@@ -971,6 +1017,11 @@ app.post(
         'MCP client registration:',
         JSON.stringify(req.body, null, 2)
       );
+
+      logCaller('MCP Register', req, {
+        clientName: req.body?.client_name,
+        redirectUri: (req.body?.redirect_uris || []).join(',')
+      });
 
       const {
         client_name,
@@ -3476,6 +3527,17 @@ app.post(
       'WWW-Authenticate',
       `Bearer resource_metadata="${mcpBaseUrl(req)}/.well-known/oauth-protected-resource"`
     );
+    next();
+  },
+  (req, res, next) => {
+    const params = req.body?.params || {};
+    logCaller('MCP Request', req, {
+      rpcMethod: req.body?.method,
+      tool: params.name,
+      clientInfo: params.clientInfo,
+      hasBearer: /^Bearer\s/i.test(req.headers.authorization || ''),
+      promptHint: params.arguments?.prompt ?? params.arguments?.query
+    });
     next();
   },
   requireMcpAuthForRequest,
