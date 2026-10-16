@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #11"
+// #12"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -205,6 +205,15 @@ function requireMcpAuthForRequest(req, res, next) {
     ['initialize', 'notifications/initialized', 'tools/list'].includes(
       req.body?.method
     )
+  ) {
+    return next();
+  }
+
+  // The start menu is static and needs no session; platform selection does.
+  if (
+    req.body?.method === 'tools/call' &&
+    req.body?.params?.name === 'trimble_get_started' &&
+    !req.body?.params?.arguments?.platform
   ) {
     return next();
   }
