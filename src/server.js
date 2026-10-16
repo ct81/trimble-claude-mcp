@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #12"
+// #13"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -42,12 +42,15 @@ import {
 
 import {
   createMcpAccessToken,
+  createMcpRefreshToken,
+  consumeMcpRefreshToken,
   getSessionIdFromMcpToken
 } from './oauth/mcpTokens.js';
 
 import {
   registerClient,
-  getClient
+  getClient,
+  verifyClientSecret
 } from './oauth/mcpClients.js';
 
 import {
@@ -366,7 +369,9 @@ app.get(
             ],
 
             token_endpoint_auth_methods_supported: [
-                "none"
+                "none",
+                "client_secret_post",
+                "client_secret_basic"
             ]
         });
     }
@@ -470,7 +475,9 @@ app.get(
       // Validate PKCE
       // -----------------------------------------
 
-      if (!code_challenge) {
+      // PKCE is mandatory for public clients and optional for
+      // confidential clients that authenticate with a secret.
+      if (!code_challenge && !client.clientSecret) {
 
         return res.status(400).json({
 
@@ -483,6 +490,7 @@ app.get(
       }
 
       if (
+        code_challenge &&
         code_challenge_method !==
         'S256'
       ) {
@@ -609,14 +617,137 @@ app.post(
         }
       );
 
+      // Client credentials may arrive in the body or a Basic header.
+      let basicId;
+      let basicSecret;
+      const basic =
+        (req.headers.authorization || '')
+          .match(/^Basic\s+(.+)$/i);
+
+      if (basic) {
+        const decoded =
+          Buffer.from(basic[1], 'base64')
+            .toString('utf8');
+        const idx = decoded.indexOf(':');
+
+        if (idx > 0) {
+          basicId =
+            decodeURIComponent(
+              decoded.slice(0, idx)
+            );
+          basicSecret =
+            decodeURIComponent(
+              decoded.slice(idx + 1)
+            );
+        }
+      }
+
+      const body = req.body || {};
+
       const {
         grant_type,
         code,
-        client_id,
         redirect_uri,
         code_verifier,
-        resource
-      } = req.body;
+        resource,
+        refresh_token
+      } = body;
+
+      const client_id =
+        body.client_id || basicId;
+
+      const client_secret =
+        body.client_secret || basicSecret;
+
+      // -----------------------------------------
+      // Client
+      // -----------------------------------------
+
+      const client =
+        getClient(client_id);
+
+      if (!client) {
+
+        return res.status(401).json({
+
+          error:
+            'invalid_client',
+
+          error_description:
+            'Unknown client'
+        });
+      }
+
+      if (
+        !verifyClientSecret(
+          client,
+          client_secret
+        )
+      ) {
+
+        return res.status(401).json({
+
+          error:
+            'invalid_client',
+
+          error_description:
+            'Invalid client credentials'
+        });
+      }
+
+      // -----------------------------------------
+      // Refresh token grant
+      // -----------------------------------------
+
+      if (grant_type === 'refresh_token') {
+
+        const stored =
+          refresh_token
+            ? consumeMcpRefreshToken(
+                refresh_token
+              )
+            : null;
+
+        if (
+          !stored ||
+          stored.clientId !== client_id
+        ) {
+
+          return res.status(400).json({
+
+            error:
+              'invalid_grant',
+
+            error_description:
+              'Invalid or expired refresh token'
+          });
+        }
+
+        return res.json({
+
+          access_token:
+            createMcpAccessToken(
+              stored.sessionId,
+              stored.resource
+            ),
+
+          token_type:
+            'Bearer',
+
+          expires_in:
+            3600,
+
+          refresh_token:
+            createMcpRefreshToken(
+              stored.sessionId,
+              stored.resource,
+              client_id
+            ),
+
+          resource:
+            stored.resource
+        });
+      }
 
       // -----------------------------------------
       // Grant type
@@ -647,25 +778,6 @@ app.post(
 
           error_description:
             'Missing authorization code'
-        });
-      }
-
-      // -----------------------------------------
-      // Client
-      // -----------------------------------------
-
-      const client =
-        getClient(client_id);
-
-      if (!client) {
-
-        return res.status(400).json({
-
-          error:
-            'invalid_client',
-
-          error_description:
-            'Unknown client'
         });
       }
 
@@ -714,6 +826,7 @@ app.post(
       // -----------------------------------------
 
       if (
+        redirect_uri &&
         authorization.redirectUri !==
         redirect_uri
       ) {
@@ -755,34 +868,40 @@ app.post(
       // PKCE
       // -----------------------------------------
 
-      if (!code_verifier) {
+      if (
+        authorization.codeChallenge ||
+        !client.clientSecret
+      ) {
 
-        return res.status(400).json({
+        if (!code_verifier) {
 
-          error:
-            'invalid_grant',
+          return res.status(400).json({
 
-          error_description:
-            'Missing code_verifier'
-        });
-      }
+            error:
+              'invalid_grant',
 
-      const pkceValid =
-        verifyPkce(
-          code_verifier,
-          authorization.codeChallenge
-        );
+            error_description:
+              'Missing code_verifier'
+          });
+        }
 
-      if (!pkceValid) {
+        const pkceValid =
+          verifyPkce(
+            code_verifier,
+            authorization.codeChallenge
+          );
 
-        return res.status(400).json({
+        if (!pkceValid) {
 
-          error:
-            'invalid_grant',
+          return res.status(400).json({
 
-          error_description:
-            'PKCE verification failed'
-        });
+            error:
+              'invalid_grant',
+
+            error_description:
+              'PKCE verification failed'
+          });
+        }
       }
 
       // -----------------------------------------
@@ -799,6 +918,9 @@ app.post(
         'MCP token created successfully'
       );
 
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('Pragma', 'no-cache');
+
       return res.json({
 
         access_token:
@@ -809,6 +931,13 @@ app.post(
 
         expires_in:
           3600,
+
+        refresh_token:
+          createMcpRefreshToken(
+            authorization.sessionId,
+            expectedResource,
+            client_id
+          ),
 
         resource:
           expectedResource
@@ -895,6 +1024,12 @@ app.post(
 
         client_id:
           client.clientId,
+
+        ...(client.clientSecret && {
+          client_secret:
+            client.clientSecret,
+          client_secret_expires_at: 0
+        }),
 
         client_name:
           client.clientName,

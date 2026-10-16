@@ -143,6 +143,58 @@ export function createMcpAccessToken(
   return token;
 }
 
+const refreshTokens = new Map();
+
+export function createMcpRefreshToken(
+  sessionId,
+  resource,
+  clientId
+) {
+
+  const token =
+    crypto
+      .randomBytes(48)
+      .toString('hex');
+
+  refreshTokens.set(
+    token,
+    {
+      sessionId,
+      resource,
+      clientId,
+      expiresAt:
+        Date.now() +
+        30 * 24 * 60 * 60 * 1000
+    }
+  );
+
+  return token;
+}
+
+// Refresh tokens are single use; a new one is issued on each refresh.
+export function consumeMcpRefreshToken(
+  token
+) {
+
+  const data =
+    refreshTokens.get(token);
+
+  if (!data) {
+    return null;
+  }
+
+  refreshTokens.delete(token);
+
+  if (
+    Date.now() >
+    data.expiresAt
+  ) {
+    return null;
+  }
+
+  return data;
+}
+
 export function getSessionIdFromMcpToken(
   token
 ) {
