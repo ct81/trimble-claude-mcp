@@ -159,12 +159,24 @@ export function createMcpRefreshToken(
   const now = Date.now();
   const expiresIn = 60 * 60; // 1 hour
 
-  tokens.set(token, {
-    sessionId,
-    resource,
-    createdAt: now,
-    expiresAt: now + expiresIn * 1000
-  });
+  // tokens.set(token, {
+  //   sessionId,
+  //   resource,
+  //   createdAt: now,
+  //   expiresAt: now + expiresIn * 1000
+  // });
+
+  refreshTokens.set(
+    token,
+    {
+      sessionId,
+      resource,
+      clientId,
+      expiresAt:
+        Date.now() +
+        30 * 24 * expiresIn * 1000
+    }
+  );
 
   // refreshTokens.set(
   //   token,
