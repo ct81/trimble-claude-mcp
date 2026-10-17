@@ -32,6 +32,8 @@ import {
   processColumnSchedule
 } from '../pdf/columnScheduleExporter.js';
 
+import { dxfToCSV } from '../pdf/extractdxfexporter.js';
+
 import {
   callSketchUpTool,
   listSketchUpTools
@@ -1729,6 +1731,23 @@ const baseDefinitions = [
   },
 
   {
+    name: 'extract_dxf_csv',
+    description:
+      'Extract supported entities from DXF text and return CSV plus structured records.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        dxfText: {
+          type: 'string',
+          minLength: 1,
+          description: 'The text contents of a DXF file.'
+        }
+      },
+      required: ['dxfText']
+    }
+  },
+
+  {
     name: 'process_column_schedule',
     description:
       'Normalize extracted column-schedule JSON into tabular records.',
@@ -2962,6 +2981,13 @@ async function callToolInBridgeSession(
 
     case 'get_property_set_changeset_status':
       result = await propertySet.getChangesetStatus(sessionId, args.changesetId);
+      break;
+
+    case 'extract_dxf_csv':
+      if (typeof args.dxfText !== 'string' || args.dxfText.length === 0) {
+        throw new Error('dxfText must be a non-empty string.');
+      }
+      result = dxfToCSV(args.dxfText);
       break;
 
     case 'extract_column_schedule': {

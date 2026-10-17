@@ -1136,6 +1136,10 @@ export const swaggerDocument = {
       description: 'Schedule extraction and PDF processing utilities.'
     },
     {
+      name: 'DXF',
+      description: 'DXF entity extraction and CSV export utilities.'
+    },
+    {
       name: 'Python',
       description: 'Server-side Python test utilities.'
     },
@@ -5193,6 +5197,8 @@ export async function getSwaggerDocument() {
         ? 'Python'
         : toolName === 'extract_tender_project'
           ? 'PDF'
+        : toolName.includes('dxf')
+          ? 'DXF'
         : toolName === 'model_tender_project_in_sketchup'
           ? 'SketchUp'
         : toolName.includes('property_set')
