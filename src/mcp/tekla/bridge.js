@@ -1,29 +1,18 @@
-import { getSelectedBridge } from '../bridge-selection.js';
-
+const BASE = (process.env.TEKLA_BRIDGE_URL || "").replace(/\/+$/, "");
 const KEY = process.env.TEKLA_BRIDGE_KEY || "";
 
-function baseUrl() {
-  return String(
-    getSelectedBridge('Tekla')?.value ||
-    (process.env.TEKLA_BRIDGE_URL || '').split(',')[0].trim()
-  ).replace(/\/+$/, '');
-}
-
 function requireBase() {
-  const base = baseUrl();
-  if (!base) throw new Error("TEKLA_BRIDGE_URL is missing");
-  return base;
+  if (!BASE) throw new Error("TEKLA_BRIDGE_URL is missing");
 }
 
 function config() {
-  const base = requireBase();
+  requireBase();
   if (!KEY) throw new Error("TEKLA_BRIDGE_KEY is missing");
-  return base;
 }
 
 async function call(path, options={}) {
-  const base = config();
-  const r = await fetch(`${base}${path}`, {
+  config();
+  const r = await fetch(`${BASE}${path}`, {
     ...options,
     headers: {"Content-Type":"application/json","X-Tekla-Bridge-Key":KEY,...(options.headers||{})}
   });
@@ -34,8 +23,8 @@ async function call(path, options={}) {
 }
 
 async function publicGet(path) {
-  const base = requireBase();
-  const r = await fetch(`${base}${path}`);
+  requireBase();
+  const r = await fetch(`${BASE}${path}`);
   const text = await r.text();
   let data;
   try { data = text ? JSON.parse(text) : null; }
@@ -67,10 +56,22 @@ export const teklaCreateBeam = (a) => call("/api/tekla/create/beam",{method:"POS
 export const teklaCreateParametricStair = (a) => call("/api/tekla/create/parametric-stair",{method:"POST",body:JSON.stringify(a)});
 export const teklaCreateColumn = (a) => call("/api/tekla/create/column",{method:"POST",body:JSON.stringify(a)});
 export const teklaCreatePlate = (a) => call("/api/tekla/create/plate",{method:"POST",body:JSON.stringify(a)});
+export const teklaCreateWall = (a) => call("/api/tekla/create/wall",{method:"POST",body:JSON.stringify(a)});
+export const teklaCreateSlab = (a) => call("/api/tekla/create/slab",{method:"POST",body:JSON.stringify(a)});
+export const teklaCreateCurveBeam = (a) => call("/api/tekla/create/curve-beam",{method:"POST",body:JSON.stringify(a)});
+export const teklaCreateCurveColumn = (a) => call("/api/tekla/create/curve-column",{method:"POST",body:JSON.stringify(a)});
+export const teklaCreateCurveWall = (a) => call("/api/tekla/create/curve-wall",{method:"POST",body:JSON.stringify(a)});
+export const teklaCreateCurveSlab = (a) => call("/api/tekla/create/curve-slab",{method:"POST",body:JSON.stringify(a)});
 export const teklaUpdateObject = (a) => call("/api/tekla/update/object",{method:"POST",body:JSON.stringify(a)});
 export const teklaUpdateBeam = (a) => call("/api/tekla/update/beam",{method:"POST",body:JSON.stringify(a)});
 export const teklaUpdateColumn = (a) => call("/api/tekla/update/column",{method:"POST",body:JSON.stringify({guid:a.guid,profile:a.profile,material:a.material,classNumber:a.classNumber,x1:a.x,y1:a.y,z1:a.z1,x2:a.x,y2:a.y,z2:a.z2,attributes:a.attributes})});
 export const teklaUpdatePlate = (a) => call("/api/tekla/update/plate",{method:"POST",body:JSON.stringify(a)});
+export const teklaUpdateWall = (a) => call("/api/tekla/update/wall",{method:"POST",body:JSON.stringify(a)});
+export const teklaUpdateSlab = (a) => call("/api/tekla/update/slab",{method:"POST",body:JSON.stringify(a)});
+export const teklaUpdateCurveBeam = (a) => call("/api/tekla/update/curve-beam",{method:"POST",body:JSON.stringify(a)});
+export const teklaUpdateCurveColumn = (a) => call("/api/tekla/update/curve-column",{method:"POST",body:JSON.stringify(a)});
+export const teklaUpdateCurveWall = (a) => call("/api/tekla/update/curve-wall",{method:"POST",body:JSON.stringify(a)});
+export const teklaUpdateCurveSlab = (a) => call("/api/tekla/update/curve-slab",{method:"POST",body:JSON.stringify(a)});
 export const teklaUpdateAssembly = (a) => call("/api/tekla/update/assembly",{method:"POST",body:JSON.stringify(a)});
 export const teklaUpdateWeld = (a) => call("/api/tekla/update/weld",{method:"POST",body:JSON.stringify(a)});
 export const teklaUpdateBolt = (a) => call("/api/tekla/update/bolt",{method:"POST",body:JSON.stringify(a)});
@@ -78,6 +79,12 @@ export const teklaUpdateRebar = (a) => call("/api/tekla/update/rebar",{method:"P
 export const teklaUpdateRebarGroup = (a) => call("/api/tekla/update/rebar-group",{method:"POST",body:JSON.stringify(a)});
 export const teklaUpdatePhase = (a) => call("/api/tekla/update/phase",{method:"POST",body:JSON.stringify(a)});
 export const teklaDeleteObject = (a) => call("/api/tekla/delete/object",{method:"POST",body:JSON.stringify(a)});
+export const teklaDeleteWall = (a) => call("/api/tekla/delete/wall",{method:"POST",body:JSON.stringify(a)});
+export const teklaDeleteSlab = (a) => call("/api/tekla/delete/slab",{method:"POST",body:JSON.stringify(a)});
+export const teklaDeleteCurveBeam = (a) => call("/api/tekla/delete/curve-beam",{method:"POST",body:JSON.stringify(a)});
+export const teklaDeleteCurveColumn = (a) => call("/api/tekla/delete/curve-column",{method:"POST",body:JSON.stringify(a)});
+export const teklaDeleteCurveWall = (a) => call("/api/tekla/delete/curve-wall",{method:"POST",body:JSON.stringify(a)});
+export const teklaDeleteCurveSlab = (a) => call("/api/tekla/delete/curve-slab",{method:"POST",body:JSON.stringify(a)});
 export const teklaCreateAssembly = (a) => call("/api/tekla/create/assembly",{method:"POST",body:JSON.stringify(a)});
 export const teklaCreateWeld = (a) => call("/api/tekla/create/weld",{method:"POST",body:JSON.stringify(a)});
 export const teklaCreateBolt = (a) => call("/api/tekla/create/bolt",{method:"POST",body:JSON.stringify(a)});

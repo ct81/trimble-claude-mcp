@@ -2398,6 +2398,30 @@ async function callToolInBridgeSession(
     result = await teklaBridge.teklaCreatePlate(args);
     break;
 
+  case 'tekla_create_wall':
+    result = await teklaBridge.teklaCreateWall(args);
+    break;
+
+  case 'tekla_create_slab':
+    result = await teklaBridge.teklaCreateSlab(args);
+    break;
+
+  case 'tekla_create_curve_beam':
+    result = await teklaBridge.teklaCreateCurveBeam(args);
+    break;
+
+  case 'tekla_create_curve_column':
+    result = await teklaBridge.teklaCreateCurveColumn(args);
+    break;
+
+  case 'tekla_create_curve_wall':
+    result = await teklaBridge.teklaCreateCurveWall(args);
+    break;
+
+  case 'tekla_create_curve_slab':
+    result = await teklaBridge.teklaCreateCurveSlab(args);
+    break;
+
   case 'tekla_update_object':
     result = await teklaBridge.teklaUpdateObject(args);
     break;
@@ -2412,6 +2436,30 @@ async function callToolInBridgeSession(
 
   case 'tekla_update_plate':
     result = await teklaBridge.teklaUpdatePlate(args);
+    break;
+
+  case 'tekla_update_wall':
+    result = await teklaBridge.teklaUpdateWall(args);
+    break;
+
+  case 'tekla_update_slab':
+    result = await teklaBridge.teklaUpdateSlab(args);
+    break;
+
+  case 'tekla_update_curve_beam':
+    result = await teklaBridge.teklaUpdateCurveBeam(args);
+    break;
+
+  case 'tekla_update_curve_column':
+    result = await teklaBridge.teklaUpdateCurveColumn(args);
+    break;
+
+  case 'tekla_update_curve_wall':
+    result = await teklaBridge.teklaUpdateCurveWall(args);
+    break;
+
+  case 'tekla_update_curve_slab':
+    result = await teklaBridge.teklaUpdateCurveSlab(args);
     break;
 
   case 'tekla_update_assembly':
@@ -2488,6 +2536,30 @@ async function callToolInBridgeSession(
 
   case 'tekla_delete_object':
     result = await teklaBridge.teklaDeleteObject(args);
+    break;
+
+  case 'tekla_delete_wall':
+    result = await teklaBridge.teklaDeleteWall(args);
+    break;
+
+  case 'tekla_delete_slab':
+    result = await teklaBridge.teklaDeleteSlab(args);
+    break;
+
+  case 'tekla_delete_curve_beam':
+    result = await teklaBridge.teklaDeleteCurveBeam(args);
+    break;
+
+  case 'tekla_delete_curve_column':
+    result = await teklaBridge.teklaDeleteCurveColumn(args);
+    break;
+
+  case 'tekla_delete_curve_wall':
+    result = await teklaBridge.teklaDeleteCurveWall(args);
+    break;
+
+  case 'tekla_delete_curve_slab':
+    result = await teklaBridge.teklaDeleteCurveSlab(args);
     break;
 
   case 'tekla_create_assembly':

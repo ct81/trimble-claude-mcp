@@ -29,6 +29,12 @@ export const tools = [
   {name:"tekla_create_parametric_stair",description:"Insert the native TeklaMcpParametricStair plugin with placement points and property values. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({x1:{type:"number"},y1:{type:"number"},z1:{type:"number"},x2:{type:"number"},y2:{type:"number"},z2:{type:"number"},stairWidth:{type:"number",exclusiveMinimum:0},stepCount:{type:"integer",minimum:1,maximum:200},stringerProfile:{type:"string"},treadProfile:{type:"string"},steelGrade:{type:"string"}},["x1","y1","z1","x2","y2","z2"])},
   {name:"tekla_create_column",description:"Create a Tekla column. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({x:{type:"number"},y:{type:"number"},z1:{type:"number"},z2:{type:"number"},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"}},["x","y","z1","z2"])},
   {name:"tekla_create_plate",description:"Create a Tekla plate. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({x1:{type:"number"},y1:{type:"number"},z1:{type:"number"},x2:{type:"number"},y2:{type:"number"},z2:{type:"number"},x3:{type:"number"},y3:{type:"number"},z3:{type:"number"},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"}},["x1","y1","z1","x2","y2","z2","x3","y3","z3"])},
+  {name:"tekla_create_wall",description:"Create a Tekla wall plate. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({x1:{type:"number"},y1:{type:"number"},z1:{type:"number"},x2:{type:"number"},y2:{type:"number"},z2:{type:"number"},x3:{type:"number"},y3:{type:"number"},z3:{type:"number"},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"}},["x1","y1","z1","x2","y2","z2","x3","y3","z3"])},
+  {name:"tekla_create_slab",description:"Create a Tekla slab plate. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({x1:{type:"number"},y1:{type:"number"},z1:{type:"number"},x2:{type:"number"},y2:{type:"number"},z2:{type:"number"},x3:{type:"number"},y3:{type:"number"},z3:{type:"number"},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"}},["x1","y1","z1","x2","y2","z2","x3","y3","z3"])},
+  {name:"tekla_create_curve_beam",description:"Create a curved Tekla beam from a point path. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({points:{type:"array",minItems:2,items:{type:"object",required:["x","y","z"],properties:{x:{type:"number"},y:{type:"number"},z:{type:"number"}}}},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"}},["points"])},
+  {name:"tekla_create_curve_column",description:"Create curved Tekla columns from a point path. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({points:{type:"array",minItems:2,items:{type:"object",required:["x","y","z"],properties:{x:{type:"number"},y:{type:"number"},z:{type:"number"}}}},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"}},["points"])},
+  {name:"tekla_create_curve_wall",description:"Create curved Tekla wall panels from a point path. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({points:{type:"array",minItems:3,items:{type:"object",required:["x","y","z"],properties:{x:{type:"number"},y:{type:"number"},z:{type:"number"}}}},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"}},["points"])},
+  {name:"tekla_create_curve_slab",description:"Create curved Tekla slab panels from a point path. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({points:{type:"array",minItems:3,items:{type:"object",required:["x","y","z"],properties:{x:{type:"number"},y:{type:"number"},z:{type:"number"}}}},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"}},["points"])},
   {name:"tekla_update_object",description:"Update a Tekla part's profile, material, class, or user-defined attributes. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({guid:{type:"string"},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"},attributes:{type:"object",additionalProperties:{type:"string"}}},["guid"])},
   {name:"tekla_update_beam",description:"Update a Tekla beam's profile, material, class, endpoints, or user-defined attributes by GUID. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({guid:{type:"string"},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"},x1:{type:"number"},y1:{type:"number"},z1:{type:"number"},x2:{type:"number"},y2:{type:"number"},z2:{type:"number"},attributes:{type:"object",additionalProperties:{type:"string"}}},["guid"])},
   {name:"tekla_update_column",description:"Update a Tekla column's profile, material, class, endpoints, or user-defined attributes by GUID. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({guid:{type:"string"},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"},x:{type:"number"},y:{type:"number"},z1:{type:"number"},z2:{type:"number"},attributes:{type:"object",additionalProperties:{type:"string"}}},["guid"])},
@@ -84,10 +90,22 @@ export async function callTeklaTool(name,args={}) {
     case "tekla_create_parametric_stair": return t.teklaCreateParametricStair(args);
     case "tekla_create_column": return t.teklaCreateColumn(args);
     case "tekla_create_plate": return t.teklaCreatePlate(args);
+    case "tekla_create_wall": return t.teklaCreateWall(args);
+    case "tekla_create_slab": return t.teklaCreateSlab(args);
+    case "tekla_create_curve_beam": return t.teklaCreateCurveBeam(args);
+    case "tekla_create_curve_column": return t.teklaCreateCurveColumn(args);
+    case "tekla_create_curve_wall": return t.teklaCreateCurveWall(args);
+    case "tekla_create_curve_slab": return t.teklaCreateCurveSlab(args);
     case "tekla_update_object": return t.teklaUpdateObject(args);
     case "tekla_update_beam": return t.teklaUpdateBeam(args);
     case "tekla_update_column": return t.teklaUpdateColumn(args);
     case "tekla_update_plate": return t.teklaUpdatePlate(args);
+    case "tekla_update_wall": return t.teklaUpdateWall(args);
+    case "tekla_update_slab": return t.teklaUpdateSlab(args);
+    case "tekla_update_curve_beam": return t.teklaUpdateCurveBeam(args);
+    case "tekla_update_curve_column": return t.teklaUpdateCurveColumn(args);
+    case "tekla_update_curve_wall": return t.teklaUpdateCurveWall(args);
+    case "tekla_update_curve_slab": return t.teklaUpdateCurveSlab(args);
     case "tekla_update_assembly": return t.teklaUpdateAssembly(args);
     case "tekla_update_weld": return t.teklaUpdateWeld(args);
     case "tekla_update_bolt": return t.teklaUpdateBolt(args);
@@ -107,6 +125,12 @@ export async function callTeklaTool(name,args={}) {
     case "tekla_component_update": return t.teklaComponentUpdate(args);
     case "tekla_component_delete": return t.teklaComponentDelete(args);
     case "tekla_delete_object": return t.teklaDeleteObject(args);
+    case "tekla_delete_wall": return t.teklaDeleteWall(args);
+    case "tekla_delete_slab": return t.teklaDeleteSlab(args);
+    case "tekla_delete_curve_beam": return t.teklaDeleteCurveBeam(args);
+    case "tekla_delete_curve_column": return t.teklaDeleteCurveColumn(args);
+    case "tekla_delete_curve_wall": return t.teklaDeleteCurveWall(args);
+    case "tekla_delete_curve_slab": return t.teklaDeleteCurveSlab(args);
     case "tekla_create_assembly": return t.teklaCreateAssembly(args);
     case "tekla_create_weld": return t.teklaCreateWeld(args);
     case "tekla_create_bolt": return t.teklaCreateBolt(args);
