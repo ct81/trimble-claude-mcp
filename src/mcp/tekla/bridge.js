@@ -59,11 +59,13 @@ export const teklaCreatePlate = (a) => call("/api/tekla/create/plate",{method:"P
 export const teklaCreateWall = (a) => call("/api/tekla/create/wall",{method:"POST",body:JSON.stringify(a)});
 export const teklaCreateSlab = (a) => call("/api/tekla/create/slab",{method:"POST",body:JSON.stringify(a)});
 export const teklaCreateCurveBeam = (a) => call("/api/tekla/create/curve-beam",{method:"POST",body:JSON.stringify(a)});
+export const teklaCreatePolyBeam = (a) => call("/api/tekla/create/polybeam",{method:"POST",body:JSON.stringify(a)});
 export const teklaCreateCurveColumn = (a) => call("/api/tekla/create/curve-column",{method:"POST",body:JSON.stringify(a)});
 export const teklaCreateCurveWall = (a) => call("/api/tekla/create/curve-wall",{method:"POST",body:JSON.stringify(a)});
 export const teklaCreateCurveSlab = (a) => call("/api/tekla/create/curve-slab",{method:"POST",body:JSON.stringify(a)});
 export const teklaUpdateObject = (a) => call("/api/tekla/update/object",{method:"POST",body:JSON.stringify(a)});
 export const teklaUpdateBeam = (a) => call("/api/tekla/update/beam",{method:"POST",body:JSON.stringify(a)});
+export const teklaUpdatePolyBeam = (a) => call("/api/tekla/update/polybeam",{method:"POST",body:JSON.stringify(a)});
 export const teklaUpdateColumn = (a) => call("/api/tekla/update/column",{method:"POST",body:JSON.stringify({guid:a.guid,profile:a.profile,material:a.material,classNumber:a.classNumber,x1:a.x,y1:a.y,z1:a.z1,x2:a.x,y2:a.y,z2:a.z2,attributes:a.attributes})});
 export const teklaUpdatePlate = (a) => call("/api/tekla/update/plate",{method:"POST",body:JSON.stringify(a)});
 export const teklaUpdateWall = (a) => call("/api/tekla/update/wall",{method:"POST",body:JSON.stringify(a)});

@@ -2410,6 +2410,10 @@ async function callToolInBridgeSession(
     result = await teklaBridge.teklaCreateCurveBeam(args);
     break;
 
+  case 'tekla_create_polybeam':
+    result = await teklaBridge.teklaCreatePolyBeam(args);
+    break;
+
   case 'tekla_create_curve_column':
     result = await teklaBridge.teklaCreateCurveColumn(args);
     break;
@@ -2428,6 +2432,10 @@ async function callToolInBridgeSession(
 
   case 'tekla_update_beam':
     result = await teklaBridge.teklaUpdateBeam(args);
+    break;
+
+  case 'tekla_update_polybeam':
+    result = await teklaBridge.teklaUpdatePolyBeam(args);
     break;
 
   case 'tekla_update_column':

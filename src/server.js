@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #21"
+// #22"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -2819,6 +2819,7 @@ app.post(
 //   POST /api/mcp/tekla/rebar-group
 //   POST /api/mcp/tekla/create/beam
 //   POST /api/mcp/tekla/create/parametric-stair
+//   POST /api/mcp/tekla/create/polybeam
 //   POST /api/mcp/tekla/create/column
 //   POST /api/mcp/tekla/create/plate
 //   POST /api/mcp/tekla/create/assembly
@@ -2844,6 +2845,7 @@ app.post(
 //   POST /api/mcp/tools/tekla_get_rebar_group
 //   POST /api/mcp/tools/tekla_create_beam
 //   POST /api/mcp/tools/tekla_create_parametric_stair
+//   POST /api/mcp/tools/tekla_create_polybeam
 //   POST /api/mcp/tools/tekla_create_column
 //   POST /api/mcp/tools/tekla_create_plate
 //   POST /api/mcp/tools/tekla_create_assembly
@@ -3355,6 +3357,7 @@ const teklaActionRoutes = [
   { path: '/api/mcp/tekla/create/wall', toolName: 'tekla_create_wall' },
   { path: '/api/mcp/tekla/create/slab', toolName: 'tekla_create_slab' },
   { path: '/api/mcp/tekla/create/curve-beam', toolName: 'tekla_create_curve_beam' },
+  { path: '/api/mcp/tekla/create/polybeam', toolName: 'tekla_create_polybeam' },
   { path: '/api/mcp/tekla/create/curve-column', toolName: 'tekla_create_curve_column' },
   { path: '/api/mcp/tekla/create/curve-wall', toolName: 'tekla_create_curve_wall' },
   { path: '/api/mcp/tekla/create/curve-slab', toolName: 'tekla_create_curve_slab' },
@@ -3365,6 +3368,7 @@ const teklaActionRoutes = [
   { path: '/api/mcp/tekla/create/rebar-group', toolName: 'tekla_create_rebar_group' },
   { path: '/api/mcp/tekla/create/phase', toolName: 'tekla_create_phase' },
   { path: '/api/mcp/tekla/update/beam', toolName: 'tekla_update_beam' },
+  { path: '/api/mcp/tekla/update/polybeam', toolName: 'tekla_update_polybeam' },
   { path: '/api/mcp/tekla/update/column', toolName: 'tekla_update_column' },
   { path: '/api/mcp/tekla/update/plate', toolName: 'tekla_update_plate' },
   { path: '/api/mcp/tekla/update/wall', toolName: 'tekla_update_wall' },
