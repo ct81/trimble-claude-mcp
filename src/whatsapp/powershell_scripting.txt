@@ -1,0 +1,71 @@
+
+$uri = "https://trimble-claude-mcp-g86i.onrender.com/api/whatsapp/webhook"
+
+# Enter your webhook token securely
+$secureToken = Read-Host "Enter webhook token (without Bearer prefix)" -AsSecureString
+$ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureToken)
+
+try {
+    $token = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
+
+    # Simulated webhook payload (not a real WhatsApp message)
+    $body = @{
+        typeWebhook = "incomingMessageReceived"
+        instanceData = @{
+            idInstance = 0
+            wid = "test"
+            typeInstance = "whatsapp"
+        }
+        timestamp = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+        idMessage = "powershell-webhook-test"
+        senderData = @{
+            chatId = "120363404024548828@g.us"
+            sender = "6596354497@c.us"
+            senderName = "Webhook Chester"
+        }
+        messageData = @{
+            typeMessage = "textMessage"
+            textMessageData = @{
+                textMessage = "Hi, this is a PowerShell webhook test."
+            }
+        }
+    } | ConvertTo-Json -Depth 10
+
+    Write-Host "`nSending test request..." -ForegroundColor Cyan
+
+    $response = Invoke-WebRequest `
+        -UseBasicParsing `
+        -Uri $uri `
+        -Method POST `
+        -Headers @{ Authorization = "Bearer $token" } `
+        -ContentType "application/json" `
+        -Body $body
+
+    Write-Host "`nHTTP Status:" $response.StatusCode -ForegroundColor Green
+    Write-Host "Response:" $response.Content
+}
+catch {
+    Write-Host "`nRequest failed:" $_.Exception.Message -ForegroundColor Red
+
+    if ($_.Exception.Response) {
+        Write-Host "HTTP Status:" ([int]$_.Exception.Response.StatusCode)
+    }
+} finally {
+    if ($ptr -ne [IntPtr]::Zero) {
+        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
+    }
+
+    $token = $null
+    $secureToken.Dispose()
+}
+
+
+
+        senderData = @{
+            chatId = "test@s.whatsapp.net"
+            sender = "test@s.whatsapp.net"
+            senderName = "Webhook Test"
+        }
+
+
+whatsapp-webhook-token

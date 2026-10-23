@@ -1,9 +1,9 @@
 // Trimble AEC Connect (Captures Architecture, Engineering, & Construction workflows)
 
-// git add . 
-// git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #25"
-// git push origin main
+git add . 
+git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
+#26"
+git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
 // git commit -m "Fix MCP PDF input handling and diagnostics"
@@ -3409,7 +3409,13 @@ for (const route of teklaActionRoutes) {
 // GREEN-API webhook: set "webhookUrl" to <PUBLIC_BASE_URL>/api/whatsapp/webhook
 // and "webhookUrlToken" to WHATSAPP_WEBHOOK_TOKEN.
 app.post('/api/whatsapp/webhook', (req, res) => {
-  if (!verifyWhatsAppWebhook(req)) return res.sendStatus(401);
+  console.log(`[WHATSAPP-WEBHOOK] received at ${new Date().toISOString()}`);
+  const payloadLength = JSON.stringify(req.body ?? {}).length;
+  console.log(`[WHATSAPP-WEBHOOK] payload received. Length: ${payloadLength}`);
+  if (!verifyWhatsAppWebhook(req)) {
+    console.warn('[WHATSAPP-WEBHOOK] rejected: invalid token');
+    return res.sendStatus(401);
+  }
   res.sendStatus(200);
   handleIncomingWebhook(req.body);
 });
