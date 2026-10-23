@@ -137,6 +137,7 @@ export async function generateReply(chatId, userText) {
 
     const toolResults = [];
     for (const use of toolUses) {
+      console.log('[WHATSAPP-BOT] tool call', { tool: use.name, input: use.input });
       try {
         const result = await runTool(use.name, use.input || {});
         toolResults.push({
@@ -145,6 +146,7 @@ export async function generateReply(chatId, userText) {
           content: serializeResult(result)
         });
       } catch (error) {
+        console.error('[WHATSAPP-BOT] tool failed:', use.name, error.message);
         toolResults.push({
           type: 'tool_result',
           tool_use_id: use.id,
