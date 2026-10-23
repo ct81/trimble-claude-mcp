@@ -78,6 +78,27 @@ function resolveTrimbleSessionId() {
   );
 }
 
+let lastLoginAlertAt = 0;
+const LOGIN_ALERT_INTERVAL_MS = 30 * 60 * 1000;
+
+// The login link goes to staff only: whoever signs in becomes the Trimble account used for all customers.
+async function notifyStaffToLogin() {
+  const staffChat = process.env.WHATSAPP_SALES_CHAT_ID;
+  if (!staffChat || Date.now() - lastLoginAlertAt < LOGIN_ALERT_INTERVAL_MS) return;
+  lastLoginAlertAt = Date.now();
+  const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
+  try {
+    await sendWhatsAppMessage({
+      chatId: staffChat,
+      message:
+        'WhatsApp bot: Trimble Connect is not connected. Open this link in a normal browser and sign in:\n' +
+        `${base}/oauth/login`
+    });
+  } catch (error) {
+    console.error('[WHATSAPP-BOT] failed to send login alert:', error.message);
+  }
+}
+
 async function runTool(name, input) {
   if (name === 'request_quotation') {
     const reference = `Q-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
@@ -100,6 +121,7 @@ async function runTool(name, input) {
   if (!READ_ONLY_TOOLS.has(name)) throw new Error(`Tool not allowed: ${name}`);
   const sessionId = resolveTrimbleSessionId();
   if (!sessionId) {
+    await notifyStaffToLogin();
     throw new Error('Trimble Connect is not connected. A staff member must sign in first.');
   }
   return callTool(sessionId, name, input);

@@ -80,6 +80,94 @@ whatsapp-webhook-token
 
 
 # ==========================================
+# Test WhatsApp -> Claude -> Trimble MCP
+# ==========================================
+
+$WebhookUrl = "https://trimble-claude-mcp-g86i.onrender.com/api/whatsapp/webhook"
+
+# Enter the WHATSAPP_WEBHOOK_TOKEN configured in Render
+$SecureToken = Read-Host "Enter WhatsApp webhook token" -AsSecureString
+$Ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecureToken)
+
+try {
+    $WebhookToken = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($Ptr)
+}
+finally {
+    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($Ptr)
+}
+
+# Use your own WhatsApp number as the reply destination
+# Example Singapore number: 6591234567
+$PhoneNumber = Read-Host "Enter your WhatsApp number (country code, no +)"
+$ChatId = "${PhoneNumber}@c.us"
+
+# This message should require a Trimble Connect project lookup
+$Message = "List the projects available in Trimble Connect. Use the Trimble MCP tool to retrieve the actual project list. Do not guess."
+
+$Payload = @{
+    typeWebhook = "incomingMessageReceived"
+    instanceData = @{
+        idInstance   = 0
+        wid          = "powershell-test"
+        typeInstance = "whatsapp"
+    }
+    timestamp = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+    idMessage = "ps-test-$([guid]::NewGuid().ToString())"
+    senderData = @{
+        chatId     = $ChatId
+        sender     = $ChatId
+        chatName   = "MCP Test"
+        senderName = "PowerShell MCP Test"
+    }
+    messageData = @{
+        typeMessage = "textMessage"
+        textMessageData = @{
+            textMessage = $Message
+        }
+    }
+} | ConvertTo-Json -Depth 10
+
+Write-Host "`nSending MCP lookup test..." -ForegroundColor Cyan
+Write-Host "Message: $Message"
+Write-Host "Reply destination: $ChatId"
+
+try {
+    $Response = Invoke-WebRequest `
+        -Uri $WebhookUrl `
+        -Method Post `
+        -Headers @{
+            Authorization = "Bearer $WebhookToken"
+        } `
+        -ContentType "application/json; charset=utf-8" `
+        -Body ([System.Text.Encoding]::UTF8.GetBytes($Payload)) `
+        -TimeoutSec 30
+
+    Write-Host "`nWebhook HTTP status: $([int]$Response.StatusCode)" -ForegroundColor Green
+    Write-Host "Response: $($Response.Content)"
+    Write-Host "`nNow check Render logs for Claude and MCP tool activity."
+    Write-Host "Check WhatsApp for the project list reply."
+}
+catch {
+    Write-Host "`nWebhook request failed." -ForegroundColor Red
+    Write-Host $_.Exception.Message
+
+    if ($_.ErrorDetails.Message) {
+        Write-Host $_.ErrorDetails.Message
+    }
+}
+finally {
+    $WebhookToken = $null
+    $SecureToken.Dispose()
+}
+
+
+
+
+
+
+
+
+# ==========================================
 # WhatsApp -> Render -> Claude -> Trimble MCP
 # ==========================================
 
