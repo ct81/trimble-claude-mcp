@@ -1707,9 +1707,11 @@ export const swaggerDocument = {
             'application/json': {
               schema: {
                 type: 'object',
-                required: ['phoneNumber', 'message'],
+                required: ['message'],
+                anyOf: [{ required: ['chatId'] }, { required: ['phoneNumber'] }],
                 properties: {
-                  phoneNumber: { type: 'string', description: 'International format, digits only.', example: '6591234567' },
+                  chatId: { type: 'string', description: 'GREEN-API chat ID; use @c.us for contacts and @g.us for groups.', example: '6591234567@c.us' },
+                  phoneNumber: { type: 'string', description: 'Used only if chatId is omitted; international format, digits only.', example: '6591234567' },
                   message: { type: 'string', minLength: 1, maxLength: 4096 }
                 }
               }
@@ -1718,7 +1720,7 @@ export const swaggerDocument = {
         },
         responses: {
           200: { description: 'GREEN-API response containing idMessage' },
-          400: { description: 'Missing phoneNumber or message' },
+          400: { description: 'Missing chatId/phoneNumber or message' },
           401: { description: 'Authentication required' },
           500: { description: 'GREEN-API configuration missing or send failed' }
         }

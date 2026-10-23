@@ -1,4 +1,4 @@
-export async function sendWhatsAppMessage(phoneNumber, message) {
+export async function sendWhatsAppMessage({ chatId, chatid, phoneNumber, message }) {
   if (
     !process.env.GREEN_API_URL ||
     !process.env.GREEN_API_INSTANCE_ID ||
@@ -7,14 +7,14 @@ export async function sendWhatsAppMessage(phoneNumber, message) {
     throw new Error("GREEN-API configuration is missing");
   }
 
+  const target = String(chatId ?? chatid ?? "").trim(); //120363404024548828@g.us
   const digits = String(phoneNumber ?? "").replace(/\D/g, "");
-  if (!digits || !String(message ?? "").trim()) {
-    const error = new Error("phoneNumber and message are required");
+  const resolvedChatId = target || (digits ? `${digits}@c.us` : "");
+  if (!resolvedChatId || !String(message ?? "").trim()) {
+    const error = new Error("chatId (or phoneNumber) and message are required");
     error.statusCode = 400;
     throw error;
   }
-
-  const chatId = `${digits}@c.us`;
 
   const endpoint =
     `${process.env.GREEN_API_URL.replace(/\/$/, "")}` +
@@ -27,7 +27,7 @@ export async function sendWhatsAppMessage(phoneNumber, message) {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      chatId,
+      chatId: resolvedChatId,
       message
     })
   });
