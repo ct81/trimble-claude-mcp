@@ -69,3 +69,250 @@ catch {
 
 
 whatsapp-webhook-token
+
+
+120363404024548828@g.us
+7107351622
+44d478efdf584148a7438ac73c331b8dad97e30c33b443fb85
+
+
+
+
+
+# ==========================================
+# WhatsApp -> Render -> Claude -> Trimble MCP
+# ==========================================
+
+$WebhookUrl = "https://trimble-claude-mcp-g86i.onrender.com/api/whatsapp/webhook"
+
+# Enter the SAME secret configured in Render:
+# WHATSAPP_WEBHOOK_TOKEN
+$SecureToken = Read-Host "Enter WhatsApp webhook token" -AsSecureString
+$Ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecureToken)
+
+try {
+    $WebhookToken = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($Ptr)
+}
+finally {
+    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($Ptr)
+}
+
+# Enter your personal WhatsApp number to receive the reply.
+# Singapore example: 6591234567
+$PhoneNumber = Read-Host "Enter your WhatsApp number (country code, no +)"
+
+$ChatId = "${PhoneNumber}@c.us"
+$Message = "trimble get status"
+
+$Payload = @{
+    typeWebhook = "incomingMessageReceived"
+
+    instanceData = @{
+        idInstance = 0
+        wid        = "powershell-test"
+        typeInstance = "whatsapp"
+    }
+
+    timestamp = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+
+    idMessage = "ps-test-$([guid]::NewGuid().ToString())"
+
+    senderData = @{
+        chatId     = $ChatId
+        sender     = $ChatId
+        chatName   = "PowerShell Status Test"
+        senderName = "PowerShell Status Test"
+    }
+
+    messageData = @{
+        typeMessage = "textMessage"
+        textMessageData = @{
+            textMessage = $Message
+        }
+    }
+} | ConvertTo-Json -Depth 10
+
+Write-Host "`nSending test request to Render..." -ForegroundColor Cyan
+Write-Host "Webhook: $WebhookUrl"
+Write-Host "Message: $Message"
+Write-Host "Reply destination: $ChatId"
+
+try {
+    $Response = Invoke-WebRequest `
+        -Uri $WebhookUrl `
+        -Method Post `
+        -Headers @{
+            Authorization = "Bearer $WebhookToken"
+        } `
+        -ContentType "application/json; charset=utf-8" `
+        -Body ([System.Text.Encoding]::UTF8.GetBytes($Payload)) `
+        -TimeoutSec 30
+
+    Write-Host "`nWebhook HTTP status: $([int]$Response.StatusCode)" -ForegroundColor Green
+    Write-Host "Webhook response: $($Response.Content)"
+    Write-Host "`nCheck Render logs for Claude/MCP activity and check WhatsApp for the reply."
+}
+catch {
+    Write-Host "`nWebhook request failed." -ForegroundColor Red
+    Write-Host $_.Exception.Message
+
+    if ($_.ErrorDetails.Message) {
+        Write-Host $_.ErrorDetails.Message
+    }
+}
+finally {
+    $WebhookToken = $null
+    $SecureToken.Dispose()
+}
+
+
+
+
+
+
+# ==========================================
+# GREEN-API WhatsApp Send Message Test
+# ==========================================
+
+# Enter your GREEN-API details
+$InstanceId = Read-Host "Enter GREEN-API Instance ID"
+
+$SecureToken = Read-Host "Enter GREEN-API API Token" -AsSecureString
+$Ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecureToken)
+
+try {
+    $ApiToken = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($Ptr)
+}
+finally {
+    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($Ptr)
+}
+
+# Recipient WhatsApp number with country code, no + sign
+# Example Singapore: 6591234567
+$PhoneNumber = Read-Host "Enter recipient WhatsApp number (e.g. 6591234567)"
+
+$Message = "Test message from PowerShell via GREEN-API. Time: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+
+$ChatId = "${PhoneNumber}@c.us"
+
+$Url = "https://api.green-api.com/waInstance$InstanceId/sendMessage/$ApiToken"
+
+$Body = @{
+    chatId  = $ChatId
+    message = $Message
+} | ConvertTo-Json -Depth 5
+
+Write-Host "`nSending WhatsApp message..." -ForegroundColor Cyan
+Write-Host "Recipient: $ChatId"
+Write-Host "Message: $Message"
+
+try {
+    $Response = Invoke-RestMethod `
+        -Uri $Url `
+        -Method Post `
+        -ContentType "application/json; charset=utf-8" `
+        -Body ([System.Text.Encoding]::UTF8.GetBytes($Body)) `
+        -TimeoutSec 30
+
+    Write-Host "`nGREEN-API response:" -ForegroundColor Green
+    $Response | ConvertTo-Json -Depth 5
+
+    if ($Response.idMessage) {
+        Write-Host "`nSUCCESS: GREEN-API accepted the send request." -ForegroundColor Green
+        Write-Host "Message ID: $($Response.idMessage)"
+    }
+}
+catch {
+    Write-Host "`nFAILED to send message." -ForegroundColor Red
+    Write-Host $_.Exception.Message
+
+    if ($_.ErrorDetails.Message) {
+        Write-Host $_.ErrorDetails.Message
+    }
+}
+finally {
+    $ApiToken = $null
+    $SecureToken.Dispose()
+}
+
+
+
+
+
+
+# ==========================================
+# Trimble Connect MCP Status Check
+# ==========================================
+
+$BaseUrl = "https://trimble-claude-mcp-g86i.onrender.com"
+
+Write-Host "`n==========================================" -ForegroundColor Cyan
+Write-Host " TRIMBLE CONNECT MCP STATUS CHECK" -ForegroundColor Cyan
+Write-Host "==========================================" -ForegroundColor Cyan
+
+# 1. Check service health
+Write-Host "`n[1] Checking service health..." -ForegroundColor Yellow
+
+try {
+    $health = Invoke-RestMethod `
+        -Uri "$BaseUrl/health" `
+        -Method Get `
+        -TimeoutSec 30
+
+    Write-Host "Health endpoint responded:" -ForegroundColor Green
+    $health | ConvertTo-Json -Depth 10
+}
+catch {
+    Write-Host "Health check failed: $($_.Exception.Message)" -ForegroundColor Red
+}
+
+# 2. Check MCP endpoint
+Write-Host "`n[2] Checking MCP endpoint..." -ForegroundColor Yellow
+
+$body = @{
+    jsonrpc = "2.0"
+    id      = 1
+    method  = "initialize"
+    params  = @{
+        protocolVersion = "2025-11-25"
+        capabilities    = @{}
+        clientInfo      = @{
+            name    = "powershell-status-check"
+            version = "1.0.0"
+        }
+    }
+} | ConvertTo-Json -Depth 10
+
+try {
+    $response = Invoke-WebRequest `
+        -Uri "$BaseUrl/mcp" `
+        -Method Post `
+        -ContentType "application/json" `
+        -Headers @{
+            "Accept" = "application/json, text/event-stream"
+        } `
+        -Body $body `
+        -TimeoutSec 30
+
+    Write-Host "MCP HTTP Status: $([int]$response.StatusCode)" -ForegroundColor Green
+    Write-Host "MCP Response:" -ForegroundColor Green
+    Write-Host $response.Content
+
+    if ($response.Headers["Mcp-Session-Id"]) {
+        Write-Host "`nMCP Session ID returned." -ForegroundColor Green
+    }
+}
+catch {
+    Write-Host "MCP request failed." -ForegroundColor Red
+
+    if ($_.Exception.Response) {
+        Write-Host "HTTP Status: $([int]$_.Exception.Response.StatusCode)" -ForegroundColor Red
+    }
+
+    Write-Host $_.Exception.Message
+}
+
+Write-Host "`n==========================================" -ForegroundColor Cyan
+Write-Host " CHECK COMPLETE" -ForegroundColor Cyan
+Write-Host "==========================================" -ForegroundColor Cyan
+
