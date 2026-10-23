@@ -4,6 +4,7 @@ import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
+import { sendWhatsAppMessage } from '../others/greenAPI.js';
 
 import {
   core,
@@ -1820,6 +1821,7 @@ const baseDefinitions = [
     ['workspace_call', 'Call a method on the paired Trimble Connect browser Workspace API. Supply method arguments as an ordered array.', { group: { type: 'string', enum: workspaceApiGroups }, method: { type: 'string' }, args: { type: 'array', items: {} } }, ['group', 'method']],
     ['extract_tender_project', 'Extract project metadata, grids, levels, schedules, tables, and BOQ data from tender PDFs. Use pdfBase64 for one small PDF, pdfBase64s for a small batch, uploadIds for server-side uploads, or textDocuments when PDF text is already available.', { pdfBase64: { type: 'string', description: 'Base64-encoded PDF contents, optionally with a data:application/pdf;base64, prefix. For small PDFs only.' }, pdfBase64s: { type: 'array', minItems: 1, maxItems: 10, items: { type: 'string' }, description: 'Base64-encoded contents for 1 to 10 PDFs. For small PDFs only.' }, filenames: { type: 'array', minItems: 1, maxItems: 10, items: { type: 'string' }, description: 'Optional filenames in the same order as pdfBase64s.' }, uploadIds: { type: 'array', minItems: 1, maxItems: 10, items: { type: 'string' }, description: 'Server-side PDF upload IDs from POST /api/pdf/uploads.' }, textDocuments: { type: 'array', minItems: 1, maxItems: 10, description: 'Use this when PDF text is readable in the conversation but cannot be uploaded. Provide extracted text and optionally extracted tables as rows of cell strings.', items: { type: 'object', required: ['filename', 'text'], properties: { filename: { type: 'string' }, text: { type: 'string', description: 'Text extracted from this PDF.' }, page_count: { type: 'integer', minimum: 1 }, tables: { type: 'array', items: { type: 'array', items: { type: 'array', items: { type: 'string' } } } } } } }, projectName: { type: 'string', maxLength: 120 } }],
     ['model_tender_project_in_sketchup', 'Create a labeled SketchUp grid-and-level reference scaffold from extracted tender JSON. This creates geometry and a group in the active model. Schedule elements are not placed because grid-location assignments are not included in the extracted JSON.', { project: { type: 'object', description: 'The project object returned by extract_tender_project.' } }, ['project']],
+    ['send_whatsapp_message', 'Send a WhatsApp text message through GREEN-API. phoneNumber must be in international format, digits only (e.g. 6591234567).', { phoneNumber: { type: 'string', description: 'Recipient phone number in international format without + or leading zeros.' }, message: { type: 'string', minLength: 1, maxLength: 4096 } }, ['phoneNumber', 'message']],
     ['run_python_test', 'Run the server-side Python hello-world test script.', {}]
   ].map(([name, description, properties, required = []]) => ({
     name,
@@ -1872,6 +1874,8 @@ export const definitions = [
         ? 'Workspace'
       : name === 'run_python_test'
         ? 'Python'
+      : name === 'send_whatsapp_message'
+        ? 'WhatsApp'
       : name === 'extract_tender_project'
         ? 'PDF'
       : name === 'model_tender_project_in_sketchup'
@@ -2277,6 +2281,11 @@ async function callToolInBridgeSession(
       project = await extractTenderProjectFromFiles(uploads, args.projectName);
     }
     result = { success: true, project };
+    break;
+  }
+
+  case 'send_whatsapp_message': {
+    result = await sendWhatsAppMessage(args.phoneNumber, args.message);
     break;
   }
 

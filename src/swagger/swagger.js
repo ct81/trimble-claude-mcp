@@ -1160,6 +1160,10 @@ export const swaggerDocument = {
       description: 'DXF entity extraction and CSV export utilities.'
     },
     {
+      name: 'WhatsApp',
+      description: 'WhatsApp messaging through GREEN-API.'
+    },
+    {
       name: 'Python',
       description: 'Server-side Python test utilities.'
     },
@@ -1687,6 +1691,36 @@ export const swaggerDocument = {
           200: { description: 'Generated viewer file path and URL' },
           401: { description: 'Authentication required' },
           500: { description: 'Generation failed' }
+        }
+      }
+    },
+
+    '/api/mcp/whatsapp/send': {
+      post: {
+        tags: ['WhatsApp'],
+        summary: 'Send a WhatsApp message through GREEN-API',
+        operationId: 'send_whatsapp_message_rest',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['phoneNumber', 'message'],
+                properties: {
+                  phoneNumber: { type: 'string', description: 'International format, digits only.', example: '6591234567' },
+                  message: { type: 'string', minLength: 1, maxLength: 4096 }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          200: { description: 'GREEN-API response containing idMessage' },
+          400: { description: 'Missing phoneNumber or message' },
+          401: { description: 'Authentication required' },
+          500: { description: 'GREEN-API configuration missing or send failed' }
         }
       }
     },
@@ -5215,6 +5249,8 @@ export async function getSwaggerDocument() {
         ? 'TSD'
         : toolName === 'run_python_test'
         ? 'Python'
+        : toolName === 'send_whatsapp_message'
+        ? 'WhatsApp'
         : toolName === 'extract_tender_project'
           ? 'PDF'
         : toolName.includes('dxf')

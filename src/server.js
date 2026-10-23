@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #22"
+// #23"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -3401,6 +3401,25 @@ for (const route of teklaActionRoutes) {
     }
   );
 }
+
+app.post(
+  '/api/mcp/whatsapp/send',
+  requireSession,
+  async (req, res) => {
+    try {
+      const args = req.body?.arguments ?? req.body ?? {};
+      const result = await callTool(
+        req.mcpSessionId,
+        'send_whatsapp_message',
+        args
+      );
+      return res.json(result);
+    } catch (error) {
+      console.error('POST /api/mcp/whatsapp/send:', error);
+      return res.status(error.statusCode || 500).json({ success: false, error: error.message });
+    }
+  }
+);
 
 app.post(
   '/api/mcp/tender/extract',
