@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #24"
+// #25"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -26,6 +26,10 @@ import { authorizationUrl, exchangeCode, requireSession } from './oauth/oauth.js
 // import { tools } from './trimble/client.js';
 import { definitions, getDefinitions, callTool } from './mcp/tools.js';
 import { handleMcp } from './mcp/http.js';
+import {
+  handleIncomingWebhook,
+  verifyWebhook as verifyWhatsAppWebhook
+} from './whatsapp/bot.js';
 import {
   createOAuthTransaction,
   getOAuthTransaction,
@@ -3401,6 +3405,14 @@ for (const route of teklaActionRoutes) {
     }
   );
 }
+
+// GREEN-API webhook: set "webhookUrl" to <PUBLIC_BASE_URL>/api/whatsapp/webhook
+// and "webhookUrlToken" to WHATSAPP_WEBHOOK_TOKEN.
+app.post('/api/whatsapp/webhook', (req, res) => {
+  if (!verifyWhatsAppWebhook(req)) return res.sendStatus(401);
+  res.sendStatus(200);
+  handleIncomingWebhook(req.body);
+});
 
 app.post(
   '/api/mcp/whatsapp/send',

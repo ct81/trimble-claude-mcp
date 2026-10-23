@@ -15,3 +15,16 @@ export function updateSession(id, patch) {
 export function deleteSession(id) { sessions.delete(id); }
 
 // IMPORTANT: this in-memory store is for development only. Replace with Firestore/Redis/Postgres before multi-instance production use.
+
+// Used by the WhatsApp bot, which has no browser session of its own.
+export function getLatestSessionId(predicate = () => true) {
+  let latestId;
+  let latestAt = -1;
+  for (const [id, data] of sessions) {
+    if (predicate(data) && data.updatedAt > latestAt) {
+      latestId = id;
+      latestAt = data.updatedAt;
+    }
+  }
+  return latestId;
+}
