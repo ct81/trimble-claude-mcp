@@ -652,10 +652,55 @@ function bodyFor(type) {
     case "upload": return `<input type="file" accept="application/pdf,.pdf">
                           <div class="status">no file selected</div>`;
     case "mcp":    return `<input type="text" class="url" placeholder="${DEFAULT_MCP_URL}" spellcheck="false" value="${DEFAULT_MCP_URL}">
+                          <div style="display:flex;gap:4px;margin-top:6px">
+                            <input type="text" class="tool" list="mcp-tools" placeholder="tool name (pick or type)" spellcheck="false" value="extract_column_schedule" style="flex:1;margin:0">
+                            <button type="button" class="load-tools">Load</button>
+                          </div>
+                          <textarea class="args" rows="3" spellcheck="false" style="width:100%;margin-top:6px;font-family:monospace;font-size:11px" placeholder='arguments JSON; {{pdf_base64}} and {{filename}} are replaced'>{"pdfBase64":"{{pdf_base64}}"}</textarea>
                           <div class="status">not called yet</div>`;
     case "result": return `<div class="out">—</div>`;
     default: return "";
   }
+}
+const toolSchemas = {};
+function ensureToolList() {
+  let dl = document.getElementById("mcp-tools");
+  if (!dl) { dl = document.createElement("datalist"); dl.id = "mcp-tools"; document.body.appendChild(dl); }
+  return dl;
+}
+function argsTemplate(schema) {
+  const props = (schema && schema.properties) || {};
+  const out = {};
+  for (const k of Object.keys(props)) {
+    if (/^pdf_?base64$/i.test(k)) out[k] = "{{pdf_base64}}";
+    else if (/^file_?name$/i.test(k)) out[k] = "{{filename}}";
+    else out[k] = props[k].type === "number" || props[k].type === "integer" ? 0
+               : props[k].type === "boolean" ? false
+               : props[k].type === "array" ? [] : props[k].type === "object" ? {} : "";
+  }
+  return JSON.stringify(out, null, 2);
+}
+async function loadTools(el) {
+  const status = el.querySelector(".status");
+  const url = el.querySelector(".url").value.trim();
+  status.textContent = "Loading tools…";
+  try {
+    const headers = { "Content-Type": "application/json", "Accept": "application/json, text/event-stream" };
+    if (accessToken) headers.Authorization = "Bearer " + accessToken;
+    const res = await fetch(url, { method: "POST", headers,
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }) });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const tools = (await res.json())?.result?.tools || [];
+    const dl = ensureToolList();
+    dl.innerHTML = "";
+    for (const t of tools) {
+      toolSchemas[t.name] = t.inputSchema;
+      const o = document.createElement("option");
+      o.value = t.name; o.label = (t.description || "").slice(0, 80);
+      dl.appendChild(o);
+    }
+    status.textContent = `✔ ${tools.length} tools loaded`;
+  } catch (e) { status.textContent = "❌ " + e.message; }
 }
 function createNode(type, x, y) {
   const t = TYPES[type];
@@ -710,6 +755,14 @@ function wireNode(node) {
     e.stopPropagation(); removeNode(node);
   });
   el.addEventListener("pointerdown", () => select(node));
+  const loadBtn = el.querySelector(".load-tools");
+  if (loadBtn) {
+    loadBtn.addEventListener("click", () => loadTools(el));
+    el.querySelector(".tool").addEventListener("change", (e) => {
+      const schema = toolSchemas[e.target.value.trim()];
+      if (schema) el.querySelector(".args").value = argsTemplate(schema);
+    });
+  }
 }
 function select(node) {
   if (selected === node) return;
@@ -991,13 +1044,26 @@ async function runWorkflow() {
 
         statusBox.textContent = "Calling " + new URL(url).hostname + " …";
 
+        const toolName = cur.el.querySelector(".tool").value.trim();
+        if (!toolName) throw new Error("Pick or enter an MCP tool name");
+        let toolArgs;
+        try {
+          const raw = cur.el.querySelector(".args").value || "{}";
+          toolArgs = JSON.parse(raw);
+        } catch { throw new Error("Tool arguments must be valid JSON"); }
+        const subst = (v) => typeof v === "string"
+          ? (v === "{{pdf_base64}}" ? (state.pdfBase64 || "") : v === "{{filename}}" ? (state.fileName || "") : v)
+          : Array.isArray(v) ? v.map(subst)
+          : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, subst(x)])) : v;
+        toolArgs = subst(toolArgs);
+
         const payloadBody = {
           jsonrpc: "2.0",
           id: Date.now(),
           method: "tools/call",
           params: {
-            name: "extract_column_schedule",
-            arguments: { pdfBase64: state.pdfBase64 }
+            name: toolName,
+            arguments: toolArgs
           }
         };
 
