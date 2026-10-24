@@ -1,0 +1,193 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>YouTube Video Tabs</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 24px;
+        background: #f4f6f8;
+        color: #222;
+    }
+
+    .container {
+        max-width: 1000px;
+        margin: auto;
+        background: white;
+        padding: 24px;
+        border-radius: 12px;
+        box-shadow: 0 3px 12px rgba(0,0,0,0.1);
+    }
+
+    h2 {
+        margin-top: 0;
+    }
+
+    /* Tab buttons */
+    .tab-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        border-bottom: 2px solid #ddd;
+        margin-bottom: 20px;
+    }
+
+    .tab-button {
+        border: none;
+        background: #e8edf2;
+        color: #333;
+        padding: 12px 20px;
+        cursor: pointer;
+        font-size: 15px;
+        border-radius: 6px 6px 0 0;
+    }
+
+    .tab-button:hover {
+        background: #d5e2ee;
+    }
+
+    .tab-button.active {
+        background: #1565c0;
+        color: white;
+    }
+
+    /* Video player */
+    .video-wrapper {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        background: #000;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .video-wrapper iframe {
+        width: 100%;
+        height: 100%;
+        border: 0;
+    }
+
+    .description {
+        margin-top: 16px;
+        color: #555;
+        line-height: 1.6;
+    }
+
+    @media (max-width: 600px) {
+        body {
+            padding: 10px;
+        }
+
+        .container {
+            padding: 14px;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 10px;
+        }
+    }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h2>Engineering & BIM Video Library</h2>
+    <p>Select a tab to watch a video.</p>
+
+    <div class="tab-buttons" role="tablist">
+        <button class="tab-button active"
+                role="tab"
+                aria-selected="true"
+                onclick="showVideo(0)">
+        </button>
+
+        <button class="tab-button"
+                role="tab"
+                aria-selected="false"
+                onclick="showVideo(1)">
+        </button>
+
+        <button class="tab-button"
+                role="tab"
+                aria-selected="false"
+                onclick="showVideo(2)">
+        </button>
+
+        <button class="tab-button"
+                role="tab"
+                aria-selected="false"
+                onclick="showVideo(3)">
+        </button>
+    </div>
+
+    <div class="video-wrapper">
+        <iframe
+            id="youtubePlayer"
+            src="https://www.youtube.com/embed/VIDEO_ID_1?autoplay=1&mute=1&cc_load_policy=1"
+            title="Engineering and BIM video"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowfullscreen>
+        </iframe>
+    </div>
+
+    <div class="description" id="videoDescription">
+        Learn about Tekla Structures and 3D structural modelling.
+    </div>
+
+</div>
+
+<script>
+    const videos = [
+        {
+            id: "VIDEO_ID_1",
+            title: "Draw2Deliver",
+            description: "Learn about Tekla Structures and 3D structural modelling."
+        },
+        {
+            id: "VIDEO_ID_2",
+            title: "AI-Powered Construction Satefy & Trimble Connect CDE",
+            description: "Explore BIM collaboration, views, markups and ToDo items."
+        },
+        {
+            id: "VIDEO_ID_3",
+            title: "Status Tracking Dashboard",
+            description: "Discover AI-assisted drawing interpretation and BIM workflows."
+        },
+        {
+            id: "VIDEO_ID_4",
+            title: "Shop Drawing Approval",
+            description: "Discover AI-assisted drawing interpretation and BIM workflows."
+        }
+    ];
+
+    function showVideo(index) {
+        const video = videos[index];
+
+        document.getElementById("youtubePlayer").src =
+            "https://www.youtube.com/embed/" + video.id +
+            "?autoplay=1&mute=1&cc_load_policy=1";
+
+        document.getElementById("videoDescription").textContent =
+            video.description;
+
+        document.querySelectorAll(".tab-button").forEach((button, i) => {
+            button.classList.toggle("active", i === index);
+            button.setAttribute("aria-selected", i === index ? "true" : "false");
+        });
+    }
+</script>
+
+</body>
+</html>
