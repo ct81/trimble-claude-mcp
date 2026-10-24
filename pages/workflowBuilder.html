@@ -1100,7 +1100,9 @@ async function saveWorkflow() {
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
     await refreshWorkflowNames(token);
-    setStatus(`Saved workflow "${result.name}" — available from any browser or device after sign-in`);
+    setStatus(result.storage === "firebase"
+      ? `Saved workflow "${result.name}" to Firebase — available from any browser or device after sign-in`
+      : `Saved workflow "${result.name}" to server local disk only — Firebase is not configured on the server`);
   } catch (error) {
     setStatus(`Saved "${name}" in this browser only — server save failed: ${error.message}`);
   }
