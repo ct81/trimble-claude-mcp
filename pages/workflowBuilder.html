@@ -335,6 +335,9 @@
 <div class="app" id="app">
   <aside class="palette" id="palette">
     <h2>Workflow components</h2>
+    <div class="item" draggable="true" data-type="start">
+      <span class="dot" style="background:#16a34a"></span> Start
+    </div>
     <div class="palette-tabs" role="tablist" aria-label="Workflow component categories">
       <button class="palette-tab" id="tabImport" type="button" role="tab" aria-selected="true" aria-controls="panelImport">Import</button>
       <button class="palette-tab" id="tabTools" type="button" role="tab" aria-selected="false" aria-controls="panelTools" tabindex="-1">Tools</button>
@@ -351,14 +354,14 @@
       <div class="item" draggable="true" data-type="upload_ifc">
         <span class="dot" style="background:#0891b2"></span> Upload IFC
       </div>
+      <div class="item" draggable="true" data-type="upload_dxf">
+        <span class="dot" style="background:#7c3aed"></span> Upload DXF
+      </div>
       <div class="item" draggable="true" data-type="upload_pdf">
         <span class="dot" style="background:#2563eb"></span> Upload PDF
       </div>
     </div>
     <div class="palette-panel" id="panelTools" role="tabpanel" aria-labelledby="tabTools" hidden>
-      <div class="item" draggable="true" data-type="start">
-        <span class="dot" style="background:#16a34a"></span> Start
-      </div>
       <div class="item" draggable="true" data-type="mcp">
         <span class="dot" style="background:#7c3aed"></span> Call MCP
       </div>
@@ -485,13 +488,14 @@ const TYPES = {
   upload_excel: { label: "Upload Excel", color: "#16a34a", icon: "📊", hasIn: true, hasOut: true },
   upload_csv: { label: "Upload CSV", color: "#0d9488", icon: "📋", hasIn: true, hasOut: true },
   upload_ifc: { label: "Upload IFC", color: "#0891b2", icon: "🏗", hasIn: true, hasOut: true },
+  upload_dxf: { label: "Upload DXF", color: "#7c3aed", icon: "📐", hasIn: true, hasOut: true },
   upload_pdf: { label: "Upload PDF", color: "#2563eb", icon: "📄", hasIn: true, hasOut: true },
   mcp:    { label: "Call MCP",   color: "#7c3aed", icon: "🔌", hasIn: true,  hasOut: true  },
   result: { label: "Get Result", color: "#d97706", icon: "✅", hasIn: true,  hasOut: true  },
   export_excel: { label: "Export Excel", color: "#15803d", icon: "📊", hasIn: true, hasOut: false },
   export_csv: { label: "Export CSV", color: "#0f766e", icon: "📋", hasIn: true, hasOut: false }
 };
-const UPLOAD_TYPES = new Set(["upload", "upload_excel", "upload_csv", "upload_ifc", "upload_pdf"]);
+const UPLOAD_TYPES = new Set(["upload", "upload_excel", "upload_csv", "upload_ifc", "upload_dxf", "upload_pdf"]);
 
 const STAGE_MIN = 340, STAGE_PAD = 260, MAX_COORD = 8000;
 
@@ -781,6 +785,8 @@ function bodyFor(type, id) {
                           <div class="status">no file selected</div>`;
     case "upload_ifc": return `<input type="file" accept=".ifc,application/x-step">
                           <div class="status">no file selected</div>`;
+    case "upload_dxf": return `<input type="file" accept=".dxf,application/dxf,application/x-dxf">
+                          <div class="status">no file selected</div>`;
     case "mcp":    return `<input type="text" class="url" placeholder="${DEFAULT_MCP_URL}" spellcheck="false" value="${DEFAULT_MCP_URL}">
                           <div style="display:flex;gap:4px;margin-top:6px">
                             <input type="text" class="tool" list="mcp-tools-${id}" placeholder="tool name (pick or type)" spellcheck="false" value="" style="flex:1;margin:0">
@@ -822,7 +828,7 @@ function argsTemplate(schema) {
   const out = {};
   for (const k of Object.keys(props)) {
     if (/base64$/i.test(k)) out[k] = /^pdf/i.test(k) ? "{{pdf_base64}}" : "{{file_base64}}";
-    else if (/^(?:file|csv|ifc)_?text$/i.test(k)) out[k] = "{{file_text}}";
+    else if (/^(?:file|csv|ifc|dxf)_?text$/i.test(k)) out[k] = "{{file_text}}";
     else if (/^(?:file_?)?name$/i.test(k) || /^filename$/i.test(k)) out[k] = "{{filename}}";
     else out[k] = props[k].type === "number" || props[k].type === "integer" ? 0
                : props[k].type === "boolean" ? false
@@ -1556,7 +1562,7 @@ async function runWorkflow() {
         state.fileName  = file.name;
         state.fileBase64 = await fileToBase64(file);
         state.pdfBase64 = cur.type === "upload" || cur.type === "upload_pdf" ? state.fileBase64 : null;
-        state.fileText = cur.type === "upload_csv" || cur.type === "upload_ifc" ? await file.text() : null;
+        state.fileText = ["upload_csv", "upload_ifc", "upload_dxf"].includes(cur.type) ? await file.text() : null;
         cur.el.querySelector(".status").textContent = "✔ " + file.name;
       }
 
