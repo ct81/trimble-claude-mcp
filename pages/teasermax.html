@@ -106,45 +106,18 @@
     <h2>Engineering & BIM Video Library</h2>
     <p>Select a tab to watch a video.</p>
 
-    <div class="tab-buttons" role="tablist">
-        <button class="tab-button active"
-                role="tab"
-                aria-selected="true"
-                onclick="showVideo(0)">
-        </button>
-
-        <button class="tab-button"
-                role="tab"
-                aria-selected="false"
-                onclick="showVideo(1)">
-        </button>
-
-        <button class="tab-button"
-                role="tab"
-                aria-selected="false"
-                onclick="showVideo(2)">
-        </button>
-
-        <button class="tab-button"
-                role="tab"
-                aria-selected="false"
-                onclick="showVideo(3)">
-        </button>
-    </div>
+    <div class="tab-buttons" id="videoTabs" role="tablist"></div>
 
     <div class="video-wrapper">
         <iframe
             id="youtubePlayer"
-            src="https://www.youtube.com/embed/VIDEO_ID_1?autoplay=1&mute=1&cc_load_policy=1"
             title="Engineering and BIM video"
             allow="autoplay; encrypted-media; picture-in-picture"
             allowfullscreen>
         </iframe>
     </div>
 
-    <div class="description" id="videoDescription">
-        Learn about Tekla Structures and 3D structural modelling.
-    </div>
+    <div class="description" id="videoDescription"></div>
 
 </div>
 
@@ -172,6 +145,19 @@
         }
     ];
 
+    const videoTabs = document.getElementById("videoTabs");
+
+    videos.forEach((video, index) => {
+        const button = document.createElement("button");
+        button.className = "tab-button";
+        button.type = "button";
+        button.setAttribute("role", "tab");
+        button.setAttribute("aria-selected", "false");
+        button.textContent = video.title;
+        button.addEventListener("click", () => showVideo(index));
+        videoTabs.appendChild(button);
+    });
+
     function showVideo(index) {
         const video = videos[index];
 
@@ -187,6 +173,8 @@
             button.setAttribute("aria-selected", i === index ? "true" : "false");
         });
     }
+
+    showVideo(0);
 </script>
 
 </body>
