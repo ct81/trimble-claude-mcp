@@ -992,14 +992,20 @@ async function runWorkflow() {
         statusBox.textContent = "Calling " + new URL(url).hostname + " …";
 
         const payloadBody = {
-          tool: "analyze_pdf",
-          arguments: { filename: state.fileName, pdf_base64: state.pdfBase64 }
+          jsonrpc: "2.0",
+          id: Date.now(),
+          method: "tools/call",
+          params: {
+            name: "extract_column_schedule",
+            arguments: { pdfBase64: state.pdfBase64 }
+          }
         };
 
         const doFetch = (bearer) => fetch(url, {
           method:  "POST",
           headers: {
             "Content-Type":  "application/json",
+            "Accept":        "application/json, text/event-stream",
             "Authorization": "Bearer " + bearer
           },
           body: JSON.stringify(payloadBody)
