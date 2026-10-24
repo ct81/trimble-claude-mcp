@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Workflow Builder — Start → Upload PDF → Call MCP → Result</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    height: 100%; margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #0f172a; color: #e2e8f0; overflow: hidden;
+    -webkit-text-size-adjust: 100%;
+  }
+  .app { display: flex; height: 100vh; height: 100dvh; position: relative; }
+
+  .palette {
+    width: 230px; flex: none; padding: 16px;
+    background: #111827; border-right: 1px solid #1f2937; overflow-y: auto;
+    transition: margin-left .25s ease, opacity .2s ease;
+  }
+  .app.menu-closed .palette { margin-left: -230px; opacity: 0; pointer-events: none; }
+
+  .palette h2 {
+    font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+    color: #94a3b8; margin: 0 0 12px; font-weight: 600;
+  }
+  .item {
+    display: flex; align-items: center; gap: 9px;
+    padding: 10px 12px; margin-bottom: 8px;
+    background: #1e293b; border: 1px solid #334155; border-radius: 8px;
+    font-size: 13.5px; cursor: grab; user-select: none;
+    transition: background .12s, border-color .12s, transform .08s;
+  }
+  .item:hover { background: #263449; border-color: #475569; }
+  .item:active { cursor: grabbing; transform: scale(.98); }
+  .item .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .tip {
+    margin-top: 18px; font-size: 11.5px; line-height: 1.65; color: #64748b;
+    border-top: 1px solid #1f2937; padding-top: 12px;
+  }
+  .tip code {
+    background: #1e293b; padding: 1px 5px; border-radius: 4px;
+    color: #94a3b8; font-size: 10.5px;
+  }
+
+  .auth-badge {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 11px; margin-top: 12px;
+    background: #1e293b; border: 1px solid #334155; border-radius: 8px;
+    font-size: 11.5px; color: #94a3b8;
+  }
+  .auth-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: #64748b; flex: none; }
+  .auth-badge.ok .dot { background: #22c55e; box-shadow: 0 0 8px rgba(34,197,94,.5); }
+  .auth-badge.err .dot { background: #ef4444; }
+  .auth-badge .label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .auth-badge button {
+    background: transparent; border: 1px solid #475569; color: #cbd5e1;
+    border-radius: 5px; padding: 3px 7px; font-size: 10.5px; cursor: pointer;
+  }
+  .auth-badge button:hover { background: #273449; }
+
+  /* ---------- Clear login cache button ---------- */
+  .clear-cache-btn {
+    width: 100%; margin-top: 6px;
+    background: transparent; border: 1px solid #334155; color: #94a3b8;
+    border-radius: 6px; padding: 7px 10px; font-size: 11px; cursor: pointer;
+    transition: background .12s, color .12s, border-color .12s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .clear-cache-btn:hover {
+    background: rgba(248, 113, 113, .08);
+    color: #f87171; border-color: #7f1d1d;
+  }
+  .clear-cache-btn:active { transform: scale(.98); }
+
+  .backdrop {
+    position: fixed; inset: 0; z-index: 55;
+    background: rgba(2, 6, 23, .6);
+    opacity: 0; pointer-events: none; transition: opacity .2s ease;
+  }
+
+  main { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+
+  .toolbar {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 10px 14px; background: #111827; border-bottom: 1px solid #1f2937;
+  }
+  .toolbar button {
+    background: #1e293b; color: #e2e8f0; border: 1px solid #334155;
+    border-radius: 7px; padding: 7px 13px; font-size: 13px; cursor: pointer;
+    transition: background .12s, border-color .12s;
+    white-space: nowrap;
+  }
+  .toolbar button:hover { background: #273449; border-color: #475569; }
+  .toolbar button.primary { background: #2563eb; border-color: #2563eb; font-weight: 600; }
+  .toolbar button.primary:hover { background: #1d4ed8; }
+  .toolbar button:disabled { opacity: .5; cursor: not-allowed; }
+  .toolbar .icon-btn { padding: 7px 10px; font-size: 15px; line-height: 1; }
+  .toolbar .spacer { flex: 1; min-width: 0; }
+  #status {
+    font-size: 12.5px; color: #94a3b8;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 45%;
+  }
+
+  .canvas {
+    position: relative; flex: 1; min-height: 0;
+    overflow: auto; overscroll-behavior: contain;
+    background:
+      radial-gradient(circle at 1px 1px, #1e293b 1px, transparent 0) 0 0 / 22px 22px,
+      #0b1220;
+  }
+  .canvas::-webkit-scrollbar { width: 12px; height: 12px; }
+  .canvas::-webkit-scrollbar-track { background: #0b1220; }
+  .canvas::-webkit-scrollbar-thumb {
+    background: #334155; border-radius: 6px; border: 3px solid #0b1220;
+  }
+  .canvas::-webkit-scrollbar-thumb:hover { background: #475569; }
+  .canvas::-webkit-scrollbar-corner { background: #0b1220; }
+
+  .stage { position: relative; }
+
+  #edges {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 0; overflow: visible;
+  }
+  .edge {
+    fill: none; stroke: #475569; stroke-width: 2.5;
+    stroke-linecap: round; transition: stroke .15s;
+  }
+  .edge-hit {
+    fill: none; stroke: transparent; stroke-width: 18;
+    pointer-events: stroke; cursor: pointer;
+  }
+  .edge-hit:hover { stroke: rgba(248, 113, 113, .22); }
+  #tempPath { stroke: #38bdf8; stroke-dasharray: 6 5; display: none; }
+
+  .node {
+    position: absolute; width: 212px; z-index: 1;
+    background: #111c2e; border: 1px solid #334155; border-radius: 10px;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, .45);
+    user-select: none; font-size: 13px;
+    touch-action: none;
+    transition: box-shadow .15s, border-color .15s;
+  }
+  .node.active {
+    border-color: #38bdf8;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, .35), 0 8px 22px rgba(0,0,0,.45);
+  }
+  .node.error { border-color: #f87171; box-shadow: 0 0 0 3px rgba(248,113,113,.3); }
+  .node.selected { border-color: #64748b; }
+
+  .node-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; cursor: grab;
+    border-bottom: 1px solid #1f2937;
+    border-left: 3px solid var(--c, #64748b);
+    border-radius: 10px 10px 0 0;
+    background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,0));
+    touch-action: none;
+  }
+  .node-head:active { cursor: grabbing; }
+  .node-head .ttl { font-weight: 600; font-size: 13px; }
+  .node-head .ic { font-size: 13px; }
+  .del {
+    margin-left: auto; background: none; border: 0; padding: 0 2px;
+    color: #64748b; font-size: 17px; line-height: 1; cursor: pointer;
+  }
+  .del:hover { color: #f87171; }
+
+  .node-body { padding: 10px; display: flex; flex-direction: column; gap: 7px; }
+  .hint { color: #64748b; font-size: 11.5px; }
+  .status { font-size: 11px; color: #64748b; min-height: 14px; word-break: break-word; }
+  .node-body input[type="file"] { font-size: 10.5px; width: 100%; color: #94a3b8; }
+  .node-body input[type="text"] {
+    width: 100%; background: #0b1220; border: 1px solid #334155;
+    border-radius: 6px; padding: 5px 7px; color: #e2e8f0;
+    font-size: 11px; outline: none;
+  }
+  .node-body input[type="text"]:focus { border-color: #38bdf8; }
+  .out {
+    background: #0b1220; border: 1px solid #1f2937; border-radius: 6px;
+    padding: 6px; font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 10.5px; color: #94a3b8; max-height: 96px; overflow: auto;
+    white-space: pre-wrap; word-break: break-all;
+  }
+
+  .port {
+    position: absolute; top: 50%; width: 13px; height: 13px;
+    transform: translateY(-50%);
+    border-radius: 50%; background: #0b1220; border: 2px solid #64748b;
+    cursor: crosshair; touch-action: none;
+    transition: background .12s, border-color .12s, transform .12s;
+  }
+  .port:hover { background: #38bdf8; border-color: #38bdf8; transform: translateY(-50%) scale(1.2); }
+  .port.in  { left: -7px; }
+  .port.out { right: -7px; }
+  .canvas.linking .port.in { border-color: #38bdf8; animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 5px rgba(56,189,248,.18); } }
+
+  .modal-backdrop {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(2, 6, 23, .75);
+    display: none; align-items: center; justify-content: center;
+    padding: 16px;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: #111827; border: 1px solid #334155; border-radius: 12px;
+    padding: 22px; width: 100%; max-width: 460px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.6);
+  }
+  .modal h3 { margin: 0 0 4px; font-size: 16px; }
+  .modal .sub { color: #94a3b8; font-size: 12px; margin: 0 0 18px; }
+  .modal label {
+    display: block; font-size: 12px; color: #94a3b8;
+    margin-bottom: 5px; font-weight: 500;
+  }
+  .modal input {
+    width: 100%; background: #0b1220; border: 1px solid #334155;
+    border-radius: 7px; padding: 9px 11px; color: #e2e8f0;
+    font-size: 13px; outline: none; margin-bottom: 14px;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+  }
+  .modal input:focus { border-color: #38bdf8; }
+  .modal input[readonly] { color: #94a3b8; }
+  .modal .row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .modal .row input { margin-bottom: 0; flex: 1; }
+  .modal .row button { flex: none; }
+  .modal .hint-text {
+    font-size: 11px; color: #64748b; line-height: 1.55;
+    background: #0b1220; border: 1px solid #1f2937; border-radius: 7px;
+    padding: 10px 12px; margin-bottom: 16px;
+  }
+  .modal .hint-text a { color: #38bdf8; text-decoration: none; }
+  .modal .hint-text a:hover { text-decoration: underline; }
+  .modal .actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .modal .actions button {
+    background: #1e293b; color: #e2e8f0; border: 1px solid #334155;
+    border-radius: 7px; padding: 8px 16px; font-size: 13px; cursor: pointer;
+  }
+  .modal .actions button:hover { background: #273449; }
+  .modal .actions button.primary { background: #2563eb; border-color: #2563eb; font-weight: 600; }
+  .modal .actions button.primary:hover { background: #1d4ed8; }
+
+  @media (max-width: 760px) {
+    .palette {
+      position: fixed; top: 0; left: 0; bottom: 0; z-index: 60;
+      width: 260px; margin-left: 0 !important; opacity: 1 !important;
+      transform: translateX(0);
+      transition: transform .25s ease;
+      box-shadow: 0 0 44px rgba(0, 0, 0, .7);
+      pointer-events: auto !important;
+    }
+    .app.menu-closed .palette { transform: translateX(-105%); }
+    .app:not(.menu-closed) .backdrop { opacity: 1; pointer-events: auto; }
+    #status { max-width: 100%; flex-basis: 100%; order: 10; }
+    .toolbar .spacer { flex-basis: 0; }
+  }
+  @media (max-width: 420px) {
+    .toolbar { padding: 8px 10px; gap: 6px; }
+    .toolbar button { padding: 6px 10px; font-size: 12px; }
+    .node { width: 190px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <aside class="palette" id="palette">
+    <h2>Components</h2>
+    <div class="item" draggable="true" data-type="start">
+      <span class="dot" style="background:#16a34a"></span> Start
+    </div>
+    <div class="item" draggable="true" data-type="upload">
+      <span class="dot" style="background:#2563eb"></span> Upload PDF
+    </div>
+    <div class="item" draggable="true" data-type="mcp">
+      <span class="dot" style="background:#7c3aed"></span> Call MCP
+    </div>
+    <div class="item" draggable="true" data-type="result">
+      <span class="dot" style="background:#d97706"></span> Get Result
+    </div>
+
+    <div class="auth-badge" id="authBadge">
+      <span class="dot"></span>
+      <span class="label" id="authLabel">Not signed in</span>
+      <button id="authBtn" type="button">Sign in</button>
+    </div>
+
+    <button class="clear-cache-btn" id="authClearBtn" type="button"
+            title="Forget the current token and force a fresh sign-in">
+      🗑 Clear login cache
+    </button>
+
+    <div class="tip">
+      <strong>How to use</strong><br>
+      • Drag a component onto the canvas.<br>
+      • Drag from an <code>out</code> port ● to an <code>in</code> port ● to connect.<br>
+      • Click a connection line to delete it.<br>
+      • Press <code>Delete</code> to remove a selected node.<br>
+      • Set your <strong>Client ID</strong> via ⚙ Settings before signing in.
+    </div>
+  </aside>
+
+  <div class="backdrop" id="backdrop"></div>
+
+  <main>
+    <div class="toolbar">
+      <button class="icon-btn" id="btnMenu" title="Show / hide components" aria-label="Toggle component menu">☰</button>
+      <button class="primary" id="btnRun">▶ Run workflow</button>
+      <button id="btnExample">Load example</button>
+      <button id="btnClear">Clear</button>
+      <button id="btnSettings" class="icon-btn" title="Settings">⚙</button>
+      <div class="spacer"></div>
+      <span id="status">Ready</span>
+    </div>
+
+    <div class="canvas" id="canvas">
+      <div class="stage" id="stage">
+        <svg id="edges" xmlns="http://www.w3.org/2000/svg">
+          <path id="tempPath" class="edge"></path>
+        </svg>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="modal-backdrop" id="settingsModal">
+  <div class="modal">
+    <h3>Trimble OAuth settings</h3>
+    <p class="sub">Configure once — values are stored in your browser.</p>
+
+    <label for="inputClientId">Trimble Client ID</label>
+    <input type="text" id="inputClientId" placeholder="e.g. 6a3f9b1c-…" spellcheck="false" />
+
+    <label for="inputRedirectUri">Redirect URI</label>
+    <div class="row">
+      <input type="text" id="inputRedirectUri" readonly />
+      <button id="btnCopyRedirect" type="button">Copy</button>
+    </div>
+
+    <div class="hint-text">
+      Register this exact URI as a <strong>Callback URL</strong> in the
+      <a href="https://developer.trimble.com" target="_blank" rel="noopener">Trimble Developer Console</a>,
+      then paste your <strong>Client ID</strong> above.
+      The flow uses <strong>PKCE</strong> — no client secret is needed in the browser.
+    </div>
+
+    <div class="actions">
+      <button id="btnSettingsCancel" type="button">Cancel</button>
+      <button id="btnSettingsSave" type="button" class="primary">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   1. CONFIG
+   ========================================================================= */
+const NS       = "http://www.w3.org/2000/svg";
+const app      = document.getElementById("app");
+const canvas   = document.getElementById("canvas");
+const stage    = document.getElementById("stage");
+const svg      = document.getElementById("edges");
+const tempPath = document.getElementById("tempPath");
+const statusEl = document.getElementById("status");
+const backdrop = document.getElementById("backdrop");
+
+const TRIMBLE_AUTHORIZE_URL = "https://id.trimble.com/oauth/authorize";
+const TRIMBLE_TOKEN_URL     = "https://id.trimble.com/oauth/token";
+const OAUTH_SCOPE           = "openid";
+const DEFAULT_MCP_URL       = "https://trimble-claude-mcp-g86i.onrender.com/mcp";
+
+const REDIRECT_URI = "https://trimble-claude-mcp-g86i.onrender.com/oauth/callback";
+
+const SS_STATE    = "trimble_oauth_state";
+const SS_VERIFIER = "trimble_oauth_verifier";
+const BC_CHANNEL  = "trimble-oauth-flow";
+
+const TYPES = {
+  start:  { label: "Start",      color: "#16a34a", icon: "▶", hasIn: false, hasOut: true  },
+  upload: { label: "Upload PDF", color: "#2563eb", icon: "📄", hasIn: true,  hasOut: true  },
+  mcp:    { label: "Call MCP",   color: "#7c3aed", icon: "🔌", hasIn: true,  hasOut: true  },
+  result: { label: "Get Result", color: "#d97706", icon: "✅", hasIn: true,  hasOut: false }
+};
+
+const STAGE_MIN = 340, STAGE_PAD = 260, MAX_COORD = 8000;
+
+let nodes = [], edges = [];
+let nodeSeq = 0, edgeSeq = 0;
+let dragState = null, connecting = null, selected = null;
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const setStatus = (t) => (statusEl.textContent = t);
+
+/* =========================================================================
+   2. SETTINGS
+   ========================================================================= */
+const SETTINGS_KEY = "trimble-mcp-settings-v2";
+function loadSettings() {
+  try { const r = localStorage.getItem(SETTINGS_KEY); return r ? JSON.parse(r) : {}; }
+  catch { return {}; }
+}
+function saveSettings(s) {
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch {}
+}
+let settings = loadSettings();
+
+/* =========================================================================
+   3. OAUTH
+   ========================================================================= */
+let accessToken = null;
+let tokenExpiry = 0;
+let pendingAuth = null;
+let activePopup = null;              // ← NEW: lets Clear cache close an in-flight popup
+let authState   = "signed-out";
+const processedStates = new Set();
+let authChannel = null;
+let authChannelReady = false;
+
+function setAuthBadge(state, label) {
+  authState = state;
+  const badge   = document.getElementById("authBadge");
+  const labelEl = document.getElementById("authLabel");
+  const btn     = document.getElementById("authBtn");
+  badge.classList.remove("ok", "err");
+  if (state === "signed-in") badge.classList.add("ok");
+  if (state === "error")     badge.classList.add("err");
+  labelEl.textContent = label;
+  btn.textContent = state === "signed-in" ? "Sign out" : "Sign in";
+  btn.disabled = state === "signing-in";
+}
+
+function base64UrlEncode(buf) {
+  return btoa(String.fromCharCode(...new Uint8Array(buf)))
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+async function generatePKCE() {
+  const verifier = base64UrlEncode(crypto.getRandomValues(new Uint8Array(48)));
+  const digest   = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
+  return { verifier, challenge: base64UrlEncode(digest) };
+}
+
+function dispatchCallback(payload) {
+  if (!payload || payload.type !== "trimble-oauth-callback") return;
+  if (!pendingAuth || typeof pendingAuth.resolve !== "function") return;
+
+  const expected = sessionStorage.getItem(SS_STATE);
+  if (!expected) return;
+  if (payload.returnedState !== expected) return;
+  if (processedStates.has(payload.returnedState)) return;
+
+  processedStates.add(payload.returnedState);
+  pendingAuth.resolve(payload);
+}
+
+function setupAuthChannel() {
+  if (authChannelReady) return;
+  authChannelReady = true;
+
+  try {
+    authChannel = new BroadcastChannel(BC_CHANNEL);
+    authChannel.onmessage = (ev) => dispatchCallback(ev.data);
+  } catch (_) {
+    authChannel = null;
+  }
+
+  window.addEventListener("message", (ev) => {
+    if (ev.origin !== location.origin) return;
+    dispatchCallback(ev.data);
+  });
+}
+
+function signOut() {
+  accessToken = null;
+  tokenExpiry = 0;
+  sessionStorage.removeItem(SS_STATE);
+  sessionStorage.removeItem(SS_VERIFIER);
+  setAuthBadge("signed-out", "Not signed in");
+}
+
+async function ensureToken() {
+  if (accessToken && (!tokenExpiry || Date.now() < tokenExpiry - 30_000)) {
+    return accessToken;
+  }
+  if (pendingAuth) return pendingAuth.tokenResult;
+
+  const clientId = (settings.clientId || "").trim();
+  if (!clientId) {
+    const err = new Error("Client ID is not configured. Open ⚙ Settings and enter it.");
+    err.needsSettings = true;
+    throw err;
+  }
+
+  setupAuthChannel();
+
+  let resolveCallback;
+  const callbackPromise = new Promise((res) => { resolveCallback = res; });
+
+  const tokenResult = (async () => {
+    try {
+      setAuthBadge("signing-in", "Waiting for sign-in…");
+
+      const { verifier, challenge } = await generatePKCE();
+      const state = base64UrlEncode(crypto.getRandomValues(new Uint8Array(16)));
+
+      sessionStorage.setItem(SS_STATE, state);
+      sessionStorage.setItem(SS_VERIFIER, verifier);
+
+      const params = new URLSearchParams({
+        client_id:             clientId,
+        response_type:         "code",
+        scope:                 OAUTH_SCOPE,
+        redirect_uri:          REDIRECT_URI,
+        state,
+        code_challenge:        challenge,
+        code_challenge_method: "S256"
+      });
+
+      const popup = window.open(
+        `${TRIMBLE_AUTHORIZE_URL}?${params}`,
+        "trimble-signin",
+        "width=620,height=740"
+      );
+      if (!popup) throw new Error("Popup blocked — allow popups for this site and try again.");
+
+      activePopup = popup;   // ← NEW: exposed so clearLoginCache() can close it
+
+      let callbackReceived = false;
+
+      const pollTimer = setInterval(() => {
+        if (popup.closed && !callbackReceived) {
+          clearInterval(pollTimer);
+          resolveCallback({ _cancelled: true });
+        }
+      }, 600);
+
+      const timeoutTimer = setTimeout(() => {
+        if (!callbackReceived) {
+          clearInterval(pollTimer);
+          try { popup.close(); } catch {}
+          resolveCallback({ _timeout: true });
+        }
+      }, 5 * 60 * 1000);
+
+      const payload = await callbackPromise;
+      callbackReceived = true;
+      clearInterval(pollTimer);
+      clearTimeout(timeoutTimer);
+
+      if (payload._cancelled) throw new Error("Sign-in cancelled.");
+      if (payload._timeout)   throw new Error("Sign-in timed out after 5 minutes.");
+      if (payload.error)      throw new Error(payload.error);
+      if (!payload.code)      throw new Error("No authorization code returned.");
+
+      const expected = sessionStorage.getItem(SS_STATE);
+      if (!expected || payload.returnedState !== expected) {
+        throw new Error("OAuth state mismatch — please try again.");
+      }
+
+      setAuthBadge("signing-in", "Exchanging code…");
+
+      const body = new URLSearchParams({
+        grant_type:    "authorization_code",
+        code:          payload.code,
+        redirect_uri:  REDIRECT_URI,
+        client_id:     clientId,
+        code_verifier: verifier
+      });
+
+      const res = await fetch(TRIMBLE_TOKEN_URL, {
+        method:  "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body
+      });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(`Token exchange failed (HTTP ${res.status}): ${txt.slice(0, 300)}`);
+      }
+
+      const data = await res.json();
+      accessToken = data.access_token;
+      tokenExpiry = data.expires_in ? Date.now() + data.expires_in * 1000 : 0;
+
+      sessionStorage.removeItem(SS_STATE);
+      sessionStorage.removeItem(SS_VERIFIER);
+
+      setAuthBadge("signed-in", "Signed in to Trimble");
+      return accessToken;
+    } catch (err) {
+      setAuthBadge("error", "Sign-in failed");
+      throw err;
+    } finally {
+      activePopup = null;
+      pendingAuth = null;
+    }
+  })();
+
+  pendingAuth = { tokenResult, resolve: resolveCallback };
+  return tokenResult;
+}
+
+setupAuthChannel();
+
+/* =========================================================================
+   4. NODE HELPERS
+   ========================================================================= */
+function stagePoint(e) {
+  const r = stage.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+function outPos(n) { return { x: n.x + n.el.offsetWidth, y: n.y + n.el.offsetHeight / 2 }; }
+function inPos(n)  { return { x: n.x,                   y: n.y + n.el.offsetHeight / 2 }; }
+function bezier(p1, p2) {
+  const dx = Math.max(45, Math.abs(p2.x - p1.x) * 0.5);
+  return `M ${p1.x} ${p1.y} C ${p1.x + dx} ${p1.y}, ${p2.x - dx} ${p2.y}, ${p2.x} ${p2.y}`;
+}
+function updateStageSize() {
+  let w = Math.max(canvas.clientWidth,  STAGE_MIN);
+  let h = Math.max(canvas.clientHeight, STAGE_MIN);
+  for (const n of nodes) {
+    w = Math.max(w, n.x + n.el.offsetWidth  + STAGE_PAD);
+    h = Math.max(h, n.y + n.el.offsetHeight + STAGE_PAD);
+  }
+  w = Math.min(w, MAX_COORD); h = Math.min(h, MAX_COORD);
+  const ws = w + "px", hs = h + "px";
+  if (stage.style.width  !== ws) stage.style.width  = ws;
+  if (stage.style.height !== hs) stage.style.height = hs;
+}
+function autoScroll(e) {
+  const r = canvas.getBoundingClientRect();
+  const zone = 60, maxSpeed = 18;
+  let dx = 0, dy = 0;
+  if (e.clientX < r.left + zone)   dx = -maxSpeed * ((r.left + zone - e.clientX) / zone);
+  if (e.clientX > r.right - zone)  dx =  maxSpeed * ((e.clientX - (r.right - zone)) / zone);
+  if (e.clientY < r.top + zone)    dy = -maxSpeed * ((r.top + zone - e.clientY) / zone);
+  if (e.clientY > r.bottom - zone) dy =  maxSpeed * ((e.clientY - (r.bottom - zone)) / zone);
+  if (dx) canvas.scrollLeft += dx;
+  if (dy) canvas.scrollTop  += dy;
+}
+
+/* =========================================================================
+   5. NODE CREATION
+   ========================================================================= */
+function bodyFor(type) {
+  switch (type) {
+    case "start":  return `<div class="hint">Workflow entry point</div>`;
+    case "upload": return `<input type="file" accept="application/pdf,.pdf">
+                          <div class="status">no file selected</div>`;
+    case "mcp":    return `<input type="text" class="url" placeholder="${DEFAULT_MCP_URL}" spellcheck="false" value="${DEFAULT_MCP_URL}">
+                          <div class="status">not called yet</div>`;
+    case "result": return `<div class="out">—</div>`;
+    default: return "";
+  }
+}
+function createNode(type, x, y) {
+  const t = TYPES[type];
+  if (!t) return null;
+  const id = "n" + ++nodeSeq;
+  const el = document.createElement("div");
+  el.className = "node";
+  el.dataset.id = id;
+  el.style.left = Math.max(0, x) + "px";
+  el.style.top  = Math.max(0, y) + "px";
+  el.innerHTML = `
+    <div class="node-head" style="--c:${t.color}">
+      <span class="ic">${t.icon}</span>
+      <span class="ttl">${t.label}</span>
+      <button class="del" title="Delete node">×</button>
+    </div>
+    <div class="node-body">${bodyFor(type)}</div>
+    ${t.hasIn  ? `<div class="port in"  data-node="${id}" data-dir="in"></div>`  : ""}
+    ${t.hasOut ? `<div class="port out" data-node="${id}" data-dir="out"></div>` : ""}
+  `;
+  stage.appendChild(el);
+  const node = { id, type, x: Math.max(0, x), y: Math.max(0, y), el };
+  nodes.push(node);
+  wireNode(node);
+  updateStageSize();
+  return node;
+}
+function wireNode(node) {
+  const el = node.el;
+  const head = el.querySelector(".node-head");
+  head.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0 || e.target.closest(".del")) return;
+    e.preventDefault();
+    select(node);
+    const p = stagePoint(e);
+    dragState = { node, dx: p.x - node.x, dy: p.y - node.y };
+  });
+  const outPort = el.querySelector(".port.out");
+  if (outPort) {
+    outPort.addEventListener("pointerdown", (e) => {
+      e.stopPropagation(); e.preventDefault();
+      connecting = { node };
+      canvas.classList.add("linking");
+      tempPath.style.display = "";
+      const p = outPos(node);
+      tempPath.setAttribute("d", `M ${p.x} ${p.y} L ${p.x} ${p.y}`);
+      setStatus("Release on an input port ● to connect");
+    });
+  }
+  el.querySelector(".del").addEventListener("pointerdown", (e) => e.stopPropagation());
+  el.querySelector(".del").addEventListener("click", (e) => {
+    e.stopPropagation(); removeNode(node);
+  });
+  el.addEventListener("pointerdown", () => select(node));
+}
+function select(node) {
+  if (selected === node) return;
+  if (selected) selected.el.classList.remove("selected");
+  selected = node;
+  if (selected) selected.el.classList.add("selected");
+}
+
+/* =========================================================================
+   6. EDGES
+   ========================================================================= */
+function drawEdges() {
+  svg.querySelectorAll(".edge:not(#tempPath), .edge-hit").forEach((n) => n.remove());
+  for (const e of edges) {
+    const a = nodes.find((n) => n.id === e.from);
+    const b = nodes.find((n) => n.id === e.to);
+    if (!a || !b) continue;
+    const d = bezier(outPos(a), inPos(b));
+
+    const hit = document.createElementNS(NS, "path");
+    hit.setAttribute("d", d);
+    hit.setAttribute("class", "edge-hit");
+    hit.addEventListener("click", () => {
+      edges = edges.filter((x) => x.id !== e.id);
+      drawEdges();
+      setStatus("Connection removed");
+    });
+    svg.appendChild(hit);
+
+    const path = document.createElementNS(NS, "path");
+    path.setAttribute("d", d);
+    path.setAttribute("class", "edge");
+    svg.appendChild(path);
+  }
+}
+function removeNode(node) {
+  nodes = nodes.filter((n) => n.id !== node.id);
+  edges = edges.filter((e) => e.from !== node.id && e.to !== node.id);
+  node.el.remove();
+  if (selected === node) selected = null;
+  updateStageSize(); drawEdges();
+}
+
+/* =========================================================================
+   7. POINTER EVENTS
+   ========================================================================= */
+document.addEventListener("pointermove", (e) => {
+  if (dragState) {
+    autoScroll(e);
+    const p = stagePoint(e);
+    const n = dragState.node;
+    let nx = Math.max(0, Math.min(MAX_COORD, p.x - dragState.dx));
+    let ny = Math.max(0, Math.min(MAX_COORD, p.y - dragState.dy));
+    n.x = nx; n.y = ny;
+    n.el.style.left = nx + "px";
+    n.el.style.top  = ny + "px";
+    updateStageSize(); drawEdges();
+  }
+  if (connecting) {
+    const p = stagePoint(e);
+    tempPath.setAttribute("d", bezier(outPos(connecting.node), p));
+  }
+});
+document.addEventListener("pointerup", (e) => {
+  if (connecting) {
+    const target = e.target instanceof Element ? e.target.closest(".port.in") : null;
+    if (target) {
+      const toId = target.dataset.node;
+      const fromId = connecting.node.id;
+      const dup  = edges.some((x) => x.from === fromId && x.to === toId);
+      const self = fromId === toId;
+      if (!self && !dup) {
+        edges.push({ id: "e" + ++edgeSeq, from: fromId, to: toId });
+        setStatus("Connected");
+      } else {
+        setStatus(dup ? "Already connected" : "Cannot connect a node to itself");
+      }
+    }
+    connecting = null;
+    canvas.classList.remove("linking");
+    tempPath.style.display = "none";
+    drawEdges();
+  }
+  dragState = null;
+});
+document.addEventListener("keydown", (e) => {
+  if ((e.key === "Delete" || e.key === "Backspace") && selected) {
+    if (e.target.closest && e.target.closest("input, textarea")) return;
+    removeNode(selected);
+  }
+  if (e.key === "Escape") {
+    if (connecting) {
+      connecting = null;
+      canvas.classList.remove("linking");
+      tempPath.style.display = "none";
+    }
+    if (window.matchMedia("(max-width: 760px)").matches) app.classList.add("menu-closed");
+    document.getElementById("settingsModal").classList.remove("open");
+  }
+});
+
+/* =========================================================================
+   8. PALETTE
+   ========================================================================= */
+document.querySelectorAll(".item").forEach((item) => {
+  item.addEventListener("dragstart", (e) => {
+    e.dataTransfer.setData("text/plain", item.dataset.type);
+    e.dataTransfer.effectAllowed = "copy";
+  });
+  item.addEventListener("dblclick", () => {
+    const r = canvas.getBoundingClientRect();
+    const p = stagePoint({
+      clientX: r.left + canvas.clientWidth / 2,
+      clientY: r.top  + canvas.clientHeight / 2
+    });
+    createNode(item.dataset.type, p.x - 106, p.y - 26);
+    drawEdges(); closeMenuIfMobile();
+  });
+});
+canvas.addEventListener("dragover", (e) => {
+  e.preventDefault(); e.dataTransfer.dropEffect = "copy";
+});
+canvas.addEventListener("drop", (e) => {
+  e.preventDefault();
+  const type = e.dataTransfer.getData("text/plain");
+  if (!TYPES[type]) return;
+  const p = stagePoint(e);
+  createNode(type, p.x - 106, p.y - 26);
+  drawEdges(); setStatus("Node added"); closeMenuIfMobile();
+});
+
+/* =========================================================================
+   9. MENU
+   ========================================================================= */
+const isMobile = () => window.matchMedia("(max-width: 760px)").matches;
+function closeMenuIfMobile() { if (isMobile()) app.classList.add("menu-closed"); }
+document.getElementById("btnMenu").addEventListener("click", () => {
+  app.classList.toggle("menu-closed");
+  setTimeout(() => { updateStageSize(); drawEdges(); }, 260);
+});
+backdrop.addEventListener("click", () => app.classList.add("menu-closed"));
+if (isMobile()) app.classList.add("menu-closed");
+
+/* =========================================================================
+   10. SETTINGS MODAL
+   ========================================================================= */
+const settingsModal = document.getElementById("settingsModal");
+const inputClientId = document.getElementById("inputClientId");
+const inputRedirect = document.getElementById("inputRedirectUri");
+
+function openSettings() {
+  inputClientId.value = settings.clientId || "";
+  inputRedirect.value = REDIRECT_URI;
+  settingsModal.classList.add("open");
+  setTimeout(() => inputClientId.focus(), 60);
+}
+function closeSettings() { settingsModal.classList.remove("open"); }
+
+document.getElementById("btnSettings").addEventListener("click", openSettings);
+document.getElementById("btnSettingsCancel").addEventListener("click", closeSettings);
+document.getElementById("btnSettingsSave").addEventListener("click", () => {
+  settings.clientId = inputClientId.value.trim();
+  saveSettings(settings);
+  closeSettings();
+  setStatus(settings.clientId ? "Settings saved" : "Settings saved (Client ID empty)");
+});
+settingsModal.addEventListener("click", (e) => {
+  if (e.target === settingsModal) closeSettings();
+});
+document.getElementById("btnCopyRedirect").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(inputRedirect.value);
+    setStatus("Redirect URI copied");
+  } catch {
+    inputRedirect.select();
+    document.execCommand && document.execCommand("copy");
+  }
+});
+
+/* =========================================================================
+   11. AUTH: Sign in / Sign out + Clear login cache
+   ========================================================================= */
+document.getElementById("authBtn").addEventListener("click", async () => {
+  if (authState === "signed-in") { signOut(); setStatus("Signed out"); return; }
+  try {
+    setStatus("Opening Trimble sign-in…");
+    await ensureToken();
+    setStatus("Signed in to Trimble ✔");
+  } catch (err) {
+    if (err.needsSettings) { setStatus(err.message); openSettings(); }
+    else setStatus("Sign-in failed: " + err.message);
+  }
+});
+
+function clearLoginCache() {
+  /* 1. Close any in-flight OAuth popup */
+  if (activePopup && !activePopup.closed) {
+    try { activePopup.close(); } catch {}
+  }
+  activePopup = null;
+
+  /* 2. Wipe in-memory token state */
+  accessToken = null;
+  tokenExpiry = 0;
+  pendingAuth = null;
+  processedStates.clear();
+
+  /* 3. Wipe persisted PKCE state */
+  try {
+    sessionStorage.removeItem(SS_STATE);
+    sessionStorage.removeItem(SS_VERIFIER);
+  } catch {}
+
+  /* 4. Defensive: remove any legacy auth keys from older versions */
+  try {
+    sessionStorage.removeItem("trimble_oauth_state");
+    sessionStorage.removeItem("trimble_oauth_verifier");
+    localStorage.removeItem("trimble-access-token");
+    localStorage.removeItem("trimble-token-expiry");
+  } catch {}
+
+  /* 5. Reset UI */
+  setAuthBadge("signed-out", "Not signed in");
+  setStatus("🗑 Login cache cleared — you'll be asked to sign in again");
+}
+
+document.getElementById("authClearBtn").addEventListener("click", clearLoginCache);
+
+/* =========================================================================
+   12. RUN WORKFLOW
+   ========================================================================= */
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(String(reader.result).split(",")[1] || "");
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function runWorkflow() {
+  const start = nodes.find((n) => n.type === "start");
+  if (!start) { setStatus("Add a Start node first"); return; }
+
+  nodes.forEach((n) => n.el.classList.remove("active", "error"));
+  const state = { fileName: null, pdfBase64: null, result: null };
+  const seen = new Set();
+  let cur = start;
+  setStatus("Running…");
+
+  while (cur && !seen.has(cur.id)) {
+    seen.add(cur.id);
+    cur.el.classList.add("active");
+    cur.el.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+    await sleep(380);
+
+    try {
+      if (cur.type === "upload") {
+        const input = cur.el.querySelector('input[type="file"]');
+        const file  = input && input.files && input.files[0];
+        if (!file) throw new Error('No PDF chosen in "Upload PDF"');
+        state.fileName  = file.name;
+        state.pdfBase64 = await fileToBase64(file);
+        cur.el.querySelector(".status").textContent = "✔ " + file.name;
+      }
+
+      if (cur.type === "mcp") {
+        const url = cur.el.querySelector(".url").value.trim();
+        if (!url) throw new Error("Set the MCP endpoint URL");
+        const statusBox = cur.el.querySelector(".status");
+
+        statusBox.textContent = "Checking sign-in…";
+        let token;
+        try { token = await ensureToken(); }
+        catch (err) {
+          if (err.needsSettings) { openSettings(); throw new Error("Configure Client ID in ⚙ Settings, then retry"); }
+          throw err;
+        }
+
+        statusBox.textContent = "Calling " + new URL(url).hostname + " …";
+
+        const payloadBody = {
+          tool: "analyze_pdf",
+          arguments: { filename: state.fileName, pdf_base64: state.pdfBase64 }
+        };
+
+        const doFetch = (bearer) => fetch(url, {
+          method:  "POST",
+          headers: {
+            "Content-Type":  "application/json",
+            "Authorization": "Bearer " + bearer
+          },
+          body: JSON.stringify(payloadBody)
+        });
+
+        let res = await doFetch(token);
+
+        if (res.status === 401) {
+          statusBox.textContent = "Token expired — re-authenticating…";
+          accessToken = null; tokenExpiry = 0;
+          const fresh = await ensureToken();
+          res = await doFetch(fresh);
+        }
+        if (!res.ok) {
+          const txt = await res.text().catch(() => "");
+          throw new Error(`MCP HTTP ${res.status}${txt ? " — " + txt.slice(0, 200) : ""}`);
+        }
+        state.result = await res.json();
+        statusBox.textContent = "✔ responded";
+      }
+
+      if (cur.type === "result") {
+        const box = cur.el.querySelector(".out");
+        box.textContent = state.result
+          ? JSON.stringify(state.result, null, 2)
+          : "No data received";
+      }
+    } catch (err) {
+      cur.el.classList.remove("active");
+      cur.el.classList.add("error");
+      setStatus("❌ " + err.message);
+      return;
+    }
+
+    cur.el.classList.remove("active");
+    const nextEdge = edges.find((e) => e.from === cur.id);
+    cur = nextEdge ? nodes.find((n) => n.id === nextEdge.to) : null;
+  }
+  setStatus("✅ Workflow finished");
+}
+
+/* =========================================================================
+   13. TOOLBAR
+   ========================================================================= */
+document.getElementById("btnRun").addEventListener("click", runWorkflow);
+
+document.getElementById("btnClear").addEventListener("click", () => {
+  nodes.forEach((n) => n.el.remove());
+  nodes = []; edges = []; selected = null; connecting = null;
+  canvas.classList.remove("linking");
+  tempPath.style.display = "none";
+  updateStageSize(); drawEdges();
+  setStatus("Cleared");
+});
+
+document.getElementById("btnExample").addEventListener("click", () => {
+  document.getElementById("btnClear").click();
+  const y = 90;
+  const a = createNode("start",  60,  y);
+  const b = createNode("upload", 340, y);
+  const c = createNode("mcp",    620, y);
+  const d = createNode("result", 900, y);
+  edges.push({ id: "e" + ++edgeSeq, from: a.id, to: b.id });
+  edges.push({ id: "e" + ++edgeSeq, from: b.id, to: c.id });
+  edges.push({ id: "e" + ++edgeSeq, from: c.id, to: d.id });
+  drawEdges();
+  setStatus("Example loaded — pick a PDF and click Run");
+  closeMenuIfMobile();
+});
+
+/* =========================================================================
+   14. RESIZE / BOOT
+   ========================================================================= */
+window.addEventListener("resize", () => { updateStageSize(); drawEdges(); });
+if (window.ResizeObserver) {
+  new ResizeObserver(() => { updateStageSize(); drawEdges(); }).observe(canvas);
+}
+
+setAuthBadge("signed-out", "Not signed in");
+document.getElementById("btnExample").click();
+if (!settings.clientId) {
+  setStatus("Set your Trimble Client ID in ⚙ Settings to enable sign-in");
+}
+</script>
+</body>
+</html>

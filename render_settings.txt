@@ -1,0 +1,27 @@
+
+Name
+A unique name for your Web Service.
+:trimble-claude-mcp
+
+
+Build Command
+Render runs this command to build your app before each deploy.
+:npm install && python3 -m pip install --upgrade --target src/python/tender/.packages -r src/python/tender/requirements.txt
+
+
+Start Command
+Render runs this command to start your app with each deploy.
+:npm start
+
+
+Auto-Deploy
+:On Commit
+
+
+Deploy Hook
+:https://api.render.com/deploy/srv-da9dokp42hec73fjhijg?key=AdWy-e0QR7M
+
+
+
+Health Check Path
+:/health
