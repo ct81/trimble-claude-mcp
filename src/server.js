@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp ChatBots, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #3"
+// #4"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -22,6 +22,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import path from 'node:path';
 import { config } from './config.js';
+import { createSession } from './session-store.js';
 import { authorizationUrl, exchangeCode, requireSession } from './oauth/oauth.js';
 // import { tools } from './trimble/client.js';
 import { definitions, getDefinitions, callTool } from './mcp/tools.js';
@@ -131,7 +132,35 @@ function logCaller(label, req, extra) {
 // MCP BEARER AUTHENTICATION
 // =========================================================
 
-function requireMcpBearer(req, res, next) {
+const trimbleTokenSessions = new Map();
+
+async function sessionFromTrimbleToken(token) {
+  const cached = trimbleTokenSessions.get(token);
+  if (cached && cached.expiresAt > Date.now()) return cached.sessionId;
+  trimbleTokenSessions.delete(token);
+
+  try {
+    const r = await fetch(`${config.trimble.apiBaseUrl}/users/me`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!r.ok) return undefined;
+  } catch {
+    return undefined;
+  }
+
+  const sessionId = createSession({
+    trimble: {
+      access_token: token,
+      token_type: 'Bearer',
+      expires_in: 3300,
+      obtained_at: Date.now()
+    }
+  });
+  trimbleTokenSessions.set(token, { sessionId, expiresAt: Date.now() + 55 * 60 * 1000 });
+  return sessionId;
+}
+
+async function requireMcpBearer(req, res, next) {
   try {
     const authorization =
       req.headers.authorization || '';
@@ -164,8 +193,13 @@ function requireMcpBearer(req, res, next) {
     }
 
     // Convert MCP access token → existing Trimble session ID
-    const sessionId =
+    let sessionId =
       getSessionIdFromMcpToken(accessToken);
+
+    // Browser clients (workflowBuilder.html) send a raw Trimble access token.
+    if (!sessionId) {
+      sessionId = await sessionFromTrimbleToken(accessToken);
+    }
 
     if (!sessionId) {
       return res.status(401).json({
