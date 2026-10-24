@@ -265,6 +265,31 @@
   @media (prefers-reduced-motion: reduce) {
     * { transition: none !important; animation: none !important; }
   }
+
+  /* Day theme */
+  html[data-theme="light"] body { background: #f1f5f9; color: #0f172a; }
+  html[data-theme="light"] .palette, html[data-theme="light"] .toolbar, html[data-theme="light"] .modal { background: #ffffff; border-color: #e2e8f0; }
+  html[data-theme="light"] .item, html[data-theme="light"] .auth-badge, html[data-theme="light"] .toolbar button,
+  html[data-theme="light"] .modal .actions button { background: #f1f5f9; border-color: #cbd5e1; color: #0f172a; }
+  html[data-theme="light"] .toolbar button.primary, html[data-theme="light"] .modal .actions button.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+  html[data-theme="light"] .item:hover, html[data-theme="light"] .toolbar button:hover { background: #e2e8f0; }
+  html[data-theme="light"] .canvas { background: radial-gradient(circle at 1px 1px, #cbd5e1 1px, transparent 0) 0 0 / 22px 22px, #f8fafc; }
+  html[data-theme="light"] .canvas::-webkit-scrollbar-track, html[data-theme="light"] .canvas::-webkit-scrollbar-corner { background: #f8fafc; }
+  html[data-theme="light"] .canvas::-webkit-scrollbar-thumb { background: #cbd5e1; border-color: #f8fafc; }
+  html[data-theme="light"] .node { background: #ffffff; border-color: #cbd5e1; box-shadow: 0 6px 16px rgba(15,23,42,.12); }
+  html[data-theme="light"] .node-head { border-bottom-color: #e2e8f0; background: linear-gradient(180deg, rgba(15,23,42,.04), rgba(15,23,42,0)); }
+  html[data-theme="light"] .node-body input[type="text"], html[data-theme="light"] .node-body textarea,
+  html[data-theme="light"] .modal input, html[data-theme="light"] .modal .hint-text, html[data-theme="light"] .out, html[data-theme="light"] .port { background: #f8fafc; border-color: #cbd5e1; color: #0f172a; }
+  html[data-theme="light"] .node-body .load-tools { background: #e2e8f0; border: 1px solid #cbd5e1; color: #0f172a; }
+  html[data-theme="light"] .palette h2, html[data-theme="light"] .sub, html[data-theme="light"] .modal label,
+  html[data-theme="light"] #status, html[data-theme="light"] .auth-badge, html[data-theme="light"] .out,
+  html[data-theme="light"] .node-body input[type="file"], html[data-theme="light"] code { color: #475569; }
+  html[data-theme="light"] code { background: #e2e8f0; }
+  html[data-theme="light"] .hint, html[data-theme="light"] .status { color: #64748b; }
+  html[data-theme="light"] .edge { stroke: #94a3b8; }
+  html[data-theme="light"] #tempPath { stroke: #0284c7; }
+  html[data-theme="light"] .modal-backdrop, html[data-theme="light"] .backdrop { background: rgba(15,23,42,.4); }
+  html, body, .palette, .toolbar, .canvas, .node { transition: background-color .25s, color .25s, border-color .25s; }
 </style>
 </head>
 <body>
@@ -315,6 +340,7 @@
       <button id="btnExample">Load example</button>
       <button id="btnClear">Clear</button>
       <button id="btnSettings" class="icon-btn" title="Settings">⚙</button>
+      <button id="btnTheme" class="icon-btn" title="Toggle day / night" aria-label="Toggle day / night">🌙</button>
       <div class="spacer"></div>
       <span id="status">Ready</span>
     </div>
@@ -1155,6 +1181,27 @@ document.getElementById("btnExample").click();
 if (!settings.clientId) {
   setStatus("Set your Trimble Client ID in ⚙ Settings to enable sign-in");
 }
+</script>
+<script>
+(function () {
+  const root = document.documentElement;
+  const saved = localStorage.getItem("wb_theme");
+  const initial = saved || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+  function apply(t) {
+    root.dataset.theme = t;
+    const b = document.getElementById("btnTheme");
+    if (b) b.textContent = t === "light" ? "🌙" : "☀️";
+  }
+  apply(initial);
+  document.addEventListener("DOMContentLoaded", () => {
+    apply(root.dataset.theme);
+    document.getElementById("btnTheme").addEventListener("click", () => {
+      const t = root.dataset.theme === "light" ? "dark" : "light";
+      localStorage.setItem("wb_theme", t);
+      apply(t);
+    });
+  });
+})();
 </script>
 </body>
 </html>
