@@ -2,7 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
+<meta http-equiv="Pragma" content="no-cache" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+
+<script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
+
+<script src="workflowbuilder-master.js" type="module" defer></script>
+
 <title>Workflow Builder — Import → Call MCP → Output → Export</title>
 <style>
   * { box-sizing: border-box; }
@@ -340,16 +348,33 @@
 </style>
 </head>
 <body>
+        <asp:HiddenField ID="hdnProjectDetail" runat="server" />
+        <asp:HiddenField ID="hdnProjectName" runat="server" />
+        <asp:HiddenField ID="hdnUserId" runat="server" />
+        <asp:HiddenField ID="hdnUserEmail" runat="server" />
+        <asp:HiddenField ID="hdnUserFirstName" runat="server" />
+        <asp:HiddenField ID="hdnUserLastName" runat="server" />
+        <asp:HiddenField ID="hdnUserDetail" runat="server" />
+        <asp:HiddenField ID="hdnAccessTokenDetail" runat="server" />
+        <asp:HiddenField ID="hdnLicenseJson" runat="server" />
 
 <div class="app" id="app">
   <aside class="palette" id="palette">
     <div class="palette-brand">
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <!-- <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <rect x="2.75" y="3.75" width="6.5" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.7" />
         <rect x="14.75" y="13.75" width="6.5" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.7" />
         <path d="M9.25 7h3a2 2 0 0 1 2 2v4.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
         <path d="m12.25 11.5 2 2 2-2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
-      </svg>
+      </svg> -->
+      <img
+        src="https://ct81.github.io/trimble-claude-mcp/images/svg/ches.svg?color=%23FFFFFF"
+        alt=""
+        aria-hidden="true"
+        width="24"
+        height="24"
+        style="display: block;"
+      />
       <span>Workflow Builder</span>
     </div>
     <h2>Workflow components</h2>
