@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', async (event) => {
 
         API_Ext.ui.setMenu({
             title: "Build the Impossible"
-            , icon: "https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/play.svg?color=%23FFFFFF"
+            , icon: "https://api.iconify.design/tabler/player-play.svg?color=%23FFFFFF"
             , command: "main_nav_menu_clicked"
             , subMenus: [
                 // , {
