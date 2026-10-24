@@ -185,6 +185,20 @@
     white-space: pre-wrap; word-break: break-all;
   }
 
+  .node.sized { display: flex; flex-direction: column; }
+  .node.sized .node-body { flex: 1; min-height: 0; overflow: auto; }
+  .node.sized .out { flex: 1; max-height: none; min-height: 30px; }
+  .node.sized .args { flex: 1; min-height: 40px; resize: none; }
+  .resize-handle {
+    position: absolute; right: 2px; bottom: 2px; width: 14px; height: 14px;
+    cursor: nwse-resize; touch-action: none; z-index: 3;
+    background: linear-gradient(135deg, transparent 50%, #64748b 50%, #64748b 58%, transparent 58%, transparent 72%, #64748b 72%, #64748b 80%, transparent 80%);
+  }
+  .copy-btn {
+    background: transparent; border: 1px solid #334155; color: #94a3b8; border-radius: 5px;
+    font-size: 12px; line-height: 1; padding: 3px 6px; cursor: pointer; margin-right: 4px;
+  }
+  .copy-btn:hover { color: #38bdf8; border-color: #38bdf8; }
   .port {
     position: absolute; top: 50%; width: 13px; height: 13px;
     transform: translateY(-50%);
@@ -289,6 +303,7 @@
   html[data-theme="light"] .edge { stroke: #94a3b8; }
   html[data-theme="light"] #tempPath { stroke: #0284c7; }
   html[data-theme="light"] .modal-backdrop, html[data-theme="light"] .backdrop { background: rgba(15,23,42,.4); }
+  html[data-theme="light"] .copy-btn { border-color: #cbd5e1; color: #475569; }
   html, body, .palette, .toolbar, .canvas, .node { transition: background-color .25s, color .25s, border-color .25s; }
 </style>
 </head>
@@ -741,9 +756,11 @@ function createNode(type, x, y) {
     <div class="node-head" style="--c:${t.color}">
       <span class="ic">${t.icon}</span>
       <span class="ttl">${t.label}</span>
+      ${type === "result" ? `<button class="copy-btn" title="Copy JSON" aria-label="Copy JSON">⧉</button>` : ""}
       <button class="del" title="Delete node">×</button>
     </div>
     <div class="node-body">${bodyFor(type)}</div>
+    <div class="resize-handle" title="Drag to resize"></div>
     ${t.hasIn  ? `<div class="port in"  data-node="${id}" data-dir="in"></div>`  : ""}
     ${t.hasOut ? `<div class="port out" data-node="${id}" data-dir="out"></div>` : ""}
   `;
@@ -781,6 +798,47 @@ function wireNode(node) {
     e.stopPropagation(); removeNode(node);
   });
   el.addEventListener("pointerdown", () => select(node));
+
+  const handle = el.querySelector(".resize-handle");
+  handle.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
+    e.stopPropagation(); e.preventDefault();
+    handle.setPointerCapture(e.pointerId);
+    const startX = e.clientX, startY = e.clientY;
+    const startW = el.offsetWidth, startH = el.offsetHeight;
+    el.classList.add("sized");
+    el.style.height = startH + "px";
+    const move = (ev) => {
+      el.style.width  = Math.max(160, startW + ev.clientX - startX) + "px";
+      el.style.height = Math.max(90,  startH + ev.clientY - startY) + "px";
+      drawEdges(); updateStageSize();
+    };
+    const up = () => {
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", up);
+      handle.removeEventListener("pointercancel", up);
+    };
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", up);
+    handle.addEventListener("pointercancel", up);
+  });
+
+  const copyBtn = el.querySelector(".copy-btn");
+  if (copyBtn) {
+    copyBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
+    copyBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const text = el.querySelector(".out").textContent;
+      try { await navigator.clipboard.writeText(text); }
+      catch {
+        const ta = document.createElement("textarea");
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        document.execCommand("copy"); ta.remove();
+      }
+      copyBtn.textContent = "✔";
+      setTimeout(() => { copyBtn.textContent = "⧉"; }, 1200);
+    });
+  }
   const loadBtn = el.querySelector(".load-tools");
   if (loadBtn) {
     loadBtn.addEventListener("click", () => loadTools(el));
