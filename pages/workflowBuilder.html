@@ -21,6 +21,15 @@
   }
   .app.menu-closed .palette { margin-left: -230px; opacity: 0; pointer-events: none; }
 
+  .palette-brand {
+    display: flex; align-items: center; gap: 9px;
+    margin-bottom: 22px; color: #e2e8f0;
+    font-size: 14px; font-weight: 650; letter-spacing: -.01em;
+  }
+  .palette-brand svg {
+    width: 25px; height: 25px; flex: none;
+    color: #38bdf8;
+  }
   .palette h2 {
     font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
     color: #94a3b8; margin: 0 0 12px; font-weight: 600;
@@ -334,6 +343,15 @@
 
 <div class="app" id="app">
   <aside class="palette" id="palette">
+    <div class="palette-brand">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="2.75" y="3.75" width="6.5" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.7" />
+        <rect x="14.75" y="13.75" width="6.5" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.7" />
+        <path d="M9.25 7h3a2 2 0 0 1 2 2v4.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+        <path d="m12.25 11.5 2 2 2-2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      <span>Workflow Builder</span>
+    </div>
     <h2>Workflow components</h2>
     <div class="item" draggable="true" data-type="start">
       <span class="dot" style="background:#16a34a"></span> Start
