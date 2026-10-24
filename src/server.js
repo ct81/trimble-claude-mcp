@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp ChatBots, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #2"
+// #3"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -333,12 +333,21 @@ const workflowStoragePath = path.join(workflowStorageDirectory, 'workflowbuilder
 const workflowDbPath = 'workflowbuilder';
 const maxWorkflows = 100;
 const workflowDocumentId = (name) => createHash('sha256').update(name.toLowerCase()).digest('hex');
-const workflowNodeTypes = new Set(['start', 'upload', 'mcp', 'result']);
+const workflowNodeTypes = new Set([
+  'start', 'upload', 'upload_excel', 'upload_csv', 'upload_ifc', 'upload_pdf',
+  'mcp', 'result', 'export_excel', 'export_csv'
+]);
 const workflowNodePorts = {
   start: { out: true },
   upload: { in: true, out: true },
+  upload_excel: { in: true, out: true },
+  upload_csv: { in: true, out: true },
+  upload_ifc: { in: true, out: true },
+  upload_pdf: { in: true, out: true },
   mcp: { in: true, out: true },
-  result: { in: true }
+  result: { in: true, out: true },
+  export_excel: { in: true },
+  export_csv: { in: true }
 };
 
 function validateWorkflowDocument(workflow) {

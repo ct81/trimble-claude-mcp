@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Workflow Builder — Start → Upload PDF → Call MCP → Result</title>
+<title>Workflow Builder — Import → Call MCP → Output → Export</title>
 <style>
   * { box-sizing: border-box; }
   html, body {
@@ -25,6 +25,19 @@
     font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
     color: #94a3b8; margin: 0 0 12px; font-weight: 600;
   }
+  .palette-tabs {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px;
+    margin-bottom: 12px;
+  }
+  .palette-tab {
+    min-width: 0; padding: 7px 5px; border: 1px solid #334155; border-radius: 6px;
+    background: #0b1220; color: #94a3b8; font-size: 11px; cursor: pointer;
+  }
+  .palette-tab:hover { color: #e2e8f0; border-color: #475569; }
+  .palette-tab[aria-selected="true"] {
+    background: #1d4ed8; border-color: #2563eb; color: #fff; font-weight: 600;
+  }
+  .palette-panel[hidden] { display: none; }
   .item {
     display: flex; align-items: center; gap: 9px;
     padding: 10px 12px; margin-bottom: 8px;
@@ -290,10 +303,13 @@
   html[data-theme="light"] body { background: #f1f5f9; color: #0f172a; }
   html[data-theme="light"] .palette, html[data-theme="light"] .toolbar, html[data-theme="light"] .modal { background: #ffffff; border-color: #e2e8f0; }
   html[data-theme="light"] .item, html[data-theme="light"] .auth-badge, html[data-theme="light"] .toolbar button,
+  html[data-theme="light"] .palette-tab,
   html[data-theme="light"] .toolbar input,
   html[data-theme="light"] .modal .actions button { background: #f1f5f9; border-color: #cbd5e1; color: #0f172a; }
   html[data-theme="light"] .toolbar button.primary, html[data-theme="light"] .modal .actions button.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
-  html[data-theme="light"] .item:hover, html[data-theme="light"] .toolbar button:hover { background: #e2e8f0; }
+  html[data-theme="light"] .palette-tab[aria-selected="true"] { background: #2563eb; border-color: #2563eb; color: #fff; }
+  html[data-theme="light"] .item:hover, html[data-theme="light"] .toolbar button:hover,
+  html[data-theme="light"] .palette-tab:hover { background: #e2e8f0; }
   html[data-theme="light"] .canvas { background: radial-gradient(circle at 1px 1px, #cbd5e1 1px, transparent 0) 0 0 / 22px 22px, #f8fafc; }
   html[data-theme="light"] .canvas::-webkit-scrollbar-track, html[data-theme="light"] .canvas::-webkit-scrollbar-corner { background: #f8fafc; }
   html[data-theme="light"] .canvas::-webkit-scrollbar-thumb { background: #cbd5e1; border-color: #f8fafc; }
@@ -318,18 +334,47 @@
 
 <div class="app" id="app">
   <aside class="palette" id="palette">
-    <h2>Components</h2>
-    <div class="item" draggable="true" data-type="start">
-      <span class="dot" style="background:#16a34a"></span> Start
+    <h2>Workflow components</h2>
+    <div class="palette-tabs" role="tablist" aria-label="Workflow component categories">
+      <button class="palette-tab" id="tabImport" type="button" role="tab" aria-selected="true" aria-controls="panelImport">Import</button>
+      <button class="palette-tab" id="tabTools" type="button" role="tab" aria-selected="false" aria-controls="panelTools" tabindex="-1">Tools</button>
+      <button class="palette-tab" id="tabOutput" type="button" role="tab" aria-selected="false" aria-controls="panelOutput" tabindex="-1">Output</button>
+      <button class="palette-tab" id="tabExport" type="button" role="tab" aria-selected="false" aria-controls="panelExport" tabindex="-1">Export</button>
     </div>
-    <div class="item" draggable="true" data-type="upload">
-      <span class="dot" style="background:#2563eb"></span> Upload PDF
+    <div class="palette-panel" id="panelImport" role="tabpanel" aria-labelledby="tabImport">
+      <div class="item" draggable="true" data-type="upload_excel">
+        <span class="dot" style="background:#16a34a"></span> Upload Excel
+      </div>
+      <div class="item" draggable="true" data-type="upload_csv">
+        <span class="dot" style="background:#0d9488"></span> Upload CSV
+      </div>
+      <div class="item" draggable="true" data-type="upload_ifc">
+        <span class="dot" style="background:#0891b2"></span> Upload IFC
+      </div>
+      <div class="item" draggable="true" data-type="upload_pdf">
+        <span class="dot" style="background:#2563eb"></span> Upload PDF
+      </div>
     </div>
-    <div class="item" draggable="true" data-type="mcp">
-      <span class="dot" style="background:#7c3aed"></span> Call MCP
+    <div class="palette-panel" id="panelTools" role="tabpanel" aria-labelledby="tabTools" hidden>
+      <div class="item" draggable="true" data-type="start">
+        <span class="dot" style="background:#16a34a"></span> Start
+      </div>
+      <div class="item" draggable="true" data-type="mcp">
+        <span class="dot" style="background:#7c3aed"></span> Call MCP
+      </div>
     </div>
-    <div class="item" draggable="true" data-type="result">
-      <span class="dot" style="background:#d97706"></span> Get Result
+    <div class="palette-panel" id="panelOutput" role="tabpanel" aria-labelledby="tabOutput" hidden>
+      <div class="item" draggable="true" data-type="result">
+        <span class="dot" style="background:#d97706"></span> Get Result
+      </div>
+    </div>
+    <div class="palette-panel" id="panelExport" role="tabpanel" aria-labelledby="tabExport" hidden>
+      <div class="item" draggable="true" data-type="export_excel">
+        <span class="dot" style="background:#15803d"></span> Export Excel
+      </div>
+      <div class="item" draggable="true" data-type="export_csv">
+        <span class="dot" style="background:#0f766e"></span> Export CSV
+      </div>
     </div>
 
     <div class="auth-badge" id="authBadge">
@@ -437,9 +482,16 @@ const BC_CHANNEL  = "trimble-oauth-flow";
 const TYPES = {
   start:  { label: "Start",      color: "#16a34a", icon: "▶", hasIn: false, hasOut: true  },
   upload: { label: "Upload PDF", color: "#2563eb", icon: "📄", hasIn: true,  hasOut: true  },
+  upload_excel: { label: "Upload Excel", color: "#16a34a", icon: "📊", hasIn: true, hasOut: true },
+  upload_csv: { label: "Upload CSV", color: "#0d9488", icon: "📋", hasIn: true, hasOut: true },
+  upload_ifc: { label: "Upload IFC", color: "#0891b2", icon: "🏗", hasIn: true, hasOut: true },
+  upload_pdf: { label: "Upload PDF", color: "#2563eb", icon: "📄", hasIn: true, hasOut: true },
   mcp:    { label: "Call MCP",   color: "#7c3aed", icon: "🔌", hasIn: true,  hasOut: true  },
-  result: { label: "Get Result", color: "#d97706", icon: "✅", hasIn: true,  hasOut: false }
+  result: { label: "Get Result", color: "#d97706", icon: "✅", hasIn: true,  hasOut: true  },
+  export_excel: { label: "Export Excel", color: "#15803d", icon: "📊", hasIn: true, hasOut: false },
+  export_csv: { label: "Export CSV", color: "#0f766e", icon: "📋", hasIn: true, hasOut: false }
 };
+const UPLOAD_TYPES = new Set(["upload", "upload_excel", "upload_csv", "upload_ifc", "upload_pdf"]);
 
 const STAGE_MIN = 340, STAGE_PAD = 260, MAX_COORD = 8000;
 
@@ -720,16 +772,26 @@ function autoScroll(e) {
 function bodyFor(type, id) {
   switch (type) {
     case "start":  return `<div class="hint">Workflow entry point</div>`;
-    case "upload": return `<input type="file" accept="application/pdf,.pdf">
+    case "upload":
+    case "upload_pdf": return `<input type="file" accept="application/pdf,.pdf">
+                          <div class="status">no file selected</div>`;
+    case "upload_excel": return `<input type="file" accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+                          <div class="status">no file selected</div>`;
+    case "upload_csv": return `<input type="file" accept=".csv,text/csv">
+                          <div class="status">no file selected</div>`;
+    case "upload_ifc": return `<input type="file" accept=".ifc,application/x-step">
                           <div class="status">no file selected</div>`;
     case "mcp":    return `<input type="text" class="url" placeholder="${DEFAULT_MCP_URL}" spellcheck="false" value="${DEFAULT_MCP_URL}">
                           <div style="display:flex;gap:4px;margin-top:6px">
                             <input type="text" class="tool" list="mcp-tools-${id}" placeholder="tool name (pick or type)" spellcheck="false" value="" style="flex:1;margin:0">
                             <button type="button" class="load-tools">Load</button>
                           </div>
-                          <textarea class="args" rows="3" spellcheck="false" style="width:100%;margin-top:6px;font-family:monospace;font-size:11px" placeholder='arguments JSON; {{pdf_base64}} and {{filename}} are replaced'>{"pdfBase64":"{{pdf_base64}}"}</textarea>
+                          <textarea class="args" rows="3" spellcheck="false" style="width:100%;margin-top:6px;font-family:monospace;font-size:11px" placeholder='arguments JSON; file placeholders are replaced'>{"file_base64":"{{file_base64}}","filename":"{{filename}}"}</textarea>
                           <div class="status">not called yet</div>`;
     case "result": return `<div class="out">—</div>`;
+    case "export_excel":
+    case "export_csv": return `<div class="hint">Download the MCP result as ${type === "export_excel" ? "an Excel workbook" : "a CSV file"}</div>
+                          <div class="status">waiting for workflow result</div>`;
     default: return "";
   }
 }
@@ -759,8 +821,9 @@ function argsTemplate(schema) {
   const props = (schema && schema.properties) || {};
   const out = {};
   for (const k of Object.keys(props)) {
-    if (/^pdf_?base64$/i.test(k)) out[k] = "{{pdf_base64}}";
-    else if (/^file_?name$/i.test(k)) out[k] = "{{filename}}";
+    if (/base64$/i.test(k)) out[k] = /^pdf/i.test(k) ? "{{pdf_base64}}" : "{{file_base64}}";
+    else if (/^(?:file|csv|ifc)_?text$/i.test(k)) out[k] = "{{file_text}}";
+    else if (/^(?:file_?)?name$/i.test(k) || /^filename$/i.test(k)) out[k] = "{{filename}}";
     else out[k] = props[k].type === "number" || props[k].type === "integer" ? 0
                : props[k].type === "boolean" ? false
                : props[k].type === "array" ? [] : props[k].type === "object" ? {} : "";
@@ -1245,6 +1308,27 @@ document.querySelectorAll(".item").forEach((item) => {
     drawEdges(); closeMenuIfMobile();
   });
 });
+const paletteTabs = [...document.querySelectorAll(".palette-tab")];
+function activatePaletteTab(tab, focus = false) {
+  for (const candidate of paletteTabs) {
+    const active = candidate === tab;
+    candidate.setAttribute("aria-selected", String(active));
+    candidate.tabIndex = active ? 0 : -1;
+    document.getElementById(candidate.getAttribute("aria-controls")).hidden = !active;
+  }
+  if (focus) tab.focus();
+}
+paletteTabs.forEach((tab, index) => {
+  tab.addEventListener("click", () => activatePaletteTab(tab));
+  tab.addEventListener("keydown", (event) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const nextIndex = event.key === "Home" ? 0
+      : event.key === "End" ? paletteTabs.length - 1
+      : (index + (event.key === "ArrowRight" ? 1 : -1) + paletteTabs.length) % paletteTabs.length;
+    activatePaletteTab(paletteTabs[nextIndex], true);
+  });
+});
 canvas.addEventListener("dragover", (e) => {
   e.preventDefault(); e.dataTransfer.dropEffect = "copy";
 });
@@ -1373,12 +1457,87 @@ function fileToBase64(file) {
   });
 }
 
+function exportRows(result) {
+  let value = result?.result?.structuredContent ?? result?.structuredContent;
+  if (value === undefined) {
+    const text = (result?.result?.content || result?.content || [])
+      .filter((item) => item?.type === "text" && typeof item.text === "string")
+      .map((item) => item.text).join("\n");
+    if (text) {
+      try { value = JSON.parse(text); }
+      catch { value = { result: text }; }
+    } else {
+      value = result;
+    }
+  }
+  if (value && !Array.isArray(value) && typeof value === "object") {
+    const records = Object.values(value).find((item) =>
+      Array.isArray(item) && item.every((row) => row && typeof row === "object" && !Array.isArray(row))
+    );
+    if (records) value = records;
+  }
+  const rows = Array.isArray(value) ? value : [value];
+  return rows.map((row) => {
+    if (row && typeof row === "object" && !Array.isArray(row)) {
+      const flattened = {};
+      const flatten = (item, prefix = "") => {
+        for (const [key, child] of Object.entries(item)) {
+          const path = prefix ? `${prefix}.${key}` : key;
+          if (child && typeof child === "object" && !Array.isArray(child)) flatten(child, path);
+          else flattened[path] = Array.isArray(child) ? JSON.stringify(child) : child;
+        }
+      };
+      flatten(row);
+      return Object.keys(flattened).length ? flattened : { result: "" };
+    }
+    return { result: row ?? "" };
+  });
+}
+function exportCell(value) {
+  if (typeof value === "number" || typeof value === "boolean") return value;
+  const text = value == null ? "" : typeof value === "string" ? value : JSON.stringify(value);
+  return /^[\s]*[=+\-@]/.test(text) ? `'${text}` : text;
+}
+function downloadWorkflowResult(format, result) {
+  const rows = exportRows(result);
+  const headers = [...new Set(rows.flatMap((row) => Object.keys(row)))];
+  const cells = rows.map((row) => headers.map((header) => exportCell(row[header])));
+  let blob, filename;
+  if (format === "csv") {
+    const csvCell = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+    const csv = [[...headers.map(exportCell)], ...cells].map((row) => row.map(csvCell).join(",")).join("\r\n");
+    blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
+    filename = "workflow-result.csv";
+  } else {
+    const xmlEscape = (value) => String(value ?? "").replace(/[<>&'"]/g, (char) => ({
+      "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;"
+    })[char]);
+    const makeCell = (value) => {
+      const type = typeof value === "number" && Number.isFinite(value) ? "Number" : "String";
+      return `<Cell><Data ss:Type="${type}">${xmlEscape(value)}</Data></Cell>`;
+    };
+    const workbook = `<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?>
+      <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+      <Worksheet ss:Name="Results"><Table><Row>${headers.map(makeCell).join("")}</Row>
+      ${cells.map((row) => `<Row>${row.map(makeCell).join("")}</Row>`).join("")}
+      </Table></Worksheet></Workbook>`;
+    blob = new Blob([workbook], { type: "application/vnd.ms-excel;charset=utf-8" });
+    filename = "workflow-result.xls";
+  }
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 async function runWorkflow() {
   const start = nodes.find((n) => n.type === "start");
   if (!start) { setStatus("Add a Start node first"); return; }
 
   nodes.forEach((n) => n.el.classList.remove("active", "error"));
-  const state = { fileName: null, pdfBase64: null, result: null };
+  const state = { fileName: null, fileBase64: null, fileText: null, pdfBase64: null, result: null };
   const seen = new Set();
   let cur = start;
   setStatus("Running…");
@@ -1390,12 +1549,14 @@ async function runWorkflow() {
     await sleep(380);
 
     try {
-      if (cur.type === "upload") {
+      if (UPLOAD_TYPES.has(cur.type)) {
         const input = cur.el.querySelector('input[type="file"]');
         const file  = input && input.files && input.files[0];
-        if (!file) throw new Error('No PDF chosen in "Upload PDF"');
+        if (!file) throw new Error(`No file chosen in "${TYPES[cur.type].label}"`);
         state.fileName  = file.name;
-        state.pdfBase64 = await fileToBase64(file);
+        state.fileBase64 = await fileToBase64(file);
+        state.pdfBase64 = cur.type === "upload" || cur.type === "upload_pdf" ? state.fileBase64 : null;
+        state.fileText = cur.type === "upload_csv" || cur.type === "upload_ifc" ? await file.text() : null;
         cur.el.querySelector(".status").textContent = "✔ " + file.name;
       }
 
@@ -1422,7 +1583,10 @@ async function runWorkflow() {
           toolArgs = JSON.parse(raw);
         } catch { throw new Error("Tool arguments must be valid JSON"); }
         const subst = (v) => typeof v === "string"
-          ? (v === "{{pdf_base64}}" ? (state.pdfBase64 || "") : v === "{{filename}}" ? (state.fileName || "") : v)
+          ? (v === "{{pdf_base64}}" ? (state.pdfBase64 || "")
+            : v === "{{file_base64}}" ? (state.fileBase64 || "")
+            : v === "{{file_text}}" ? (state.fileText || "")
+            : v === "{{filename}}" ? (state.fileName || "") : v)
           : Array.isArray(v) ? v.map(subst)
           : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, subst(x)])) : v;
         toolArgs = subst(toolArgs);
@@ -1468,6 +1632,13 @@ async function runWorkflow() {
         box.textContent = state.result
           ? JSON.stringify(state.result, null, 2)
           : "No data received";
+      }
+
+      if (cur.type === "export_excel" || cur.type === "export_csv") {
+        if (!state.result) throw new Error("Run an MCP node before exporting its result");
+        const format = cur.type === "export_excel" ? "excel" : "csv";
+        downloadWorkflowResult(format, state.result);
+        cur.el.querySelector(".status").textContent = `✔ Downloaded workflow-result.${format === "excel" ? "xls" : "csv"}`;
       }
     } catch (err) {
       cur.el.classList.remove("active");
