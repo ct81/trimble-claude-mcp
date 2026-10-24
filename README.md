@@ -80,10 +80,17 @@ Open `http://localhost:3000/health`.
 The Workflow Builder's name field provides a dropdown of saved workflows and
 accepts new names. **Save workflow** creates or updates the named entry;
 **Load workflow** restores the selected entry from
-`pages/datastorage/workflowbuilder.json` on the server. These actions require
-Trimble sign-in. The saved file is server-side storage; on hosts with an
-ephemeral filesystem, it may not survive a restart or redeployment unless
-persistent storage is configured.
+the server. These actions require Trimble sign-in, and saved workflows are
+visible from any browser or device after signing in.
+
+When `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`
+and `FIREBASE_DATABASE_URL` are set, workflows are stored in the Firebase
+Realtime Database under `workflowbuilder/`, which survives Render restarts and
+redeploys. Create the database first in the Firebase Console (Build → Realtime
+Database → Create database) and copy its URL into `FIREBASE_DATABASE_URL`.
+Without Firebase, it falls back to
+`pages/datastorage/workflowbuilder.json` on the server's local disk, which is
+wiped on Render's ephemeral filesystem.
 
 For Trimble Connect OAuth locally, configure `TRIMBLE_CLIENT_ID`,
 `TRIMBLE_CLIENT_SECRET`, `TRIMBLE_AUTHORIZATION_ENDPOINT`, `TRIMBLE_TOKEN_ENDPOINT`,

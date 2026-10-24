@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp ChatBots, Workflow Builder, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #8"
+// #9"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -20,10 +20,11 @@ import express from 'express';
 import swaggerUi from 'swagger-ui-express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { config } from './config.js';
+import { realtimeDb } from './firebase-database.js';
 import { createSession } from './session-store.js';
 import { authorizationUrl, exchangeCode, requireSession } from './oauth/oauth.js';
 // import { tools } from './trimble/client.js';
@@ -329,6 +330,9 @@ function requireMcpAuthForRequest(req, res, next) {
 const app = express();
 const workflowStorageDirectory = path.join(process.cwd(), 'pages', 'datastorage');
 const workflowStoragePath = path.join(workflowStorageDirectory, 'workflowbuilder.json');
+const workflowDbPath = 'workflowbuilder';
+const maxWorkflows = 100;
+const workflowDocumentId = (name) => createHash('sha256').update(name.toLowerCase()).digest('hex');
 const workflowNodeTypes = new Set(['start', 'upload', 'mcp', 'result']);
 const workflowNodePorts = {
   start: { out: true },
@@ -428,7 +432,7 @@ async function readWorkflowLibrary() {
 
   const document = JSON.parse(contents);
   if (document?.version === 1 && Array.isArray(document.workflows)) {
-    if (document.workflows.length > 100) throw new Error('Workflow library exceeds the 100 workflow limit');
+    if (document.workflows.length > maxWorkflows) throw new Error('Workflow library exceeds the 100 workflow limit');
     const names = new Set();
     return document.workflows.map((entry) => {
       const name = validateWorkflowName(entry?.name);
@@ -445,6 +449,73 @@ async function readWorkflowLibrary() {
   }
 
   throw new Error('Saved workflow library has an unsupported format');
+}
+
+async function writeWorkflowLibrary(workflows) {
+  const serialized = `${JSON.stringify({ version: 1, workflows }, null, 2)}\n`;
+  if (Buffer.byteLength(serialized, 'utf8') > 1024 * 1024) {
+    const error = new Error('Workflow library exceeds the 1 MB storage limit');
+    error.status = 413;
+    throw error;
+  }
+  await mkdir(workflowStorageDirectory, { recursive: true });
+  const temporaryPath = path.join(workflowStorageDirectory, `.workflowbuilder-${randomUUID()}.tmp`);
+  try {
+    await writeFile(temporaryPath, serialized, { flag: 'wx' });
+    await rename(temporaryPath, workflowStoragePath);
+  } catch (error) {
+    await unlink(temporaryPath).catch(() => {});
+    throw error;
+  }
+}
+
+// Realtime Database layout: names/<id> = name (cheap listing) and items/<id> =
+// {name, workflow (JSON string), updatedAt}.
+async function listWorkflowNames() {
+  if (!realtimeDb) return (await readWorkflowLibrary()).map(({ name }) => name);
+  const snapshot = await realtimeDb.ref(`${workflowDbPath}/names`).get();
+  return Object.values(snapshot.val() || {}).sort((a, b) => a.localeCompare(b));
+}
+
+async function getSavedWorkflow(name) {
+  if (!realtimeDb) {
+    return (await readWorkflowLibrary()).find((entry) => entry.name.toLowerCase() === name.toLowerCase()) || null;
+  }
+  const snapshot = await realtimeDb.ref(`${workflowDbPath}/items/${workflowDocumentId(name)}`).get();
+  if (!snapshot.exists()) return null;
+  const item = snapshot.val();
+  return { name: item.name, workflow: validateWorkflowDocument(JSON.parse(item.workflow)) };
+}
+
+async function saveNamedWorkflow(name, workflow) {
+  if (!realtimeDb) {
+    const workflows = await readWorkflowLibrary();
+    const index = workflows.findIndex((entry) => entry.name.toLowerCase() === name.toLowerCase());
+    if (index === -1 && workflows.length >= maxWorkflows) throw limitError();
+    if (index === -1) workflows.push({ name, workflow });
+    else workflows[index] = { name, workflow };
+    return writeWorkflowLibrary(workflows);
+  }
+
+  const serialized = JSON.stringify(workflow);
+  if (Buffer.byteLength(serialized, 'utf8') > 900 * 1024) {
+    const error = new Error('Workflow exceeds the storage size limit');
+    error.status = 413;
+    throw error;
+  }
+  const id = workflowDocumentId(name);
+  const names = (await realtimeDb.ref(`${workflowDbPath}/names`).get()).val() || {};
+  if (!(id in names) && Object.keys(names).length >= maxWorkflows) throw limitError();
+  await realtimeDb.ref(workflowDbPath).update({
+    [`names/${id}`]: name,
+    [`items/${id}`]: { name, workflow: serialized, updatedAt: new Date().toISOString() }
+  });
+}
+
+function limitError() {
+  const error = new Error('Workflow library is limited to 100 saved workflows');
+  error.status = 400;
+  return error;
 }
 
 app.set('trust proxy', 1);
@@ -478,19 +549,19 @@ app.use(cookieParser());
 
 app.get('/api/workflow', requireMcpAuth, async (req, res) => {
   try {
-    const workflows = await readWorkflowLibrary();
     res.set('Cache-Control', 'no-store');
     if (req.query.name === undefined) {
-      return res.json({ version: 1, workflows: workflows.map(({ name }) => ({ name })) });
+      const names = await listWorkflowNames();
+      return res.json({ version: 1, workflows: names.map((name) => ({ name })) });
     }
     const name = validateWorkflowName(req.query.name);
-    const saved = workflows.find((entry) => entry.name.toLowerCase() === name.toLowerCase());
+    const saved = await getSavedWorkflow(name);
     if (!saved) return res.status(404).json({ error: `Workflow "${name}" was not found` });
     return res.json(saved);
   } catch (error) {
     console.error('[Workflow] Failed to load workflow:', error);
     if (error.message.startsWith('Workflow')) {
-      return res.status(500).json({ error: error.message });
+      return res.status(error.message.includes('name') ? 400 : 500).json({ error: error.message });
     }
     return res.status(500).json({ error: 'Failed to load saved workflows' });
   }
@@ -500,31 +571,10 @@ app.put('/api/workflow', requireMcpAuth, async (req, res) => {
   try {
     const name = validateWorkflowName(req.body?.name);
     const workflow = validateWorkflowDocument(req.body?.workflow);
-    const workflows = await readWorkflowLibrary();
-    const existingIndex = workflows.findIndex(
-      (entry) => entry.name.toLowerCase() === name.toLowerCase()
-    );
-    if (existingIndex === -1 && workflows.length >= 100) {
-      return res.status(400).json({ error: 'Workflow library is limited to 100 saved workflows' });
-    }
-    if (existingIndex === -1) workflows.push({ name, workflow });
-    else workflows[existingIndex] = { name, workflow };
-    const serialized = `${JSON.stringify({ version: 1, workflows }, null, 2)}\n`;
-    if (Buffer.byteLength(serialized, 'utf8') > 1024 * 1024) {
-      return res.status(413).json({ error: 'Workflow library exceeds the 1 MB storage limit' });
-    }
-
-    await mkdir(workflowStorageDirectory, { recursive: true });
-    const temporaryPath = path.join(workflowStorageDirectory, `.workflowbuilder-${randomUUID()}.tmp`);
-    try {
-      await writeFile(temporaryPath, serialized, { flag: 'wx' });
-      await rename(temporaryPath, workflowStoragePath);
-    } catch (error) {
-      await unlink(temporaryPath).catch(() => {});
-      throw error;
-    }
+    await saveNamedWorkflow(name, workflow);
     return res.json({ saved: true, name });
   } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message });
     if (error instanceof SyntaxError) {
       return res.status(400).json({ error: 'Workflow body must be valid JSON' });
     }

@@ -660,6 +660,7 @@ async function ensureToken() {
       sessionStorage.removeItem(SS_VERIFIER);
 
       setAuthBadge("signed-in", "Signed in to Trimble");
+      if (typeof refreshWorkflowNames === "function") refreshWorkflowNames(accessToken).catch(() => {});
       return accessToken;
     } catch (err) {
       setAuthBadge("error", "Sign-in failed");
@@ -1033,7 +1034,42 @@ function validateLoadedWorkflow(workflow) {
   }
 }
 const workflowNameInput = document.getElementById("workflowName");
-async function refreshWorkflowNames(token, selectedName = "") {
+const WORKFLOWS_KEY = "trimble-mcp-workflows-v1";
+let serverWorkflowNames = [];
+
+function readLocalWorkflows() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(WORKFLOWS_KEY) || "{}");
+    return stored && typeof stored === "object" && !Array.isArray(stored) ? stored : {};
+  } catch { return {}; }
+}
+function writeLocalWorkflow(name, workflow) {
+  const all = readLocalWorkflows();
+  for (const key of Object.keys(all)) {
+    if (key.toLowerCase() === name.toLowerCase()) delete all[key];
+  }
+  all[name] = workflow;
+  try { localStorage.setItem(WORKFLOWS_KEY, JSON.stringify(all)); } catch {}
+}
+function findLocalWorkflow(name) {
+  const all = readLocalWorkflows();
+  const key = Object.keys(all).find((k) => k.toLowerCase() === name.toLowerCase());
+  return key ? { name: key, workflow: all[key] } : null;
+}
+function renderWorkflowNames() {
+  const names = new Map();
+  for (const name of [...Object.keys(readLocalWorkflows()), ...serverWorkflowNames]) {
+    names.set(name.toLowerCase(), names.get(name.toLowerCase()) || name);
+  }
+  const suggestions = document.getElementById("savedWorkflowNames");
+  suggestions.replaceChildren();
+  for (const name of names.values()) {
+    const option = document.createElement("option");
+    option.value = name;
+    suggestions.appendChild(option);
+  }
+}
+async function refreshWorkflowNames(token) {
   const response = await fetch("/api/workflow", {
     headers: { "Authorization": "Bearer " + token },
     cache: "no-store"
@@ -1041,21 +1077,17 @@ async function refreshWorkflowNames(token, selectedName = "") {
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
   if (!Array.isArray(result.workflows)) throw new Error("Invalid saved workflow list");
-  const suggestions = document.getElementById("savedWorkflowNames");
-  suggestions.replaceChildren();
-  for (const workflow of result.workflows) {
-    const option = document.createElement("option");
-    option.value = workflow.name;
-    suggestions.appendChild(option);
-  }
-  if (selectedName) workflowNameInput.value = selectedName;
-  return result.workflows;
+  serverWorkflowNames = result.workflows.map((workflow) => workflow.name);
+  renderWorkflowNames();
 }
 async function saveWorkflow() {
-  setStatus("Saving workflow…");
+  const name = workflowNameInput.value.trim();
+  if (!name) { setStatus("Enter a name for this workflow"); return; }
+  const workflow = serializeWorkflow();
+  writeLocalWorkflow(name, workflow);
+  renderWorkflowNames();
+  setStatus(`Saving "${name}" to the server…`);
   try {
-    const name = workflowNameInput.value.trim();
-    if (!name) throw new Error("Enter a name for this workflow");
     const token = await ensureToken();
     const response = await fetch("/api/workflow", {
       method: "PUT",
@@ -1063,15 +1095,39 @@ async function saveWorkflow() {
         "Content-Type": "application/json",
         "Authorization": "Bearer " + token
       },
-      body: JSON.stringify({ name, workflow: serializeWorkflow() })
+      body: JSON.stringify({ name, workflow })
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
-    await refreshWorkflowNames(token, result.name);
-    setStatus(`Saved workflow "${result.name}"`);
+    await refreshWorkflowNames(token);
+    setStatus(`Saved workflow "${result.name}" — available from any browser or device after sign-in`);
   } catch (error) {
-    setStatus("Could not save workflow: " + error.message);
+    setStatus(`Saved "${name}" in this browser only — server save failed: ${error.message}`);
   }
+}
+function applyWorkflow(workflow) {
+  validateLoadedWorkflow(workflow);
+  document.getElementById("btnClear").click();
+  const idMap = new Map();
+  for (const saved of workflow.nodes) {
+    const node = createNode(saved.type, saved.x, saved.y);
+    idMap.set(saved.id, node.id);
+    if (saved.sized) {
+      node.el.classList.add("sized");
+      node.el.style.width = `${saved.width}px`;
+      node.el.style.height = `${saved.height}px`;
+    }
+    if (saved.type === "mcp") {
+      node.el.querySelector(".url").value = saved.settings.url;
+      node.el.querySelector(".tool").value = saved.settings.tool;
+      node.el.querySelector(".args").value = saved.settings.args;
+    }
+  }
+  for (const saved of workflow.edges) {
+    edges.push({ id: "e" + ++edgeSeq, from: idMap.get(saved.from), to: idMap.get(saved.to) });
+  }
+  updateStageSize();
+  drawEdges();
 }
 async function loadWorkflow() {
   const name = workflowNameInput.value.trim();
@@ -1080,44 +1136,36 @@ async function loadWorkflow() {
     return;
   }
   setStatus(`Loading workflow "${name}"…`);
+  let serverError = null;
+  {
+    try {
+      const token = await ensureToken();
+      const response = await fetch(`/api/workflow?name=${encodeURIComponent(name)}`, {
+        headers: { "Authorization": "Bearer " + token },
+        cache: "no-store"
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+      applyWorkflow(result.workflow);
+      workflowNameInput.value = result.name;
+      setStatus(`Workflow "${result.name}" loaded from server (${nodes.length} components)`);
+      return;
+    } catch (error) { serverError = error; }
+  }
+  const local = findLocalWorkflow(name);
+  if (!local) {
+    setStatus(`Could not load workflow "${name}"` + (serverError ? ": " + serverError.message : ""));
+    return;
+  }
   try {
-    const token = await ensureToken();
-    const response = await fetch(`/api/workflow?name=${encodeURIComponent(name)}`, {
-      headers: { "Authorization": "Bearer " + token },
-      cache: "no-store"
-    });
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
-    const workflow = result.workflow;
-    validateLoadedWorkflow(workflow);
-
-    document.getElementById("btnClear").click();
-    const idMap = new Map();
-    for (const saved of workflow.nodes) {
-      const node = createNode(saved.type, saved.x, saved.y);
-      idMap.set(saved.id, node.id);
-      if (saved.sized) {
-        node.el.classList.add("sized");
-        node.el.style.width = `${saved.width}px`;
-        node.el.style.height = `${saved.height}px`;
-      }
-      if (saved.type === "mcp") {
-        node.el.querySelector(".url").value = saved.settings.url;
-        node.el.querySelector(".tool").value = saved.settings.tool;
-        node.el.querySelector(".args").value = saved.settings.args;
-      }
-    }
-    for (const saved of workflow.edges) {
-      edges.push({ id: "e" + ++edgeSeq, from: idMap.get(saved.from), to: idMap.get(saved.to) });
-    }
-    updateStageSize();
-    drawEdges();
-    workflowNameInput.value = result.name;
-    setStatus(`Workflow loaded (${nodes.length} components)`);
+    applyWorkflow(local.workflow);
+    workflowNameInput.value = local.name;
+    setStatus(`Workflow "${local.name}" loaded from this browser (${nodes.length} components)`);
   } catch (error) {
     setStatus("Could not load workflow: " + error.message);
   }
 }
+renderWorkflowNames();
 
 /* =========================================================================
    7. POINTER EVENTS
