@@ -92,6 +92,12 @@
     transition: background .12s, border-color .12s;
     white-space: nowrap;
   }
+  .toolbar input {
+    width: 190px; min-width: 120px; background: #0b1220; color: #e2e8f0;
+    border: 1px solid #334155; border-radius: 7px; padding: 7px 9px;
+    font-size: 13px; outline: none;
+  }
+  .toolbar input:focus { border-color: #38bdf8; }
   .toolbar button:hover { background: #273449; border-color: #475569; }
   .toolbar button.primary { background: #2563eb; border-color: #2563eb; font-weight: 600; }
   .toolbar button.primary:hover { background: #1d4ed8; }
@@ -284,6 +290,7 @@
   html[data-theme="light"] body { background: #f1f5f9; color: #0f172a; }
   html[data-theme="light"] .palette, html[data-theme="light"] .toolbar, html[data-theme="light"] .modal { background: #ffffff; border-color: #e2e8f0; }
   html[data-theme="light"] .item, html[data-theme="light"] .auth-badge, html[data-theme="light"] .toolbar button,
+  html[data-theme="light"] .toolbar input,
   html[data-theme="light"] .modal .actions button { background: #f1f5f9; border-color: #cbd5e1; color: #0f172a; }
   html[data-theme="light"] .toolbar button.primary, html[data-theme="light"] .modal .actions button.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
   html[data-theme="light"] .item:hover, html[data-theme="light"] .toolbar button:hover { background: #e2e8f0; }
@@ -353,6 +360,9 @@
       <button class="icon-btn" id="btnMenu" title="Show / hide components" aria-label="Toggle component menu">☰</button>
       <button class="primary" id="btnRun">▶ Run workflow</button>
       <button id="btnExample">Load example</button>
+      <input id="workflowName" type="text" list="savedWorkflowNames" maxlength="100"
+             placeholder="Select or enter workflow name" aria-label="Select or enter workflow name" />
+      <datalist id="savedWorkflowNames"></datalist>
       <button id="btnSaveWorkflow">Save workflow</button>
       <button id="btnLoadWorkflow">Load workflow</button>
       <button id="btnClear">Clear</button>
@@ -1022,9 +1032,30 @@ function validateLoadedWorkflow(workflow) {
     }
   }
 }
+const workflowNameInput = document.getElementById("workflowName");
+async function refreshWorkflowNames(token, selectedName = "") {
+  const response = await fetch("/api/workflow", {
+    headers: { "Authorization": "Bearer " + token },
+    cache: "no-store"
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+  if (!Array.isArray(result.workflows)) throw new Error("Invalid saved workflow list");
+  const suggestions = document.getElementById("savedWorkflowNames");
+  suggestions.replaceChildren();
+  for (const workflow of result.workflows) {
+    const option = document.createElement("option");
+    option.value = workflow.name;
+    suggestions.appendChild(option);
+  }
+  if (selectedName) workflowNameInput.value = selectedName;
+  return result.workflows;
+}
 async function saveWorkflow() {
   setStatus("Saving workflow…");
   try {
+    const name = workflowNameInput.value.trim();
+    if (!name) throw new Error("Enter a name for this workflow");
     const token = await ensureToken();
     const response = await fetch("/api/workflow", {
       method: "PUT",
@@ -1032,25 +1063,32 @@ async function saveWorkflow() {
         "Content-Type": "application/json",
         "Authorization": "Bearer " + token
       },
-      body: JSON.stringify(serializeWorkflow())
+      body: JSON.stringify({ name, workflow: serializeWorkflow() })
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
-    setStatus("Workflow saved to datastorage/workflowbuilder.json");
+    await refreshWorkflowNames(token, result.name);
+    setStatus(`Saved workflow "${result.name}"`);
   } catch (error) {
     setStatus("Could not save workflow: " + error.message);
   }
 }
 async function loadWorkflow() {
-  setStatus("Loading workflow…");
+  const name = workflowNameInput.value.trim();
+  if (!name) {
+    setStatus("Select or enter a saved workflow name");
+    return;
+  }
+  setStatus(`Loading workflow "${name}"…`);
   try {
     const token = await ensureToken();
-    const response = await fetch("/api/workflow", {
+    const response = await fetch(`/api/workflow?name=${encodeURIComponent(name)}`, {
       headers: { "Authorization": "Bearer " + token },
       cache: "no-store"
     });
-    const workflow = await response.json();
-    if (!response.ok) throw new Error(workflow.error || `HTTP ${response.status}`);
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+    const workflow = result.workflow;
     validateLoadedWorkflow(workflow);
 
     document.getElementById("btnClear").click();
@@ -1074,6 +1112,7 @@ async function loadWorkflow() {
     }
     updateStageSize();
     drawEdges();
+    workflowNameInput.value = result.name;
     setStatus(`Workflow loaded (${nodes.length} components)`);
   } catch (error) {
     setStatus("Could not load workflow: " + error.message);
@@ -1225,6 +1264,12 @@ document.getElementById("authBtn").addEventListener("click", async () => {
   try {
     setStatus("Opening Trimble sign-in…");
     await ensureToken();
+    try {
+      await refreshWorkflowNames(accessToken);
+    } catch (error) {
+      setStatus(`Signed in, but saved workflows could not be loaded: ${error.message}`);
+      return;
+    }
     setStatus("Signed in to Trimble ✔");
   } catch (err) {
     if (err.needsSettings) { setStatus(err.message); openSettings(); }

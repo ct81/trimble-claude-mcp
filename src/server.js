@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp ChatBots, Workflow Builder, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #7"
+// #8"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -408,6 +408,45 @@ function validateWorkflowDocument(workflow) {
   return { version: 1, nodes, edges };
 }
 
+function validateWorkflowName(name) {
+  if (typeof name !== 'string') throw new Error('Workflow name is required');
+  const normalized = name.trim();
+  if (!normalized || normalized.length > 100 || /[\u0000-\u001f\u007f]/.test(normalized)) {
+    throw new Error('Workflow name must be 1-100 characters and contain no control characters');
+  }
+  return normalized;
+}
+
+async function readWorkflowLibrary() {
+  let contents;
+  try {
+    contents = await readFile(workflowStoragePath, 'utf8');
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    throw error;
+  }
+
+  const document = JSON.parse(contents);
+  if (document?.version === 1 && Array.isArray(document.workflows)) {
+    if (document.workflows.length > 100) throw new Error('Workflow library exceeds the 100 workflow limit');
+    const names = new Set();
+    return document.workflows.map((entry) => {
+      const name = validateWorkflowName(entry?.name);
+      const normalizedName = name.toLowerCase();
+      if (names.has(normalizedName)) throw new Error('Workflow library contains duplicate names');
+      names.add(normalizedName);
+      return { name, workflow: validateWorkflowDocument(entry.workflow) };
+    });
+  }
+
+  if (document?.version === 1 && Array.isArray(document.nodes) && Array.isArray(document.edges)) {
+    const workflow = validateWorkflowDocument(document);
+    return workflow.nodes.length || workflow.edges.length ? [{ name: 'Default', workflow }] : [];
+  }
+
+  throw new Error('Saved workflow library has an unsupported format');
+}
+
 app.set('trust proxy', 1);
 // Browser-based MCP registries call these cross-origin; other routes keep the original CORS policy.
 const openCors = cors({ origin: true, exposedHeaders: ['WWW-Authenticate', 'Mcp-Session-Id'] });
@@ -437,27 +476,42 @@ app.use(
 );
 app.use(cookieParser());
 
-app.get('/api/workflow', requireMcpAuth, async (_, res) => {
+app.get('/api/workflow', requireMcpAuth, async (req, res) => {
   try {
-    const contents = await readFile(workflowStoragePath, 'utf8');
-    const workflow = validateWorkflowDocument(JSON.parse(contents));
+    const workflows = await readWorkflowLibrary();
     res.set('Cache-Control', 'no-store');
-    return res.json(workflow);
-  } catch (error) {
-    if (error.code === 'ENOENT') {
-      return res.json({ version: 1, nodes: [], edges: [] });
+    if (req.query.name === undefined) {
+      return res.json({ version: 1, workflows: workflows.map(({ name }) => ({ name })) });
     }
+    const name = validateWorkflowName(req.query.name);
+    const saved = workflows.find((entry) => entry.name.toLowerCase() === name.toLowerCase());
+    if (!saved) return res.status(404).json({ error: `Workflow "${name}" was not found` });
+    return res.json(saved);
+  } catch (error) {
     console.error('[Workflow] Failed to load workflow:', error);
-    return res.status(500).json({ error: 'Failed to load saved workflow' });
+    if (error.message.startsWith('Workflow')) {
+      return res.status(500).json({ error: error.message });
+    }
+    return res.status(500).json({ error: 'Failed to load saved workflows' });
   }
 });
 
 app.put('/api/workflow', requireMcpAuth, async (req, res) => {
   try {
-    const workflow = validateWorkflowDocument(req.body);
-    const serialized = `${JSON.stringify(workflow, null, 2)}\n`;
+    const name = validateWorkflowName(req.body?.name);
+    const workflow = validateWorkflowDocument(req.body?.workflow);
+    const workflows = await readWorkflowLibrary();
+    const existingIndex = workflows.findIndex(
+      (entry) => entry.name.toLowerCase() === name.toLowerCase()
+    );
+    if (existingIndex === -1 && workflows.length >= 100) {
+      return res.status(400).json({ error: 'Workflow library is limited to 100 saved workflows' });
+    }
+    if (existingIndex === -1) workflows.push({ name, workflow });
+    else workflows[existingIndex] = { name, workflow };
+    const serialized = `${JSON.stringify({ version: 1, workflows }, null, 2)}\n`;
     if (Buffer.byteLength(serialized, 'utf8') > 1024 * 1024) {
-      return res.status(413).json({ error: 'Workflow exceeds the 1 MB storage limit' });
+      return res.status(413).json({ error: 'Workflow library exceeds the 1 MB storage limit' });
     }
 
     await mkdir(workflowStorageDirectory, { recursive: true });
@@ -469,7 +523,7 @@ app.put('/api/workflow', requireMcpAuth, async (req, res) => {
       await unlink(temporaryPath).catch(() => {});
       throw error;
     }
-    return res.json({ saved: true });
+    return res.json({ saved: true, name });
   } catch (error) {
     if (error instanceof SyntaxError) {
       return res.status(400).json({ error: 'Workflow body must be valid JSON' });
