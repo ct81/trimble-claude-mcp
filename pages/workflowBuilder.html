@@ -376,7 +376,7 @@
     <p class="sub">Configure once — values are stored in your browser.</p>
 
     <label for="inputClientId">Trimble Client ID</label>
-    <input type="text" id="inputClientId" placeholder="e.g. 6a3f9b1c-…" spellcheck="false" />
+    <input type="password" id="inputClientId" placeholder="e.g. 6a3f9b1c-…" spellcheck="false" autocomplete="off" />
 
     <label for="inputRedirectUri">Redirect URI</label>
     <div class="row">
@@ -450,6 +450,22 @@ function saveSettings(s) {
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch {}
 }
 let settings = loadSettings();
+let trimbleConfigLoadError = false;
+const trimbleClientIdReady = fetch("/api/config", { cache: "no-store" })
+  .then((response) => {
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return response.json();
+  })
+  .then(({ trimbleClientId }) => {
+    if (trimbleClientId) {
+      settings.clientId = trimbleClientId;
+      saveSettings(settings);
+    }
+  })
+  .catch((error) => {
+    trimbleConfigLoadError = true;
+    setStatus("Could not load Trimble configuration: " + error.message);
+  });
 
 /* =========================================================================
    3. OAUTH
@@ -525,6 +541,7 @@ function signOut() {
 }
 
 async function ensureToken() {
+  await trimbleClientIdReady;
   if (accessToken && (!tokenExpiry || Date.now() < tokenExpiry - 30_000)) {
     return accessToken;
   }
@@ -997,7 +1014,8 @@ const settingsModal = document.getElementById("settingsModal");
 const inputClientId = document.getElementById("inputClientId");
 const inputRedirect = document.getElementById("inputRedirectUri");
 
-function openSettings() {
+async function openSettings() {
+  await trimbleClientIdReady;
   inputClientId.value = settings.clientId || "";
   inputRedirect.value = REDIRECT_URI;
   settingsModal.classList.add("open");
@@ -1236,9 +1254,11 @@ if (window.ResizeObserver) {
 
 setAuthBadge("signed-out", "Not signed in");
 document.getElementById("btnExample").click();
-if (!settings.clientId) {
-  setStatus("Set your Trimble Client ID in ⚙ Settings to enable sign-in");
-}
+trimbleClientIdReady.then(() => {
+  if (!settings.clientId && !trimbleConfigLoadError) {
+    setStatus("Set your Trimble Client ID in ⚙ Settings to enable sign-in");
+  }
+});
 </script>
 <script>
 (function () {

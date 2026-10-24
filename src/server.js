@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp ChatBots, Workflow Builder, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #4"
+// #5"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -419,6 +419,10 @@ app.use(
 );
 
 app.get('/health', (_, res) => res.json({status:'ok',service:'trimble-connect-mcp'}));
+app.get('/api/config', (_, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ trimbleClientId: config.trimble.clientId || '' });
+});
 app.get(
     "/.well-known/oauth-protected-resource",
     (req, res) => {
