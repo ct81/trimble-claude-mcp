@@ -704,14 +704,14 @@ function autoScroll(e) {
 /* =========================================================================
    5. NODE CREATION
    ========================================================================= */
-function bodyFor(type) {
+function bodyFor(type, id) {
   switch (type) {
     case "start":  return `<div class="hint">Workflow entry point</div>`;
     case "upload": return `<input type="file" accept="application/pdf,.pdf">
                           <div class="status">no file selected</div>`;
     case "mcp":    return `<input type="text" class="url" placeholder="${DEFAULT_MCP_URL}" spellcheck="false" value="${DEFAULT_MCP_URL}">
                           <div style="display:flex;gap:4px;margin-top:6px">
-                            <input type="text" class="tool" list="mcp-tools" placeholder="tool name (pick or type)" spellcheck="false" value="extract_column_schedule" style="flex:1;margin:0">
+                            <input type="text" class="tool" list="mcp-tools-${id}" placeholder="tool name (pick or type)" spellcheck="false" value="extract_column_schedule" style="flex:1;margin:0">
                             <button type="button" class="load-tools">Load</button>
                           </div>
                           <textarea class="args" rows="3" spellcheck="false" style="width:100%;margin-top:6px;font-family:monospace;font-size:11px" placeholder='arguments JSON; {{pdf_base64}} and {{filename}} are replaced'>{"pdfBase64":"{{pdf_base64}}"}</textarea>
@@ -721,10 +721,26 @@ function bodyFor(type) {
   }
 }
 const toolSchemas = {};
-function ensureToolList() {
-  let dl = document.getElementById("mcp-tools");
-  if (!dl) { dl = document.createElement("datalist"); dl.id = "mcp-tools"; document.body.appendChild(dl); }
+const toolCatalogs = new Map();
+const toolLoads = new Map();
+const typeInstanceCounts = Object.create(null);
+function ensureToolList(id) {
+  let dl = document.getElementById(id);
+  if (!dl) { dl = document.createElement("datalist"); dl.id = id; document.body.appendChild(dl); }
   return dl;
+}
+function renderToolSuggestions(el, tools) {
+  const input = el.querySelector(".tool");
+  const dl = ensureToolList(input.getAttribute("list"));
+  const query = input.value.trim().toLowerCase();
+  dl.replaceChildren();
+  for (const tool of tools) {
+    if (query && !tool.name.toLowerCase().includes(query)) continue;
+    const option = document.createElement("option");
+    option.value = tool.name;
+    option.label = (tool.description || "").slice(0, 80);
+    dl.appendChild(option);
+  }
 }
 function argsTemplate(schema) {
   const props = (schema && schema.properties) || {};
@@ -738,25 +754,47 @@ function argsTemplate(schema) {
   }
   return JSON.stringify(out, null, 2);
 }
-async function loadTools(el) {
+async function loadTools(el, { force = false } = {}) {
   const status = el.querySelector(".status");
   const url = el.querySelector(".url").value.trim();
+  if (!url) {
+    status.textContent = "❌ Enter an MCP endpoint URL";
+    return;
+  }
+  if (!force && toolCatalogs.has(url)) {
+    renderToolSuggestions(el, toolCatalogs.get(url));
+    return;
+  }
   status.textContent = "Loading tools…";
   try {
-    const headers = { "Content-Type": "application/json", "Accept": "application/json, text/event-stream" };
-    if (accessToken) headers.Authorization = "Bearer " + accessToken;
-    const res = await fetch(url, { method: "POST", headers,
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }) });
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const tools = (await res.json())?.result?.tools || [];
-    const dl = ensureToolList();
-    dl.innerHTML = "";
-    for (const t of tools) {
-      toolSchemas[t.name] = t.inputSchema;
-      const o = document.createElement("option");
-      o.value = t.name; o.label = (t.description || "").slice(0, 80);
-      dl.appendChild(o);
+    let tools = toolCatalogs.get(url);
+    if (force || !tools) {
+      let load = toolLoads.get(url);
+      if (!load) {
+        load = (async () => {
+          const headers = { "Content-Type": "application/json", "Accept": "application/json, text/event-stream" };
+          if (accessToken) headers.Authorization = "Bearer " + accessToken;
+          const res = await fetch(url, { method: "POST", headers,
+            body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }) });
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const result = await res.json();
+          const listedTools = result?.result?.tools;
+          if (!Array.isArray(listedTools)) throw new Error(result?.error?.message || "Invalid tools/list response");
+          for (const tool of listedTools) {
+            toolSchemas[`${url}\n${tool.name}`] = tool.inputSchema;
+          }
+          toolCatalogs.set(url, listedTools);
+          return listedTools;
+        })();
+        toolLoads.set(url, load);
+      }
+      try {
+        tools = await load;
+      } finally {
+        if (toolLoads.get(url) === load) toolLoads.delete(url);
+      }
     }
+    renderToolSuggestions(el, tools);
     status.textContent = `✔ ${tools.length} tools loaded`;
   } catch (e) { status.textContent = "❌ " + e.message; }
 }
@@ -764,6 +802,7 @@ function createNode(type, x, y) {
   const t = TYPES[type];
   if (!t) return null;
   const id = "n" + ++nodeSeq;
+  const instanceNumber = typeInstanceCounts[type] = (typeInstanceCounts[type] || 0) + 1;
   const el = document.createElement("div");
   el.className = "node";
   el.dataset.id = id;
@@ -776,14 +815,15 @@ function createNode(type, x, y) {
       ${type === "result" ? `<button class="copy-btn" title="Copy JSON" aria-label="Copy JSON">⧉</button>` : ""}
       <button class="del" title="Delete node">×</button>
     </div>
-    <div class="node-body">${bodyFor(type)}</div>
+    <div class="node-body">${bodyFor(type, id)}</div>
     <div class="resize-handle" title="Drag to resize"></div>
     ${t.hasIn  ? `<div class="port in"  data-node="${id}" data-dir="in"></div>`  : ""}
     ${t.hasOut ? `<div class="port out" data-node="${id}" data-dir="out"></div>` : ""}
   `;
   stage.appendChild(el);
-  const node = { id, type, x: Math.max(0, x), y: Math.max(0, y), el };
+  const node = { id, type, instanceNumber, x: Math.max(0, x), y: Math.max(0, y), el };
   nodes.push(node);
+  updateNodeLabels(type);
   wireNode(node);
   updateStageSize();
   return node;
@@ -858,9 +898,22 @@ function wireNode(node) {
   }
   const loadBtn = el.querySelector(".load-tools");
   if (loadBtn) {
-    loadBtn.addEventListener("click", () => loadTools(el));
-    el.querySelector(".tool").addEventListener("change", (e) => {
-      const schema = toolSchemas[e.target.value.trim()];
+    loadBtn.addEventListener("click", () => loadTools(el, { force: true }));
+    const toolInput = el.querySelector(".tool");
+    let searchTimer;
+    const queueToolSearch = () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => loadTools(el), 300);
+    };
+    toolInput.addEventListener("input", () => {
+      const catalog = toolCatalogs.get(el.querySelector(".url").value.trim());
+      if (catalog) renderToolSuggestions(el, catalog);
+      queueToolSearch();
+    });
+    toolInput.addEventListener("keyup", queueToolSearch);
+    toolInput.addEventListener("change", (e) => {
+      const url = el.querySelector(".url").value.trim();
+      const schema = toolSchemas[`${url}\n${e.target.value.trim()}`];
       if (schema) el.querySelector(".args").value = argsTemplate(schema);
     });
   }
@@ -901,10 +954,19 @@ function drawEdges() {
 }
 function removeNode(node) {
   nodes = nodes.filter((n) => n.id !== node.id);
+  updateNodeLabels(node.type);
   edges = edges.filter((e) => e.from !== node.id && e.to !== node.id);
   node.el.remove();
   if (selected === node) selected = null;
   updateStageSize(); drawEdges();
+}
+function updateNodeLabels(type) {
+  const instances = nodes.filter((node) => node.type === type);
+  for (const node of instances) {
+    node.el.querySelector(".ttl").textContent = instances.length > 1
+      ? `${TYPES[type].label} #${node.instanceNumber}`
+      : TYPES[type].label;
+  }
 }
 
 /* =========================================================================
