@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp ChatBots, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #2"
+// #3"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -1166,8 +1166,40 @@ app.get(
 
       const {
         code,
-        state
+        state,
+        error: oauthError,
+        error_description: oauthErrorDescription
       } = req.query;
+
+      /*
+       * Browser-based clients (e.g. workflowBuilder.html) run their own
+       * PKCE flow and generate their own state, so the server has no record
+       * of it. Relay the result back to the opener instead of failing.
+       */
+      if (
+        state &&
+        (code || oauthError) &&
+        !getOAuthState(state)
+      ) {
+        const payload = JSON.stringify({
+          type: 'trimble-oauth-callback',
+          code: code ? String(code) : undefined,
+          returnedState: String(state),
+          error: oauthError
+            ? String(oauthErrorDescription || oauthError)
+            : undefined
+        }).replace(/</g, '\\u003c');
+
+        res.setHeader('Cache-Control', 'no-store');
+        return res.send(
+          `<!DOCTYPE html><html><body><p>Sign-in complete. You can close this window.</p><script>
+const payload = ${payload};
+try { const bc = new BroadcastChannel('trimble-oauth-flow'); bc.postMessage(payload); bc.close(); } catch (e) {}
+try { if (window.opener) window.opener.postMessage(payload, location.origin); } catch (e) {}
+setTimeout(() => window.close(), 300);
+</script></body></html>`
+        );
+      }
 
       if (!code) {
         throw new Error(
