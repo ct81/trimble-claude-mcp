@@ -340,7 +340,7 @@
       <button id="btnExample">Load example</button>
       <button id="btnClear">Clear</button>
       <button id="btnSettings" class="icon-btn" title="Settings">⚙</button>
-      <button id="btnTheme" class="icon-btn" title="Toggle day / night" aria-label="Toggle day / night">🌙</button>
+      <button id="btnTheme" class="icon-btn" title="Day 7am–7pm, night otherwise (local time). Click to override until the next switch." aria-label="Toggle day / night">🌙</button>
       <div class="spacer"></div>
       <span id="status">Ready</span>
     </div>
@@ -1185,21 +1185,28 @@ if (!settings.clientId) {
 <script>
 (function () {
   const root = document.documentElement;
-  const saved = localStorage.getItem("wb_theme");
-  const initial = saved || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+  // Day is 07:00-18:59 in the browser's local time zone; night is 19:00-06:59.
+  const autoTheme = () => { const h = new Date().getHours(); return h >= 7 && h < 19 ? "light" : "dark"; };
+  const periodOf = () => autoTheme();
+  let manual = null; // { theme, period } - lasts until the next day/night switch
+
   function apply(t) {
     root.dataset.theme = t;
     const b = document.getElementById("btnTheme");
     if (b) b.textContent = t === "light" ? "🌙" : "☀️";
   }
-  apply(initial);
+  function refresh() {
+    if (manual && manual.period !== periodOf()) manual = null;
+    apply(manual ? manual.theme : autoTheme());
+  }
+  refresh();
   document.addEventListener("DOMContentLoaded", () => {
-    apply(root.dataset.theme);
+    refresh();
     document.getElementById("btnTheme").addEventListener("click", () => {
-      const t = root.dataset.theme === "light" ? "dark" : "light";
-      localStorage.setItem("wb_theme", t);
-      apply(t);
+      manual = { theme: root.dataset.theme === "light" ? "dark" : "light", period: periodOf() };
+      apply(manual.theme);
     });
+    setInterval(refresh, 30000);
   });
 })();
 </script>
