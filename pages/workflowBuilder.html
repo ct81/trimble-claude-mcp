@@ -353,6 +353,8 @@
       <button class="icon-btn" id="btnMenu" title="Show / hide components" aria-label="Toggle component menu">☰</button>
       <button class="primary" id="btnRun">▶ Run workflow</button>
       <button id="btnExample">Load example</button>
+      <button id="btnSaveWorkflow">Save workflow</button>
+      <button id="btnLoadWorkflow">Load workflow</button>
       <button id="btnClear">Clear</button>
       <button id="btnSettings" class="icon-btn" title="Settings">⚙</button>
       <button id="btnTheme" class="icon-btn" title="Day 7am–7pm, night otherwise (local time). Click to override until the next switch." aria-label="Toggle day / night">🌙</button>
@@ -711,7 +713,7 @@ function bodyFor(type, id) {
                           <div class="status">no file selected</div>`;
     case "mcp":    return `<input type="text" class="url" placeholder="${DEFAULT_MCP_URL}" spellcheck="false" value="${DEFAULT_MCP_URL}">
                           <div style="display:flex;gap:4px;margin-top:6px">
-                            <input type="text" class="tool" list="mcp-tools-${id}" placeholder="tool name (pick or type)" spellcheck="false" value="extract_column_schedule" style="flex:1;margin:0">
+                            <input type="text" class="tool" list="mcp-tools-${id}" placeholder="tool name (pick or type)" spellcheck="false" value="" style="flex:1;margin:0">
                             <button type="button" class="load-tools">Load</button>
                           </div>
                           <textarea class="args" rows="3" spellcheck="false" style="width:100%;margin-top:6px;font-family:monospace;font-size:11px" placeholder='arguments JSON; {{pdf_base64}} and {{filename}} are replaced'>{"pdfBase64":"{{pdf_base64}}"}</textarea>
@@ -966,6 +968,115 @@ function updateNodeLabels(type) {
     node.el.querySelector(".ttl").textContent = instances.length > 1
       ? `${TYPES[type].label} #${node.instanceNumber}`
       : TYPES[type].label;
+  }
+}
+function serializeWorkflow() {
+  return {
+    version: 1,
+    nodes: nodes.map((node) => {
+      const saved = { id: node.id, type: node.type, x: node.x, y: node.y };
+      if (node.el.classList.contains("sized")) {
+        saved.sized = true;
+        saved.width = node.el.offsetWidth;
+        saved.height = node.el.offsetHeight;
+      }
+      if (node.type === "mcp") {
+        saved.settings = {
+          url: node.el.querySelector(".url").value,
+          tool: node.el.querySelector(".tool").value,
+          args: node.el.querySelector(".args").value
+        };
+      }
+      return saved;
+    }),
+    edges: edges.map(({ id, from, to }) => ({ id, from, to }))
+  };
+}
+function validateLoadedWorkflow(workflow) {
+  if (!workflow || workflow.version !== 1 ||
+      !Array.isArray(workflow.nodes) || !Array.isArray(workflow.edges)) {
+    throw new Error("Saved workflow has an unsupported format");
+  }
+  const ids = new Set();
+  for (const node of workflow.nodes) {
+    if (!node || typeof node.id !== "string" || ids.has(node.id) ||
+        !TYPES[node.type] || !Number.isFinite(node.x) || node.x < 0 || node.x > MAX_COORD ||
+        !Number.isFinite(node.y) || node.y < 0 || node.y > MAX_COORD) {
+      throw new Error("Saved workflow contains an invalid node");
+    }
+    ids.add(node.id);
+    if (node.sized && (!Number.isFinite(node.width) || node.width < 160 || node.width > MAX_COORD ||
+        !Number.isFinite(node.height) || node.height < 90 || node.height > MAX_COORD)) {
+      throw new Error("Saved workflow contains invalid component dimensions");
+    }
+    if (node.type === "mcp" && (!node.settings ||
+        typeof node.settings.url !== "string" ||
+        typeof node.settings.tool !== "string" ||
+        typeof node.settings.args !== "string")) {
+      throw new Error("Saved workflow contains invalid MCP settings");
+    }
+  }
+  for (const edge of workflow.edges) {
+    if (!edge || !ids.has(edge.from) || !ids.has(edge.to)) {
+      throw new Error("Saved workflow contains an invalid connection");
+    }
+  }
+}
+async function saveWorkflow() {
+  setStatus("Saving workflow…");
+  try {
+    const token = await ensureToken();
+    const response = await fetch("/api/workflow", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      },
+      body: JSON.stringify(serializeWorkflow())
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+    setStatus("Workflow saved to datastorage/workflowbuilder.json");
+  } catch (error) {
+    setStatus("Could not save workflow: " + error.message);
+  }
+}
+async function loadWorkflow() {
+  setStatus("Loading workflow…");
+  try {
+    const token = await ensureToken();
+    const response = await fetch("/api/workflow", {
+      headers: { "Authorization": "Bearer " + token },
+      cache: "no-store"
+    });
+    const workflow = await response.json();
+    if (!response.ok) throw new Error(workflow.error || `HTTP ${response.status}`);
+    validateLoadedWorkflow(workflow);
+
+    document.getElementById("btnClear").click();
+    const idMap = new Map();
+    for (const saved of workflow.nodes) {
+      const node = createNode(saved.type, saved.x, saved.y);
+      idMap.set(saved.id, node.id);
+      if (saved.sized) {
+        node.el.classList.add("sized");
+        node.el.style.width = `${saved.width}px`;
+        node.el.style.height = `${saved.height}px`;
+      }
+      if (saved.type === "mcp") {
+        node.el.querySelector(".url").value = saved.settings.url;
+        node.el.querySelector(".tool").value = saved.settings.tool;
+        node.el.querySelector(".args").value = saved.settings.args;
+      }
+    }
+    for (const saved of workflow.edges) {
+      edges.push({ id: "e" + ++edgeSeq, from: idMap.get(saved.from), to: idMap.get(saved.to) });
+    }
+    updateStageSize();
+    drawEdges();
+    setStatus(`Workflow loaded (${nodes.length} components)`);
+  } catch (error) {
+    setStatus("Could not load workflow: " + error.message);
   }
 }
 
@@ -1281,6 +1392,8 @@ async function runWorkflow() {
    13. TOOLBAR
    ========================================================================= */
 document.getElementById("btnRun").addEventListener("click", runWorkflow);
+document.getElementById("btnSaveWorkflow").addEventListener("click", saveWorkflow);
+document.getElementById("btnLoadWorkflow").addEventListener("click", loadWorkflow);
 
 document.getElementById("btnClear").addEventListener("click", () => {
   nodes.forEach((n) => n.el.remove());

@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp ChatBots, Workflow Builder, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #6"
+// #7"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -20,6 +20,8 @@ import express from 'express';
 import swaggerUi from 'swagger-ui-express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import { randomUUID } from 'node:crypto';
+import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { config } from './config.js';
 import { createSession } from './session-store.js';
@@ -325,6 +327,86 @@ function requireMcpAuthForRequest(req, res, next) {
 }
 
 const app = express();
+const workflowStorageDirectory = path.join(process.cwd(), 'pages', 'datastorage');
+const workflowStoragePath = path.join(workflowStorageDirectory, 'workflowbuilder.json');
+const workflowNodeTypes = new Set(['start', 'upload', 'mcp', 'result']);
+const workflowNodePorts = {
+  start: { out: true },
+  upload: { in: true, out: true },
+  mcp: { in: true, out: true },
+  result: { in: true }
+};
+
+function validateWorkflowDocument(workflow) {
+  if (!workflow || typeof workflow !== 'object' || Array.isArray(workflow) ||
+      workflow.version !== 1 || !Array.isArray(workflow.nodes) ||
+      !Array.isArray(workflow.edges) || workflow.nodes.length > 200 ||
+      workflow.edges.length > 1000) {
+    throw new Error('Workflow must have version 1, nodes, and edges arrays within supported limits');
+  }
+
+  const nodeIds = new Set();
+  const nodes = workflow.nodes.map((node) => {
+    if (!node || typeof node !== 'object' || Array.isArray(node) ||
+        typeof node.id !== 'string' || node.id.length < 1 || node.id.length > 64 ||
+        nodeIds.has(node.id) || !workflowNodeTypes.has(node.type) ||
+        !Number.isFinite(node.x) || node.x < 0 || node.x > 8000 ||
+        !Number.isFinite(node.y) || node.y < 0 || node.y > 8000) {
+      throw new Error('Workflow contains an invalid node');
+    }
+    nodeIds.add(node.id);
+
+    const normalized = { id: node.id, type: node.type, x: node.x, y: node.y };
+    if (node.sized === true) {
+      if (!Number.isFinite(node.width) || node.width < 160 || node.width > 8000 ||
+          !Number.isFinite(node.height) || node.height < 90 || node.height > 8000) {
+        throw new Error('Workflow contains invalid node dimensions');
+      }
+      normalized.sized = true;
+      normalized.width = node.width;
+      normalized.height = node.height;
+    }
+    if (node.type === 'mcp') {
+      const settings = node.settings;
+      if (!settings || typeof settings !== 'object' || Array.isArray(settings) ||
+          typeof settings.url !== 'string' || settings.url.length > 2048 ||
+          typeof settings.tool !== 'string' || settings.tool.length > 200 ||
+          typeof settings.args !== 'string' || settings.args.length > 50000) {
+        throw new Error('Workflow contains invalid MCP node settings');
+      }
+      normalized.settings = {
+        url: settings.url,
+        tool: settings.tool,
+        args: settings.args
+      };
+    }
+    return normalized;
+  });
+
+  const edgeIds = new Set();
+  const connections = new Set();
+  const edges = workflow.edges.map((edge) => {
+    if (!edge || typeof edge !== 'object' || Array.isArray(edge) ||
+        typeof edge.id !== 'string' || edge.id.length < 1 || edge.id.length > 64 ||
+        edgeIds.has(edge.id) || typeof edge.from !== 'string' ||
+        typeof edge.to !== 'string' || !nodeIds.has(edge.from) ||
+        !nodeIds.has(edge.to) || edge.from === edge.to) {
+      throw new Error('Workflow contains an invalid connection');
+    }
+    const fromNode = nodes.find((node) => node.id === edge.from);
+    const toNode = nodes.find((node) => node.id === edge.to);
+    const connection = `${edge.from}\n${edge.to}`;
+    if (!workflowNodePorts[fromNode.type].out || !workflowNodePorts[toNode.type].in ||
+        connections.has(connection)) {
+      throw new Error('Workflow contains an invalid or duplicate connection');
+    }
+    edgeIds.add(edge.id);
+    connections.add(connection);
+    return { id: edge.id, from: edge.from, to: edge.to };
+  });
+
+  return { version: 1, nodes, edges };
+}
 
 app.set('trust proxy', 1);
 // Browser-based MCP registries call these cross-origin; other routes keep the original CORS policy.
@@ -333,7 +415,10 @@ const openCorsPaths = /^\/(mcp|\.well-known|oauth\/(register|token))(\/|$|\?)/;
 const restrictedCors = cors({origin: config.extensionOrigin === '*' ? true : config.extensionOrigin, credentials:true, exposedHeaders:['WWW-Authenticate','Mcp-Session-Id']});
 app.use((req, res, next) => (openCorsPaths.test(req.url) ? openCors : restrictedCors)(req, res, next));
 app.use(express.static(path.join(process.cwd(), 'public')));
-app.use('/pages', express.static(path.join(process.cwd(), 'pages')));
+app.use('/pages', (req, res, next) => {
+  if (req.path === '/datastorage' || req.path.startsWith('/datastorage/')) return next();
+  return express.static(path.join(process.cwd(), 'pages'))(req, res, next);
+});
 app.use('/src', express.static(path.join(process.cwd(), 'src')));
 
 app.get('/public/workspace-bridge.html', (req, res) => {
@@ -351,6 +436,51 @@ app.use(
     })
 );
 app.use(cookieParser());
+
+app.get('/api/workflow', requireMcpAuth, async (_, res) => {
+  try {
+    const contents = await readFile(workflowStoragePath, 'utf8');
+    const workflow = validateWorkflowDocument(JSON.parse(contents));
+    res.set('Cache-Control', 'no-store');
+    return res.json(workflow);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return res.json({ version: 1, nodes: [], edges: [] });
+    }
+    console.error('[Workflow] Failed to load workflow:', error);
+    return res.status(500).json({ error: 'Failed to load saved workflow' });
+  }
+});
+
+app.put('/api/workflow', requireMcpAuth, async (req, res) => {
+  try {
+    const workflow = validateWorkflowDocument(req.body);
+    const serialized = `${JSON.stringify(workflow, null, 2)}\n`;
+    if (Buffer.byteLength(serialized, 'utf8') > 1024 * 1024) {
+      return res.status(413).json({ error: 'Workflow exceeds the 1 MB storage limit' });
+    }
+
+    await mkdir(workflowStorageDirectory, { recursive: true });
+    const temporaryPath = path.join(workflowStorageDirectory, `.workflowbuilder-${randomUUID()}.tmp`);
+    try {
+      await writeFile(temporaryPath, serialized, { flag: 'wx' });
+      await rename(temporaryPath, workflowStoragePath);
+    } catch (error) {
+      await unlink(temporaryPath).catch(() => {});
+      throw error;
+    }
+    return res.json({ saved: true });
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return res.status(400).json({ error: 'Workflow body must be valid JSON' });
+    }
+    if (error.message.startsWith('Workflow')) {
+      return res.status(400).json({ error: error.message });
+    }
+    console.error('[Workflow] Failed to save workflow:', error);
+    return res.status(500).json({ error: 'Failed to save workflow' });
+  }
+});
 
 app.get('/workspace-extension-manifest.json', (req, res) => {
   return res.redirect(308, '/workspace.json');

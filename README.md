@@ -77,6 +77,12 @@ SESSION_SECRET=replace-with-a-long-random-value npm start
 ```
 Open `http://localhost:3000/health`.
 
+The Workflow Builder's **Save workflow** and **Load workflow** buttons store
+the current workflow in `pages/datastorage/workflowbuilder.json` on the server.
+These actions require Trimble sign-in. The saved file is server-side storage;
+on hosts with an ephemeral filesystem, it may not survive a restart or
+redeployment unless persistent storage is configured.
+
 For Trimble Connect OAuth locally, configure `TRIMBLE_CLIENT_ID`,
 `TRIMBLE_CLIENT_SECRET`, `TRIMBLE_AUTHORIZATION_ENDPOINT`, `TRIMBLE_TOKEN_ENDPOINT`,
 `TRIMBLE_REDIRECT_URI`, and `PUBLIC_BASE_URL` in the environment. `TRIMBLE_SCOPE`
