@@ -1,7 +1,7 @@
 {
 "icon": "https://ct81.github.io/trimble-claude-mcp/images/svg/ches.svg?color=%23FFFFFF",
  "title": "Chess WFBuilder",
- "url": "https://trimble-claude-mcp-g86i.onrender.com/pages/workflowBuilder.html",
+ "url": "https://ct81.github.io/trimble-claude-mcp/pages/workflowBuilder.html",
 "description": "Design, connect, and automate AI-powered workflows to streamline tasks and turn complex processes into seamless execution.",
 "configCommand": "do_config",
 "enabled": true
