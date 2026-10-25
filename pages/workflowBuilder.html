@@ -128,6 +128,17 @@
     font-size: 13px; outline: none;
   }
   .toolbar input:focus { border-color: #38bdf8; }
+  .confirm-modal { max-width: 380px; text-align: center; }
+  .confirm-modal .confirm-icon {
+    width: 48px; height: 48px; margin: 0 auto 12px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(248,113,113,.15); color: #f87171; font-size: 24px;
+  }
+  .confirm-modal .sub { margin-bottom: 20px; word-break: break-word; }
+  .confirm-modal .actions { justify-content: center; }
+  .confirm-modal .actions button { min-width: 90px; }
+  .confirm-modal .actions button.danger { background: #dc2626; border-color: #dc2626; color: #fff; font-weight: 600; }
+  .confirm-modal .actions button.danger:hover { background: #b91c1c; }
   .name-wrap { position: relative; display: inline-flex; align-items: center; }
   .name-wrap input { padding-right: 26px; }
   .name-wrap .name-del {
@@ -546,6 +557,18 @@
     <button id="railChat" title="AI Chat" aria-label="AI Chat" aria-pressed="false">💬</button>
     <button id="railAgent" title="Agentic" aria-label="Agentic" aria-pressed="false">🤖</button>
   </nav>
+</div>
+
+<div class="modal-backdrop" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+  <div class="modal confirm-modal">
+    <div class="confirm-icon" aria-hidden="true">🗑</div>
+    <h3 id="confirmTitle">Delete workflow?</h3>
+    <p class="sub" id="confirmText"></p>
+    <div class="actions">
+      <button type="button" id="confirmNo">No</button>
+      <button type="button" id="confirmYes" class="danger">Yes, delete</button>
+    </div>
+  </div>
 </div>
 
 <div class="modal-backdrop" id="settingsModal">
@@ -1382,10 +1405,37 @@ workflowNameInput.addEventListener("input", syncDeleteButton);
 function syncDeleteButton() {
   document.getElementById("btnDeleteWorkflow").hidden = !workflowNameInput.value.trim();
 }
+function confirmDelete(name) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById("confirmModal");
+    const yes = document.getElementById("confirmYes");
+    const no = document.getElementById("confirmNo");
+    document.getElementById("confirmText").textContent =
+      `"${name}" will be permanently removed. This cannot be undone.`;
+    const finish = (answer) => {
+      modal.classList.remove("open");
+      yes.removeEventListener("click", onYes);
+      no.removeEventListener("click", onNo);
+      modal.removeEventListener("pointerdown", onBackdrop);
+      document.removeEventListener("keydown", onKey, true);
+      resolve(answer);
+    };
+    const onYes = () => finish(true);
+    const onNo = () => finish(false);
+    const onBackdrop = (e) => { if (e.target === modal) finish(false); };
+    const onKey = (e) => { if (e.key === "Escape") { e.stopPropagation(); finish(false); } };
+    yes.addEventListener("click", onYes);
+    no.addEventListener("click", onNo);
+    modal.addEventListener("pointerdown", onBackdrop);
+    document.addEventListener("keydown", onKey, true);
+    modal.classList.add("open");
+    no.focus();
+  });
+}
 async function deleteWorkflow() {
   const name = workflowNameInput.value.trim();
   if (!name) return;
-  if (!window.confirm(`Delete saved workflow "${name}"?\n\nOK = Yes, delete    Cancel = No`)) return;
+  if (!await confirmDelete(name)) return;
   setStatus(`Deleting workflow "${name}"…`);
   const all = readLocalWorkflows();
   for (const key of Object.keys(all)) if (key.toLowerCase() === name.toLowerCase()) delete all[key];
