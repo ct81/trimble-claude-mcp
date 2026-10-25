@@ -490,8 +490,8 @@
       <input id="workflowName" type="text" list="savedWorkflowNames" maxlength="100"
              placeholder="Select or enter workflow name" aria-label="Select or enter workflow name" />
       <datalist id="savedWorkflowNames"></datalist>
-      <button id="btnSaveWorkflow">Save workflow</button>
-      <button id="btnLoadWorkflow">Load workflow</button>
+      <button id="btnLoadWorkflow">Load</button>
+      <button id="btnSaveWorkflow">Save</button>
       <button id="btnClear">Clear</button>
       <button id="btnSettings" class="icon-btn" title="Settings">⚙</button>
       <button id="btnTheme" class="icon-btn" title="Day 7am–7pm, night otherwise (local time). Click to override until the next switch." aria-label="Toggle day / night">🌙</button>
@@ -1241,6 +1241,12 @@ function renderWorkflowNames() {
     option.value = name;
     suggestions.appendChild(option);
   }
+  const sched = document.getElementById("schedWorkflow");
+  if (sched) {
+    const previous = sched.value;
+    sched.replaceChildren(...[...names.values()].sort().map((n) => new Option(n, n)));
+    if (previous) sched.value = previous;
+  }
 }
 const currentUserEmail = () => (document.getElementById("hdnUserEmail")?.value || "").trim().toLowerCase();
 const updatedByQuery = () => { const e = currentUserEmail(); return e ? `updatedBy=${encodeURIComponent(e)}` : ""; };
@@ -1776,6 +1782,7 @@ document.getElementById("btnLoadWorkflow").addEventListener("click", loadWorkflo
 document.getElementById("btnClear").addEventListener("click", () => {
   nodes.forEach((n) => n.el.remove());
   nodes = []; edges = []; selected = null; connecting = null;
+  workflowNameInput.value = "";
   canvas.classList.remove("linking");
   tempPath.style.display = "none";
   updateStageSize(); drawEdges();
@@ -1806,7 +1813,6 @@ if (window.ResizeObserver) {
 }
 
 setAuthBadge("signed-out", "Not signed in");
-document.getElementById("btnExample").click();
 trimbleClientIdReady.then(() => {
   if (!settings.clientId && !trimbleConfigLoadError) {
     setStatus("Set your Trimble Client ID in ⚙ Settings to enable sign-in");
