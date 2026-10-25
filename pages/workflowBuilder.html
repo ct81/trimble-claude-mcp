@@ -1021,7 +1021,7 @@ async function loadTools(el, { force = false } = {}) {
     status.textContent = `✔ ${tools.length} tools loaded`;
   } catch (e) { status.textContent = "❌ " + e.message; }
 }
-function createNode(type, x, y) {
+function createNode(type, x, y, { autoLoad = true } = {}) {
   const t = TYPES[type];
   if (!t) return null;
   const id = "n" + ++nodeSeq;
@@ -1049,6 +1049,7 @@ function createNode(type, x, y) {
   updateNodeLabels(type);
   wireNode(node);
   updateStageSize();
+  if (type === "mcp" && autoLoad) loadTools(el);
   return node;
 }
 function wireNode(node) {
@@ -1336,7 +1337,7 @@ function applyWorkflow(workflow) {
   document.getElementById("btnClear").click();
   const idMap = new Map();
   for (const saved of workflow.nodes) {
-    const node = createNode(saved.type, saved.x, saved.y);
+    const node = createNode(saved.type, saved.x, saved.y, { autoLoad: false });
     idMap.set(saved.id, node.id);
     if (saved.sized) {
       node.el.classList.add("sized");
@@ -1357,6 +1358,7 @@ function applyWorkflow(workflow) {
       node.el.querySelector(".url").value = saved.settings.url;
       node.el.querySelector(".tool").value = saved.settings.tool;
       node.el.querySelector(".args").value = saved.settings.args;
+      loadTools(node.el);
     }
   }
   for (const saved of workflow.edges) {
