@@ -933,6 +933,8 @@ function bodyFor(type, id) {
                             <input type="text" class="tool" list="mcp-tools-${id}" placeholder="tool name (pick or type)" spellcheck="false" value="" style="flex:1;margin:0">
                             <button type="button" class="load-tools">Load</button>
                           </div>
+                          <div style="margin-top:6px;font-size:11px"><label><input type="radio" class="args-mode" value="json" checked> JSON</label> <label style="margin-left:8px"><input type="radio" class="args-mode" value="fields"> Fields</label></div>
+                          <div class="args-fields" style="display:none;margin-top:6px"></div>
                           <textarea class="args" rows="3" spellcheck="false" style="width:100%;margin-top:6px;font-family:monospace;font-size:11px" placeholder='arguments JSON; file placeholders are replaced'>{"file_base64":"{{file_base64}}","filename":"{{filename}}"}</textarea>
                           <div class="status">not called yet</div>`;
     case "result": return `<div class="out">—</div>`;
@@ -941,6 +943,51 @@ function bodyFor(type, id) {
                           <div class="status">waiting for workflow result</div>`;
     default: return "";
   }
+}
+function renderArgFields(el) {
+  const box = el.querySelector(".args-fields");
+  const ta = el.querySelector(".args");
+  let obj;
+  try { obj = JSON.parse(ta.value || "{}"); } catch { box.textContent = "Invalid JSON - fix it in JSON mode"; return; }
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) { box.textContent = "Arguments must be a JSON object"; return; }
+  box.replaceChildren();
+  const sync = (k, v) => { obj[k] = v; ta.value = JSON.stringify(obj, null, 2); };
+  for (const [k, v] of Object.entries(obj)) {
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;gap:4px;align-items:center;margin-bottom:4px";
+    const name = document.createElement("span");
+    name.textContent = k;
+    name.style.cssText = "flex:0 0 40%;font-size:11px;overflow:hidden;text-overflow:ellipsis";
+    const inp = document.createElement("input");
+    inp.style.cssText = "flex:1;min-width:0;margin:0";
+    if (typeof v === "boolean") {
+      inp.type = "checkbox"; inp.checked = v; inp.style.flex = "0";
+      inp.onchange = () => sync(k, inp.checked);
+    } else if (typeof v === "number") {
+      inp.type = "number"; inp.step = Number.isInteger(v) ? "1" : "any"; inp.value = v;
+      inp.title = Number.isInteger(v) ? "integer" : "decimal";
+      inp.oninput = () => { if (inp.value !== "" && isFinite(inp.value)) sync(k, Number(inp.value)); };
+    } else if (typeof v === "string") {
+      inp.type = "text"; inp.value = v; inp.spellcheck = false;
+      inp.oninput = () => sync(k, inp.value);
+    } else {
+      inp.type = "text"; inp.value = JSON.stringify(v); inp.spellcheck = false; inp.title = "JSON value";
+      inp.oninput = () => { try { sync(k, JSON.parse(inp.value)); inp.style.outline = ""; } catch { inp.style.outline = "1px solid red"; } };
+    }
+    row.append(name, inp);
+    box.appendChild(row);
+  }
+  if (!box.children.length) box.textContent = "No arguments";
+}
+function setArgsMode(el, mode) {
+  const fields = mode === "fields";
+  if (fields) renderArgFields(el);
+  el.querySelector(".args-fields").style.display = fields ? "" : "none";
+  el.querySelector(".args").style.display = fields ? "none" : "";
+}
+function refreshArgsUi(el) {
+  const m = el.querySelector(".args-mode:checked");
+  if (m && m.value === "fields") renderArgFields(el);
 }
 const toolSchemas = {};
 const toolCatalogs = new Map();
@@ -1120,6 +1167,10 @@ function wireNode(node) {
       setTimeout(() => { copyBtn.textContent = "⧉"; }, 1200);
     });
   }
+  el.querySelectorAll(".args-mode").forEach(r => {
+    r.name = "args-mode-" + el.dataset.id;
+    r.addEventListener("change", () => setArgsMode(el, r.value));
+  });
   const loadBtn = el.querySelector(".load-tools");
   if (loadBtn) {
     loadBtn.addEventListener("click", () => loadTools(el, { force: true }));
@@ -1138,7 +1189,7 @@ function wireNode(node) {
     toolInput.addEventListener("change", (e) => {
       const url = el.querySelector(".url").value.trim();
       const schema = toolSchemas[`${url}\n${e.target.value.trim()}`];
-      if (schema) el.querySelector(".args").value = argsTemplate(schema);
+      if (schema) { el.querySelector(".args").value = argsTemplate(schema); refreshArgsUi(el); }
     });
   }
 }
@@ -1358,6 +1409,7 @@ function applyWorkflow(workflow) {
       node.el.querySelector(".url").value = saved.settings.url;
       node.el.querySelector(".tool").value = saved.settings.tool;
       node.el.querySelector(".args").value = saved.settings.args;
+      refreshArgsUi(node.el);
       loadTools(node.el);
     }
   }
