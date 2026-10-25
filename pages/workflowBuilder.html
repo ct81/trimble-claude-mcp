@@ -1765,12 +1765,17 @@ async function runWorkflow() {
   if (!start) { setStatus("Add a Start node first"); return; }
 
   nodes.forEach((n) => n.el.classList.remove("active", "error"));
-  const state = { fileName: null, fileBase64: null, fileText: null, pdfBase64: null, result: null };
   const seen = new Set();
-  let cur = start;
+  const pending = [{
+    node: start,
+    state: { fileName: null, fileBase64: null, fileText: null, pdfBase64: null, result: null }
+  }];
+  let nextIndex = 0;
   setStatus("Running…");
 
-  while (cur && !seen.has(cur.id)) {
+  while (nextIndex < pending.length) {
+    const { node: cur, state } = pending[nextIndex++];
+    if (seen.has(cur.id)) continue;
     seen.add(cur.id);
     cur.el.classList.add("active");
     cur.el.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
@@ -1880,8 +1885,12 @@ async function runWorkflow() {
     }
 
     cur.el.classList.remove("active");
-    const nextEdge = edges.find((e) => e.from === cur.id);
-    cur = nextEdge ? nodes.find((n) => n.id === nextEdge.to) : null;
+    for (const edge of edges.filter((e) => e.from === cur.id)) {
+      const nextNode = nodes.find((n) => n.id === edge.to);
+      if (nextNode && !seen.has(nextNode.id)) {
+        pending.push({ node: nextNode, state: { ...state } });
+      }
+    }
   }
   setStatus("✅ Workflow finished");
 }
