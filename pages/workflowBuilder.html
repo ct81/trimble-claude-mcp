@@ -128,6 +128,14 @@
     font-size: 13px; outline: none;
   }
   .toolbar input:focus { border-color: #38bdf8; }
+  .name-wrap { position: relative; display: inline-flex; align-items: center; }
+  .name-wrap input { padding-right: 26px; }
+  .name-wrap .name-del {
+    position: absolute; right: 4px; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%;
+    background: transparent; color: #94a3b8; font-size: 15px; line-height: 1; cursor: pointer;
+  }
+  .name-wrap .name-del:hover { color: #f87171; background: rgba(248,113,113,.15); }
+  .name-wrap .name-del[hidden] { display: none; }
   .toolbar button:hover { background: #273449; border-color: #475569; }
   .toolbar button.primary { background: #2563eb; border-color: #2563eb; font-weight: 600; }
   .toolbar button.primary:hover { background: #1d4ed8; }
@@ -490,8 +498,11 @@
       <button class="icon-btn" id="btnMenu" title="Show / hide components" aria-label="Toggle component menu">☰</button>
       <button class="primary" id="btnRun">▶ Run workflow</button>
       <button id="btnExample">Load example</button>
-      <input id="workflowName" type="text" list="savedWorkflowNames" maxlength="100"
-             placeholder="Select or enter workflow name" aria-label="Select or enter workflow name" />
+      <span class="name-wrap">
+        <input id="workflowName" type="text" list="savedWorkflowNames" maxlength="100"
+               placeholder="Select or enter workflow name" aria-label="Select or enter workflow name" />
+        <button type="button" class="name-del" id="btnDeleteWorkflow" title="Delete saved workflow" aria-label="Delete saved workflow" hidden>×</button>
+      </span>
       <datalist id="savedWorkflowNames"></datalist>
       <button id="btnLoadWorkflow">Load</button>
       <button id="btnSaveWorkflow">Save</button>
@@ -1311,7 +1322,13 @@ function applyWorkflow(workflow) {
     }
     if (UPLOAD_TYPES.has(saved.type) && saved.file) {
       node.storedFile = saved.file;
-      node.el.querySelector(".status").textContent = "✔ " + saved.file.name + " (saved)";
+      try {
+        const bytes = Uint8Array.from(atob(saved.file.base64), (c) => c.charCodeAt(0));
+        const transfer = new DataTransfer();
+        transfer.items.add(new File([bytes], saved.file.name, { type: saved.file.type || "" }));
+        node.el.querySelector('input[type="file"]').files = transfer.files;
+      } catch { /* the stored copy is still used when running */ }
+      node.el.querySelector(".status").textContent = "✔ " + saved.file.name + " (loaded from saved workflow)";
     }
     if (saved.type === "mcp") {
       node.el.querySelector(".url").value = saved.settings.url;
@@ -1343,7 +1360,7 @@ async function loadWorkflow() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
       applyWorkflow(result.workflow);
-      workflowNameInput.value = result.name;
+      workflowNameInput.value = result.name; syncDeleteButton();
       setStatus(`Workflow "${result.name}" loaded from server (${nodes.length} components)`);
       return;
     } catch (error) { serverError = error; }
@@ -1355,12 +1372,42 @@ async function loadWorkflow() {
   }
   try {
     applyWorkflow(local.workflow);
-    workflowNameInput.value = local.name;
+    workflowNameInput.value = local.name; syncDeleteButton();
     setStatus(`Workflow "${local.name}" loaded from this browser (${nodes.length} components)`);
   } catch (error) {
     setStatus("Could not load workflow: " + error.message);
   }
 }
+workflowNameInput.addEventListener("input", syncDeleteButton);
+function syncDeleteButton() {
+  document.getElementById("btnDeleteWorkflow").hidden = !workflowNameInput.value.trim();
+}
+async function deleteWorkflow() {
+  const name = workflowNameInput.value.trim();
+  if (!name) return;
+  if (!window.confirm(`Delete saved workflow "${name}"?\n\nOK = Yes, delete    Cancel = No`)) return;
+  setStatus(`Deleting workflow "${name}"…`);
+  const all = readLocalWorkflows();
+  for (const key of Object.keys(all)) if (key.toLowerCase() === name.toLowerCase()) delete all[key];
+  try { localStorage.setItem(WORKFLOWS_KEY, JSON.stringify(all)); } catch {}
+  try {
+    const token = await ensureToken();
+    const response = await fetch(`/api/workflow?name=${encodeURIComponent(name)}&${updatedByQuery()}`, {
+      method: "DELETE",
+      headers: { "Authorization": "Bearer " + token }
+    });
+    const result = await response.json();
+    if (!response.ok && response.status !== 404) throw new Error(result.error || `HTTP ${response.status}`);
+    await refreshWorkflowNames(token);
+    setStatus(`Deleted workflow "${name}"`);
+  } catch (error) {
+    renderWorkflowNames();
+    setStatus(`Removed "${name}" from this browser — server delete failed: ${error.message}`);
+  }
+  workflowNameInput.value = "";
+  syncDeleteButton();
+}
+document.getElementById("btnDeleteWorkflow").addEventListener("click", deleteWorkflow);
 renderWorkflowNames();
 
 /* =========================================================================
@@ -1799,7 +1846,7 @@ document.getElementById("btnLoadWorkflow").addEventListener("click", loadWorkflo
 document.getElementById("btnClear").addEventListener("click", () => {
   nodes.forEach((n) => n.el.remove());
   nodes = []; edges = []; selected = null; connecting = null;
-  workflowNameInput.value = "";
+  workflowNameInput.value = ""; syncDeleteButton();
   canvas.classList.remove("linking");
   tempPath.style.display = "none";
   updateStageSize(); drawEdges();

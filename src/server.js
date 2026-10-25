@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp ChatBots, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #33"
+// #34"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -560,6 +560,22 @@ async function saveNamedWorkflow(name, workflow, updatedBy = '') {
   });
 }
 
+async function deleteSavedWorkflow(name, updatedBy = '') {
+  if (!await getSavedWorkflow(name, updatedBy)) return false;
+  if (!realtimeDb) {
+    const workflows = await readWorkflowLibrary();
+    await writeWorkflowLibrary(workflows.filter((entry) => entry.name.toLowerCase() !== name.toLowerCase()));
+    return true;
+  }
+  const id = workflowDocumentId(name);
+  await realtimeDb.ref(workflowDbPath).update({
+    [`names/${id}`]: null,
+    [`owners/${id}`]: null,
+    [`items/${id}`]: null
+  });
+  return true;
+}
+
 function limitError() {
   const error = new Error('Workflow library is limited to 100 saved workflows');
   error.status = 400;
@@ -613,6 +629,22 @@ app.get('/api/workflow', requireMcpAuth, async (req, res) => {
       return res.status(error.message.includes('name') ? 400 : 500).json({ error: error.message });
     }
     return res.status(500).json({ error: 'Failed to load saved workflows' });
+  }
+});
+
+app.delete('/api/workflow', requireMcpAuth, async (req, res) => {
+  try {
+    const name = validateWorkflowName(req.query.name);
+    const updatedBy = normalizeUpdatedBy(req.query.updatedBy);
+    if (!await deleteSavedWorkflow(name, updatedBy)) {
+      return res.status(404).json({ error: `Workflow "${name}" was not found` });
+    }
+    return res.json({ deleted: true, name });
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message });
+    if (error.message.startsWith('Workflow')) return res.status(400).json({ error: error.message });
+    console.error('[Workflow] Failed to delete workflow:', error);
+    return res.status(500).json({ error: 'Failed to delete workflow' });
   }
 });
 
