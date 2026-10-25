@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp ChatBots, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #27"
+// #28"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -24,6 +24,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { config } from './config.js';
+import { askClaude } from './claude/client.js';
 import { realtimeDb } from './firebase-database.js';
 import { createSession } from './session-store.js';
 import { authorizationUrl, exchangeCode, requireSession } from './oauth/oauth.js';
@@ -593,6 +594,29 @@ app.put('/api/workflow', requireMcpAuth, async (req, res) => {
     }
     console.error('[Workflow] Failed to save workflow:', error);
     return res.status(500).json({ error: 'Failed to save workflow' });
+  }
+});
+
+app.post('/api/chat', requireMcpAuth, async (req, res) => {
+  try {
+    const messages = req.body?.messages;
+    if (!Array.isArray(messages) || !messages.length || messages.length > 50) {
+      return res.status(400).json({ error: 'messages must be an array of 1-50 items' });
+    }
+    const clean = messages.map((m) => ({
+      role: m?.role === 'assistant' ? 'assistant' : 'user',
+      content: String(m?.content ?? '').slice(0, 20000)
+    }));
+    if (clean[0].role !== 'user' || clean[clean.length - 1].role !== 'user') {
+      return res.status(400).json({ error: 'Conversation must start and end with a user message' });
+    }
+    const data = await askClaude(clean, [], 'You are a helpful assistant inside the CHES Workflow Builder for Trimble Connect. Be concise.');
+    const reply = (data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
+    return res.json({ reply });
+  } catch (error) {
+    console.error('[Chat] Claude request failed:', error);
+    const notConfigured = error.message.includes('not configured');
+    return res.status(notConfigured ? 503 : 502).json({ error: notConfigured ? error.message : 'Claude request failed' });
   }
 });
 

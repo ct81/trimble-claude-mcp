@@ -345,6 +345,42 @@
   html[data-theme="light"] .modal-backdrop, html[data-theme="light"] .backdrop { background: rgba(15,23,42,.4); }
   html[data-theme="light"] .copy-btn { border-color: #cbd5e1; color: #475569; }
   html, body, .palette, .toolbar, .canvas, .node { transition: background-color .25s, color .25s, border-color .25s; }
+
+  .rail {
+    width: 52px; flex: none; display: flex; flex-direction: column; align-items: center;
+    gap: 8px; padding: 12px 0; background: #0b1220; border-left: 1px solid #1f2937; z-index: 5;
+  }
+  .rail button {
+    width: 40px; height: 40px; border-radius: 10px; border: 1px solid transparent;
+    background: transparent; color: #94a3b8; font-size: 18px; cursor: pointer; padding: 0;
+  }
+  .rail button:hover { color: #e2e8f0; background: #1f2937; }
+  .rail button[aria-pressed="true"] { background: #1d4ed8; color: #fff; }
+  .sidepanel {
+    width: 340px; flex: none; display: flex; flex-direction: column; min-height: 0;
+    background: #111827; border-left: 1px solid #1f2937;
+  }
+  .sidepanel[hidden] { display: none; }
+  .sidepanel header { padding: 12px 14px; font-weight: 650; border-bottom: 1px solid #1f2937; }
+  .sp-view { display: flex; flex-direction: column; flex: 1; min-height: 0; padding: 12px; gap: 8px; overflow-y: auto; }
+  .sp-view[hidden] { display: none; }
+  .chat-log { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+  .chat-msg { padding: 8px 10px; border-radius: 8px; font-size: 13px; white-space: pre-wrap; word-break: break-word; max-width: 92%; }
+  .chat-msg.user { align-self: flex-end; background: #1d4ed8; color: #fff; }
+  .chat-msg.assistant { align-self: flex-start; background: #1f2937; }
+  .chat-msg.error { align-self: flex-start; background: #7f1d1d; }
+  .chat-form { display: flex; gap: 6px; }
+  .chat-form textarea { flex: 1; resize: none; height: 56px; }
+  .sidepanel textarea, .sidepanel input, .sidepanel select {
+    background: #0b1220; color: inherit; border: 1px solid #334155; border-radius: 6px; padding: 7px; font: inherit; font-size: 13px;
+  }
+  .sidepanel label { font-size: 11px; color: #94a3b8; }
+  .sched-item { font-size: 12px; background: #1f2937; border-radius: 6px; padding: 8px; display: flex; justify-content: space-between; gap: 6px; }
+  .sched-item small { display: block; color: #94a3b8; }
+  @media (max-width: 760px) { .sidepanel { position: absolute; right: 52px; top: 0; bottom: 0; z-index: 20; width: min(340px, calc(100vw - 52px)); } }
+  html[data-theme="light"] .rail, html[data-theme="light"] .sidepanel { background: #f1f5f9; border-color: #cbd5e1; }
+  html[data-theme="light"] .chat-msg.assistant, html[data-theme="light"] .sched-item { background: #e2e8f0; }
+  html[data-theme="light"] .sidepanel textarea, html[data-theme="light"] .sidepanel input, html[data-theme="light"] .sidepanel select { background: #fff; border-color: #cbd5e1; }
 </style>
 </head>
 <body>
@@ -471,6 +507,31 @@
       </div>
     </div>
   </main>
+  <section class="sidepanel" id="sidepanel" hidden>
+    <header id="spTitle"></header>
+    <div class="sp-view" id="viewChat" hidden>
+      <div class="chat-log" id="chatLog" aria-live="polite"></div>
+      <form class="chat-form" id="chatForm">
+        <textarea id="chatInput" placeholder="Ask Claude…" maxlength="20000"></textarea>
+        <button class="primary" id="chatSend" type="submit">Send</button>
+      </form>
+    </div>
+    <div class="sp-view" id="viewAgent" hidden>
+      <label for="schedWorkflow">Saved workflow</label>
+      <select id="schedWorkflow"></select>
+      <label for="schedWhen">Run date &amp; time</label>
+      <input type="datetime-local" id="schedWhen" />
+      <label for="schedRepeat">Repeat</label>
+      <select id="schedRepeat"><option value="once">Once</option><option value="daily">Daily</option></select>
+      <button class="primary" id="schedAdd" type="button">Schedule job</button>
+      <div class="hint-text" style="font-size:11px;color:#94a3b8">Jobs run in this browser while the page is open. Workflows with upload nodes need a file chosen and will fail unattended.</div>
+      <div id="schedList" style="display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+  </section>
+  <nav class="rail" aria-label="Tools">
+    <button id="railChat" title="AI Chat" aria-label="AI Chat" aria-pressed="false">💬</button>
+    <button id="railAgent" title="Agentic" aria-label="Agentic" aria-pressed="false">🤖</button>
+  </nav>
 </div>
 
 <div class="modal-backdrop" id="settingsModal">
@@ -1776,6 +1837,136 @@ trimbleClientIdReady.then(() => {
     });
     setInterval(refresh, 30000);
   });
+})();
+/* =========================================================================
+   15. AI CHAT & AGENTIC PANELS
+   ========================================================================= */
+(function () {
+  const panel = document.getElementById("sidepanel");
+  const views = { chat: document.getElementById("viewChat"), agent: document.getElementById("viewAgent") };
+  const rails = { chat: document.getElementById("railChat"), agent: document.getElementById("railAgent") };
+  const titles = { chat: "AI Chat (Claude)", agent: "Agentic — scheduled workflows" };
+  let current = null;
+
+  function toggle(name) {
+    current = current === name ? null : name;
+    panel.hidden = !current;
+    for (const k of Object.keys(views)) {
+      views[k].hidden = k !== current;
+      rails[k].setAttribute("aria-pressed", String(k === current));
+    }
+    if (current) document.getElementById("spTitle").textContent = titles[current];
+    if (current === "agent") { fillWorkflows(); renderJobs(); }
+    updateStageSize(); drawEdges();
+  }
+  rails.chat.addEventListener("click", () => toggle("chat"));
+  rails.agent.addEventListener("click", () => toggle("agent"));
+
+  /* ---- chat ---- */
+  const log = document.getElementById("chatLog");
+  const input = document.getElementById("chatInput");
+  const history = [];
+  function addMsg(role, text) {
+    const d = document.createElement("div");
+    d.className = "chat-msg " + role;
+    d.textContent = text;
+    log.appendChild(d); log.scrollTop = log.scrollHeight;
+  }
+  async function sendChat(e) {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = "";
+    addMsg("user", text);
+    history.push({ role: "user", content: text });
+    const send = document.getElementById("chatSend");
+    send.disabled = true;
+    try {
+      const token = await ensureToken();
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+        body: JSON.stringify({ messages: history.slice(-20) })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "HTTP " + res.status);
+      history.push({ role: "assistant", content: data.reply });
+      addMsg("assistant", data.reply || "(empty reply)");
+    } catch (err) {
+      history.pop();
+      addMsg("error", err.message);
+    } finally { send.disabled = false; input.focus(); }
+  }
+  document.getElementById("chatForm").addEventListener("submit", sendChat);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); document.getElementById("chatForm").requestSubmit(); }
+  });
+
+  /* ---- agentic scheduler ---- */
+  const JOBS_KEY = "wfScheduledJobs";
+  const selWf = document.getElementById("schedWorkflow");
+  const listEl = document.getElementById("schedList");
+  const readJobs = () => { try { return JSON.parse(localStorage.getItem(JOBS_KEY)) || []; } catch { return []; } };
+  const writeJobs = (j) => localStorage.setItem(JOBS_KEY, JSON.stringify(j));
+
+  async function fillWorkflows() {
+    try { await refreshWorkflowNames(await ensureToken()); } catch { /* fall back to local list */ }
+    const names = new Set([...(typeof serverWorkflowNames !== "undefined" ? serverWorkflowNames : []),
+      ...Object.keys(readLocalWorkflows())]);
+    selWf.replaceChildren(...[...names].sort().map((n) => new Option(n, n)));
+  }
+  function renderJobs() {
+    listEl.replaceChildren(...readJobs().map((j) => {
+      const row = document.createElement("div"); row.className = "sched-item";
+      const info = document.createElement("div");
+      const t = document.createElement("strong"); t.textContent = j.workflow;
+      const w = document.createElement("small"); w.textContent = `${new Date(j.runAt).toLocaleString()} · ${j.repeat}`;
+      info.append(t, w);
+      if (j.lastResult) { const r = document.createElement("small"); r.textContent = j.lastResult; info.append(r); }
+      const del = document.createElement("button"); del.textContent = "✕"; del.title = "Remove job";
+      del.addEventListener("click", () => { writeJobs(readJobs().filter((x) => x.id !== j.id)); renderJobs(); });
+      row.append(info, del); return row;
+    }));
+  }
+  document.getElementById("schedAdd").addEventListener("click", () => {
+    const when = new Date(document.getElementById("schedWhen").value);
+    if (!selWf.value) { setStatus("Select a saved workflow to schedule"); return; }
+    if (isNaN(when)) { setStatus("Pick a run date and time"); return; }
+    const jobs = readJobs();
+    jobs.push({ id: crypto.randomUUID(), workflow: selWf.value, runAt: when.getTime(),
+      repeat: document.getElementById("schedRepeat").value });
+    writeJobs(jobs); renderJobs();
+    setStatus(`Scheduled "${selWf.value}" for ${when.toLocaleString()}`);
+  });
+
+  let busy = false;
+  async function tick() {
+    if (busy) return;
+    const job = readJobs().find((j) => j.runAt <= Date.now());
+    if (!job) return;
+    busy = true;
+    try {
+      workflowNameInput.value = job.workflow;
+      await loadWorkflow();
+      await runWorkflow();
+      job.lastResult = (statusEl.textContent.startsWith("✅") ? "Succeeded " : "Failed: " + statusEl.textContent + " ") +
+        new Date().toLocaleTimeString();
+    } catch (err) {
+      job.lastResult = "Failed: " + err.message;
+    } finally {
+      let jobs = readJobs().filter((j) => j.id !== job.id);
+      if (job.repeat === "daily") {
+        while (job.runAt <= Date.now()) job.runAt += 86400000;
+        jobs.push(job);
+      } else {
+        setStatus(`${job.workflow}: ${job.lastResult}`);
+      }
+      writeJobs(jobs);
+      busy = false;
+      if (current === "agent") renderJobs();
+    }
+  }
+  setInterval(tick, 15000);
 })();
 </script>
 </body>
