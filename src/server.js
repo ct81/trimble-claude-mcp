@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp ChatBots, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #28"
+// #29"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -432,6 +432,14 @@ function validateWorkflowName(name) {
   return normalized;
 }
 
+function normalizeUpdatedBy(value) {
+  if (value === undefined || value === null || value === '') return '';
+  if (typeof value !== 'string' || value.length > 254 || /[\u0000-\u001f\u007f]/.test(value)) {
+    throw new Error('Workflow updatedBy must be a valid email');
+  }
+  return value.trim().toLowerCase();
+}
+
 async function readWorkflowLibrary() {
   let contents;
   try {
@@ -450,7 +458,7 @@ async function readWorkflowLibrary() {
       const normalizedName = name.toLowerCase();
       if (names.has(normalizedName)) throw new Error('Workflow library contains duplicate names');
       names.add(normalizedName);
-      return { name, workflow: validateWorkflowDocument(entry.workflow) };
+      return { name, workflow: validateWorkflowDocument(entry.workflow), updatedBy: normalizeUpdatedBy(entry.updatedBy) };
     });
   }
 
@@ -482,29 +490,43 @@ async function writeWorkflowLibrary(workflows) {
 
 // Realtime Database layout: names/<id> = name (cheap listing) and items/<id> =
 // {name, workflow (JSON string), updatedAt}.
-async function listWorkflowNames() {
-  if (!realtimeDb) return (await readWorkflowLibrary()).map(({ name }) => name);
-  const snapshot = await realtimeDb.ref(`${workflowDbPath}/names`).get();
-  return Object.values(snapshot.val() || {}).sort((a, b) => a.localeCompare(b));
+// owners/<id> = updatedBy email, used to filter the list without reading workflow bodies.
+async function listWorkflowNames(updatedBy = '') {
+  if (!realtimeDb) {
+    return (await readWorkflowLibrary())
+      .filter((entry) => !updatedBy || entry.updatedBy === updatedBy)
+      .map(({ name }) => name);
+  }
+  const [names, owners] = await Promise.all([
+    realtimeDb.ref(`${workflowDbPath}/names`).get(),
+    updatedBy ? realtimeDb.ref(`${workflowDbPath}/owners`).get() : null
+  ]);
+  const ownerMap = owners?.val() || {};
+  return Object.entries(names.val() || {})
+    .filter(([id]) => !updatedBy || ownerMap[id] === updatedBy)
+    .map(([, name]) => name)
+    .sort((a, b) => a.localeCompare(b));
 }
 
-async function getSavedWorkflow(name) {
+async function getSavedWorkflow(name, updatedBy = '') {
   if (!realtimeDb) {
-    return (await readWorkflowLibrary()).find((entry) => entry.name.toLowerCase() === name.toLowerCase()) || null;
+    return (await readWorkflowLibrary()).find((entry) =>
+      entry.name.toLowerCase() === name.toLowerCase() && (!updatedBy || entry.updatedBy === updatedBy)) || null;
   }
   const snapshot = await realtimeDb.ref(`${workflowDbPath}/items/${workflowDocumentId(name)}`).get();
   if (!snapshot.exists()) return null;
   const item = snapshot.val();
-  return { name: item.name, workflow: validateWorkflowDocument(JSON.parse(item.workflow)) };
+  if (updatedBy && normalizeUpdatedBy(item.updatedBy) !== updatedBy) return null;
+  return { name: item.name, workflow: validateWorkflowDocument(JSON.parse(item.workflow)), updatedBy: item.updatedBy || '' };
 }
 
-async function saveNamedWorkflow(name, workflow) {
+async function saveNamedWorkflow(name, workflow, updatedBy = '') {
   if (!realtimeDb) {
     const workflows = await readWorkflowLibrary();
     const index = workflows.findIndex((entry) => entry.name.toLowerCase() === name.toLowerCase());
     if (index === -1 && workflows.length >= maxWorkflows) throw limitError();
-    if (index === -1) workflows.push({ name, workflow });
-    else workflows[index] = { name, workflow };
+    if (index === -1) workflows.push({ name, workflow, updatedBy });
+    else workflows[index] = { name, workflow, updatedBy };
     return writeWorkflowLibrary(workflows);
   }
 
@@ -519,7 +541,8 @@ async function saveNamedWorkflow(name, workflow) {
   if (!(id in names) && Object.keys(names).length >= maxWorkflows) throw limitError();
   await realtimeDb.ref(workflowDbPath).update({
     [`names/${id}`]: name,
-    [`items/${id}`]: { name, workflow: serialized, updatedAt: new Date().toISOString() }
+    [`owners/${id}`]: updatedBy,
+    [`items/${id}`]: { name, workflow: serialized, updatedBy, updatedAt: new Date().toISOString() }
   });
 }
 
@@ -561,12 +584,13 @@ app.use(cookieParser());
 app.get('/api/workflow', requireMcpAuth, async (req, res) => {
   try {
     res.set('Cache-Control', 'no-store');
+    const updatedBy = normalizeUpdatedBy(req.query.updatedBy);
     if (req.query.name === undefined) {
-      const names = await listWorkflowNames();
+      const names = await listWorkflowNames(updatedBy);
       return res.json({ version: 1, workflows: names.map((name) => ({ name })) });
     }
     const name = validateWorkflowName(req.query.name);
-    const saved = await getSavedWorkflow(name);
+    const saved = await getSavedWorkflow(name, updatedBy);
     if (!saved) return res.status(404).json({ error: `Workflow "${name}" was not found` });
     return res.json(saved);
   } catch (error) {
@@ -582,8 +606,9 @@ app.put('/api/workflow', requireMcpAuth, async (req, res) => {
   try {
     const name = validateWorkflowName(req.body?.name);
     const workflow = validateWorkflowDocument(req.body?.workflow);
-    await saveNamedWorkflow(name, workflow);
-    return res.json({ saved: true, name, storage: realtimeDb ? 'firebase' : 'local-disk' });
+    const updatedBy = normalizeUpdatedBy(req.body?.updatedBy);
+    await saveNamedWorkflow(name, workflow, updatedBy);
+    return res.json({ saved: true, name, updatedBy, storage: realtimeDb ? 'firebase' : 'local-disk' });
   } catch (error) {
     if (error.status) return res.status(error.status).json({ error: error.message });
     if (error instanceof SyntaxError) {

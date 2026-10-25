@@ -1242,8 +1242,10 @@ function renderWorkflowNames() {
     suggestions.appendChild(option);
   }
 }
+const currentUserEmail = () => (document.getElementById("hdnUserEmail")?.value || "").trim().toLowerCase();
+const updatedByQuery = () => { const e = currentUserEmail(); return e ? `updatedBy=${encodeURIComponent(e)}` : ""; };
 async function refreshWorkflowNames(token) {
-  const response = await fetch("/api/workflow", {
+  const response = await fetch("/api/workflow?" + updatedByQuery(), {
     headers: { "Authorization": "Bearer " + token },
     cache: "no-store"
   });
@@ -1268,7 +1270,7 @@ async function saveWorkflow() {
         "Content-Type": "application/json",
         "Authorization": "Bearer " + token
       },
-      body: JSON.stringify({ name, workflow })
+      body: JSON.stringify({ name, workflow, updatedBy: currentUserEmail() })
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
@@ -1315,7 +1317,7 @@ async function loadWorkflow() {
   {
     try {
       const token = await ensureToken();
-      const response = await fetch(`/api/workflow?name=${encodeURIComponent(name)}`, {
+      const response = await fetch(`/api/workflow?name=${encodeURIComponent(name)}&${updatedByQuery()}`, {
         headers: { "Authorization": "Bearer " + token },
         cache: "no-store"
       });
