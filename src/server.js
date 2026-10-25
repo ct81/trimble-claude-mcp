@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp ChatBots, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #32"
+// #33"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -333,6 +333,9 @@ const workflowStorageDirectory = path.join(process.cwd(), 'pages', 'datastorage'
 const workflowStoragePath = path.join(workflowStorageDirectory, 'workflowbuilder.json');
 const workflowDbPath = 'workflowbuilder';
 const maxWorkflows = 100;
+const maxWorkflowFileBase64 = 8 * 1024 * 1024;
+const maxWorkflowBytes = 9 * 1024 * 1024;
+const maxLibraryBytes = 50 * 1024 * 1024;
 const workflowDocumentId = (name) => createHash('sha256').update(name.toLowerCase()).digest('hex');
 const workflowNodeTypes = new Set([
   'start', 'upload', 'upload_excel', 'upload_csv', 'upload_ifc', 'upload_dxf', 'upload_pdf',
@@ -380,6 +383,17 @@ function validateWorkflowDocument(workflow) {
       normalized.sized = true;
       normalized.width = node.width;
       normalized.height = node.height;
+    }
+    if (node.type.startsWith('upload') && node.file !== undefined) {
+      const file = node.file;
+      if (!file || typeof file !== 'object' || Array.isArray(file) ||
+          typeof file.name !== 'string' || !file.name || file.name.length > 255 ||
+          (file.type !== undefined && (typeof file.type !== 'string' || file.type.length > 200)) ||
+          typeof file.base64 !== 'string' || file.base64.length > maxWorkflowFileBase64 ||
+          !/^[A-Za-z0-9+/]*={0,2}$/.test(file.base64)) {
+        throw new Error('Workflow contains an invalid uploaded file');
+      }
+      normalized.file = { name: file.name, type: file.type || '', base64: file.base64 };
     }
     if (node.type === 'mcp') {
       const settings = node.settings;
@@ -472,8 +486,8 @@ async function readWorkflowLibrary() {
 
 async function writeWorkflowLibrary(workflows) {
   const serialized = `${JSON.stringify({ version: 1, workflows }, null, 2)}\n`;
-  if (Buffer.byteLength(serialized, 'utf8') > 1024 * 1024) {
-    const error = new Error('Workflow library exceeds the 1 MB storage limit');
+  if (Buffer.byteLength(serialized, 'utf8') > maxLibraryBytes) {
+    const error = new Error('Workflow library exceeds the 50 MB storage limit');
     error.status = 413;
     throw error;
   }
@@ -531,7 +545,7 @@ async function saveNamedWorkflow(name, workflow, updatedBy = '') {
   }
 
   const serialized = JSON.stringify(workflow);
-  if (Buffer.byteLength(serialized, 'utf8') > 900 * 1024) {
+  if (Buffer.byteLength(serialized, 'utf8') > maxWorkflowBytes) {
     const error = new Error('Workflow exceeds the storage size limit');
     error.status = 413;
     throw error;

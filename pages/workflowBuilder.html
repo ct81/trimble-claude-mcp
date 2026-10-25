@@ -1157,10 +1157,10 @@ function updateNodeLabels(type) {
       : TYPES[type].label;
   }
 }
-function serializeWorkflow() {
+async function serializeWorkflow() {
   return {
     version: 1,
-    nodes: nodes.map((node) => {
+    nodes: await Promise.all(nodes.map(async (node) => {
       const saved = { id: node.id, type: node.type, x: node.x, y: node.y };
       if (node.el.classList.contains("sized")) {
         saved.sized = true;
@@ -1174,8 +1174,13 @@ function serializeWorkflow() {
           args: node.el.querySelector(".args").value
         };
       }
+      if (UPLOAD_TYPES.has(node.type)) {
+        const file = node.el.querySelector('input[type="file"]')?.files?.[0];
+        if (file) saved.file = { name: file.name, type: file.type, base64: await fileToBase64(file) };
+        else if (node.storedFile) saved.file = node.storedFile;
+      }
       return saved;
-    }),
+    })),
     edges: edges.map(({ id, from, to }) => ({ id, from, to }))
   };
 }
@@ -1267,8 +1272,9 @@ async function refreshWorkflowNames(token) {
 async function saveWorkflow() {
   const name = workflowNameInput.value.trim();
   if (!name) { setStatus("Enter a name for this workflow"); return; }
-  const workflow = serializeWorkflow();
-  writeLocalWorkflow(name, workflow);
+  const workflow = await serializeWorkflow();
+  // Uploaded files only go to the server; browser storage is too small for them.
+  writeLocalWorkflow(name, { ...workflow, nodes: workflow.nodes.map(({ file, ...rest }) => rest) });
   renderWorkflowNames();
   setStatus(`Saving "${name}" to the server…`);
   try {
@@ -1302,6 +1308,10 @@ function applyWorkflow(workflow) {
       node.el.classList.add("sized");
       node.el.style.width = `${saved.width}px`;
       node.el.style.height = `${saved.height}px`;
+    }
+    if (UPLOAD_TYPES.has(saved.type) && saved.file) {
+      node.storedFile = saved.file;
+      node.el.querySelector(".status").textContent = "✔ " + saved.file.name + " (saved)";
     }
     if (saved.type === "mcp") {
       node.el.querySelector(".url").value = saved.settings.url;
@@ -1673,12 +1683,16 @@ async function runWorkflow() {
       if (UPLOAD_TYPES.has(cur.type)) {
         const input = cur.el.querySelector('input[type="file"]');
         const file  = input && input.files && input.files[0];
-        if (!file) throw new Error(`No file chosen in "${TYPES[cur.type].label}"`);
-        state.fileName  = file.name;
-        state.fileBase64 = await fileToBase64(file);
+        const stored = cur.storedFile;
+        if (!file && !stored) throw new Error(`No file chosen in "${TYPES[cur.type].label}"`);
+        state.fileName  = file ? file.name : stored.name;
+        state.fileBase64 = file ? await fileToBase64(file) : stored.base64;
         state.pdfBase64 = cur.type === "upload" || cur.type === "upload_pdf" ? state.fileBase64 : null;
-        state.fileText = ["upload_csv", "upload_ifc", "upload_dxf"].includes(cur.type) ? await file.text() : null;
-        cur.el.querySelector(".status").textContent = "✔ " + file.name;
+        const isText = ["upload_csv", "upload_ifc", "upload_dxf"].includes(cur.type);
+        state.fileText = !isText ? null
+          : file ? await file.text()
+          : new TextDecoder().decode(Uint8Array.from(atob(stored.base64), (c) => c.charCodeAt(0)));
+        cur.el.querySelector(".status").textContent = "✔ " + state.fileName;
       }
 
       if (cur.type === "mcp") {
