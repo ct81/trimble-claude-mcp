@@ -1810,8 +1810,22 @@ document.getElementById("btnExample").click();
 trimbleClientIdReady.then(() => {
   if (!settings.clientId && !trimbleConfigLoadError) {
     setStatus("Set your Trimble Client ID in ⚙ Settings to enable sign-in");
+    return;
   }
+  if (settings.clientId) autoSignIn();
 });
+
+// Browsers usually block popups opened without a user gesture, so fall back to the first click.
+function autoSignIn() {
+  ensureToken().catch((err) => {
+    if (/Popup blocked/i.test(err.message)) {
+      setStatus("Click anywhere to sign in to Trimble");
+      document.addEventListener("pointerdown", () => autoSignIn(), { once: true });
+    } else {
+      setStatus(err.message);
+    }
+  });
+}
 </script>
 <script>
 (function () {
