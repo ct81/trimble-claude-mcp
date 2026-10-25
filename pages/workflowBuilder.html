@@ -937,7 +937,7 @@ function bodyFor(type, id) {
                           <div class="args-fields" style="display:none;margin-top:6px"></div>
                           <textarea class="args" rows="3" spellcheck="false" style="width:100%;margin-top:6px;font-family:monospace;font-size:11px" placeholder='arguments JSON; file placeholders are replaced'>{"file_base64":"{{file_base64}}","filename":"{{filename}}"}</textarea>
                           <div class="status">not called yet</div>`;
-    case "result": return `<div class="out">—</div>`;
+    case "result": return `<div style="margin-bottom:6px;font-size:11px"><label><input type="radio" class="out-mode" value="pretty" checked> Pretty</label> <label style="margin-left:8px"><input type="radio" class="out-mode" value="raw"> Raw</label></div><div class="out">—</div>`;
     case "export_excel":
     case "export_csv": return `<div class="hint">Download the MCP result as ${type === "export_excel" ? "an Excel workbook" : "a CSV file"}</div>
                           <div class="status">waiting for workflow result</div>`;
@@ -978,6 +978,12 @@ function renderArgFields(el) {
     box.appendChild(row);
   }
   if (!box.children.length) box.textContent = "No arguments";
+}
+function renderResult(el) {
+  const box = el.querySelector(".out");
+  if (!el._result) { box.textContent = "No data received"; return; }
+  const raw = el.querySelector(".out-mode:checked").value === "raw";
+  box.textContent = raw ? JSON.stringify(el._result) : JSON.stringify(el._result, null, 2);
 }
 function setArgsMode(el, mode) {
   const fields = mode === "fields";
@@ -1167,6 +1173,10 @@ function wireNode(node) {
       setTimeout(() => { copyBtn.textContent = "⧉"; }, 1200);
     });
   }
+  el.querySelectorAll(".out-mode").forEach(r => {
+    r.name = "out-mode-" + el.dataset.id;
+    r.addEventListener("change", () => { if (el._result) renderResult(el); });
+  });
   el.querySelectorAll(".args-mode").forEach(r => {
     r.name = "args-mode-" + el.dataset.id;
     r.addEventListener("change", () => setArgsMode(el, r.value));
@@ -1920,9 +1930,8 @@ async function runWorkflow() {
 
       if (cur.type === "result") {
         const box = cur.el.querySelector(".out");
-        box.textContent = state.result
-          ? JSON.stringify(state.result, null, 2)
-          : "No data received";
+        cur.el._result = state.result;
+        renderResult(cur.el);
       }
 
       if (cur.type === "export_excel" || cur.type === "export_csv") {
