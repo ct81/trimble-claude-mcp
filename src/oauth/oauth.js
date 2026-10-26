@@ -463,6 +463,14 @@ export async function exchangeCode(
       has_access_token:
         Boolean(json.access_token),
 
+      access_token_length:
+        typeof json.access_token === 'string'
+          ? json.access_token.length
+          : 0,
+
+      access_token_fingerprint:
+        tokenFingerprint(json.access_token),
+
       has_refresh_token:
         Boolean(json.refresh_token)
     }
@@ -593,7 +601,7 @@ export async function refreshIfNeeded(
     );
   }
 
-  return updateSession(
+  const updatedSession = updateSession(
     sessionId,
     {
       trimble: {
@@ -616,4 +624,20 @@ export async function refreshIfNeeded(
       }
     }
   );
+
+  console.log('[Trimble OAuth] Access token refreshed', {
+    access_token_length:
+      typeof updatedSession?.trimble?.access_token === 'string'
+        ? updatedSession.trimble.access_token.length
+        : 0,
+    access_token_fingerprint:
+      tokenFingerprint(updatedSession?.trimble?.access_token)
+  });
+
+  return updatedSession;
+}
+
+function tokenFingerprint(token) {
+  if (typeof token !== 'string' || !token) return 'unavailable';
+  return crypto.createHash('sha256').update(token).digest('hex').slice(0, 12);
 }
