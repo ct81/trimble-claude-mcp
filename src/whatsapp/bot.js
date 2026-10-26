@@ -2,12 +2,14 @@ import crypto from 'node:crypto';
 import { askClaude } from '../claude/client.js';
 import { sendWhatsAppMessage } from '../others/greenAPI.js';
 import { definitions, callTool } from '../mcp/tools.js';
-import { getLatestSessionId } from '../session-store.js';
 
 const MAX_HISTORY = 20;
 const MAX_TOOL_ROUNDS = 6;
 const HISTORY_TTL_MS = 24 * 60 * 60 * 1000;
 const MAX_TOOL_RESULT_CHARS = 12000;
+const WHATSAPP_LOGIN_TTL_MS = 10 * 60 * 1000;
+const MAX_WHATSAPP_LOGIN_TOKENS = 10000;
+const DEFAULT_PUBLIC_BASE_URL = 'https://trimble-claude-mcp-g86i.onrender.com';
 
 // Read-only Trimble Connect tools the bot may call.
 const READ_ONLY_TOOLS = new Set(['get_projects', 'get_project', 'search_project']);
@@ -49,6 +51,8 @@ const BOT_TOOLS = [
 
 const conversations = new Map();
 const seenMessageIds = new Set();
+const whatsappLoginTokens = new Map();
+const whatsappSessions = new Map();
 
 function getHistory(chatId) {
   const entry = conversations.get(chatId);
@@ -71,35 +75,71 @@ function trimHistory(messages) {
   }
 }
 
-function resolveTrimbleSessionId() {
+export function createWhatsAppLoginToken(chatId) {
+  if (
+    typeof chatId !== 'string' ||
+    !chatId ||
+    chatId.length > 128 ||
+    /[\u0000-\u001f\u007f]/.test(chatId) ||
+    chatId.endsWith('@g.us')
+  ) {
+    throw new Error('A valid direct WhatsApp chat is required for sign-in.');
+  }
+
+  const now = Date.now();
+  for (const [token, entry] of whatsappLoginTokens) {
+    if (entry.expiresAt <= now) whatsappLoginTokens.delete(token);
+  }
+  if (whatsappLoginTokens.size >= MAX_WHATSAPP_LOGIN_TOKENS) {
+    throw new Error('Too many pending WhatsApp sign-ins. Try again later.');
+  }
+
+  const token = crypto.randomBytes(32).toString('base64url');
+  whatsappLoginTokens.set(token, {
+    chatId,
+    expiresAt: now + WHATSAPP_LOGIN_TTL_MS
+  });
+  return token;
+}
+
+export function consumeWhatsAppLoginToken(token) {
+  if (typeof token !== 'string' || !token) return undefined;
+  const entry = whatsappLoginTokens.get(token);
+  whatsappLoginTokens.delete(token);
+  return entry?.expiresAt > Date.now() ? entry.chatId : undefined;
+}
+
+export function setWhatsAppSessionId(chatId, sessionId) {
+  whatsappSessions.set(chatId, sessionId);
+}
+
+export function getWhatsAppSessionId(chatId) {
+  return whatsappSessions.get(chatId);
+}
+
+function trimbleLoginUrl(chatId) {
+  const baseUrl = (
+    process.env.PUBLIC_BASE_URL || DEFAULT_PUBLIC_BASE_URL
+  ).replace(/\/$/, '');
+  const token = createWhatsAppLoginToken(chatId);
+  return `${baseUrl}/oauth/whatsapp/login?token=${encodeURIComponent(token)}`;
+}
+
+function isTrimbleAuthenticationError(error) {
+  return error?.statusCode === 401 ||
+    /\bTrimble API 401\b|\bTrimble refresh failed\b|\bNo Trimble (?:access )?token\b|invalid_token|unauthorized/i
+      .test(error?.message || '');
+}
+
+function authenticationRequiredMessage(chatId) {
   return (
-    process.env.WHATSAPP_TRIMBLE_SESSION_ID ||
-    getLatestSessionId((data) => Boolean(data?.trimble?.access_token))
+    "I can't access Trimble Connect because sign-in is required. " +
+    `Tap this link to sign in: ${trimbleLoginUrl(chatId)}\n` +
+    'After signing in, send your request again. This sign-in is linked to this WhatsApp chat.'
   );
 }
 
-let lastLoginAlertAt = 0;
-const LOGIN_ALERT_INTERVAL_MS = 30 * 60 * 1000;
-
-// The login link goes to staff only: whoever signs in becomes the Trimble account used for all customers.
-async function notifyStaffToLogin() {
-  const staffChat = process.env.WHATSAPP_SALES_CHAT_ID;
-  if (!staffChat || Date.now() - lastLoginAlertAt < LOGIN_ALERT_INTERVAL_MS) return;
-  lastLoginAlertAt = Date.now();
-  const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
-  try {
-    await sendWhatsAppMessage({
-      chatId: staffChat,
-      message:
-        'WhatsApp bot: Trimble Connect is not connected. Open this link in a normal browser and sign in:\n' +
-        `${base}/oauth/login`
-    });
-  } catch (error) {
-    console.error('[WHATSAPP-BOT] failed to send login alert:', error.message);
-  }
-}
-
-async function runTool(name, input) {
+async function runTool(name, input, chatId) {
   if (name === 'request_quotation') {
     const reference = `Q-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
     const salesChat = process.env.WHATSAPP_SALES_CHAT_ID;
@@ -119,10 +159,12 @@ async function runTool(name, input) {
   }
 
   if (!READ_ONLY_TOOLS.has(name)) throw new Error(`Tool not allowed: ${name}`);
-  const sessionId = resolveTrimbleSessionId();
+  const sessionId = getWhatsAppSessionId(chatId);
   if (!sessionId) {
-    await notifyStaffToLogin();
-    throw new Error('Trimble Connect is not connected. A staff member must sign in first.');
+    throw Object.assign(
+      new Error('Trimble Connect sign-in is required for this WhatsApp chat.'),
+      { code: 'TRIMBLE_AUTH_REQUIRED' }
+    );
   }
   return callTool(sessionId, name, input);
 }
@@ -142,6 +184,7 @@ export async function generateReply(chatId, userText) {
 
   const messages = [...history.messages];
   let finalText = '';
+  let authenticationRequired = false;
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
     const response = await askClaude(messages, BOT_TOOLS, SYSTEM_PROMPT);
@@ -161,7 +204,7 @@ export async function generateReply(chatId, userText) {
     for (const use of toolUses) {
       console.log('[WHATSAPP-BOT] tool call', { tool: use.name, input: use.input });
       try {
-        const result = await runTool(use.name, use.input || {});
+        const result = await runTool(use.name, use.input || {}, chatId);
         toolResults.push({
           type: 'tool_result',
           tool_use_id: use.id,
@@ -169,6 +212,13 @@ export async function generateReply(chatId, userText) {
         });
       } catch (error) {
         console.error('[WHATSAPP-BOT] tool failed:', use.name, error.message);
+        if (
+          error.code === 'TRIMBLE_AUTH_REQUIRED' ||
+          isTrimbleAuthenticationError(error)
+        ) {
+          authenticationRequired = true;
+          finalText ||= authenticationRequiredMessage(chatId);
+        }
         toolResults.push({
           type: 'tool_result',
           tool_use_id: use.id,
@@ -178,6 +228,7 @@ export async function generateReply(chatId, userText) {
       }
     }
     messages.push({ role: 'user', content: toolResults });
+    if (authenticationRequired) break;
   }
 
   finalText ||= "Sorry, I couldn't complete that request. Our team will follow up with you.";

@@ -53,6 +53,15 @@ hosting domain is controlled by Trimble policy, not by this server.
 The MCP/OAuth endpoints support cross-origin connector requests. Other API and
 extension routes retain the configured `EXTENSION_ORIGIN` CORS policy.
 
+## WhatsApp sign-in
+
+WhatsApp Trimble sessions are isolated by chat. If a chat has not signed in, or
+its Trimble credentials have expired, the bot responds with a one-time sign-in
+link for that chat. After completing OAuth, the user should resend the request.
+WhatsApp login links expire after 10 minutes and cannot be reused. Chat-to-session
+mappings use the server's in-memory store, so users may need to sign in again
+after a server restart.
+
 ## Available integrations
 
 The MCP tool catalog includes Trimble Connect operations for users, regions,

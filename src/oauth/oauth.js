@@ -277,7 +277,7 @@ export function requireSession(
   next();
 }
 
-export function authorizationUrl() {
+export function authorizationUrl(stateData = { type: 'extension' }) {
 
   if (
     !config.trimble.clientId ||
@@ -294,7 +294,7 @@ export function authorizationUrl() {
   createOAuthState(
     state,
     {
-      type: 'extension',
+      ...stateData,
       createdAt: Date.now()
     }
   );
@@ -376,10 +376,7 @@ export async function exchangeCode(
     );
   }
 
-  console.log(
-    '[OAuth] State validated:',
-    issued
-  );
+  console.log('[OAuth] State validated:', { type: issued.type || 'extension' });
 
   /*
    * IMPORTANT:
@@ -438,13 +435,6 @@ export async function exchangeCode(
     };
   }
 
-  console.log('[Trimble OAuth] FULL Token response:', 
-    { token_type: json.token_type, 
-      expires_in: json.expires_in, 
-      access_token: json.access_token, 
-      refresh_token: json.refresh_token 
-    });
-
   if (!response.ok) {
 
     console.error(
@@ -469,10 +459,10 @@ export async function exchangeCode(
         json.expires_in,
 
       has_access_token:
-        !!json.access_token,
+        Boolean(json.access_token),
 
       has_refresh_token:
-        !!json.refresh_token
+        Boolean(json.refresh_token)
     }
   );
 
@@ -485,10 +475,7 @@ export async function exchangeCode(
       }
     });
 
-  console.log(
-    '[OAuth] Session created:',
-    sessionId
-  );
+  console.log('[OAuth] Session created');
 
   return sessionId;
 }

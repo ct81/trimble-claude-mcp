@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp ChatBots, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #40"
+// #41"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -33,6 +33,8 @@ import { definitions, getDefinitions, callTool } from './mcp/tools.js';
 import { handleMcp } from './mcp/http.js';
 import {
   handleIncomingWebhook,
+  consumeWhatsAppLoginToken,
+  setWhatsAppSessionId,
   verifyWebhook as verifyWhatsAppWebhook
 } from './whatsapp/bot.js';
 import {
@@ -1548,6 +1550,21 @@ app.post(
   }
 );
 app.get('/oauth/login', (_, res) => { try { res.redirect(authorizationUrl()); } catch (e) { res.status(500).json({error:e.message}); } });
+app.get('/oauth/whatsapp/login', (req, res) => {
+  const chatId = consumeWhatsAppLoginToken(req.query.token);
+  if (!chatId) {
+    return res.status(400).send(
+      'This WhatsApp sign-in link is invalid or expired. Request a new link in WhatsApp.'
+    );
+  }
+
+  try {
+    return res.redirect(authorizationUrl({ type: 'whatsapp', chatId }));
+  } catch (error) {
+    console.error('WhatsApp OAuth login failed:', error);
+    return res.status(500).send('Unable to start Trimble sign-in. Request a new link in WhatsApp.');
+  }
+});
 app.get(
   '/oauth/callback',
   async (req, res) => {
@@ -1728,6 +1745,21 @@ setTimeout(() => window.close(), 300);
 
         return res.redirect(
           callbackUrl.toString()
+        );
+      }
+
+      if (
+        typeof stateData === 'object' &&
+        stateData.type === 'whatsapp'
+      ) {
+        const sessionId = await exchangeCode(code, state);
+        setWhatsAppSessionId(stateData.chatId, sessionId);
+        res.setHeader('Cache-Control', 'no-store');
+        return res.send(
+          '<!DOCTYPE html><html><body>' +
+          '<h2>Trimble sign-in complete.</h2>' +
+          '<p>Return to WhatsApp and send your request again.</p>' +
+          '</body></html>'
         );
       }
 
