@@ -107,7 +107,11 @@ import pdfRouter
 // REQUEST ORIGIN LOGGING (which client / agent is calling)
 // =========================================================
 
-const AGENT_STUDIO_PATTERN = /agent[\s-]?studio|trimble.{0,30}agent|agent.{0,30}trimble/i;
+const AGENT_STUDIO_PATTERN = /trimble|agent[\s-]?studio/i;
+
+// Clients known to start an OAuth flow from a 401 challenge. Others (e.g. Agent
+// Studio, python-httpx) treat 401 as fatal, so they get a readable tool error.
+const OAUTH_CHALLENGE_CLIENT_PATTERN = /claude|anthropic|openai|chatgpt|cursor|vscode|visual studio code|mcp-remote/i;
 
 function describeCaller(req, extra = {}) {
   const h = req.headers;
@@ -309,7 +313,7 @@ function requireMcpAuthForRequest(req, res, next) {
   ) {
     const loginUrl = `${mcpBaseUrl(req)}/oauth/login`;
 
-    if (describeCaller(req).isAgentStudio) {
+    if (!OAUTH_CHALLENGE_CLIENT_PATTERN.test(req.headers['user-agent'] || '')) {
       return res.status(200).json({
         jsonrpc: '2.0',
         id: req.body.id ?? null,
