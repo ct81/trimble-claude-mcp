@@ -288,6 +288,15 @@ function requireMcpAuth(req, res, next) {
 }
 
 function requireMcpAuthForRequest(req, res, next) {
+  // For connectors (e.g. Agent Studio) with no custom-header field.
+  if (
+    typeof req.query?.session === 'string' &&
+    req.query.session &&
+    !req.headers['x-mcp-session']
+  ) {
+    req.headers['x-mcp-session'] = req.query.session;
+  }
+
   if (
     ['initialize', 'notifications/initialized', 'tools/list'].includes(
       req.body?.method
@@ -1828,7 +1837,9 @@ app.get('/auth/success', (req, res) => {
     '<p>You can close this window and return to your client.</p>' +
     (sessionId
       ? '<p>For clients without OAuth (e.g. Agent Studio), add this header to the MCP connector. Keep it private:</p>' +
-        `<pre>x-mcp-session: ${escapeHtml(sessionId)}</pre>`
+        `<pre>x-mcp-session: ${escapeHtml(sessionId)}</pre>` +
+        '<p>If the connector has no custom-header field, use this MCP URL instead (it contains your session, keep it private):</p>' +
+        `<pre>${escapeHtml(`${mcpBaseUrl(req)}/mcp?session=${sessionId}`)}</pre>`
       : '')
   );
 });
