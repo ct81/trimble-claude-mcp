@@ -54,6 +54,14 @@ services:
         sync: false
       - key: GREEN_API_TOKEN
         sync: false
+      - key: GREEN_API_TELEGRAM_INSTANCE_ID
+        sync: false
+      - key: GREEN_API_TELEGRAM_TOKEN
+        sync: false
+      - key: TELEGRAM_WEBHOOK_TOKEN
+        sync: false
+      - key: TELEGRAM_SALES_CHAT_ID
+        sync: false
       - key: WHATSAPP_WEBHOOK_TOKEN
         sync: false
       - key: WHATSAPP_SALES_CHAT_ID

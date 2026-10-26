@@ -69,6 +69,7 @@ catch {
 
 
 whatsapp-webhook-token
+telegram-webhook-token
 
 
 120363404024548828@g.us
@@ -160,6 +161,171 @@ finally {
     $WebhookToken = $null
     $SecureToken.Dispose()
 }
+
+
+
+###### GROUP
+
+$WebhookUrl = "https://trimble-claude-mcp-g86i.onrender.com/api/whatsapp/webhook"
+
+# Enter the WHATSAPP_WEBHOOK_TOKEN configured in Render
+$SecureToken = Read-Host "Enter WhatsApp webhook token" -AsSecureString
+$Ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecureToken)
+
+try {
+    $WebhookToken = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($Ptr)
+}
+finally {
+    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($Ptr)
+}
+
+# Enter your actual WhatsApp group ID
+# Example: 120363404024548828@g.us
+$ChatId = Read-Host "Enter WhatsApp group ID (ending in @g.us)"
+
+if ($ChatId -notmatch '@g\.us$') {
+    Write-Host "Invalid group ID. It must end with @g.us." -ForegroundColor Red
+    $SecureToken.Dispose()
+    exit 1
+}
+
+$Message = "Provide me the information of ConnectAll project."
+
+$Payload = @{
+    typeWebhook = "incomingMessageReceived"
+    instanceData = @{
+        idInstance   = 0
+        wid          = "powershell-test"
+        typeInstance = "whatsapp"
+    }
+    timestamp = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+    idMessage = "ps-test-$([guid]::NewGuid().ToString())"
+    senderData = @{
+        chatId     = $ChatId
+        sender     = $ChatId
+        chatName   = "MCP Test Group"
+        senderName = "PowerShell MCP Test"
+    }
+    messageData = @{
+        typeMessage = "textMessage"
+        textMessageData = @{
+            textMessage = $Message
+        }
+    }
+} | ConvertTo-Json -Depth 10
+
+Write-Host "`nSending group webhook test..." -ForegroundColor Cyan
+Write-Host "Message: $Message"
+Write-Host "Group ID: $ChatId"
+
+try {
+    $Response = Invoke-WebRequest `
+        -Uri $WebhookUrl `
+        -Method Post `
+        -Headers @{
+            Authorization = "Bearer $WebhookToken"
+        } `
+        -ContentType "application/json; charset=utf-8" `
+        -Body ([System.Text.Encoding]::UTF8.GetBytes($Payload)) `
+        -TimeoutSec 60
+
+    Write-Host "`nWebhook HTTP status: $([int]$Response.StatusCode)" -ForegroundColor Green
+    Write-Host "Response: $($Response.Content)"
+    Write-Host "`nCheck Render logs for Claude and MCP tool activity."
+    Write-Host "Check the WhatsApp group for the reply."
+}
+catch {
+    Write-Host "`nWebhook request failed." -ForegroundColor Red
+    Write-Host $_.Exception.Message
+
+    if ($_.ErrorDetails.Message) {
+        Write-Host $_.ErrorDetails.Message
+    }
+}
+finally {
+    $WebhookToken = $null
+    $SecureToken.Dispose()
+}
+
+
+
+
+
+###################telegram
+
+# ==========================================
+# GREEN-API Telegram Message Test
+# ==========================================
+
+# Set these to match your Render environment variables
+$GreenApiUrl = Read-Host "Enter GREEN_API_URL (base URL)"
+$InstanceId  = Read-Host "Enter GREEN_API_TELEGRAM_INSTANCE_ID"
+
+# Read token securely
+$SecureToken = Read-Host "Enter GREEN_API_TELEGRAM_TOKEN" -AsSecureString
+$Ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecureToken)
+
+try {
+    $Token = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($Ptr)
+}
+finally {
+    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($Ptr)
+}
+
+# Telegram chat ID: user, group, or supergroup ID as supported
+$ChatId = Read-Host "Enter Telegram chat ID"
+
+$Message = Read-Host "Enter message to send"
+
+if ([string]::IsNullOrWhiteSpace($GreenApiUrl) -or
+    [string]::IsNullOrWhiteSpace($InstanceId) -or
+    [string]::IsNullOrWhiteSpace($Token) -or
+    [string]::IsNullOrWhiteSpace($ChatId) -or
+    [string]::IsNullOrWhiteSpace($Message)) {
+
+    Write-Host "Missing required input." -ForegroundColor Red
+    $SecureToken.Dispose()
+    exit 1
+}
+
+$BaseUrl = $GreenApiUrl.TrimEnd("/")
+$Endpoint = "${BaseUrl}/waInstance${InstanceId}/sendMessage/${Token}"
+
+$Payload = @{
+    chatId  = $ChatId.Trim()
+    message = $Message
+} | ConvertTo-Json -Depth 5
+
+Write-Host "`nSending Telegram message..." -ForegroundColor Cyan
+Write-Host "Chat ID: $ChatId"
+Write-Host "Message: $Message"
+
+try {
+    $Response = Invoke-WebRequest `
+        -Uri $Endpoint `
+        -Method POST `
+        -ContentType "application/json; charset=utf-8" `
+        -Body ([System.Text.Encoding]::UTF8.GetBytes($Payload)) `
+        -TimeoutSec 30
+
+    Write-Host "`nHTTP Status: $([int]$Response.StatusCode)" -ForegroundColor Green
+    Write-Host "Response: $($Response.Content)"
+}
+catch {
+    Write-Host "`nRequest failed." -ForegroundColor Red
+    Write-Host $_.Exception.Message
+
+    if ($_.ErrorDetails.Message) {
+        Write-Host "API response: $($_.ErrorDetails.Message)"
+    }
+}
+finally {
+    $Token = $null
+    $SecureToken.Dispose()
+}
+
+
+
 
 
 

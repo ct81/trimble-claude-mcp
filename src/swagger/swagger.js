@@ -1164,6 +1164,14 @@ export const swaggerDocument = {
       description: 'WhatsApp messaging through GREEN-API.'
     },
     {
+      name: 'Telegram',
+      description: 'Telegram messaging through GREEN-API.'
+    },
+    {
+      name: 'Telegram Webhook',
+      description: 'Incoming Telegram messages handled by the Telegram assistant.'
+    },
+    {
       name: 'Python',
       description: 'Server-side Python test utilities.'
     },
@@ -1723,6 +1731,80 @@ export const swaggerDocument = {
           400: { description: 'Missing chatId/phoneNumber or message' },
           401: { description: 'Authentication required' },
           500: { description: 'GREEN-API configuration missing or send failed' }
+        }
+      }
+    },
+
+    '/api/mcp/telegram/send': {
+      post: {
+        tags: ['Telegram'],
+        summary: 'Send a Telegram message through GREEN-API',
+        operationId: 'send_telegram_message_rest',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['message'],
+                anyOf: [{ required: ['chatId'] }, { required: ['chatid'] }],
+                properties: {
+                  chatId: { type: 'string', description: 'Telegram chat ID.' },
+                  chatid: { type: 'string', description: 'Alias for chatId.' },
+                  message: { type: 'string', minLength: 1 }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          200: { description: 'GREEN-API response confirming the Telegram message was sent' },
+          400: { description: 'Missing chatId/chatid or message' },
+          401: { description: 'Authentication required' },
+          500: { description: 'GREEN-API configuration missing or send failed' }
+        }
+      }
+    },
+
+    '/api/telegram/webhook': {
+      post: {
+        tags: ['Telegram Webhook'],
+        summary: 'Receive an incoming Telegram webhook from GREEN-API',
+        operationId: 'telegram_webhook',
+        parameters: [{
+          name: 'Authorization',
+          in: 'header',
+          required: true,
+          schema: { type: 'string' },
+          description: 'Bearer token configured as TELEGRAM_WEBHOOK_TOKEN.'
+        }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['typeWebhook'],
+                properties: {
+                  typeWebhook: { type: 'string', example: 'incomingMessageReceived' },
+                  idMessage: { type: 'string' },
+                  senderData: {
+                    type: 'object',
+                    properties: {
+                      chatId: { type: 'string' },
+                      chatType: { type: 'string' }
+                    }
+                  },
+                  messageData: { type: 'object' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          200: { description: 'Webhook accepted; processing is started asynchronously' },
+          401: { description: 'Invalid webhook token' }
         }
       }
     },
@@ -5253,6 +5335,8 @@ export async function getSwaggerDocument() {
         ? 'Python'
         : toolName === 'send_whatsapp_message'
         ? 'WhatsApp'
+        : toolName === 'send_telegram_message'
+          ? 'Telegram'
         : toolName === 'extract_tender_project'
           ? 'PDF'
         : toolName.includes('dxf')

@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp ChatBots, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #58"
+// #59"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -38,6 +38,12 @@ import {
   setWhatsAppSessionId,
   verifyWebhook as verifyWhatsAppWebhook
 } from './whatsapp/bot.js';
+import {
+  consumeTelegramLoginToken,
+  setTelegramSessionId,
+  handleTelegramIncomingWebhook,
+  verifyTelegramWebhook
+} from './telegram/bot.js';
 import {
   createOAuthTransaction,
   getOAuthTransaction,
@@ -1593,6 +1599,21 @@ app.get('/oauth/whatsapp/login', (req, res) => {
     return res.status(500).send('Unable to start Trimble sign-in. Request a new link in WhatsApp.');
   }
 });
+app.get('/oauth/telegram/login', (req, res) => {
+  const chatId = consumeTelegramLoginToken(req.query.token);
+  if (!chatId) {
+    return res.status(400).send(
+      'This Telegram sign-in link is invalid or expired. Request a new link in Telegram.'
+    );
+  }
+
+  try {
+    return res.redirect(authorizationUrl({ type: 'telegram', chatId }));
+  } catch (error) {
+    console.error('Telegram OAuth login failed:', error);
+    return res.status(500).send('Unable to start Trimble sign-in. Request a new link in Telegram.');
+  }
+});
 app.get(
   '/oauth/callback',
   async (req, res) => {
@@ -1790,6 +1811,24 @@ setTimeout(() => window.close(), 300);
           '<!DOCTYPE html><html><body>' +
           '<h2>Trimble sign-in complete.</h2>' +
           '<p>Return to WhatsApp and send your request again.</p>' +
+          '</body></html>'
+        );
+      }
+
+      if (
+        typeof stateData === 'object' &&
+        stateData.type === 'telegram'
+      ) {
+        const sessionId = await exchangeCode(code, state);
+        setTelegramSessionId(stateData.chatId, sessionId);
+        console.log('[Telegram OAuth] Login linked to chat', {
+          email: getSessionEmail(sessionId) || 'unavailable'
+        });
+        res.setHeader('Cache-Control', 'no-store');
+        return res.send(
+          '<!DOCTYPE html><html><body>' +
+          '<h2>Trimble sign-in complete.</h2>' +
+          '<p>Return to Telegram and send your request again.</p>' +
           '</body></html>'
         );
       }
@@ -3907,6 +3946,20 @@ app.post('/api/whatsapp/webhook', (req, res) => {
   handleIncomingWebhook(req.body);
 });
 
+// GREEN-API Telegram webhook: set "webhookUrl" to <PUBLIC_BASE_URL>/api/telegram/webhook
+// and "webhookUrlToken" to TELEGRAM_WEBHOOK_TOKEN.
+app.post('/api/telegram/webhook', (req, res) => {
+  console.log(`[TELEGRAM-WEBHOOK] received at ${new Date().toISOString()}`);
+  const payloadLength = JSON.stringify(req.body ?? {}).length;
+  console.log(`[TELEGRAM-WEBHOOK] payload received. Length: ${payloadLength}`);
+  if (!verifyTelegramWebhook(req)) {
+    console.warn('[TELEGRAM-WEBHOOK] rejected: invalid token');
+    return res.sendStatus(401);
+  }
+  res.sendStatus(200);
+  handleTelegramIncomingWebhook(req.body);
+});
+
 app.post(
   '/api/mcp/whatsapp/send',
   requireSession,
@@ -3921,6 +3974,25 @@ app.post(
       return res.json(result);
     } catch (error) {
       console.error('POST /api/mcp/whatsapp/send:', error);
+      return res.status(error.statusCode || 500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+app.post(
+  '/api/mcp/telegram/send',
+  requireSession,
+  async (req, res) => {
+    try {
+      const args = req.body?.arguments ?? req.body ?? {};
+      const result = await callTool(
+        req.mcpSessionId,
+        'send_telegram_message',
+        args
+      );
+      return res.json(result);
+    } catch (error) {
+      console.error('POST /api/mcp/telegram/send:', error);
       return res.status(error.statusCode || 500).json({ success: false, error: error.message });
     }
   }
