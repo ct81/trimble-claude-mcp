@@ -56,11 +56,13 @@ extension routes retain the configured `EXTENSION_ORIGIN` CORS policy.
 ## WhatsApp sign-in
 
 WhatsApp Trimble sessions are isolated by chat. If a chat has not signed in, or
-its Trimble credentials have expired, the bot responds with a one-time sign-in
-link for that chat. After completing OAuth, the user should resend the request.
-WhatsApp login links expire after 10 minutes and cannot be reused. Chat-to-session
-mappings use the server's in-memory store, so users may need to sign in again
-after a server restart.
+its Trimble credentials have expired, the bot responds with a sign-in link for
+that chat. After completing OAuth, the user should resend the request.
+WhatsApp login links are encrypted, expire after 24 hours, and are not tied to
+one server process, so Render restarts do not invalidate a link. A link is
+limited to one use per running server process and may be used again if the
+server restarts. Chat-to-session mappings use the server's in-memory store, so
+users may need to sign in again after a server restart.
 
 ## Available integrations
 
