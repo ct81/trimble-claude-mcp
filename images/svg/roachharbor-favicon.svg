@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-labelledby="title">
+  <title id="title">RoachHarbor favicon</title>
+  <path d="M32 6 L54 19 L54 45 L32 58 L10 45 L10 19 Z" fill="#0EA5E9" stroke="#0F172A" stroke-width="2" stroke-linejoin="round"/>
+  <g stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M32 26 L24 21" stroke-width="3"/>
+    <path d="M32 26 L40 21" stroke-width="3"/>
+    <path d="M24 34 L32 31 L40 34" stroke-width="2.5"/>
+    <path d="M32 31 L32 42" stroke-width="2.5"/>
+    <path d="M18 46 Q23 42 28 46 T38 46 T48 46" stroke-width="3"/>
+  </g>
+  <g fill="#FFFFFF">
+    <circle cx="32" cy="26" r="4"/>
+    <circle cx="24" cy="34" r="3"/>
+    <circle cx="40" cy="34" r="3"/>
+    <circle cx="32" cy="42" r="3.5"/>
+  </g>
+</svg>
