@@ -1,6 +1,6 @@
 {
 "icon": "https://ct81.github.io/trimble-claude-mcp/images/svg/roachharbor-icon-white.svg?color=%23FFFFFF",
- "title": "CHES WFBuilder",
+ "title": "RoachHarbor",
  "url": "https://trimble-claude-mcp-g86i.onrender.com/pages/workflowBuilder.html",
 "description": "Design, connect, and automate AI-powered workflows to streamline tasks and turn complex processes into seamless execution.",
 "configCommand": "do_config",
