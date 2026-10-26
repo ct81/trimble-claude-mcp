@@ -333,6 +333,7 @@ export function authorizationUrl(stateData = { type: 'extension' }) {
   console.log(
     '[OAuth] Authorization URL created'
   );
+  console.log('[OAuth] Requested Trimble scopes:', config.trimble.scope);
 
   console.log(
     '[OAuth] State:',
@@ -485,9 +486,11 @@ export async function exchangeCode(
 }
 
 async function getTrimbleEmail(accessToken) {
+  console.log('[OAuth] Looking up signed-in email from Trimble profile');
   try {
     const response = await fetch(`${config.trimble.apiBaseUrl}/users/me`, {
-      headers: { authorization: `Bearer ${accessToken}`, accept: 'application/json' }
+      headers: { authorization: `Bearer ${accessToken}`, accept: 'application/json' },
+      signal: AbortSignal.timeout(10000)
     });
 
     if (!response.ok) {
@@ -499,6 +502,9 @@ async function getTrimbleEmail(accessToken) {
 
     const profile = await response.json();
     const email = extractTrimbleEmail(profile);
+    console.log('[OAuth] Signed-in email lookup complete', {
+      email: email || 'unavailable'
+    });
     if (!email) console.warn('[OAuth] Trimble profile did not include an email address');
     return email;
   } catch (error) {

@@ -79,6 +79,7 @@ export function authorizationUrlForMcp(
   console.log(
     '[OAuth MCP] Authorization URL created'
   );
+  console.log('[OAuth MCP] Requested Trimble scopes:', config.trimble.scope);
 
   console.log(
     '[OAuth MCP] State:',

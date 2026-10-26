@@ -43,12 +43,14 @@ value. Set `TRIMBLE_REDIRECT_URI` to
 `https://YOUR-RENDER-SERVICE.onrender.com/oauth/callback` and register that
 same callback URL in the Trimble application.
 
-`TRIMBLE_SCOPE` controls the scopes requested from Trimble Identity and defaults
-to `openid profile email`. Those are upstream Trimble OAuth scopes, not
-MCP-specific scopes advertised by this server. If Agent Studio has a separate
-scope field, follow its connector requirements; this server does not publish
-an MCP scope list. Whether a Trimble Agent Studio tenant permits a particular
-hosting domain is controlled by Trimble policy, not by this server.
+`TRIMBLE_SCOPE` supplies any additional scopes requested from Trimble Identity
+and defaults to `openid profile email`. The server always includes `openid`,
+`profile`, and `email` so it can resolve the signed-in account email. Those are
+upstream Trimble OAuth scopes, not MCP-specific scopes advertised by this
+server. If Agent Studio has a separate scope field, follow its connector
+requirements; this server does not publish an MCP scope list. Whether a
+Trimble Agent Studio tenant permits a particular hosting domain is controlled
+by Trimble policy, not by this server.
 
 The MCP/OAuth endpoints support cross-origin connector requests. Other API and
 extension routes retain the configured `EXTENSION_ORIGIN` CORS policy.
