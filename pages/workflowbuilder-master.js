@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', async (event) => {
 
         API_Ext.ui.setMenu({
             title: "CHES WFBuilder"
-            , icon: "https://ct81.github.io/trimble-claude-mcp/images/svg/roachharbor-icon-mono.svg?color=%23FFFFFF"
+            , icon: "https://ct81.github.io/trimble-claude-mcp/images/svg/roachharbor-icon-white.svg?color=%23FFFFFF"
             , command: "main_nav_menu_clicked"
             , subMenus: [
                 // , {

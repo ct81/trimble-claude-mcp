@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title desc">
+  <title id="title">RoachHarbor icon</title>
+  <desc id="desc">Monochrome RoachHarbor workflow icon.</desc>
+  <path d="M128 32 L208 76 L208 164 L128 208 L48 164 L48 76 Z" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linejoin="round"/>
+  <g stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M128 116 C116 98 104 88 92 82" stroke-width="7"/>
+    <path d="M128 116 C140 98 152 88 164 82" stroke-width="7"/>
+    <path d="M96 140 L128 130 L160 140" stroke-width="6"/>
+    <path d="M128 130 L128 166" stroke-width="6"/>
+    <path d="M74 182 Q88 170 102 182 T130 182 T158 182 T186 182" stroke-width="8"/>
+    <path d="M82 198 Q94 188 106 198 T130 198 T154 198 T178 198" stroke-width="6" stroke-opacity="0.75"/>
+  </g>
+  <g fill="#FFFFFF">
+    <circle cx="128" cy="116" r="11"/>
+    <circle cx="96" cy="140" r="8"/>
+    <circle cx="160" cy="140" r="8"/>
+    <circle cx="128" cy="166" r="9"/>
+  </g>
+</svg>
