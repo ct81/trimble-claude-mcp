@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp ChatBots, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #39"
+// #40"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -105,7 +105,7 @@ import pdfRouter
 // REQUEST ORIGIN LOGGING (which client / agent is calling)
 // =========================================================
 
-const AGENT_STUDIO_PATTERN = /trimble|agent[\s-]?studio/i;
+const AGENT_STUDIO_PATTERN = /agent[\s-]?studio|trimble.{0,30}agent|agent.{0,30}trimble/i;
 
 function describeCaller(req, extra = {}) {
   const h = req.headers;
@@ -299,8 +299,6 @@ function requireMcpAuthForRequest(req, res, next) {
     return next();
   }
 
-  // Clients such as Agent Studio treat an HTTP 401 as a fatal transport error.
-  // With no credentials at all, answer with a readable tool error instead.
   if (
     req.body?.method === 'tools/call' &&
     !req.headers.authorization &&
@@ -309,18 +307,33 @@ function requireMcpAuthForRequest(req, res, next) {
   ) {
     const loginUrl = `${mcpBaseUrl(req)}/oauth/login`;
 
-    return res.status(200).json({
+    if (describeCaller(req).isAgentStudio) {
+      return res.status(200).json({
+        jsonrpc: '2.0',
+        id: req.body.id ?? null,
+        result: {
+          isError: true,
+          content: [{
+            type: 'text',
+            text:
+              `Not signed in to Trimble. Open ${loginUrl} in a browser, sign in, ` +
+              'then send the session value shown on the success page as the ' +
+              '"x-mcp-session" header on this connector, or connect the server with OAuth.'
+          }]
+        }
+      });
+    }
+
+    res.setHeader(
+      'WWW-Authenticate',
+      `Bearer resource_metadata="${mcpBaseUrl(req)}/.well-known/oauth-protected-resource"`
+    );
+    return res.status(401).json({
       jsonrpc: '2.0',
       id: req.body.id ?? null,
-      result: {
-        isError: true,
-        content: [{
-          type: 'text',
-          text:
-            `Not signed in to Trimble. Open ${loginUrl} in a browser, sign in, ` +
-            'then send the session value shown on the success page as the ' +
-            '"x-mcp-session" header on this connector, or connect the server with OAuth.'
-        }]
+      error: {
+        code: -32001,
+        message: 'Unauthorized: Trimble sign-in is required.'
       }
     });
   }

@@ -166,6 +166,57 @@ finally {
 
 
 
+# ==========================================
+# Diagnose Trimble MCP Authentication
+# ==========================================
+
+$BaseUrl = "https://trimble-claude-mcp-g86i.onrender.com"
+
+$Checks = @(
+    @{ Name = "Health"; Url = "$BaseUrl/health" },
+    @{ Name = "OAuth Callback Route"; Url = "$BaseUrl/oauth/callback" },
+    @{ Name = "Auth Login Route"; Url = "$BaseUrl/auth/login" },
+    @{ Name = "MCP Endpoint"; Url = "$BaseUrl/mcp" }
+)
+
+foreach ($Check in $Checks) {
+    Write-Host "`n========== $($Check.Name) ==========" -ForegroundColor Cyan
+
+    try {
+        $Response = Invoke-WebRequest `
+            -Uri $Check.Url `
+            -Method Get `
+            -MaximumRedirection 0 `
+            -TimeoutSec 20 `
+            -ErrorAction Stop
+
+        Write-Host "HTTP: $([int]$Response.StatusCode)"
+        Write-Host $Response.Content
+    }
+    catch {
+        $Status = $null
+
+        if ($_.Exception.Response) {
+            $Status = [int]$_.Exception.Response.StatusCode
+        }
+
+        if ($null -ne $Status) {
+            Write-Host "HTTP: $Status"
+        } else {
+            Write-Host $_.Exception.Message
+        }
+
+        if ($_.ErrorDetails.Message) {
+            Write-Host $_.ErrorDetails.Message
+        }
+    }
+}
+
+Write-Host "`nDiagnostic completed. Check Render logs next." -ForegroundColor Green
+
+
+
+
 
 
 # ==========================================

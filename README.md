@@ -27,11 +27,14 @@ https://trimble-claude-mcp-g86i.onrender.com/mcp
 
 The MCP `initialize`, `notifications/initialized`, and `tools/list` requests
 are accepted without a user session so a connector can complete its handshake
-and discover tools. Tool execution (`tools/call`) still requires authentication
-through the configured OAuth/session flow. The server advertises protected
-resource and authorization-server metadata at `/.well-known/oauth-protected-resource`
-and `/.well-known/oauth-authorization-server`; it also supports the MCP
-protected-resource discovery paths ending in `/mcp`.
+and discover tools. For OAuth-capable clients, an unauthenticated tool call
+returns the MCP OAuth challenge so the client can open its sign-in flow. The
+server advertises protected-resource and authorization-server metadata at
+`/.well-known/oauth-protected-resource` and
+`/.well-known/oauth-authorization-server`; it also supports the MCP
+protected-resource discovery paths ending in `/mcp`. Trimble Agent Studio
+clients receive a manual sign-in/session-header instruction because they do
+not handle the HTTP authentication challenge as an interactive sign-in flow.
 
 Set `PUBLIC_BASE_URL` in Render to the public HTTPS origin, without a trailing
 slash, for example `https://YOUR-RENDER-SERVICE.onrender.com`. OAuth discovery,
