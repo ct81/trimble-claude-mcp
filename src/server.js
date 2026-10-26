@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp ChatBots, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #46"
+// #47"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -26,7 +26,8 @@ import path from 'node:path';
 import { config } from './config.js';
 import { askClaude } from './claude/client.js';
 import { realtimeDb } from './firebase-database.js';
-import { createSession } from './session-store.js';
+import { createSession, getSession, getSessionEmail } from './session-store.js';
+import { extractTrimbleEmail } from './trimble/identity.js';
 import { authorizationUrl, exchangeCode, requireSession } from './oauth/oauth.js';
 // import { tools } from './trimble/client.js';
 import { definitions, getDefinitions, callTool } from './mcp/tools.js';
@@ -154,20 +155,32 @@ async function sessionFromTrimbleToken(token) {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (!r.ok) return undefined;
-  } catch {
+    let profile;
+    try {
+      profile = await r.json();
+    } catch (error) {
+      console.warn('[MCP Auth] Could not read Trimble profile email:', error.message);
+    }
+    const email = extractTrimbleEmail(profile);
+    if (!email) console.warn('[MCP Auth] Trimble profile did not include an email address');
+    const sessionId = createSession({
+      email,
+      trimble: {
+        access_token: token,
+        token_type: 'Bearer',
+        expires_in: 3300,
+        obtained_at: Date.now()
+      }
+    });
+    trimbleTokenSessions.set(token, { sessionId, expiresAt: Date.now() + 55 * 60 * 1000 });
+    console.log('[MCP Auth] Trimble bearer login completed', {
+      email: email || 'unavailable'
+    });
+    return sessionId;
+  } catch (error) {
+    console.error('[MCP Auth] Trimble bearer profile lookup failed:', error.message);
     return undefined;
   }
-
-  const sessionId = createSession({
-    trimble: {
-      access_token: token,
-      token_type: 'Bearer',
-      expires_in: 3300,
-      obtained_at: Date.now()
-    }
-  });
-  trimbleTokenSessions.set(token, { sessionId, expiresAt: Date.now() + 55 * 60 * 1000 });
-  return sessionId;
 }
 
 async function requireMcpBearer(req, res, next) {
@@ -221,9 +234,11 @@ async function requireMcpBearer(req, res, next) {
     // Make the MCP handler see the same session
     // that requireSession normally provides.
     req.mcpSessionId = sessionId;
+    req.session = getSession(sessionId);
 
     console.log(
-      '[MCP Bearer] Authentication successful'
+      '[MCP Bearer] Authentication successful',
+      { email: getSessionEmail(sessionId) || 'unavailable' }
     );
 
     return next();
@@ -1767,6 +1782,9 @@ setTimeout(() => window.close(), 300);
       ) {
         const sessionId = await exchangeCode(code, state);
         setWhatsAppSessionId(stateData.chatId, sessionId);
+        console.log('[WhatsApp OAuth] Login linked to chat', {
+          email: getSessionEmail(sessionId) || 'unavailable'
+        });
         res.setHeader('Cache-Control', 'no-store');
         return res.send(
           '<!DOCTYPE html><html><body>' +

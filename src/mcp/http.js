@@ -22,6 +22,11 @@ export async function handleMcp(   // <-- CHANGED: was `export function`
   );
 
   console.log(
+    'Authenticated email:',
+    req.session?.email || 'unavailable'
+  );
+
+  console.log(
     'Method:',
     body.method
   );
@@ -143,6 +148,11 @@ export async function handleMcp(   // <-- CHANGED: was `export function`
 
     console.log(
       '========== MCP TOOL CALL =========='
+    );
+
+    console.log(
+      'Authenticated email:',
+      req.session?.email || 'unavailable'
     );
 
     console.log(

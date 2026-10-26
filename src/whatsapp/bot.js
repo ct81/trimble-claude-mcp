@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { config } from '../config.js';
+import { getSessionEmail } from '../session-store.js';
 import { askClaude } from '../claude/client.js';
 import { sendWhatsAppMessage } from '../others/greenAPI.js';
 import { definitions, callTool } from '../mcp/tools.js';
@@ -168,10 +169,13 @@ function authenticationRequiredMessage(chatId) {
 }
 
 async function runTool(name, input, chatId) {
+  const sessionId = getWhatsAppSessionId(chatId);
+  const email = getSessionEmail(sessionId) || 'not signed in';
+
   if (name === 'request_quotation') {
     const reference = `Q-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
     const salesChat = process.env.WHATSAPP_SALES_CHAT_ID;
-    console.log('[WHATSAPP-BOT] quotation request', { reference, ...input });
+    console.log('[WHATSAPP-BOT] quotation request', { email, reference, ...input });
     if (salesChat) {
       await sendWhatsAppMessage({
         chatId: salesChat,
@@ -185,9 +189,7 @@ async function runTool(name, input, chatId) {
     }
     return { success: true, reference };
   }
-
   if (!READ_ONLY_TOOLS.has(name)) throw new Error(`Tool not allowed: ${name}`);
-  const sessionId = getWhatsAppSessionId(chatId);
   if (!sessionId) {
     throw Object.assign(
       new Error('Trimble Connect sign-in is required for this WhatsApp chat.'),
@@ -230,7 +232,8 @@ export async function generateReply(chatId, userText) {
 
     const toolResults = [];
     for (const use of toolUses) {
-      console.log('[WHATSAPP-BOT] tool call', { tool: use.name, input: use.input });
+      const email = getSessionEmail(getWhatsAppSessionId(chatId)) || 'not signed in';
+      console.log('[WHATSAPP-BOT] tool call', { email, tool: use.name, input: use.input });
       try {
         const result = await runTool(use.name, use.input || {}, chatId);
         toolResults.push({
@@ -239,7 +242,7 @@ export async function generateReply(chatId, userText) {
           content: serializeResult(result)
         });
       } catch (error) {
-        console.error('[WHATSAPP-BOT] tool failed:', use.name, error.message);
+        console.error('[WHATSAPP-BOT] tool failed:', { email, tool: use.name, error: error.message });
         if (
           error.code === 'TRIMBLE_AUTH_REQUIRED' ||
           isTrimbleAuthenticationError(error)
@@ -299,7 +302,8 @@ export async function handleIncomingWebhook(payload) {
       if (seenMessageIds.size > 1000) seenMessageIds.delete(seenMessageIds.values().next().value);
     }
 
-    console.log('[WHATSAPP-BOT] incoming', { chatId, length: text.length });
+    const email = getSessionEmail(getWhatsAppSessionId(chatId)) || 'not signed in';
+    console.log('[WHATSAPP-BOT] incoming', { chatId, email, length: text.length });
     const reply = await generateReply(chatId, text);
     await sendWhatsAppMessage({ chatId, message: reply });
   } catch (error) {

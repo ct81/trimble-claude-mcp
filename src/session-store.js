@@ -8,6 +8,10 @@ export function createSession(data) {
   return id;
 }
 export function getSession(id) { return id ? sessions.get(id) : undefined; }
+export function getSessionEmail(id) {
+  const email = getSession(id)?.email;
+  return typeof email === 'string' && email.trim() ? email.trim() : undefined;
+}
 export function updateSession(id, patch) {
   const current = sessions.get(id); if (!current) return undefined;
   const next = { ...current, ...patch, updatedAt: Date.now() }; sessions.set(id, next); return next;

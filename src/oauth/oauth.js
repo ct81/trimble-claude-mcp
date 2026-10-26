@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { config } from '../config.js';
 import { createSession, getSession, updateSession } from '../session-store.js';
+import { extractTrimbleEmail } from '../trimble/identity.js';
 import {
   getSessionIdFromMcpToken
 } from './mcpTokens.js';
@@ -468,6 +469,7 @@ export async function exchangeCode(
 
   const sessionId =
     createSession({
+      email: await getTrimbleEmail(json.access_token),
       trimble: {
         ...json,
         obtained_at:
@@ -475,9 +477,34 @@ export async function exchangeCode(
       }
     });
 
-  console.log('[OAuth] Session created');
+  console.log('[OAuth] Login completed', {
+    email: getSession(sessionId)?.email || 'unavailable'
+  });
 
   return sessionId;
+}
+
+async function getTrimbleEmail(accessToken) {
+  try {
+    const response = await fetch(`${config.trimble.apiBaseUrl}/users/me`, {
+      headers: { authorization: `Bearer ${accessToken}`, accept: 'application/json' }
+    });
+
+    if (!response.ok) {
+      console.warn('[OAuth] Could not resolve signed-in email', {
+        status: response.status
+      });
+      return undefined;
+    }
+
+    const profile = await response.json();
+    const email = extractTrimbleEmail(profile);
+    if (!email) console.warn('[OAuth] Trimble profile did not include an email address');
+    return email;
+  } catch (error) {
+    console.warn('[OAuth] Could not resolve signed-in email:', error.message);
+    return undefined;
+  }
 }
 
 export async function refreshIfNeeded(
