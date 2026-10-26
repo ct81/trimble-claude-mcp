@@ -43,6 +43,7 @@ import { tools as teklaTools } from './tekla/mcp-tools.js';
 import * as teklaBridge from './tekla/bridge.js';
 import { tools as tsdTools, callTsdTool } from './tsd/mcp-all-tools.js';
 import { refreshIfNeeded } from '../oauth/oauth.js';
+import { getSessionEmail } from '../session-store.js';
 import {
   getSelectedBridge,
   selectBridge,
@@ -184,6 +185,51 @@ const BRIDGE_PLATFORMS = {
   SketchUp: { valueEnv: 'SKETCHUP_MCP_HOST', nameEnv: 'SKETCHUP_MCP_HOST_NAME' },
   TSD: { valueEnv: 'TSD_BRIDGE_URL', nameEnv: 'TSD_BRIDGE_URL_NAME' }
 };
+const BRIDGE_ACCESS_MESSAGE = 'Please register or contact admin.';
+
+function getAuthorizedBridgeOptions(platform, email) {
+  const { valueEnv, nameEnv } = BRIDGE_PLATFORMS[platform];
+  const valuesSetting = String(process.env[valueEnv] || '').trim();
+  const emailsSetting = String(process.env[nameEnv] || '').trim();
+  if (!valuesSetting || !emailsSetting) return [];
+
+  const values = valuesSetting.split(',').map((value) => value.trim());
+  const allowedEmails = emailsSetting.split(',').map((value) => value.trim());
+
+  if (values.length !== allowedEmails.length) {
+    throw new Error(`${nameEnv} must have the same number of comma-separated entries as ${valueEnv}.`);
+  }
+
+  const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+  return values.flatMap((value, index) => {
+    if (!value || !allowedEmails[index] || allowedEmails[index].toLowerCase() !== normalizedEmail) {
+      return [];
+    }
+    return [{
+      name: `${platform} ${index + 1}`,
+      value,
+    }];
+  }).map((option, index) => ({
+    ...option,
+    option: index + 1,
+    label: `${option.name} - ${option.value}`
+  }));
+}
+
+function getToolBridgePlatform(name) {
+  if (name.startsWith('tsd_')) return 'TSD';
+  if (name.startsWith(SKETCHUP_PREFIX) || name === 'model_tender_project_in_sketchup') return 'SketchUp';
+  if (name.startsWith('tekla_')) return 'Tekla';
+  return null;
+}
+
+function authorizeBridge(sessionId, platform) {
+  const options = getAuthorizedBridgeOptions(platform, getSessionEmail(sessionId));
+  if (!options.length) throw new Error(BRIDGE_ACCESS_MESSAGE);
+  const selected = options[0];
+  selectBridge(sessionId, platform, selected);
+  return options;
+}
 
 const baseDefinitions = [
 
@@ -2090,6 +2136,9 @@ async function callToolInBridgeSession(
 ) {
   let result;
 
+  const bridgePlatform = getToolBridgePlatform(name);
+  if (bridgePlatform) authorizeBridge(sessionId, bridgePlatform);
+
   if (name.startsWith('tsd_')) {
     return callTsdTool(name, args);
   }
@@ -2122,28 +2171,11 @@ async function callToolInBridgeSession(
     }
 
     const platform = args.platform;
-    const { valueEnv, nameEnv } = BRIDGE_PLATFORMS[platform];
-    const values = String(
-      process.env[valueEnv] || ''
-    ).split(',').map((value) => value.trim()).filter(Boolean);
-    const names = String(
-      process.env[nameEnv] || ''
-    ).split(',').map((value) => value.trim()).filter(Boolean);
-
-    if (!values.length) {
-      result = { platform, configured: false, message: `No ${valueEnv} is configured.` };
+    const options = getAuthorizedBridgeOptions(platform, getSessionEmail(sessionId));
+    if (!options.length) {
+      result = { platform, configured: false, message: BRIDGE_ACCESS_MESSAGE };
       break;
     }
-    if (names.length && names.length !== values.length) {
-      throw new Error(`${nameEnv} must have the same number of comma-separated entries as the bridge values.`);
-    }
-
-    const options = values.map((value, index) => ({
-      option: index + 1,
-      name: names[index] || `${platform} ${index + 1}`,
-      value,
-      label: `${names[index] || `${platform} ${index + 1}`} - ${value}`
-    }));
 
     if (options.length === 1) {
       selectBridge(sessionId, platform, options[0]);
@@ -2164,27 +2196,13 @@ async function callToolInBridgeSession(
     if (!BRIDGE_PLATFORMS[args.platform]) {
       throw new Error('platform must be Tekla, SketchUp, or TSD.');
     }
-    const { valueEnv, nameEnv } = BRIDGE_PLATFORMS[args.platform];
-    const values = String(
-      process.env[valueEnv] || ''
-    ).split(',').map((value) => value.trim()).filter(Boolean);
-    const names = String(
-      process.env[nameEnv] || ''
-    ).split(',').map((value) => value.trim()).filter(Boolean);
-
-    if (names.length && names.length !== values.length) {
-      throw new Error(`${nameEnv} must have the same number of comma-separated entries as the bridge values.`);
-    }
+    const options = authorizeBridge(sessionId, args.platform);
     const option = Number(args.option);
-    if (!Number.isInteger(option) || option < 1 || option > values.length) {
-      throw new Error(`Option must be between 1 and ${values.length}.`);
+    if (!Number.isInteger(option) || option < 1 || option > options.length) {
+      throw new Error(`Option must be between 1 and ${options.length}.`);
     }
 
-    const selected = {
-      option,
-      name: names[option - 1] || `${args.platform} ${option}`,
-      value: values[option - 1]
-    };
+    const selected = options[option - 1];
     selectBridge(sessionId, args.platform, selected);
     result = { platform: args.platform, selected };
     break;
