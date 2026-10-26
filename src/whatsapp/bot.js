@@ -9,7 +9,6 @@ const MAX_TOOL_ROUNDS = 6;
 const HISTORY_TTL_MS = 24 * 60 * 60 * 1000;
 const MAX_TOOL_RESULT_CHARS = 12000;
 const WHATSAPP_LOGIN_TTL_MS = 24 * 60 * 60 * 1000;
-const MAX_USED_WHATSAPP_LOGIN_TOKENS = 10000;
 const DEFAULT_PUBLIC_BASE_URL = 'https://trimble-claude-mcp-g86i.onrender.com';
 
 // Read-only Trimble Connect tools the bot may call.
@@ -52,7 +51,6 @@ const BOT_TOOLS = [
 
 const conversations = new Map();
 const seenMessageIds = new Set();
-const usedWhatsAppLoginTokens = new Map();
 const whatsappSessions = new Map();
 const whatsappLoginEncryptionKey = crypto
   .createHash('sha256')
@@ -105,18 +103,12 @@ export function createWhatsAppLoginToken(chatId) {
   return Buffer.concat([iv, cipher.getAuthTag(), ciphertext]).toString('base64url');
 }
 
+// Tokens are reusable until expiry: WhatsApp link previews fetch the URL first.
 export function consumeWhatsAppLoginToken(token) {
   if (typeof token !== 'string' || !token || token.length > 1024) return undefined;
   try {
     const packed = Buffer.from(token, 'base64url');
     if (packed.length < 29 || packed.toString('base64url') !== token) return undefined;
-
-    const tokenHash = crypto.createHash('sha256').update(packed).digest('hex');
-    const now = Date.now();
-    for (const [hash, expiresAt] of usedWhatsAppLoginTokens) {
-      if (expiresAt <= now) usedWhatsAppLoginTokens.delete(hash);
-    }
-    if (usedWhatsAppLoginTokens.has(tokenHash)) return undefined;
 
     const decipher = crypto.createDecipheriv(
       'aes-256-gcm',
@@ -134,13 +126,11 @@ export function consumeWhatsAppLoginToken(token) {
       !payload.chatId ||
       payload.chatId.endsWith('@g.us') ||
       !Number.isFinite(payload.expiresAt) ||
-      payload.expiresAt <= now ||
-      usedWhatsAppLoginTokens.size >= MAX_USED_WHATSAPP_LOGIN_TOKENS
+      payload.expiresAt <= Date.now()
     ) {
       return undefined;
     }
 
-    usedWhatsAppLoginTokens.set(tokenHash, payload.expiresAt);
     return payload.chatId;
   } catch {
     return undefined;

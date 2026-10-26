@@ -59,10 +59,11 @@ WhatsApp Trimble sessions are isolated by chat. If a chat has not signed in, or
 its Trimble credentials have expired, the bot responds with a sign-in link for
 that chat. After completing OAuth, the user should resend the request.
 WhatsApp login links are encrypted, expire after 24 hours, and are not tied to
-one server process, so Render restarts do not invalidate a link. A link is
-limited to one use per running server process and may be used again if the
-server restarts. Chat-to-session mappings use the server's in-memory store, so
-users may need to sign in again after a server restart.
+one server process, so Render restarts do not invalidate a link. Links are
+reusable until they expire, so WhatsApp link previews cannot invalidate them;
+each OAuth attempt still uses its own single-use state. Chat-to-session
+mappings use the server's in-memory store, so users may need to sign in again
+after a server restart.
 
 ## Available integrations
 
