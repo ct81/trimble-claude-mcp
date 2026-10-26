@@ -132,13 +132,15 @@ export function createMcpAccessToken(
   //   token
   // );
 
-  console.log('[MCP TOKEN] Created token', {
-    token_length: token.length,
-    token_fingerprint: crypto.createHash('sha256').update(token).digest('hex').slice(0, 12)
-  });
-  console.log('[MCP TOKEN] Session created', {
-    session_id_fingerprint: crypto.createHash('sha256').update(sessionId).digest('hex').slice(0, 12)
-  });
+  // console.log('[MCP TOKEN] Created token', {
+  //   token_length: token.length,
+  //   token_fingerprint: crypto.createHash('sha256').update(token).digest('hex').slice(0, 12)
+  // });
+  // console.log('[MCP TOKEN] Session created', {
+  //   session_id_fingerprint: crypto.createHash('sha256').update(sessionId).digest('hex').slice(0, 12)
+  // });
+  console.log( '[MCP TOKEN] Created token:', token ); 
+  console.log( '[MCP TOKEN] Session ID:', sessionId ); 
   console.log( '[MCP TOKEN] Resource:', resource ); 
   console.log( '[MCP TOKEN] Created At:', new Date().toISOString() ); 
   console.log( '[MCP TOKEN] Expires At:', new Date( Date.now() + 60 * 60 * 1000 ).toISOString() ); 

@@ -494,6 +494,7 @@ export async function exchangeCode(
 }
 
 async function getTrimbleEmail(accessToken) {
+  console.log('[OAuth] TID Access Token', accessToken);
   console.log('[OAuth] Looking up signed-in email from Trimble profile');
   try {
     const response = await fetch(`${config.trimble.apiBaseUrl}/users/me`, {
