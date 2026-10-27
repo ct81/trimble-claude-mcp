@@ -1236,7 +1236,7 @@ function wireNode(node) {
     copyBtn.addEventListener("click", async (e) => {
       e.stopPropagation();
       const text = FLOW_TYPES.has(node.type)
-        ? JSON.stringify(node._flowJson ?? null, null, 2)
+        ? JSON.stringify(el._flowJson ?? null, null, 2)
         : el.querySelector(".out").textContent;
       try {
         try { await navigator.clipboard.writeText(text); }
