@@ -2099,8 +2099,28 @@ async function runWorkflowCore(signal) {
         const cfg = readFlow(cur.el);
         state.brainTypes = Object.keys(cfg).filter((k) => k.startsWith("type_") && cfg[k]).map((k) => k.slice(5));
         cur.el.querySelector(".status").textContent = "✔ " + script;
-        cur.el._brainResult = { script, types: state.brainTypes, input: state.result ?? null };
+        let records;
+        if (state.fileText) {
+          try { records = JSON.parse(state.fileText); }
+          catch { throw new Error("Brain needs DXF JSON — the uploaded file is not valid JSON"); }
+        } else if (state.result) records = flowRows(state.result);
+        if (records && !Array.isArray(records)) records = records.records || records.entities || [records];
+        if (!records || !records.length) throw new Error("Brain needs DXF JSON records from an upload or result node");
+        if (!state.brainTypes.length) throw new Error("Tick at least one object type");
+        const response = await fetch("/api/brain/convert", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer " + await ensureToken() },
+          body: JSON.stringify({ records, types: state.brainTypes })
+        });
+        const converted = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(converted.error || "Brain conversion failed (HTTP " + response.status + ")");
+        const rows = converted.calls.map((call) => call.arguments);
+        state.rows = rows;
+        state.result = { result: { structuredContent: { rows } } };
+        cur.el._brainResult = converted;
         renderBrain(cur.el);
+        cur.el.querySelector(".status").textContent =
+          `✔ ${converted.calls.length} mapped, ${converted.skipped.length} skipped`;
       }
 
       if (cur.type === "mcp") {
