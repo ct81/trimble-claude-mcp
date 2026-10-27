@@ -1154,7 +1154,7 @@ function createNode(type, x, y, { autoLoad = true } = {}) {
     <div class="node-head" style="--c:${t.color}">
       <span class="ic">${t.icon}</span>
       <span class="ttl">${t.label}</span>
-      ${type === "result" ? `<button class="copy-btn" title="Copy JSON" aria-label="Copy JSON">⧉</button>` : ""}
+      ${type === "result" || FLOW_TYPES.has(type) ? `<button class="copy-btn" title="Copy JSON" aria-label="Copy JSON">⧉</button>` : ""}
       <button class="del" title="Delete node">×</button>
     </div>
     <div class="node-body">${bodyFor(type, id)}</div>
@@ -1235,14 +1235,24 @@ function wireNode(node) {
     copyBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
     copyBtn.addEventListener("click", async (e) => {
       e.stopPropagation();
-      const text = el.querySelector(".out").textContent;
-      try { await navigator.clipboard.writeText(text); }
-      catch {
-        const ta = document.createElement("textarea");
-        ta.value = text; document.body.appendChild(ta); ta.select();
-        document.execCommand("copy"); ta.remove();
+      const text = FLOW_TYPES.has(node.type)
+        ? JSON.stringify(node._flowJson ?? null, null, 2)
+        : el.querySelector(".out").textContent;
+      try {
+        try { await navigator.clipboard.writeText(text); }
+        catch {
+          const ta = document.createElement("textarea");
+          ta.value = text; document.body.appendChild(ta); ta.select();
+          const copied = document.execCommand("copy");
+          ta.remove();
+          if (!copied) throw new Error("Clipboard access was denied");
+        }
+        copyBtn.textContent = "✔";
+        setStatus("JSON copied");
+      } catch (error) {
+        copyBtn.textContent = "!";
+        setStatus("Could not copy JSON: " + error.message);
       }
-      copyBtn.textContent = "✔";
       setTimeout(() => { copyBtn.textContent = "⧉"; }, 1200);
     });
   }
@@ -1976,6 +1986,7 @@ async function runLoop(cur, state) {
   if (cur.type === "flow_do_while") { do { visit(all[i]); i++; } while (i < all.length && i < max); }
   else for (; i < all.length && i < max; i++) visit(all[i]);
   state.rows = rows;
+  cur.el._flowJson = rows;
   cur.el.querySelector(".status").textContent = `✔ ${rows.length} row(s)`;
   cur.el.querySelector(".out").textContent = JSON.stringify(rows, null, 2);
 }
@@ -2070,6 +2081,7 @@ async function runWorkflow() {
       }
 
       if (FLOW_TYPES.has(cur.type)) {
+        cur.el._flowJson = state.result ?? null;
         const rows = state.result ? flowRows(state.result) : [];
         const hasColumns = rows.some(isColumnRow);
         if (LOOP_TYPES.has(cur.type)) await runLoop(cur, state);
@@ -2081,6 +2093,7 @@ async function runWorkflow() {
           const cfg = readFlow(cur.el);
           const field = (cfg.field || "").toLowerCase();
           const kept = rows.filter((r) => String(lowerKeys(r)[field] ?? "").toLowerCase() === String(cfg.case || "").toLowerCase());
+          cur.el._flowJson = kept;
           if (!kept.length) { cur.el.classList.remove("active"); continue; }
           state.result = { result: { structuredContent: { rows: kept } } };
         }
