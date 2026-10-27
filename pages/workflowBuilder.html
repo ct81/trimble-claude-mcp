@@ -443,6 +443,7 @@
     </div>
     <div class="palette-tabs" role="tablist" aria-label="Workflow component categories">
       <button class="palette-tab" id="tabImport" type="button" role="tab" aria-selected="true" aria-controls="panelImport">Import</button>
+      <button class="palette-tab" id="tabBrain" type="button" role="tab" aria-selected="false" aria-controls="panelBrain" tabindex="-1">🧠 Brain</button>
       <button class="palette-tab" id="tabTools" type="button" role="tab" aria-selected="false" aria-controls="panelTools" tabindex="-1">Tools</button>
       <button class="palette-tab" id="tabFlow" type="button" role="tab" aria-selected="false" aria-controls="panelFlow" tabindex="-1">Control Flow Statements</button>
       <button class="palette-tab" id="tabOutput" type="button" role="tab" aria-selected="false" aria-controls="panelOutput" tabindex="-1">Output</button>
@@ -464,6 +465,13 @@
       <div class="item" draggable="true" data-type="upload_pdf">
         <span class="dot" style="background:#2563eb"></span> Upload PDF
       </div>
+    </div>
+    <div class="palette-panel" id="panelBrain" role="tabpanel" aria-labelledby="tabBrain" hidden>
+      <label for="brainSelect" style="display:block;font-size:12px;margin-bottom:6px">Brain script</label>
+      <select id="brainSelect" style="width:100%">
+        <option value="">Select a brain…</option>
+        <option value="supraesophageal_ganglion_4_dxf.js">supraesophageal_ganglion_4_dxf.js</option>
+      </select>
     </div>
     <div class="palette-panel" id="panelTools" role="tabpanel" aria-labelledby="tabTools" hidden>
       <div class="item" draggable="true" data-type="mcp">
@@ -1702,6 +1710,12 @@ document.querySelectorAll(".item").forEach((item) => {
     createNode(item.dataset.type, p.x - 106, p.y - 26);
     drawEdges(); closeMenuIfMobile();
   });
+});
+const brainSelect = document.getElementById("brainSelect");
+brainSelect.value = localStorage.getItem("workflowBrain") || "";
+brainSelect.addEventListener("change", () => {
+  localStorage.setItem("workflowBrain", brainSelect.value);
+  setStatus(brainSelect.value ? "Brain: " + brainSelect.value : "Brain cleared");
 });
 const paletteTabs = [...document.querySelectorAll(".palette-tab")];
 function activatePaletteTab(tab, focus = false) {
