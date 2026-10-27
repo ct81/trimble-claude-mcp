@@ -992,11 +992,48 @@ function bodyFor(type, id) {
                             <option value="supraesophageal_ganglion_4_dxf.js">supraesophageal_ganglion_4_dxf.js</option>
                           </select>
                           <div class="hint" style="margin-top:6px">Object types to process</div>
-                          <input type="text" class="fl" data-k="profile" placeholder="default profile (e.g. 300*300)" value="300*300" spellcheck="false" style="margin-top:6px">
-                          <input type="text" class="fl" data-k="material" placeholder="default material (e.g. C30/37)" value="C30/37" spellcheck="false" style="margin-top:6px">
-                          <input type="number" class="fl" data-k="height" min="1" placeholder="default column height mm (e.g. 3000)" value="3000" style="margin-top:6px">
-                          <input type="text" class="fl" data-k="classNumber" placeholder="default classNumber (e.g. 3)" value="" spellcheck="false" style="margin-top:6px">
-                          <div class="brain-types"><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_column" checked> column</label><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_beam" checked> beam</label><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_wall" checked> wall</label><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_slab" checked> slab</label><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_polybeam" checked> polybeam</label><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_footing" checked> footing</label><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_pile" checked> pile</label></div>
+                          <details style="margin-top:6px"><summary style="font-size:12px"><input type="checkbox" class="fl" data-k="type_column" checked> column</summary>
+                            <input type="text" class="fl" data-k="column_profile" placeholder="profile (blank = from DXF)" value="650*650" spellcheck="false" style="margin-top:4px">
+                            <input type="text" class="fl" data-k="column_material" placeholder="material" value="C30/37" spellcheck="false" style="margin-top:4px">
+                            <input type="number" class="fl" data-k="column_height" placeholder="height mm" value="3000" style="margin-top:4px">
+                            <input type="text" class="fl" data-k="column_classNumber" placeholder="class number" value="" spellcheck="false" style="margin-top:4px">
+                          </details>
+                          <details style="margin-top:6px"><summary style="font-size:12px"><input type="checkbox" class="fl" data-k="type_beam" checked> beam</summary>
+                            <input type="text" class="fl" data-k="beam_profile" placeholder="profile (blank = from DXF)" value="300*600" spellcheck="false" style="margin-top:4px">
+                            <input type="text" class="fl" data-k="beam_material" placeholder="material" value="C30/37" spellcheck="false" style="margin-top:4px">
+                            <input type="number" class="fl" data-k="beam_height" placeholder="Z level mm" value="" style="margin-top:4px">
+                            <input type="text" class="fl" data-k="beam_classNumber" placeholder="class number" value="" spellcheck="false" style="margin-top:4px">
+                          </details>
+                          <details style="margin-top:6px"><summary style="font-size:12px"><input type="checkbox" class="fl" data-k="type_polybeam" checked> polybeam</summary>
+                            <input type="text" class="fl" data-k="polybeam_profile" placeholder="profile (blank = from DXF)" value="300*600" spellcheck="false" style="margin-top:4px">
+                            <input type="text" class="fl" data-k="polybeam_material" placeholder="material" value="C30/37" spellcheck="false" style="margin-top:4px">
+                            <input type="number" class="fl" data-k="polybeam_height" placeholder="Z level mm" value="" style="margin-top:4px">
+                            <input type="text" class="fl" data-k="polybeam_classNumber" placeholder="class number" value="" spellcheck="false" style="margin-top:4px">
+                          </details>
+                          <details style="margin-top:6px"><summary style="font-size:12px"><input type="checkbox" class="fl" data-k="type_wall" checked> wall</summary>
+                            <input type="text" class="fl" data-k="wall_profile" placeholder="profile (blank = from DXF)" value="PL200" spellcheck="false" style="margin-top:4px">
+                            <input type="text" class="fl" data-k="wall_material" placeholder="material" value="C30/37" spellcheck="false" style="margin-top:4px">
+                            <input type="number" class="fl" data-k="wall_height" placeholder="height mm" value="3000" style="margin-top:4px">
+                            <input type="text" class="fl" data-k="wall_classNumber" placeholder="class number" value="" spellcheck="false" style="margin-top:4px">
+                          </details>
+                          <details style="margin-top:6px"><summary style="font-size:12px"><input type="checkbox" class="fl" data-k="type_slab" checked> slab</summary>
+                            <input type="text" class="fl" data-k="slab_profile" placeholder="profile (blank = from DXF)" value="PL200" spellcheck="false" style="margin-top:4px">
+                            <input type="text" class="fl" data-k="slab_material" placeholder="material" value="C30/37" spellcheck="false" style="margin-top:4px">
+                            <input type="number" class="fl" data-k="slab_height" placeholder="Z level mm" value="" style="margin-top:4px">
+                            <input type="text" class="fl" data-k="slab_classNumber" placeholder="class number" value="" spellcheck="false" style="margin-top:4px">
+                          </details>
+                          <details style="margin-top:6px"><summary style="font-size:12px"><input type="checkbox" class="fl" data-k="type_footing" checked> footing</summary>
+                            <input type="text" class="fl" data-k="footing_profile" placeholder="profile (blank = from DXF)" value="" spellcheck="false" style="margin-top:4px">
+                            <input type="text" class="fl" data-k="footing_material" placeholder="material" value="C30/37" spellcheck="false" style="margin-top:4px">
+                            <input type="number" class="fl" data-k="footing_height" placeholder="thickness mm" value="600" style="margin-top:4px">
+                            <input type="text" class="fl" data-k="footing_classNumber" placeholder="class number" value="" spellcheck="false" style="margin-top:4px">
+                          </details>
+                          <details style="margin-top:6px"><summary style="font-size:12px"><input type="checkbox" class="fl" data-k="type_pile" checked> pile</summary>
+                            <input type="text" class="fl" data-k="pile_profile" placeholder="profile (blank = from DXF)" value="D400" spellcheck="false" style="margin-top:4px">
+                            <input type="text" class="fl" data-k="pile_material" placeholder="material" value="C30/37" spellcheck="false" style="margin-top:4px">
+                            <input type="number" class="fl" data-k="pile_height" placeholder="length mm" value="12000" style="margin-top:4px">
+                            <input type="text" class="fl" data-k="pile_classNumber" placeholder="class number" value="" spellcheck="false" style="margin-top:4px">
+                          </details>
                           <div style="margin:8px 0 6px;font-size:11px;display:flex;align-items:center;gap:8px">
                             <label><input type="radio" class="brain-mode" value="pretty" checked> Pretty</label>
                             <label><input type="radio" class="brain-mode" value="raw"> Raw</label>
@@ -2090,7 +2127,10 @@ async function runWorkflowCore(signal) {
         state.brain = script;
         const cfg = readFlow(cur.el);
         state.brainTypes = Object.keys(cfg).filter((k) => k.startsWith("type_") && cfg[k]).map((k) => k.slice(5));
-        state.brainDefaults = { profile: cfg.profile, material: cfg.material, classNumber: cfg.classNumber, height: cfg.height };
+        state.brainDefaults = {};
+        for (const t of ["column", "beam", "polybeam", "wall", "slab", "footing", "pile"]) {
+          state.brainDefaults[t] = { profile: cfg[t + "_profile"], material: cfg[t + "_material"], classNumber: cfg[t + "_classNumber"], height: cfg[t + "_height"] };
+        }
         cur.el.querySelector(".status").textContent = "✔ " + script;
         let records, dxfText;
         if (state.fileText) {

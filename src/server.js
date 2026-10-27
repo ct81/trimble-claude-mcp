@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp & Telegram ChatBots, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #29"
+// #30"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -476,7 +476,7 @@ function validateWorkflowDocument(workflow) {
     }
     if ((node.type.startsWith('flow_') || node.type === 'brain') && node.flow !== undefined) {
       if (!node.flow || typeof node.flow !== 'object' || Array.isArray(node.flow) ||
-          Object.keys(node.flow).length > 20) {
+          Object.keys(node.flow).length > 60) {
         throw new Error('Workflow contains invalid control-flow settings');
       }
       const flow = {};

@@ -119,16 +119,19 @@ const common = (args, defaults) => ({
   material: String(args.material ?? "").trim() || defaults.material,
   classNumber: String(args.class ?? "").trim() || defaults.classNumber
 });
-const plateProfile = (args, thickness) => {
-  const explicit = String(args.profile ?? "").trim();
-  if (explicit) return explicit;
+// Plates use the profile set for the type on the Brain node; otherwise PL<thickness>.
+const plateProfile = (args, thickness, defaults) => {
+  const configured = String(defaults?.profile ?? "").trim();
+  if (configured) return configured;
   const t = num(thickness);
   return t ? `PL${round(t)}` : "PL200";
 };
-const vertexPoints = (args) => (args.attributes?.vertices || args.vertices || []).map((p) => pt(p, num(args.level) ?? 0)).filter(Boolean);
+// For beams and slabs the type's "height" setting is the Z level used when the DXF has no elevation.
+const baseZ = (args) => num(args.level) ?? args._zDefault ?? 0;
+const vertexPoints = (args) => (args.attributes?.vertices || args.vertices || []).map((p) => pt(p, baseZ(args))).filter(Boolean);
 
 function beamArgs(args, defaults) {
-  const level = num(args.level) ?? 0;
+  const level = baseZ(args);
   const a = pt(args.startPoint, level), b = pt(args.endPoint, level);
   if (a && b) {
     if (same(a, b)) throw new Error("beam start and end points are the same");
@@ -168,7 +171,7 @@ function slabArgs(args, defaults) {
     tool: "tekla_create_slab",
     arguments: {
       x1: a.x, y1: a.y, z1: a.z, x2: b.x, y2: b.y, z2: b.z, x3: c.x, y3: c.y, z3: c.z,
-      profile: plateProfile(args, args.depth ?? args.thickness),
+      profile: plateProfile(args, args.depth ?? args.thickness, defaults),
       ...common(args, defaults)
     }
   };
@@ -178,14 +181,15 @@ function slabArgs(args, defaults) {
 function wallArgs(args, defaults) {
   const level = num(args.level) ?? 0;
   const a = pt(args.startPoint, level), b = pt(args.endPoint, level);
-  const height = num(args.height) ?? num(args.length);
+  // Wall height: the type's height setting wins, since Length_mm of a plan line is the wall's run, not its height.
+  const height = defaults.height || num(args.height) || num(args.length);
   if (!a || !b || same(a, b)) throw new Error("wall needs distinct start and end points");
-  if (!height) throw new Error("wall needs a height (Length_mm)");
+  if (!height) throw new Error("wall needs a height (set it on the Brain node)");
   return {
     tool: "tekla_create_wall",
     arguments: {
       x1: a.x, y1: a.y, z1: a.z, x2: b.x, y2: b.y, z2: b.z, x3: b.x, y3: b.y, z3: b.z + height,
-      profile: plateProfile(args, args.thickness ?? args.width),
+      profile: plateProfile(args, args.thickness ?? args.width, defaults),
       ...common(args, defaults)
     }
   };
@@ -204,17 +208,17 @@ function verticalMember(args, defaults, z1, z2, profile) {
 // Pile: Elevation is the pile head; it extends down by Length_mm.
 function pileArgs(args, defaults) {
   const top = num(args.position?.z) ?? num(args.level) ?? 0;
-  const length = num(args.length) ?? num(args.height);
-  if (!length) throw new Error("pile needs a length (Length_mm)");
+  const length = defaults.height || num(args.length) || num(args.height);
+  if (!length) throw new Error("pile needs a length (set it on the Brain node)");
   const profile = profileFor(args, defaults, false);
   return verticalMember(args, defaults, top - length, top, profile);
 }
 
 // Footing: an outline becomes a plate; a single point becomes a short block. Elevation is the underside.
 function footingArgs(args, defaults) {
-  const thickness = num(args.thickness) ?? num(args.height) ?? num(args.length);
-  if (vertexPoints(args).length >= 3) return slabArgs({ ...args, depth: args.depth ?? thickness }, defaults);
-  if (!thickness) throw new Error("footing needs a thickness (Length_mm)");
+  const thickness = defaults.height || num(args.thickness) || num(args.height) || num(args.length);
+  if (vertexPoints(args).length >= 3) return slabArgs({ ...args, depth: thickness }, { ...defaults, profile: "" });
+  if (!thickness) throw new Error("footing needs a thickness (set it on the Brain node)");
   const bottom = num(args.position?.z) ?? num(args.level) ?? 0;
   const profile = profileFor(args, defaults, false);
   return verticalMember(args, defaults, bottom, bottom + thickness, profile);
@@ -230,7 +234,7 @@ const BUILDERS = {
   wall: wallArgs
 };
 
-const BRAIN_VERSION = "2026-10-27.annotation-filter+tag-layers+position-dedupe";
+const BRAIN_VERSION = "2026-10-27.per-type-settings";
 
 // Grid bubbles, dimensions and title blocks are drawn as circles/lines but are not structural members.
 // Layers ending in _T / _T2 are tag layers (labels and leader lines), e.g. S-_COLN----_T. Closed outlines there
@@ -238,13 +242,30 @@ const BRAIN_VERSION = "2026-10-27.annotation-filter+tag-layers+position-dedupe";
 const ANNOTATION_LAYER = /anot|grid|dim|tblk|title|text|note/i;
 const TAG_LAYER = /_t\d?$/i;
 
-export function brainToTekla(records, types, defaults = {}) {
-  const fallback = {
-    profile: String(defaults.profile || "").trim() || "300*300",
-    material: String(defaults.material || "").trim() || "C30/37",
-    classNumber: String(defaults.classNumber ?? "").trim(),
-    height: num(defaults.height)
+const BUILT_IN_DEFAULTS = {
+  column: { profile: "300*300", height: 3000 },
+  beam: { profile: "300*600", height: 0 },
+  polybeam: { profile: "300*600", height: 0 },
+  wall: { profile: "PL200", height: 3000 },
+  slab: { profile: "PL200", height: 0 },
+  footing: { profile: "", height: 600 },
+  pile: { profile: "D400", height: 12000 }
+};
+
+// defaults = { column: { profile, material, height, classNumber }, beam: {...}, ... }
+function settingsFor(type, defaults) {
+  const own = defaults?.[type] && typeof defaults[type] === "object" ? defaults[type] : {};
+  const built = BUILT_IN_DEFAULTS[type] || {};
+  const text = (v, d) => (v === undefined || v === null ? d : String(v).trim());
+  return {
+    profile: text(own.profile, built.profile ?? ""),
+    material: text(own.material, "C30/37") || "C30/37",
+    classNumber: text(own.classNumber, ""),
+    height: num(own.height) ?? built.height
   };
+}
+
+export function brainToTekla(records, types, defaults = {}) {
   const converted = convertDxfJson(records);
   const wanted = new Set(types);
   const calls = [];
@@ -259,7 +280,9 @@ export function brainToTekla(records, types, defaults = {}) {
     if (!BUILDERS[type]) { skipped.push({ handle: call.handle, type, reason: "no Tekla tool mapping yet" }); continue; }
     try {
       const args = { ...call.args, _src: call.source };
-      const built = BUILDERS[type](args, fallback);
+      const settings = settingsFor(type, defaults);
+      if (["beam", "polybeam", "slab"].includes(type)) args._zDefault = settings.height;
+      const built = BUILDERS[type](args, settings);
       // Same type at the same place counts once, even if drawn with different shapes (e.g. circle + outline).
       const { profile, material, classNumber, ...place } = built.arguments;
       const key = JSON.stringify([type, built.tool, place], (_, v) => typeof v === "number" ? Math.round(v) : v);
