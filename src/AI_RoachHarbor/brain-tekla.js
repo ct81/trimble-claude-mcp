@@ -230,10 +230,13 @@ const BUILDERS = {
   wall: wallArgs
 };
 
-const BRAIN_VERSION = "2026-10-27.annotation-filter+position-dedupe";
+const BRAIN_VERSION = "2026-10-27.annotation-filter+tag-layers+position-dedupe";
 
 // Grid bubbles, dimensions and title blocks are drawn as circles/lines but are not structural members.
+// Layers ending in _T / _T2 are tag layers (labels and leader lines), e.g. S-_COLN----_T. Closed outlines there
+// are kept because slab outlines are drawn on S-_SLAB----_T.
 const ANNOTATION_LAYER = /anot|grid|dim|tblk|title|text|note/i;
+const TAG_LAYER = /_t\d?$/i;
 
 export function brainToTekla(records, types, defaults = {}) {
   const fallback = {
@@ -251,7 +254,8 @@ export function brainToTekla(records, types, defaults = {}) {
     const type = call.objectType;
     if (!wanted.has(type)) { skipped.push({ handle: call.handle, type, reason: "type not selected" }); continue; }
     const layer = String(call.source?.Layer ?? "");
-    if (ANNOTATION_LAYER.test(layer)) { skipped.push({ handle: call.handle, type, reason: `annotation layer ${layer}` }); continue; }
+    const closedOutline = /POLYLINE/i.test(String(call.source?.Type ?? "")) && /^(yes|true|1)$/i.test(String(call.source?.Closed ?? ""));
+    if (ANNOTATION_LAYER.test(layer) || (TAG_LAYER.test(layer) && !closedOutline)) { skipped.push({ handle: call.handle, type, reason: `annotation layer ${layer}` }); continue; }
     if (!BUILDERS[type]) { skipped.push({ handle: call.handle, type, reason: "no Tekla tool mapping yet" }); continue; }
     try {
       const args = { ...call.args, _src: call.source };
