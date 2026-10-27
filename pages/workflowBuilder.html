@@ -2103,7 +2103,12 @@ async function runWorkflowCore(signal) {
         const converted = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(converted.error || "Brain conversion failed (HTTP " + response.status + ")");
         const rows = converted.calls.map((call) => call.arguments);
+        if (!converted.calls.length) {
+          const why = converted.skipped.map((x) => `${x.handle || "?"}: ${x.reason}`).slice(0, 3).join("; ");
+          throw new Error("Brain mapped 0 objects" + (why ? " — " + why : ""));
+        }
         state.rows = rows;
+        state.brainCalls = converted.calls;
         state.result = { result: { structuredContent: { rows } } };
         cur.el._brainResult = converted;
         renderBrain(cur.el);
@@ -2126,8 +2131,8 @@ async function runWorkflowCore(signal) {
 
         statusBox.textContent = "Calling " + new URL(url).hostname + " …";
 
-        const toolName = cur.el.querySelector(".tool").value.trim();
-        if (!toolName) throw new Error("Pick or enter an MCP tool name");
+        let toolName = cur.el.querySelector(".tool").value.trim();
+        if (!toolName && !state.brainCalls) throw new Error("Pick or enter an MCP tool name");
         let toolArgs;
         try {
           const raw = cur.el.querySelector(".args").value || "{}";
@@ -2158,7 +2163,15 @@ async function runWorkflowCore(signal) {
           };
           if (rowList.length > 1 || row) statusBox.textContent = `Row ${r + 1}/${rowList.length}…`;
           if (signal.aborted) throw new DOMException("Aborted", "AbortError");
-          results.push(await callMcpTool(url, toolName, fill(toolArgs), signal));
+          const brainCall = state.brainCalls?.[r];
+          const useBrain = brainCall && (!toolName || toolName === brainCall.tool) &&
+            !JSON.stringify(toolArgs).includes("{{row.");
+          results.push(await callMcpTool(
+            url,
+            useBrain ? brainCall.tool : toolName,
+            useBrain ? brainCall.arguments : fill(toolArgs),
+            signal
+          ));
         }
         state.result = state.rows ? { results } : results[0];
         statusBox.textContent = state.rows ? `✔ ${results.length} call(s)` : "✔ responded";
