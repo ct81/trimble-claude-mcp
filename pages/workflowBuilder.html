@@ -265,7 +265,7 @@
   }
   .port:hover { background: #38bdf8; border-color: #38bdf8; transform: translateY(-50%) scale(1.2); }
   .port.hot { background: #38bdf8; border-color: #38bdf8; transform: translateY(-50%) scale(1.5); }
-  .port::after { content: ""; position: absolute; inset: -10px; }
+  .port { -webkit-tap-highlight-color: transparent; outline: none; user-select: none; -webkit-user-select: none; }
   .port.in  { left: -7px; }
   .port.out { right: -7px; }
   .canvas.linking .port.in { border-color: #38bdf8; animation: pulse 1s infinite; }
