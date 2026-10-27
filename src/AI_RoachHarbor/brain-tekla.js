@@ -230,6 +230,8 @@ const BUILDERS = {
   wall: wallArgs
 };
 
+const BRAIN_VERSION = "2026-10-27.annotation-filter+position-dedupe";
+
 // Grid bubbles, dimensions and title blocks are drawn as circles/lines but are not structural members.
 const ANNOTATION_LAYER = /anot|grid|dim|tblk|title|text|note/i;
 
@@ -265,5 +267,7 @@ export function brainToTekla(records, types, defaults = {}) {
     }
   }
   for (const item of converted.skipped) skipped.push({ handle: item.handle, type: "unknown", reason: "not classified" });
-  return { totalRecords: converted.totalRecords, counts: converted.counts, calls, skipped };
+  const mapped = {};
+  for (const c of calls) mapped[c.tool] = (mapped[c.tool] || 0) + 1;
+  return { version: BRAIN_VERSION, totalRecords: converted.totalRecords, counts: converted.counts, mapped, calls, skipped };
 }
