@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp & Telegram ChatBots, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #15"
+// #16"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -17,6 +17,7 @@
 //include all topic APIs to topics.js and use for mcp, swagger and server.js. and also tags: ['Core'],  summary:
 
 import express from 'express';
+import { dxfTextToRecords } from './AI_RoachHarbor/dxf-text.js';
 import { brainToTekla } from './AI_RoachHarbor/brain-tekla.js';
 import swaggerUi from 'swagger-ui-express';
 import cors from 'cors';
@@ -691,7 +692,9 @@ app.use(
 app.use(cookieParser());
 
 app.post('/api/brain/convert', requireMcpAuth, (req, res) => {
-  const { records, types } = req.body || {};
+  const { types, dxfText } = req.body || {};
+  let { records } = req.body || {};
+  if (typeof dxfText === 'string') records = dxfTextToRecords(dxfText);
   if (!Array.isArray(records) || !Array.isArray(types)) {
     return res.status(400).json({ error: 'records and types must be arrays' });
   }

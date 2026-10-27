@@ -2087,18 +2087,18 @@ async function runWorkflowCore(signal) {
         const cfg = readFlow(cur.el);
         state.brainTypes = Object.keys(cfg).filter((k) => k.startsWith("type_") && cfg[k]).map((k) => k.slice(5));
         cur.el.querySelector(".status").textContent = "✔ " + script;
-        let records;
+        let records, dxfText;
         if (state.fileText) {
           try { records = JSON.parse(state.fileText); }
-          catch { throw new Error("Brain needs DXF JSON — the uploaded file is not valid JSON"); }
+          catch { dxfText = state.fileText; }
         } else if (state.result) records = flowRows(state.result);
         if (records && !Array.isArray(records)) records = records.records || records.entities || [records];
-        if (!records || !records.length) throw new Error("Brain needs DXF JSON records from an upload or result node");
+        if (!dxfText && (!records || !records.length)) throw new Error("Brain needs a DXF/DXF JSON upload or result node");
         if (!state.brainTypes.length) throw new Error("Tick at least one object type");
         const response = await fetch("/api/brain/convert", {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": "Bearer " + await ensureToken() },
-          body: JSON.stringify({ records, types: state.brainTypes })
+          body: JSON.stringify(dxfText ? { dxfText, types: state.brainTypes } : { records, types: state.brainTypes })
         });
         const converted = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(converted.error || "Brain conversion failed (HTTP " + response.status + ")");
