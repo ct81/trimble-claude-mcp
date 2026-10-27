@@ -147,6 +147,8 @@
   }
   .name-wrap .name-del:hover { color: #f87171; background: rgba(248,113,113,.15); }
   .name-wrap .name-del[hidden] { display: none; }
+  #btnStop[hidden] { display: none; }
+  #btnStop { background: #c62828; border-color: #c62828; color: #fff; }
   .toolbar button:hover { background: #273449; border-color: #475569; }
   .toolbar button.primary { background: #2563eb; border-color: #2563eb; font-weight: 600; }
   .toolbar button.primary:hover { background: #1d4ed8; }
@@ -544,6 +546,7 @@
     <div class="toolbar">
       <button class="icon-btn" id="btnMenu" title="Show / hide components" aria-label="Toggle component menu">☰</button>
       <button class="primary" id="btnRun">▶ Run workflow</button>
+      <button id="btnStop" hidden>⏹ Stop workflow</button>
       <button id="btnExample">Load example</button>
       <span class="name-wrap">
         <input id="workflowName" type="text" list="savedWorkflowNames" maxlength="100"
@@ -1953,13 +1956,14 @@ function columnArgs(row) {
   if (missing.length) throw new Error("Column row is missing " + missing.join(", "));
   return args;
 }
-async function callMcpTool(url, toolName, args) {
+async function callMcpTool(url, toolName, args, signal) {
   let token = await ensureToken();
   const body = JSON.stringify({ jsonrpc: "2.0", id: Date.now(), method: "tools/call", params: { name: toolName, arguments: args } });
   const doFetch = (bearer) => fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json", "Accept": "application/json, text/event-stream", "Authorization": "Bearer " + bearer },
-    body
+    body,
+    signal
   });
   let res = await doFetch(token);
   if (res.status === 401) {
@@ -1991,7 +1995,22 @@ async function runLoop(cur, state) {
   cur.el.querySelector(".out").textContent = JSON.stringify(rows, null, 2);
 }
 
+let runAbort = null;
+function stopWorkflow() {
+  if (runAbort) { runAbort.abort(); setStatus("Stopping…"); }
+}
 async function runWorkflow() {
+  if (runAbort) return;
+  runAbort = new AbortController();
+  const btnRun = document.getElementById("btnRun"), btnStop = document.getElementById("btnStop");
+  btnRun.disabled = true; btnStop.hidden = false;
+  try { await runWorkflowCore(runAbort.signal); }
+  finally {
+    runAbort = null;
+    btnRun.disabled = false; btnStop.hidden = true;
+  }
+}
+async function runWorkflowCore(signal) {
   const start = nodes.find((n) => n.type === "start");
   if (!start) { setStatus("Add a Start node first"); return; }
 
@@ -2005,6 +2024,7 @@ async function runWorkflow() {
   setStatus("Running…");
 
   while (nextIndex < pending.length) {
+    if (signal.aborted) break;
     const { node: cur, state } = pending[nextIndex++];
     if (seen.has(cur.id)) continue;
     seen.add(cur.id);
@@ -2074,7 +2094,8 @@ async function runWorkflow() {
               : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, fill(x)])) : v;
           };
           if (rowList.length > 1 || row) statusBox.textContent = `Row ${r + 1}/${rowList.length}…`;
-          results.push(await callMcpTool(url, toolName, fill(toolArgs)));
+          if (signal.aborted) throw new DOMException("Aborted", "AbortError");
+          results.push(await callMcpTool(url, toolName, fill(toolArgs), signal));
         }
         state.result = state.rows ? { results } : results[0];
         statusBox.textContent = state.rows ? `✔ ${results.length} call(s)` : "✔ responded";
@@ -2127,6 +2148,11 @@ async function runWorkflow() {
       }
     } catch (err) {
       cur.el.classList.remove("active");
+      if (signal.aborted || err.name === "AbortError") {
+        cur.el.querySelector(".status") && (cur.el.querySelector(".status").textContent = "⏹ Stopped");
+        setStatus("⏹ Workflow stopped");
+        return;
+      }
       cur.el.classList.add("error");
       setStatus("❌ " + err.message);
       return;
@@ -2140,13 +2166,14 @@ async function runWorkflow() {
       }
     }
   }
-  setStatus("✅ Workflow finished");
+  setStatus(signal.aborted ? "⏹ Workflow stopped" : "✅ Workflow finished");
 }
 
 /* =========================================================================
    13. TOOLBAR
    ========================================================================= */
 document.getElementById("btnRun").addEventListener("click", runWorkflow);
+document.getElementById("btnStop").addEventListener("click", stopWorkflow);
 document.getElementById("btnSaveWorkflow").addEventListener("click", saveWorkflow);
 document.getElementById("btnLoadWorkflow").addEventListener("click", loadWorkflow);
 
