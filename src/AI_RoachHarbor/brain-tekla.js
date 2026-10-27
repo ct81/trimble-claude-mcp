@@ -230,6 +230,9 @@ const BUILDERS = {
   wall: wallArgs
 };
 
+// Grid bubbles, dimensions and title blocks are drawn as circles/lines but are not structural members.
+const ANNOTATION_LAYER = /anot|grid|dim|tblk|title|text|note/i;
+
 export function brainToTekla(records, types, defaults = {}) {
   const fallback = {
     profile: String(defaults.profile || "").trim() || "300*300",
@@ -245,6 +248,8 @@ export function brainToTekla(records, types, defaults = {}) {
   for (const call of converted.calls) {
     const type = call.objectType;
     if (!wanted.has(type)) { skipped.push({ handle: call.handle, type, reason: "type not selected" }); continue; }
+    const layer = String(call.source?.Layer ?? "");
+    if (ANNOTATION_LAYER.test(layer)) { skipped.push({ handle: call.handle, type, reason: `annotation layer ${layer}` }); continue; }
     if (!BUILDERS[type]) { skipped.push({ handle: call.handle, type, reason: "no Tekla tool mapping yet" }); continue; }
     try {
       const args = { ...call.args, _src: call.source };
