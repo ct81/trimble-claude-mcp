@@ -467,11 +467,9 @@
       </div>
     </div>
     <div class="palette-panel" id="panelBrain" role="tabpanel" aria-labelledby="tabBrain" hidden>
-      <label for="brainSelect" style="display:block;font-size:12px;margin-bottom:6px">Brain script</label>
-      <select id="brainSelect" style="width:100%">
-        <option value="">Select a brain…</option>
-        <option value="supraesophageal_ganglion_4_dxf.js">supraesophageal_ganglion_4_dxf.js</option>
-      </select>
+      <div class="item" draggable="true" data-type="brain">
+        <span class="dot" style="background:#e11d48"></span> 🧠 Brain
+      </div>
     </div>
     <div class="palette-panel" id="panelTools" role="tabpanel" aria-labelledby="tabTools" hidden>
       <div class="item" draggable="true" data-type="mcp">
@@ -678,6 +676,7 @@ const TYPES = {
   upload_ifc: { label: "Upload IFC", color: "#0891b2", icon: "🏗", hasIn: true, hasOut: true },
   upload_dxf: { label: "Upload DXF", color: "#7c3aed", icon: "📐", hasIn: true, hasOut: true },
   upload_pdf: { label: "Upload PDF", color: "#2563eb", icon: "📄", hasIn: true, hasOut: true },
+  brain:  { label: "Brain",    color: "#e11d48", icon: "🧠", hasIn: true,  hasOut: true  },
   mcp:    { label: "Call MCP",   color: "#7c3aed", icon: "🔌", hasIn: true,  hasOut: true  },
   result: { label: "Get Result", color: "#d97706", icon: "✅", hasIn: true,  hasOut: true  },
   flow_if: { label: "if", color: "#db2777", icon: "🔀", hasIn: true, hasOut: true },
@@ -988,6 +987,11 @@ function bodyFor(type, id) {
                           <div class="status">no file selected</div>`;
     case "upload_dxf": return `<input type="file" accept=".dxf,application/dxf,application/x-dxf">
                           <div class="status">no file selected</div>`;
+    case "brain":  return `<select class="fl" data-k="script">
+                            <option value="">Select a brain…</option>
+                            <option value="supraesophageal_ganglion_4_dxf.js">supraesophageal_ganglion_4_dxf.js</option>
+                          </select>
+                          <div class="status">no brain selected</div>`;
     case "mcp":    return `<input type="text" class="url" placeholder="${DEFAULT_MCP_URL}" spellcheck="false" value="${DEFAULT_MCP_URL}">
                           <div style="display:flex;gap:4px;margin-top:6px">
                             <input type="text" class="tool" list="mcp-tools-${id}" placeholder="tool name (pick or type)" spellcheck="false" value="" style="flex:1;margin:0">
@@ -1369,7 +1373,7 @@ async function serializeWorkflow() {
           args: node.el.querySelector(".args").value
         };
       }
-      if (FLOW_TYPES.has(node.type)) {
+      if (FLOW_TYPES.has(node.type) || node.type === "brain") {
         saved.flow = readFlow(node.el);
       }
       if (UPLOAD_TYPES.has(node.type)) {
@@ -1517,7 +1521,7 @@ function applyWorkflow(workflow) {
       } catch { /* the stored copy is still used when running */ }
       node.el.querySelector(".status").textContent = "✔ " + saved.file.name + " (loaded from saved workflow)";
     }
-    if (FLOW_TYPES.has(saved.type) && saved.flow && typeof saved.flow === "object") {
+    if ((FLOW_TYPES.has(saved.type) || saved.type === "brain") && saved.flow && typeof saved.flow === "object") {
       node.el.querySelectorAll(".fl").forEach((i) => {
         const v = saved.flow[i.dataset.k];
         if (v === undefined) return;
@@ -1710,12 +1714,6 @@ document.querySelectorAll(".item").forEach((item) => {
     createNode(item.dataset.type, p.x - 106, p.y - 26);
     drawEdges(); closeMenuIfMobile();
   });
-});
-const brainSelect = document.getElementById("brainSelect");
-brainSelect.value = localStorage.getItem("workflowBrain") || "";
-brainSelect.addEventListener("change", () => {
-  localStorage.setItem("workflowBrain", brainSelect.value);
-  setStatus(brainSelect.value ? "Brain: " + brainSelect.value : "Brain cleared");
 });
 const paletteTabs = [...document.querySelectorAll(".palette-tab")];
 function activatePaletteTab(tab, focus = false) {
@@ -2060,6 +2058,13 @@ async function runWorkflowCore(signal) {
           : file ? await file.text()
           : new TextDecoder().decode(Uint8Array.from(atob(stored.base64), (c) => c.charCodeAt(0)));
         cur.el.querySelector(".status").textContent = "✔ " + state.fileName;
+      }
+
+      if (cur.type === "brain") {
+        const script = readFlow(cur.el).script;
+        if (!script) throw new Error("Select a brain script");
+        state.brain = script;
+        cur.el.querySelector(".status").textContent = "✔ " + script;
       }
 
       if (cur.type === "mcp") {
