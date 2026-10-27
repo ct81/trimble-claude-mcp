@@ -1545,6 +1545,7 @@ function applyWorkflow(workflow) {
         const v = saved.flow[i.dataset.k];
         if (v === undefined) return;
         if (i.type === "checkbox") i.checked = !!v;
+        else if (i.tagName === "SELECT" && saved.type === "brain") i.value = String(v);
         else if (i.tagName === "SELECT") { i.innerHTML = `<option></option>`; i.firstChild.value = i.firstChild.textContent = String(v); i.value = String(v); }
         else i.value = v;
       });
