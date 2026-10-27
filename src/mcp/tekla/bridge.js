@@ -1,8 +1,13 @@
-const BASE = (process.env.TEKLA_BRIDGE_URL || "").replace(/\/+$/, "");
+import { getSelectedBridge } from "../bridge-selection.js";
+
+function getBase() {
+  const raw = getSelectedBridge("Tekla")?.value || String(process.env.TEKLA_BRIDGE_URL || "").split(",")[0];
+  return String(raw).trim().replace(/\/+$/, "");
+}
 const KEY = process.env.TEKLA_BRIDGE_KEY || "";
 
 function requireBase() {
-  if (!BASE) throw new Error("TEKLA_BRIDGE_URL is missing");
+  if (!getBase()) throw new Error("TEKLA_BRIDGE_URL is missing");
 }
 
 function config() {
@@ -12,7 +17,7 @@ function config() {
 
 async function call(path, options={}) {
   config();
-  const r = await fetch(`${BASE}${path}`, {
+  const r = await fetch(`${getBase()}${path}`, {
     ...options,
     headers: {"Content-Type":"application/json","X-Tekla-Bridge-Key":KEY,...(options.headers||{})}
   });
@@ -24,7 +29,7 @@ async function call(path, options={}) {
 
 async function publicGet(path) {
   requireBase();
-  const r = await fetch(`${BASE}${path}`);
+  const r = await fetch(`${getBase()}${path}`);
   const text = await r.text();
   let data;
   try { data = text ? JSON.parse(text) : null; }
