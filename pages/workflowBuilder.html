@@ -991,6 +991,8 @@ function bodyFor(type, id) {
                             <option value="">Select a brain…</option>
                             <option value="supraesophageal_ganglion_4_dxf.js">supraesophageal_ganglion_4_dxf.js</option>
                           </select>
+                          <div class="hint" style="margin-top:6px">Object types to process</div>
+                          <div class="brain-types"><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_column" checked> column</label><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_beam" checked> beam</label><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_wall" checked> wall</label><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_slab" checked> slab</label><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_polybeam" checked> polybeam</label><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_footing" checked> footing</label><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_pile" checked> pile</label></div>
                           <div class="status">no brain selected</div>`;
     case "mcp":    return `<input type="text" class="url" placeholder="${DEFAULT_MCP_URL}" spellcheck="false" value="${DEFAULT_MCP_URL}">
                           <div style="display:flex;gap:4px;margin-top:6px">
@@ -2064,6 +2066,8 @@ async function runWorkflowCore(signal) {
         const script = readFlow(cur.el).script;
         if (!script) throw new Error("Select a brain script");
         state.brain = script;
+        const cfg = readFlow(cur.el);
+        state.brainTypes = Object.keys(cfg).filter((k) => k.startsWith("type_") && cfg[k]).map((k) => k.slice(5));
         cur.el.querySelector(".status").textContent = "✔ " + script;
       }
 
