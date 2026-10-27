@@ -995,12 +995,11 @@ function bodyFor(type, id) {
     case "flow_for":
     case "flow_while":
     case "flow_do_while":
-    case "flow_foreach": return `<input type="text" class="fl" data-k="url" value="${DEFAULT_MCP_URL}" spellcheck="false">
-                          <input type="text" class="fl" data-k="tool" value="tekla_create_column" spellcheck="false" style="margin-top:6px">
-                          <input type="number" class="fl" data-k="max" min="1" value="1000" title="Max iterations" style="margin-top:6px">
-                          <div style="margin-top:6px;font-size:11px"><label><input type="checkbox" class="fl" data-k="breakOnOther"> break on first non-column</label></div>
-                          <div class="hint">Loops the Get Result rows; each column row calls the tool (non-columns are skipped via continue)</div>
-                          <div class="status">not run yet</div>`;
+    case "flow_foreach": return `<input type="number" class="fl" data-k="max" min="1" value="1000" title="Max iterations">
+                          <div style="margin-top:6px;font-size:11px"><label><input type="checkbox" class="fl" data-k="onlyColumns" checked> only column rows</label></div>
+                          <div class="hint">Loops the Get Result rows and shows them as JSON. Connect to Call MCP: it runs once per row; use {{row.x}}, {{row.y}}… in its arguments.</div>
+                          <div class="status">not run yet</div>
+                          <pre class="out" style="max-height:160px;overflow:auto;font-size:11px;margin:6px 0 0;white-space:pre-wrap">—</pre>`;
     case "flow_break": return `<div class="hint">Stops this branch of the workflow</div>`;
     case "flow_continue": return `<div class="hint">Skips to the next connected node</div>`;
     case "flow_return": return `<div class="hint">Ends this branch and returns the current result</div>`;
@@ -1969,32 +1968,17 @@ async function callMcpTool(url, toolName, args) {
 }
 async function runLoop(cur, state) {
   const cfg = readFlow(cur.el);
-  const statusBox = cur.el.querySelector(".status");
   if (!state.result) throw new Error("Connect a Get Result (or MCP) node before the loop");
-  const url = (cfg.url || "").trim();
-  const tool = (cfg.tool || "").trim();
-  if (!url || !tool) throw new Error("Set MCP URL and tool name");
-  const rows = flowRows(state.result);
+  const all = flowRows(state.result);
   const max = Math.max(1, Math.min(Number(cfg.max) || 1000, 10000));
-  let created = 0, skipped = 0, i = 0;
-  const step = async () => {
-    const row = rows[i];
-    if (!isColumnRow(row)) {
-      if (cfg.breakOnOther) return "break";
-      skipped++; return "continue";
-    }
-    statusBox.textContent = `Row ${i + 1}/${rows.length}: ${tool}…`;
-    await callMcpTool(url, tool, columnArgs(row));
-    created++;
-  };
-  const cond = () => i < rows.length && i < max;
-  if (cur.type === "flow_do_while") {
-    do { if ((await step()) === "break") break; i++; } while (cond());
-  } else {
-    for (; cond(); i++) { if ((await step()) === "break") break; }
-  }
-  statusBox.textContent = `✔ ${created} created, ${skipped} skipped`;
-  state.loopSummary = { created, skipped };
+  const rows = [];
+  const visit = (row) => { if (!cfg.onlyColumns || isColumnRow(row)) rows.push(row); };
+  let i = 0;
+  if (cur.type === "flow_do_while") { do { visit(all[i]); i++; } while (i < all.length && i < max); }
+  else for (; i < all.length && i < max; i++) visit(all[i]);
+  state.rows = rows;
+  cur.el.querySelector(".status").textContent = `✔ ${rows.length} row(s)`;
+  cur.el.querySelector(".out").textContent = JSON.stringify(rows, null, 2);
 }
 
 async function runWorkflow() {
@@ -2065,40 +2049,25 @@ async function runWorkflow() {
           : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, subst(x)])) : v;
         toolArgs = subst(toolArgs);
 
-        const payloadBody = {
-          jsonrpc: "2.0",
-          id: Date.now(),
-          method: "tools/call",
-          params: {
-            name: toolName,
-            arguments: toolArgs
-          }
-        };
-
-        const doFetch = (bearer) => fetch(url, {
-          method:  "POST",
-          headers: {
-            "Content-Type":  "application/json",
-            "Accept":        "application/json, text/event-stream",
-            "Authorization": "Bearer " + bearer
-          },
-          body: JSON.stringify(payloadBody)
-        });
-
-        let res = await doFetch(token);
-
-        if (res.status === 401) {
-          statusBox.textContent = "Token expired — re-authenticating…";
-          accessToken = null; tokenExpiry = 0;
-          const fresh = await ensureToken();
-          res = await doFetch(fresh);
+        const rowList = state.rows || [null];
+        const results = [];
+        for (let r = 0; r < rowList.length; r++) {
+          const row = rowList[r];
+          const lk = row ? lowerKeys(row) : {};
+          const fill = (v) => {
+            if (typeof v === "string") {
+              const whole = v.match(/^\{\{row\.([\w.]+)\}\}$/);
+              if (whole) return lk[whole[1].toLowerCase()] ?? "";
+              return v.replace(/\{\{row\.([\w.]+)\}\}/g, (_, k) => lk[k.toLowerCase()] ?? "");
+            }
+            return Array.isArray(v) ? v.map(fill)
+              : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, fill(x)])) : v;
+          };
+          if (rowList.length > 1 || row) statusBox.textContent = `Row ${r + 1}/${rowList.length}…`;
+          results.push(await callMcpTool(url, toolName, fill(toolArgs)));
         }
-        if (!res.ok) {
-          const txt = await res.text().catch(() => "");
-          throw new Error(`MCP HTTP ${res.status}${txt ? " — " + txt.slice(0, 200) : ""}`);
-        }
-        state.result = await res.json();
-        statusBox.textContent = "✔ responded";
+        state.result = state.rows ? { results } : results[0];
+        statusBox.textContent = state.rows ? `✔ ${results.length} call(s)` : "✔ responded";
       }
 
       if (FLOW_TYPES.has(cur.type)) {
