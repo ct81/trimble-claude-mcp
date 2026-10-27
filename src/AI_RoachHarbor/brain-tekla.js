@@ -10,19 +10,29 @@ const teklaProfile = (value) => String(value ?? "").trim().replace(/^(\d+(?:\.\d
 
 const round = (n) => Math.round(n * 10) / 10;
 
-// Section size from the DXF: width/depth, circle diameter, or the bounding box of a closed outline.
+// Section from the DXF dimensions: Radius -> circular (D<diameter>), Width_mm x Depth_mm -> rectangular.
+// Length_mm is the member length/height, not part of the section.
 function sizeProfile(args, allowOutline = true) {
+  const radius = num(args.attributes?.radius) ?? num(args.radius);
+  const dia = radius ? radius * 2 : num(args.diameter) ?? num(args.attributes?.sourceDiameter);
+  if (dia) return `D${round(dia)}`;
   const w = num(args.width), d = num(args.depth);
   if (w && d) return `${round(w)}*${round(d)}`;
-  const dia = num(args.diameter) ?? num(args.attributes?.sourceDiameter);
-  if (dia) return `D${round(dia)}`;
-  const pts = args.attributes?.vertices;
-  if (allowOutline && Array.isArray(pts) && pts.length >= 3) {
-    const xs = pts.map((p) => Number(p.x)), ys = pts.map((p) => Number(p.y));
-    const bw = Math.max(...xs) - Math.min(...xs), bd = Math.max(...ys) - Math.min(...ys);
-    if (Number.isFinite(bw) && Number.isFinite(bd) && bw > 0 && bd > 0) return `${round(bw)}*${round(bd)}`;
-  }
+  if (w || d) return `${round(w || d)}*${round(w || d)}`;
   return "";
+}
+
+function outlineProfile(args) {
+  const pts = args.attributes?.vertices;
+  if (!Array.isArray(pts) || pts.length < 3) return "";
+  const xs = pts.map((p) => Number(p.x)), ys = pts.map((p) => Number(p.y));
+  const bw = Math.max(...xs) - Math.min(...xs), bd = Math.max(...ys) - Math.min(...ys);
+  return Number.isFinite(bw) && Number.isFinite(bd) && bw > 0 && bd > 0 ? `${round(bw)}*${round(bd)}` : "";
+}
+
+function profileFor(args, defaults, allowOutline = true) {
+  return sizeProfile(args) || teklaProfile(args.profile) ||
+    (allowOutline ? outlineProfile(args) : "") || defaults.profile;
 }
 
 function columnArgs(args, defaults) {
@@ -37,7 +47,7 @@ function columnArgs(args, defaults) {
   }
   return {
     x, y, z1, z2,
-    profile: teklaProfile(args.profile) || sizeProfile(args) || defaults.profile,
+    profile: profileFor(args, defaults),
     material: String(args.material ?? "").trim() || defaults.material,
     classNumber: String(args.class ?? "").trim() || defaults.classNumber
   };
@@ -69,7 +79,7 @@ function beamArgs(args, defaults) {
       tool: "tekla_create_beam",
       arguments: {
         x1: a.x, y1: a.y, z1: a.z, x2: b.x, y2: b.y, z2: b.z,
-        profile: teklaProfile(args.profile) || sizeProfile(args) || defaults.profile,
+        profile: profileFor(args, defaults),
         ...common(args, defaults)
       }
     };
@@ -85,7 +95,7 @@ function polybeamArgs(args, defaults, points = vertexPoints(args)) {
     tool: "tekla_create_polybeam",
     arguments: {
       points,
-      profile: teklaProfile(args.profile) || sizeProfile(args, false) || defaults.profile,
+      profile: profileFor(args, defaults, false),
       ...common(args, defaults)
     }
   };
@@ -139,7 +149,7 @@ function pileArgs(args, defaults) {
   const top = num(args.position?.z) ?? num(args.level) ?? 0;
   const length = num(args.length) ?? num(args.height);
   if (!length) throw new Error("pile needs a length (Length_mm)");
-  const profile = teklaProfile(args.profile) || sizeProfile(args, false) || defaults.profile;
+  const profile = profileFor(args, defaults, false);
   return verticalMember(args, defaults, top - length, top, profile);
 }
 
@@ -149,7 +159,7 @@ function footingArgs(args, defaults) {
   if (vertexPoints(args).length >= 3) return slabArgs({ ...args, depth: args.depth ?? thickness }, defaults);
   if (!thickness) throw new Error("footing needs a thickness (Length_mm)");
   const bottom = num(args.position?.z) ?? num(args.level) ?? 0;
-  const profile = teklaProfile(args.profile) || sizeProfile(args, false) || defaults.profile;
+  const profile = profileFor(args, defaults, false);
   return verticalMember(args, defaults, bottom, bottom + thickness, profile);
 }
 
