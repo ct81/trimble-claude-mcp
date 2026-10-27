@@ -10,16 +10,51 @@ const teklaProfile = (value) => String(value ?? "").trim().replace(/^(\d+(?:\.\d
 
 const round = (n) => Math.round(n * 10) / 10;
 
-// Section from the DXF dimensions: Radius -> circular (D<diameter>), Width_mm x Depth_mm -> rectangular.
+// Reads a dimension straight from the raw DXF record: case-insensitive keys, unit suffixes ("300 mm"),
+// and _m fields converted to millimetres. Used because exports name these fields inconsistently.
+function rawDim(src, names) {
+  if (!src || typeof src !== "object") return undefined;
+  const lower = new Map(Object.keys(src).map((k) => [k.toLowerCase().replace(/[\s-]+/g, "_"), k]));
+  for (const name of names) {
+    const key = lower.get(name);
+    if (key === undefined) continue;
+    const raw = src[key];
+    const n = typeof raw === "number" ? raw : parseFloat(String(raw ?? "").replace(/,/g, ""));
+    if (!Number.isFinite(n) || n <= 0) continue;
+    return /_m$/.test(name) ? n * 1000 : n;
+  }
+  return undefined;
+}
+
+const SIZE_TEXT = /(\d+(?:\.\d+)?)\s*[xX*×]\s*(\d+(?:\.\d+)?)/;
+
+// Section from the DXF dimensions: Radius -> circular (D<diameter>), Width x Depth -> rectangular.
 // Length_mm is the member length/height, not part of the section.
-function sizeProfile(args, allowOutline = true) {
-  const radius = num(args.attributes?.radius) ?? num(args.radius);
-  const dia = radius ? radius * 2 : num(args.diameter) ?? num(args.attributes?.sourceDiameter);
-  if (dia) return `D${round(dia)}`;
-  const w = num(args.width), d = num(args.depth);
-  if (w && d) return `${round(w)}*${round(d)}`;
-  if (w || d) return `${round(w || d)}*${round(w || d)}`;
-  return "";
+function sizeProfile(args) {
+  const src = args._src;
+  const radius = rawDim(src, ["radius", "radius_mm", "r", "radius_m"]) ?? num(args.attributes?.radius) ?? num(args.radius);
+  if (radius) return { profile: `D${round(radius * 2)}`, from: "Radius" };
+  const dia = rawDim(src, ["diameter", "diameter_mm", "dia", "dia_mm", "diameter_m"]) ?? num(args.diameter);
+  if (dia) return { profile: `D${round(dia)}`, from: "Diameter" };
+
+  const w = rawDim(src, ["width_mm", "width", "w", "width_m"]) ?? num(args.width);
+  const d = rawDim(src, ["depth_mm", "depth", "d", "depth_m"]) ?? num(args.depth);
+  if (w && d) return { profile: `${round(w)}*${round(d)}`, from: "Width_mm x Depth_mm" };
+  if (w || d) return { profile: `${round(w || d)}*${round(w || d)}`, from: w ? "Width_mm" : "Depth_mm" };
+  return null;
+}
+
+function textProfile(args) {
+  const src = args._src || {};
+  for (const key of Object.keys(src)) {
+    if (!/^(profile|section|size|section_?name|block_?name|name)$/i.test(key)) continue;
+    const text = String(src[key] ?? "").trim();
+    if (!text) continue;
+    if (SIZE_TEXT.test(text)) return { profile: text.match(SIZE_TEXT).slice(1, 3).join("*"), from: key };
+    if (/^profile$/i.test(key)) return { profile: text, from: key };
+  }
+  const explicit = teklaProfile(args.profile);
+  return explicit ? { profile: explicit, from: "profile" } : null;
 }
 
 function outlineProfile(args) {
@@ -31,8 +66,10 @@ function outlineProfile(args) {
 }
 
 function profileFor(args, defaults, allowOutline = true) {
-  return sizeProfile(args) || teklaProfile(args.profile) ||
-    (allowOutline ? outlineProfile(args) : "") || defaults.profile;
+  const found = sizeProfile(args) || textProfile(args) ||
+    (allowOutline && outlineProfile(args) ? { profile: outlineProfile(args), from: "outline" } : null);
+  args._profileFrom = found ? found.from : "default";
+  return found ? found.profile : defaults.profile;
 }
 
 function columnArgs(args, defaults) {
@@ -188,7 +225,9 @@ export function brainToTekla(records, types, defaults = {}) {
     if (!wanted.has(type)) { skipped.push({ handle: call.handle, type, reason: "type not selected" }); continue; }
     if (!BUILDERS[type]) { skipped.push({ handle: call.handle, type, reason: "no Tekla tool mapping yet" }); continue; }
     try {
-      calls.push({ handle: call.handle, type, ...BUILDERS[type](call.args, fallback) });
+      const args = { ...call.args, _src: call.source };
+      const built = BUILDERS[type](args, fallback);
+      calls.push({ handle: call.handle, type, ...built, profileFrom: args._profileFrom || "n/a" });
     } catch (error) {
       skipped.push({ handle: call.handle, type, reason: error.message });
     }
