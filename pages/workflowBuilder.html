@@ -2168,8 +2168,9 @@ async function runWorkflowCore(signal) {
           if (rowList.length > 1 || row) statusBox.textContent = `Row ${r + 1}/${rowList.length}…`;
           if (signal.aborted) throw new DOMException("Aborted", "AbortError");
           const brainCall = state.brainCalls?.[r];
-          const useBrain = brainCall && (!toolName || toolName === brainCall.tool) &&
-            !JSON.stringify(toolArgs).includes("{{row.");
+          const templated = JSON.stringify(toolArgs).includes("{{row.");
+          if (brainCall && toolName && !templated && toolName !== brainCall.tool) continue;
+          const useBrain = brainCall && !templated;
           results.push(await callMcpTool(
             url,
             useBrain ? brainCall.tool : toolName,
@@ -2179,6 +2180,7 @@ async function runWorkflowCore(signal) {
         }
         state.result = state.rows ? { results } : results[0];
         statusBox.textContent = state.rows ? `✔ ${results.length} call(s)` : "✔ responded";
+        if (state.brainCalls && !results.length) throw new Error(`No Brain objects match tool "${toolName}"`);
       }
 
       if (FLOW_TYPES.has(cur.type)) {
