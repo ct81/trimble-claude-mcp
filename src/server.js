@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp & Telegram ChatBots, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #17"
+// #18"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -692,14 +692,14 @@ app.use(
 app.use(cookieParser());
 
 app.post('/api/brain/convert', requireMcpAuth, (req, res) => {
-  const { types, dxfText } = req.body || {};
+  const { types, dxfText, defaults } = req.body || {};
   let { records } = req.body || {};
   if (typeof dxfText === 'string') records = dxfTextToRecords(dxfText);
   if (!Array.isArray(records) || !Array.isArray(types)) {
     return res.status(400).json({ error: 'records and types must be arrays' });
   }
   try {
-    return res.json(brainToTekla(records, types.map(String)));
+    return res.json(brainToTekla(records, types.map(String), defaults && typeof defaults === 'object' ? defaults : {}));
   } catch (error) {
     return res.status(400).json({ error: error.message });
   }
