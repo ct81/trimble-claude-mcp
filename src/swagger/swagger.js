@@ -1168,10 +1168,6 @@ export const swaggerDocument = {
       description: 'Telegram messaging through GREEN-API.'
     },
     {
-      name: 'Telegram Webhook',
-      description: 'Incoming Telegram messages handled by the Telegram assistant.'
-    },
-    {
       name: 'Python',
       description: 'Server-side Python test utilities.'
     },
@@ -1763,48 +1759,6 @@ export const swaggerDocument = {
           400: { description: 'Missing chatId/chatid or message' },
           401: { description: 'Authentication required' },
           500: { description: 'GREEN-API configuration missing or send failed' }
-        }
-      }
-    },
-
-    '/api/telegram/webhook': {
-      post: {
-        tags: ['Telegram Webhook'],
-        summary: 'Receive an incoming Telegram webhook from GREEN-API',
-        operationId: 'telegram_webhook',
-        parameters: [{
-          name: 'Authorization',
-          in: 'header',
-          required: true,
-          schema: { type: 'string' },
-          description: 'Bearer token configured as TELEGRAM_WEBHOOK_TOKEN.'
-        }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['typeWebhook'],
-                properties: {
-                  typeWebhook: { type: 'string', example: 'incomingMessageReceived' },
-                  idMessage: { type: 'string' },
-                  senderData: {
-                    type: 'object',
-                    properties: {
-                      chatId: { type: 'string' },
-                      chatType: { type: 'string' }
-                    }
-                  },
-                  messageData: { type: 'object' }
-                }
-              }
-            }
-          }
-        },
-        responses: {
-          200: { description: 'Webhook accepted; processing is started asynchronously' },
-          401: { description: 'Invalid webhook token' }
         }
       }
     },
