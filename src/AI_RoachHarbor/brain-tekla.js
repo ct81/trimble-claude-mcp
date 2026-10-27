@@ -254,7 +254,9 @@ export function brainToTekla(records, types, defaults = {}) {
     try {
       const args = { ...call.args, _src: call.source };
       const built = BUILDERS[type](args, fallback);
-      const key = JSON.stringify([built.tool, built.arguments]);
+      // Same type at the same place counts once, even if drawn with different shapes (e.g. circle + outline).
+      const { profile, material, classNumber, ...place } = built.arguments;
+      const key = JSON.stringify([type, built.tool, place], (_, v) => typeof v === "number" ? Math.round(v) : v);
       if (seen.has(key)) { skipped.push({ handle: call.handle, type, reason: "duplicate of an earlier object" }); continue; }
       seen.add(key);
       calls.push({ handle: call.handle, type, ...built, profileFrom: args._profileFrom || "n/a" });
