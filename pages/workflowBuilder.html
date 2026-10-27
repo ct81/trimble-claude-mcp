@@ -993,7 +993,13 @@ function bodyFor(type, id) {
                           </select>
                           <div class="hint" style="margin-top:6px">Object types to process</div>
                           <div class="brain-types"><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_column" checked> column</label><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_beam" checked> beam</label><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_wall" checked> wall</label><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_slab" checked> slab</label><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_polybeam" checked> polybeam</label><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_footing" checked> footing</label><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_pile" checked> pile</label></div>
-                          <div class="status">no brain selected</div>`;
+                          <div style="margin:8px 0 6px;font-size:11px;display:flex;align-items:center;gap:8px">
+                            <label><input type="radio" class="brain-mode" value="pretty" checked> Pretty</label>
+                            <label><input type="radio" class="brain-mode" value="raw"> Raw</label>
+                            <button type="button" class="brain-copy" style="margin-left:auto">Copy JSON</button>
+                          </div>
+                          <div class="status">no brain selected</div>
+                          <pre class="brain-out" style="max-height:160px;overflow:auto;font-size:11px;margin:6px 0 0;white-space:pre-wrap">—</pre>`;
     case "mcp":    return `<input type="text" class="url" placeholder="${DEFAULT_MCP_URL}" spellcheck="false" value="${DEFAULT_MCP_URL}">
                           <div style="display:flex;gap:4px;margin-top:6px">
                             <input type="text" class="tool" list="mcp-tools-${id}" placeholder="tool name (pick or type)" spellcheck="false" value="" style="flex:1;margin:0">
@@ -1067,6 +1073,12 @@ function renderResult(el) {
   if (!el._result) { box.textContent = "No data received"; return; }
   const raw = el.querySelector(".out-mode:checked").value === "raw";
   box.textContent = raw ? JSON.stringify(el._result) : JSON.stringify(el._result, null, 2);
+}
+function renderBrain(el) {
+  const box = el.querySelector(".brain-out");
+  if (el._brainResult === undefined) { box.textContent = "—"; return; }
+  const raw = el.querySelector(".brain-mode:checked").value === "raw";
+  box.textContent = raw ? JSON.stringify(el._brainResult) : JSON.stringify(el._brainResult, null, 2);
 }
 function setArgsMode(el, mode) {
   const fields = mode === "fields";
@@ -1271,6 +1283,24 @@ function wireNode(node) {
         setStatus("Could not copy JSON: " + error.message);
       }
       setTimeout(() => { copyBtn.textContent = "⧉"; }, 1200);
+    });
+  }
+  el.querySelectorAll(".brain-mode").forEach(r => {
+    r.name = "brain-mode-" + el.dataset.id;
+    r.addEventListener("change", () => renderBrain(el));
+  });
+  const brainCopy = el.querySelector(".brain-copy");
+  if (brainCopy) {
+    brainCopy.addEventListener("click", async () => {
+      if (el._brainResult === undefined) { setStatus("Nothing to copy — run the workflow first"); return; }
+      try {
+        await navigator.clipboard.writeText(JSON.stringify(el._brainResult, null, 2));
+        brainCopy.textContent = "Copied";
+      } catch (error) {
+        brainCopy.textContent = "!";
+        setStatus("Could not copy JSON: " + error.message);
+      }
+      setTimeout(() => { brainCopy.textContent = "Copy JSON"; }, 1200);
     });
   }
   el.querySelectorAll(".out-mode").forEach(r => {
@@ -2069,6 +2099,8 @@ async function runWorkflowCore(signal) {
         const cfg = readFlow(cur.el);
         state.brainTypes = Object.keys(cfg).filter((k) => k.startsWith("type_") && cfg[k]).map((k) => k.slice(5));
         cur.el.querySelector(".status").textContent = "✔ " + script;
+        cur.el._brainResult = { script, types: state.brainTypes, input: state.result ?? null };
+        renderBrain(cur.el);
       }
 
       if (cur.type === "mcp") {
