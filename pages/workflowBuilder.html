@@ -2149,8 +2149,10 @@ async function runWorkflowCore(signal) {
         if (!response.ok) throw new Error(converted.error || "Brain conversion failed (HTTP " + response.status + ")");
         const rows = converted.calls.map((call) => call.arguments);
         if (!converted.calls.length) {
-          const why = converted.skipped.map((x) => `${x.handle || "?"}: ${x.reason}`).slice(0, 3).join("; ");
-          throw new Error("Brain mapped 0 objects" + (why ? " — " + why : ""));
+          const found = Object.entries(converted.counts || {}).map(([t, n]) => `${t}:${n}`).join(", ") || "none";
+          const failed = converted.skipped.filter((x) => x.reason !== "type not selected");
+          const why = failed.slice(0, 3).map((x) => `${x.handle || "?"} (${x.type || "?"}): ${x.reason}`).join("; ");
+          throw new Error(`Brain mapped 0 objects. Selected: ${state.brainTypes.join(", ") || "none"}. DXF contains: ${found}.` + (why ? " Failed: " + why : ""));
         }
         state.rows = rows;
         state.brainCalls = converted.calls;

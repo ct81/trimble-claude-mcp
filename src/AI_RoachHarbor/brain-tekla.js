@@ -183,7 +183,31 @@ function wallArgs(args, defaults) {
   const a = pt(args.startPoint, level), b = pt(args.endPoint, level);
   // Wall height: the type's height setting wins, since Length_mm of a plan line is the wall's run, not its height.
   const height = defaults.height || num(args.height) || num(args.length);
-  if (!a || !b || same(a, b)) throw new Error("wall needs distinct start and end points");
+  const pts = [];
+  for (const p of vertexPoints(args)) if (!pts.length || !same(p, pts[pts.length - 1])) pts.push(p);
+  const flagged = /^(yes|true|1)$/i.test(String(args._src?.Closed ?? ""));
+  const closed = pts.length > 2 && (flagged || same(pts[0], pts[pts.length - 1]));
+  if (closed && same(pts[0], pts[pts.length - 1])) pts.pop();
+  if (!a || !b || same(a, b) || pts.length > 2) {
+    if (pts.length < 2) throw new Error("wall needs distinct start and end points");
+    if (!height) throw new Error("wall needs a height (set it on the Brain node)");
+    const profile = plateProfile(args, args.thickness ?? args.width, defaults);
+    const wall = (p, q) => ({
+      tool: "tekla_create_wall",
+      arguments: { x1: p.x, y1: p.y, z1: p.z, x2: q.x, y2: q.y, z2: q.z, x3: q.x, y3: q.y, z3: q.z + height, profile, ...common(args, defaults) }
+    });
+    // A closed outline is a wall drawn as a thin rectangle: use its centreline along the long axis.
+    if (closed && pts.length === 4) {
+      const mid = (p, q) => ({ x: (p.x + q.x) / 2, y: (p.y + q.y) / 2, z: p.z });
+      const d01 = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y), d12 = Math.hypot(pts[2].x - pts[1].x, pts[2].y - pts[1].y);
+      return d01 >= d12 ? wall(mid(pts[0], pts[3]), mid(pts[1], pts[2])) : wall(mid(pts[0], pts[1]), mid(pts[3], pts[2]));
+    }
+    // Otherwise each segment becomes a wall.
+    const segs = [];
+    for (let i = 0; i + 1 < pts.length; i++) segs.push(wall(pts[i], pts[i + 1]));
+    if (closed) segs.push(wall(pts[pts.length - 1], pts[0]));
+    return segs;
+  }
   if (!height) throw new Error("wall needs a height (set it on the Brain node)");
   return {
     tool: "tekla_create_wall",
@@ -282,13 +306,15 @@ export function brainToTekla(records, types, defaults = {}) {
       const args = { ...call.args, _src: call.source };
       const settings = settingsFor(type, defaults);
       if (["beam", "polybeam", "slab"].includes(type)) args._zDefault = settings.height;
-      const built = BUILDERS[type](args, settings);
-      // Same type at the same place counts once, even if drawn with different shapes (e.g. circle + outline).
-      const { profile, material, classNumber, ...place } = built.arguments;
-      const key = JSON.stringify([type, built.tool, place], (_, v) => typeof v === "number" ? Math.round(v) : v);
-      if (seen.has(key)) { skipped.push({ handle: call.handle, type, reason: "duplicate of an earlier object" }); continue; }
-      seen.add(key);
-      calls.push({ handle: call.handle, type, ...built, profileFrom: args._profileFrom || "n/a" });
+      const result = BUILDERS[type](args, settings);
+      for (const built of Array.isArray(result) ? result : [result]) {
+        // Same type at the same place counts once, even if drawn with different shapes (e.g. circle + outline).
+        const { profile, material, classNumber, ...place } = built.arguments;
+        const key = JSON.stringify([type, built.tool, place], (_, v) => typeof v === "number" ? Math.round(v) : v);
+        if (seen.has(key)) { skipped.push({ handle: call.handle, type, reason: "duplicate of an earlier object" }); continue; }
+        seen.add(key);
+        calls.push({ handle: call.handle, type, ...built, profileFrom: args._profileFrom || "n/a" });
+      }
     } catch (error) {
       skipped.push({ handle: call.handle, type, reason: error.message });
     }
