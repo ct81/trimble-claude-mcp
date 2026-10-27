@@ -179,7 +179,46 @@ export async function generateTelegramReply(chatId, userText) {
   let authenticationRequired = false;
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
-    const response = await askClaude(messages, BOT_TOOLS, SYSTEM_PROMPT);
+    //const response = await askClaude(messages, BOT_TOOLS, SYSTEM_PROMPT);
+    const claudeStartedAt = Date.now();
+
+    console.log("[TELEGRAM-CLAUDE] request started", {
+      chatId,
+      historyMessages: messages.length,
+      availableTools: BOT_TOOLS.map((tool) => tool.name),
+      round: round + 1
+    });
+
+    let response;
+
+    try {
+      response = await askClaude(
+        messages,
+        BOT_TOOLS,
+        SYSTEM_PROMPT
+      );
+
+      console.log("[TELEGRAM-CLAUDE] response received", {
+        chatId,
+        stopReason: response?.stop_reason || null,
+        contentBlocks: response?.content?.length || 0,
+        toolCalls:
+          response?.content?.filter(
+            (block) => block.type === "tool_use"
+          ).length || 0,
+        elapsedMs: Date.now() - claudeStartedAt
+      });
+    } catch (error) {
+      console.error("[TELEGRAM-CLAUDE] request failed", {
+        chatId,
+        errorName: error?.name || "Error",
+        errorMessage: error?.message || String(error),
+        elapsedMs: Date.now() - claudeStartedAt
+      });
+
+      throw error;
+    }
+
     messages.push({ role: 'assistant', content: response.content });
     const toolUses = response.content.filter((block) => block.type === 'tool_use');
     if (response.stop_reason !== 'tool_use' || !toolUses.length) {
@@ -197,13 +236,25 @@ export async function generateTelegramReply(chatId, userText) {
       console.log('[TELEGRAM-BOT] tool call', { email, tool: use.name, input: use.input });
       try {
         const result = await runTool(use.name, use.input || {}, chatId);
+        console.log("[TELEGRAM-MCP] tool completed", {
+                    chatId,
+                    tool: use.name,
+                    success: true
+                  });
         toolResults.push({
           type: 'tool_result',
           tool_use_id: use.id,
           content: serializeResult(result)
         });
       } catch (error) {
-        console.error('[TELEGRAM-BOT] tool failed:', { email, tool: use.name, error: error.message });
+        //console.error('[TELEGRAM-BOT] tool failed:', { email, tool: use.name, error: error.message });
+        console.error("[TELEGRAM-MCP] tool failed", {
+                      chatId,
+                      tool: use.name,
+                      errorName: error?.name || "Error",
+                      errorMessage: error?.message || String(error),
+                      code: error?.code || null
+                    });
         if (error.code === 'TRIMBLE_AUTH_REQUIRED') {
           authenticationRequired = true;
           finalText ||= authenticationRequiredMessage(chatId);
@@ -235,26 +286,164 @@ export function verifyTelegramWebhook(req) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-export async function handleTelegramIncomingWebhook(payload) {
-  try {
-    if (payload?.typeWebhook !== 'incomingMessageReceived') return;
-    const chatId = String(payload.senderData?.chatId || '');
-    const chatType = String(payload.senderData?.chatType || '').toLowerCase();
-    const text = extractText(payload.messageData);
-    if (!/^\d{1,20}$/.test(chatId) || !text || chatType === 'group' || chatType === 'supergroup') return;
+// export async function handleTelegramIncomingWebhook(payload) {
+//   try {
+//     if (payload?.typeWebhook !== 'incomingMessageReceived') return;
+//     const chatId = String(payload.senderData?.chatId || '');
+//     const chatType = String(payload.senderData?.chatType || '').toLowerCase();
+//     const text = extractText(payload.messageData);
+//     if (!/^\d{1,20}$/.test(chatId) || !text || chatType === 'group' || chatType === 'supergroup') return;
 
-    const messageId = payload.idMessage;
-    if (messageId) {
-      if (seenMessageIds.has(messageId)) return;
-      seenMessageIds.add(messageId);
-      if (seenMessageIds.size > 1000) seenMessageIds.delete(seenMessageIds.values().next().value);
+//     const messageId = payload.idMessage;
+//     if (messageId) {
+//       if (seenMessageIds.has(messageId)) return;
+//       seenMessageIds.add(messageId);
+//       if (seenMessageIds.size > 1000) seenMessageIds.delete(seenMessageIds.values().next().value);
+//     }
+
+//     const email = getSessionEmail(telegramSessions.get(chatId)) || 'not signed in';
+//     console.log('[TELEGRAM-BOT] incoming', { chatId, email, length: text.length });
+//     const reply = await generateTelegramReply(chatId, text);
+//     await sendTelegramMessage({ chatId, message: reply });
+//   } catch (error) {
+//     console.error('[TELEGRAM-BOT] failed to handle message:', error.message);
+//   }
+// }
+export async function handleTelegramIncomingWebhook(payload) {
+  const startedAt = Date.now();
+  let chatId = "";
+  let messageId = "";
+
+  console.log("[TELEGRAM-WEBHOOK] handler started", {
+    receivedAt: new Date().toISOString(),
+    payloadType: typeof payload,
+    payloadKeys:
+      payload && typeof payload === "object"
+        ? Object.keys(payload)
+        : [],
+    typeWebhook: payload?.typeWebhook || null,
+    hasSenderData: Boolean(payload?.senderData),
+    hasMessageData: Boolean(payload?.messageData)
+  });
+
+  try {
+    // 1. Validate webhook event
+    if (payload?.typeWebhook !== "incomingMessageReceived") {
+      console.warn("[TELEGRAM-WEBHOOK] ignored: unexpected event type", {
+        typeWebhook: payload?.typeWebhook || null,
+        availableKeys:
+          payload && typeof payload === "object"
+            ? Object.keys(payload)
+            : []
+      });
+      return;
     }
 
-    const email = getSessionEmail(telegramSessions.get(chatId)) || 'not signed in';
-    console.log('[TELEGRAM-BOT] incoming', { chatId, email, length: text.length });
+    // 2. Extract incoming message
+    chatId = String(payload.senderData?.chatId || "");
+    messageId = String(payload.idMessage || "");
+
+    const chatType = String(
+      payload.senderData?.chatType || "unknown"
+    ).toLowerCase();
+
+    const text = extractText(payload.messageData);
+
+    console.log("[TELEGRAM-WEBHOOK] message parsed", {
+      hasChatId: Boolean(chatId),
+      validNumericChatId: /^\d{1,20}$/.test(chatId),
+      chatType,
+      hasText: Boolean(text),
+      textLength: text.length,
+      hasMessageId: Boolean(messageId),
+      messageDataType: payload.messageData?.typeMessage || null
+    });
+
+    // 3. Validate recipient and message
+    if (!/^\d{1,20}$/.test(chatId)) {
+      console.warn("[TELEGRAM-WEBHOOK] ignored: invalid chat ID", {
+        chatIdPresent: Boolean(chatId),
+        chatIdLength: chatId.length
+      });
+      return;
+    }
+
+    if (!text) {
+      console.warn("[TELEGRAM-WEBHOOK] ignored: message text is empty");
+      return;
+    }
+
+    if (chatType === "group" || chatType === "supergroup") {
+      console.warn("[TELEGRAM-WEBHOOK] ignored: group messages are disabled", {
+        chatType
+      });
+      return;
+    }
+
+    // 4. Ignore duplicate events
+    if (messageId) {
+      if (seenMessageIds.has(messageId)) {
+        console.warn("[TELEGRAM-WEBHOOK] ignored: duplicate message", {
+          messageId
+        });
+        return;
+      }
+
+      seenMessageIds.add(messageId);
+
+      if (seenMessageIds.size > 1000) {
+        seenMessageIds.delete(
+          seenMessageIds.values().next().value
+        );
+      }
+    }
+
+    const email =
+      getSessionEmail(telegramSessions.get(chatId)) ||
+      "not signed in";
+
+    console.log("[TELEGRAM-BOT] incoming message accepted", {
+      chatId,
+      messageId: messageId || null,
+      email,
+      textLength: text.length
+    });
+
+    // 5. Invoke Claude and MCP workflow
+    console.log("[TELEGRAM-BOT] generating reply");
+
     const reply = await generateTelegramReply(chatId, text);
-    await sendTelegramMessage({ chatId, message: reply });
+
+    console.log("[TELEGRAM-BOT] reply generated", {
+      replyLength: reply.length,
+      elapsedMs: Date.now() - startedAt
+    });
+
+    // 6. Send reply to Telegram
+    console.log("[TELEGRAM-BOT] sending reply", {
+      chatId,
+      replyLength: reply.length
+    });
+
+    const sendResult = await sendTelegramMessage({
+      chatId,
+      message: reply
+    });
+
+    console.log("[TELEGRAM-BOT] reply sent successfully", {
+      chatId,
+      messageId: sendResult?.idMessage || null,
+      elapsedMs: Date.now() - startedAt
+    });
+
   } catch (error) {
-    console.error('[TELEGRAM-BOT] failed to handle message:', error.message);
+    console.error("[TELEGRAM-BOT] message processing failed", {
+      chatId: chatId || null,
+      messageId: messageId || null,
+      errorName: error?.name || "Error",
+      errorMessage: error?.message || String(error),
+      stack: error?.stack || null,
+      elapsedMs: Date.now() - startedAt
+    });
   }
 }

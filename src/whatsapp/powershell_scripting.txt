@@ -250,17 +250,23 @@ finally {
 
 
 
+https://api.greenapi.com
+410022778561
+714feeeaceab4740a23b11f98a68edd52124373f2b8e451584
+
 
 ###################telegram
 
 
+
 # ==========================================
-# Send Telegram Message to Mobile Number
+# GREEN-API Telegram Message Test
 # ==========================================
 
-$GreenApiUrl = Read-Host "Enter GREEN_API_URL"
-$InstanceId  = Read-Host "Enter GREEN_API_TELEGRAM_INSTANCE_ID"
+$GreenApiUrl = "https://api.greenapi.com"
+$InstanceId  = "410022778561"
 
+# Enter token securely
 $SecureToken = Read-Host "Enter GREEN_API_TELEGRAM_TOKEN" -AsSecureString
 $Ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecureToken)
 
@@ -271,7 +277,6 @@ finally {
     [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($Ptr)
 }
 
-# Example Singapore mobile number: 6591234567
 $PhoneNumber = Read-Host "Enter mobile number (country code, digits only)"
 $Message = Read-Host "Enter message"
 
@@ -284,10 +289,8 @@ try {
         throw "Message cannot be empty."
     }
 
-    $BaseUrl = $GreenApiUrl.TrimEnd("/")
-    $Endpoint = "${BaseUrl}/waInstance${InstanceId}/sendMessage/${Token}"
+    $Endpoint = "${GreenApiUrl}/waInstance${InstanceId}/sendMessage/${Token}"
 
-    # Phone number used as recipient; API must explicitly support this format
     $Payload = @{
         chatId  = $PhoneNumber
         message = $Message
@@ -299,19 +302,23 @@ try {
         -Uri $Endpoint `
         -Method POST `
         -ContentType "application/json; charset=utf-8" `
-        -Body $Payload `
+        -Body ([System.Text.Encoding]::UTF8.GetBytes($Payload)) `
         -TimeoutSec 30
 
+    Write-Host "`nAPI response:" -ForegroundColor Green
     $Response | ConvertTo-Json -Depth 10
 }
 catch {
-    Write-Host "Failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "`nFailed: $($_.Exception.Message)" -ForegroundColor Red
+
+    if ($_.ErrorDetails.Message) {
+        Write-Host "API response: $($_.ErrorDetails.Message)"
+    }
 }
 finally {
     $Token = $null
     $SecureToken.Dispose()
 }
-
 
 
 
