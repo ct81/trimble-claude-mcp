@@ -996,7 +996,6 @@ function bodyFor(type, id) {
     case "flow_while":
     case "flow_do_while":
     case "flow_foreach": return `<input type="number" class="fl" data-k="max" min="1" value="1000" title="Max iterations">
-                          <div style="margin-top:6px;font-size:11px"><label><input type="checkbox" class="fl" data-k="onlyColumns" checked> only column rows</label></div>
                           <div class="hint">Loops the Get Result rows and shows them as JSON. Connect to Call MCP: it runs once per row; use {{row.x}}, {{row.y}}… in its arguments.</div>
                           <div class="status">not run yet</div>
                           <pre class="out" style="max-height:160px;overflow:auto;font-size:11px;margin:6px 0 0;white-space:pre-wrap">—</pre>`;
@@ -1972,7 +1971,7 @@ async function runLoop(cur, state) {
   const all = flowRows(state.result);
   const max = Math.max(1, Math.min(Number(cfg.max) || 1000, 10000));
   const rows = [];
-  const visit = (row) => { if (!cfg.onlyColumns || isColumnRow(row)) rows.push(row); };
+  const visit = (row) => rows.push(row);
   let i = 0;
   if (cur.type === "flow_do_while") { do { visit(all[i]); i++; } while (i < all.length && i < max); }
   else for (; i < all.length && i < max; i++) visit(all[i]);

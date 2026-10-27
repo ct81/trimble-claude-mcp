@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp & Telegram ChatBots, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #3"
+// #4"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -388,7 +388,9 @@ const maxLibraryBytes = 50 * 1024 * 1024;
 const workflowDocumentId = (name) => createHash('sha256').update(name.toLowerCase()).digest('hex');
 const workflowNodeTypes = new Set([
   'start', 'upload', 'upload_excel', 'upload_csv', 'upload_ifc', 'upload_dxf', 'upload_pdf',
-  'mcp', 'result', 'export_excel', 'export_csv'
+  'mcp', 'result', 'flow_if', 'flow_else', 'flow_switch', 'flow_for', 'flow_while',
+  'flow_do_while', 'flow_foreach', 'flow_break', 'flow_continue', 'flow_return',
+  'flow_goto', 'export_excel', 'export_csv'
 ]);
 const workflowNodePorts = {
   start: { out: true },
@@ -400,6 +402,17 @@ const workflowNodePorts = {
   upload_pdf: { in: true, out: true },
   mcp: { in: true, out: true },
   result: { in: true, out: true },
+  flow_if: { in: true, out: true },
+  flow_else: { in: true, out: true },
+  flow_switch: { in: true, out: true },
+  flow_for: { in: true, out: true },
+  flow_while: { in: true, out: true },
+  flow_do_while: { in: true, out: true },
+  flow_foreach: { in: true, out: true },
+  flow_break: { in: true, out: true },
+  flow_continue: { in: true, out: true },
+  flow_return: { in: true },
+  flow_goto: { in: true, out: true },
   export_excel: { in: true },
   export_csv: { in: true }
 };
@@ -457,6 +470,21 @@ function validateWorkflowDocument(workflow) {
         tool: settings.tool,
         args: settings.args
       };
+    }
+    if (node.type.startsWith('flow_') && node.flow !== undefined) {
+      if (!node.flow || typeof node.flow !== 'object' || Array.isArray(node.flow) ||
+          Object.keys(node.flow).length > 20) {
+        throw new Error('Workflow contains invalid control-flow settings');
+      }
+      const flow = {};
+      for (const [key, value] of Object.entries(node.flow)) {
+        if (!/^[a-zA-Z][a-zA-Z0-9_]{0,49}$/.test(key) ||
+            !(typeof value === 'boolean' || (typeof value === 'string' && value.length <= 500))) {
+          throw new Error('Workflow contains invalid control-flow settings');
+        }
+        flow[key] = value;
+      }
+      normalized.flow = flow;
     }
     return normalized;
   });
