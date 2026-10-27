@@ -253,9 +253,38 @@ finally {
 https://api.greenapi.com
 410022778561
 714feeeaceab4740a23b11f98a68edd52124373f2b8e451584
+telegram-webhook-token
 
 
 ###################telegram
+
+
+$apiUrl   = 'https://api.greenapi.com'                    # e.g. https://api.green-api.com
+$instance = '410022778561'
+$apiToken = '714feeeaceab4740a23b11f98a68edd52124373f2b8e451584'
+$chatId   = "123456789"
+
+$body = @{ chatId = $chatId; message = "Hello from PowerShell" } | ConvertTo-Json
+Invoke-RestMethod -Method Post ` -Uri "$($apiUrl.TrimEnd('/'))/waInstance$instance/sendMessage/$apiToken" ` -ContentType "application/json" -Body $body
+
+
+
+
+$webhook = "https://trimble-claude-mcp-g86i.onrender.com/api/telegram/webhook"
+$token   = "$env:"telegram-webhook-token"   # same value as in Render and GREEN-API
+$chatId  = "123456789"                   # numeric Telegram chat ID
+
+$payload = @{
+  typeWebhook = "incomingMessageReceived"
+  idMessage   = [guid]::NewGuid().ToString("N")
+  senderData  = @{ chatId = $chatId; chatType = "private" }
+  messageData = @{
+    typeMessage     = "textMessage"
+    textMessageData = @{ textMessage = "Hi, what is the status of my project?" }
+  }
+} | ConvertTo-Json -Depth 5
+
+Invoke-RestMethod -Method Post -Uri $webhook ` -Headers @{ Authorization = "Bearer $token" } ` -ContentType "application/json" -Body $payload
 
 
 

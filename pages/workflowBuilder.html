@@ -442,6 +442,7 @@
     <div class="palette-tabs" role="tablist" aria-label="Workflow component categories">
       <button class="palette-tab" id="tabImport" type="button" role="tab" aria-selected="true" aria-controls="panelImport">Import</button>
       <button class="palette-tab" id="tabTools" type="button" role="tab" aria-selected="false" aria-controls="panelTools" tabindex="-1">Tools</button>
+      <button class="palette-tab" id="tabFlow" type="button" role="tab" aria-selected="false" aria-controls="panelFlow" tabindex="-1">Control Flow Statements</button>
       <button class="palette-tab" id="tabOutput" type="button" role="tab" aria-selected="false" aria-controls="panelOutput" tabindex="-1">Output</button>
       <button class="palette-tab" id="tabExport" type="button" role="tab" aria-selected="false" aria-controls="panelExport" tabindex="-1">Export</button>
     </div>
@@ -465,6 +466,41 @@
     <div class="palette-panel" id="panelTools" role="tabpanel" aria-labelledby="tabTools" hidden>
       <div class="item" draggable="true" data-type="mcp">
         <span class="dot" style="background:#7c3aed"></span> Call MCP
+      </div>
+    </div>
+    <div class="palette-panel" id="panelFlow" role="tabpanel" aria-labelledby="tabFlow" hidden>
+      <div class="item" draggable="true" data-type="flow_if">
+        <span class="dot" style="background:#db2777"></span> <code>if</code>
+      </div>
+      <div class="item" draggable="true" data-type="flow_else">
+        <span class="dot" style="background:#db2777"></span> <code>else</code>
+      </div>
+      <div class="item" draggable="true" data-type="flow_switch">
+        <span class="dot" style="background:#db2777"></span> <code>switch</code>
+      </div>
+      <div class="item" draggable="true" data-type="flow_for">
+        <span class="dot" style="background:#db2777"></span> <code>for</code>
+      </div>
+      <div class="item" draggable="true" data-type="flow_while">
+        <span class="dot" style="background:#db2777"></span> <code>while</code>
+      </div>
+      <div class="item" draggable="true" data-type="flow_do_while">
+        <span class="dot" style="background:#db2777"></span> <code>do-while</code>
+      </div>
+      <div class="item" draggable="true" data-type="flow_foreach">
+        <span class="dot" style="background:#db2777"></span> <code>foreach</code>
+      </div>
+      <div class="item" draggable="true" data-type="flow_break">
+        <span class="dot" style="background:#db2777"></span> <code>break</code>
+      </div>
+      <div class="item" draggable="true" data-type="flow_continue">
+        <span class="dot" style="background:#db2777"></span> <code>continue</code>
+      </div>
+      <div class="item" draggable="true" data-type="flow_return">
+        <span class="dot" style="background:#db2777"></span> <code>return</code>
+      </div>
+      <div class="item" draggable="true" data-type="flow_goto">
+        <span class="dot" style="background:#db2777"></span> <code>goto</code>
       </div>
     </div>
     <div class="palette-panel" id="panelOutput" role="tabpanel" aria-labelledby="tabOutput" hidden>
@@ -633,9 +669,22 @@ const TYPES = {
   upload_pdf: { label: "Upload PDF", color: "#2563eb", icon: "📄", hasIn: true, hasOut: true },
   mcp:    { label: "Call MCP",   color: "#7c3aed", icon: "🔌", hasIn: true,  hasOut: true  },
   result: { label: "Get Result", color: "#d97706", icon: "✅", hasIn: true,  hasOut: true  },
+  flow_if: { label: "if", color: "#db2777", icon: "🔀", hasIn: true, hasOut: true },
+  flow_else: { label: "else", color: "#db2777", icon: "🔀", hasIn: true, hasOut: true },
+  flow_switch: { label: "switch", color: "#db2777", icon: "🔀", hasIn: true, hasOut: true },
+  flow_for: { label: "for", color: "#db2777", icon: "🔀", hasIn: true, hasOut: true },
+  flow_while: { label: "while", color: "#db2777", icon: "🔀", hasIn: true, hasOut: true },
+  flow_do_while: { label: "do-while", color: "#db2777", icon: "🔀", hasIn: true, hasOut: true },
+  flow_foreach: { label: "foreach", color: "#db2777", icon: "🔀", hasIn: true, hasOut: true },
+  flow_break: { label: "break", color: "#db2777", icon: "🔀", hasIn: true, hasOut: true },
+  flow_continue: { label: "continue", color: "#db2777", icon: "🔀", hasIn: true, hasOut: true },
+  flow_return: { label: "return", color: "#db2777", icon: "🔀", hasIn: true, hasOut: false },
+  flow_goto: { label: "goto", color: "#db2777", icon: "🔀", hasIn: true, hasOut: true },
   export_excel: { label: "Export Excel", color: "#15803d", icon: "📊", hasIn: true, hasOut: false },
   export_csv: { label: "Export CSV", color: "#0f766e", icon: "📋", hasIn: true, hasOut: false }
 };
+const LOOP_TYPES = new Set(["flow_for", "flow_while", "flow_do_while", "flow_foreach"]);
+const FLOW_TYPES = new Set(Object.keys(TYPES).filter((t) => t.startsWith("flow_")));
 const UPLOAD_TYPES = new Set(["upload", "upload_excel", "upload_csv", "upload_ifc", "upload_dxf", "upload_pdf"]);
 
 const STAGE_MIN = 340, STAGE_PAD = 260, MAX_COORD = 8000;
@@ -938,6 +987,25 @@ function bodyFor(type, id) {
                           <textarea class="args" rows="3" spellcheck="false" style="width:100%;margin-top:6px;font-family:monospace;font-size:11px" placeholder='arguments JSON; file placeholders are replaced'>{"file_base64":"{{file_base64}}","filename":"{{filename}}"}</textarea>
                           <div class="status">not called yet</div>`;
     case "result": return `<div style="margin-bottom:6px;font-size:11px"><label><input type="radio" class="out-mode" value="pretty" checked> Pretty</label> <label style="margin-left:8px"><input type="radio" class="out-mode" value="raw"> Raw</label></div><div class="out">—</div>`;
+    case "flow_if":
+    case "flow_else": return `<div class="hint">${type === "flow_if" ? "Continue only if the result contains columns" : "Continue only if the result has no columns"}</div>`;
+    case "flow_switch": return `<input type="text" class="fl" data-k="field" placeholder="field to switch on (e.g. type)" value="type" spellcheck="false">
+                          <input type="text" class="fl" data-k="case" placeholder="case value (e.g. column)" value="column" spellcheck="false" style="margin-top:6px">
+                          <div class="hint">Keeps only rows where field equals case</div>`;
+    case "flow_for":
+    case "flow_while":
+    case "flow_do_while":
+    case "flow_foreach": return `<input type="text" class="fl" data-k="url" value="${DEFAULT_MCP_URL}" spellcheck="false">
+                          <input type="text" class="fl" data-k="tool" value="tekla_create_column" spellcheck="false" style="margin-top:6px">
+                          <input type="number" class="fl" data-k="max" min="1" value="1000" title="Max iterations" style="margin-top:6px">
+                          <div style="margin-top:6px;font-size:11px"><label><input type="checkbox" class="fl" data-k="breakOnOther"> break on first non-column</label></div>
+                          <div class="hint">Loops the Get Result rows; each column row calls the tool (non-columns are skipped via continue)</div>
+                          <div class="status">not run yet</div>`;
+    case "flow_break": return `<div class="hint">Stops this branch of the workflow</div>`;
+    case "flow_continue": return `<div class="hint">Skips to the next connected node</div>`;
+    case "flow_return": return `<div class="hint">Ends this branch and returns the current result</div>`;
+    case "flow_goto": return `<select class="fl" data-k="target"><option value="">— target node —</option></select>
+                          <div class="hint">Jumps to the chosen node (max 100 jumps)</div>`;
     case "export_excel":
     case "export_csv": return `<div class="hint">Download the MCP result as ${type === "export_excel" ? "an Excel workbook" : "a CSV file"}</div>
                           <div class="status">waiting for workflow result</div>`;
@@ -1097,6 +1165,13 @@ function createNode(type, x, y, { autoLoad = true } = {}) {
     ${t.hasOut ? `<div class="port out" data-node="${id}" data-dir="out"></div>` : ""}
   `;
   stage.appendChild(el);
+  const gotoSel = el.querySelector('select.fl[data-k="target"]');
+  if (gotoSel) gotoSel.addEventListener("mousedown", () => {
+    const cur = gotoSel.value;
+    gotoSel.innerHTML = `<option value="">— target node —</option>` + nodes.filter((n) => n.el !== el)
+      .map((n) => `<option value="${n.id}">${TYPES[n.type].label} #${n.instanceNumber} (${n.id})</option>`).join("");
+    gotoSel.value = cur;
+  });
   const node = { id, type, instanceNumber, x: Math.max(0, x), y: Math.max(0, y), el };
   nodes.push(node);
   updateNodeLabels(type);
@@ -1253,6 +1328,11 @@ function updateNodeLabels(type) {
       : TYPES[type].label;
   }
 }
+function readFlow(el) {
+  const out = {};
+  el.querySelectorAll(".fl").forEach((i) => { out[i.dataset.k] = i.type === "checkbox" ? i.checked : i.value; });
+  return out;
+}
 async function serializeWorkflow() {
   return {
     version: 1,
@@ -1269,6 +1349,9 @@ async function serializeWorkflow() {
           tool: node.el.querySelector(".tool").value,
           args: node.el.querySelector(".args").value
         };
+      }
+      if (FLOW_TYPES.has(node.type)) {
+        saved.flow = readFlow(node.el);
       }
       if (UPLOAD_TYPES.has(node.type)) {
         const file = node.el.querySelector('input[type="file"]')?.files?.[0];
@@ -1414,6 +1497,15 @@ function applyWorkflow(workflow) {
         node.el.querySelector('input[type="file"]').files = transfer.files;
       } catch { /* the stored copy is still used when running */ }
       node.el.querySelector(".status").textContent = "✔ " + saved.file.name + " (loaded from saved workflow)";
+    }
+    if (FLOW_TYPES.has(saved.type) && saved.flow && typeof saved.flow === "object") {
+      node.el.querySelectorAll(".fl").forEach((i) => {
+        const v = saved.flow[i.dataset.k];
+        if (v === undefined) return;
+        if (i.type === "checkbox") i.checked = !!v;
+        else if (i.tagName === "SELECT") { i.innerHTML = `<option></option>`; i.firstChild.value = i.firstChild.textContent = String(v); i.value = String(v); }
+        else i.value = v;
+      });
     }
     if (saved.type === "mcp") {
       node.el.querySelector(".url").value = saved.settings.url;
@@ -1824,6 +1916,87 @@ function downloadWorkflowResult(format, result) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/* Control-flow helpers */
+function flowRows(result) {
+  try { return exportRows(result); } catch { return []; }
+}
+const lowerKeys = (row) => Object.fromEntries(Object.entries(row || {}).map(([k, v]) => [k.toLowerCase(), v]));
+function isColumnRow(row) {
+  if (!row || typeof row !== "object") return false;
+  return ["type", "elementtype", "element_type", "category", "objecttype", "class", "name", "kind"]
+    .some((k) => typeof lowerKeys(row)[k] === "string" && /column/i.test(lowerKeys(row)[k]));
+}
+function columnArgs(row) {
+  const r = lowerKeys(row);
+  const num = (...ks) => { for (const k of ks) { const n = Number(r[k]); if (r[k] !== undefined && r[k] !== null && r[k] !== "" && Number.isFinite(n)) return n; } };
+  const x = num("x", "positionx", "startx");
+  const y = num("y", "positiony", "starty");
+  const z1 = num("z1", "zstart", "bottomz", "basez", "startz", "z");
+  let z2 = num("z2", "zend", "topz", "endz");
+  if (z2 === undefined) {
+    const h = num("height", "length");
+    if (h !== undefined && z1 !== undefined) z2 = z1 + h;
+  }
+  const args = { x, y, z1, z2 };
+  for (const [k, ...alts] of [["profile", "profile", "profilename"], ["material", "material", "materialname"], ["classNumber", "classnumber", "class_number", "classnum"]]) {
+    for (const a of alts) if (r[a] !== undefined && r[a] !== null && r[a] !== "") { args[k] = String(r[a]); break; }
+  }
+  const missing = ["x", "y", "z1", "z2"].filter((k) => args[k] === undefined);
+  if (missing.length) throw new Error("Column row is missing " + missing.join(", "));
+  return args;
+}
+async function callMcpTool(url, toolName, args) {
+  let token = await ensureToken();
+  const body = JSON.stringify({ jsonrpc: "2.0", id: Date.now(), method: "tools/call", params: { name: toolName, arguments: args } });
+  const doFetch = (bearer) => fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Accept": "application/json, text/event-stream", "Authorization": "Bearer " + bearer },
+    body
+  });
+  let res = await doFetch(token);
+  if (res.status === 401) {
+    accessToken = null; tokenExpiry = 0;
+    res = await doFetch(await ensureToken());
+  }
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`MCP HTTP ${res.status}${txt ? " — " + txt.slice(0, 200) : ""}`);
+  }
+  const json = await res.json();
+  if (json?.error) throw new Error(json.error.message || "MCP error");
+  if (json?.result?.isError) throw new Error("Tool reported an error");
+  return json;
+}
+async function runLoop(cur, state) {
+  const cfg = readFlow(cur.el);
+  const statusBox = cur.el.querySelector(".status");
+  if (!state.result) throw new Error("Connect a Get Result (or MCP) node before the loop");
+  const url = (cfg.url || "").trim();
+  const tool = (cfg.tool || "").trim();
+  if (!url || !tool) throw new Error("Set MCP URL and tool name");
+  const rows = flowRows(state.result);
+  const max = Math.max(1, Math.min(Number(cfg.max) || 1000, 10000));
+  let created = 0, skipped = 0, i = 0;
+  const step = async () => {
+    const row = rows[i];
+    if (!isColumnRow(row)) {
+      if (cfg.breakOnOther) return "break";
+      skipped++; return "continue";
+    }
+    statusBox.textContent = `Row ${i + 1}/${rows.length}: ${tool}…`;
+    await callMcpTool(url, tool, columnArgs(row));
+    created++;
+  };
+  const cond = () => i < rows.length && i < max;
+  if (cur.type === "flow_do_while") {
+    do { if ((await step()) === "break") break; i++; } while (cond());
+  } else {
+    for (; cond(); i++) { if ((await step()) === "break") break; }
+  }
+  statusBox.textContent = `✔ ${created} created, ${skipped} skipped`;
+  state.loopSummary = { created, skipped };
+}
+
 async function runWorkflow() {
   const start = nodes.find((n) => n.type === "start");
   if (!start) { setStatus("Add a Start node first"); return; }
@@ -1834,7 +2007,7 @@ async function runWorkflow() {
     node: start,
     state: { fileName: null, fileBase64: null, fileText: null, pdfBase64: null, result: null }
   }];
-  let nextIndex = 0;
+  let nextIndex = 0, gotoCount = 0;
   setStatus("Running…");
 
   while (nextIndex < pending.length) {
@@ -1926,6 +2099,37 @@ async function runWorkflow() {
         }
         state.result = await res.json();
         statusBox.textContent = "✔ responded";
+      }
+
+      if (FLOW_TYPES.has(cur.type)) {
+        const rows = state.result ? flowRows(state.result) : [];
+        const hasColumns = rows.some(isColumnRow);
+        if (LOOP_TYPES.has(cur.type)) await runLoop(cur, state);
+        else if ((cur.type === "flow_if" && !hasColumns) || (cur.type === "flow_else" && hasColumns)) {
+          cur.el.classList.remove("active");
+          continue;
+        }
+        else if (cur.type === "flow_switch") {
+          const cfg = readFlow(cur.el);
+          const field = (cfg.field || "").toLowerCase();
+          const kept = rows.filter((r) => String(lowerKeys(r)[field] ?? "").toLowerCase() === String(cfg.case || "").toLowerCase());
+          if (!kept.length) { cur.el.classList.remove("active"); continue; }
+          state.result = { result: { structuredContent: { rows: kept } } };
+        }
+        else if (["flow_break", "flow_continue", "flow_return"].includes(cur.type)) {
+          cur.el.classList.remove("active");
+          if (cur.type === "flow_return") setStatus("↩ return");
+          continue;
+        }
+        else if (cur.type === "flow_goto") {
+          const target = nodes.find((n) => n.id === readFlow(cur.el).target);
+          if (!target) throw new Error("Choose a goto target node");
+          if (++gotoCount > 100) throw new Error("goto limit (100) exceeded");
+          seen.delete(target.id);
+          cur.el.classList.remove("active");
+          pending.push({ node: target, state: { ...state } });
+          continue;
+        }
       }
 
       if (cur.type === "result") {
