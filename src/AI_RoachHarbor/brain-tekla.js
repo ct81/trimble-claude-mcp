@@ -26,7 +26,7 @@ function columnArgs(args, defaults) {
       (num(args.width) && num(args.depth) ? `${num(args.width)}*${num(args.depth)}` : "") ||
       defaults.profile,
     material: String(args.material ?? "").trim() || defaults.material,
-    classNumber: String(args.class ?? "")
+    classNumber: String(args.class ?? "").trim() || defaults.classNumber
   };
 }
 
@@ -35,7 +35,8 @@ const BUILDERS = { column: columnArgs };
 export function brainToTekla(records, types, defaults = {}) {
   const fallback = {
     profile: String(defaults.profile || "").trim() || "300*300",
-    material: String(defaults.material || "").trim() || "C30/37"
+    material: String(defaults.material || "").trim() || "C30/37",
+    classNumber: String(defaults.classNumber ?? "").trim()
   };
   const converted = convertDxfJson(records);
   const wanted = new Set(types);

@@ -443,7 +443,7 @@
     </div>
     <div class="palette-tabs" role="tablist" aria-label="Workflow component categories">
       <button class="palette-tab" id="tabImport" type="button" role="tab" aria-selected="true" aria-controls="panelImport">Import</button>
-      <button class="palette-tab" id="tabBrain" type="button" role="tab" aria-selected="false" aria-controls="panelBrain" tabindex="-1">🧠 Brain</button>
+      <button class="palette-tab" id="tabBrain" type="button" role="tab" aria-selected="false" aria-controls="panelBrain" tabindex="-1">Brain</button>
       <button class="palette-tab" id="tabTools" type="button" role="tab" aria-selected="false" aria-controls="panelTools" tabindex="-1">Tools</button>
       <button class="palette-tab" id="tabFlow" type="button" role="tab" aria-selected="false" aria-controls="panelFlow" tabindex="-1">Control Flow Statements</button>
       <button class="palette-tab" id="tabOutput" type="button" role="tab" aria-selected="false" aria-controls="panelOutput" tabindex="-1">Output</button>
@@ -994,6 +994,7 @@ function bodyFor(type, id) {
                           <div class="hint" style="margin-top:6px">Object types to process</div>
                           <input type="text" class="fl" data-k="profile" placeholder="default profile (e.g. 300*300)" value="300*300" spellcheck="false" style="margin-top:6px">
                           <input type="text" class="fl" data-k="material" placeholder="default material (e.g. C30/37)" value="C30/37" spellcheck="false" style="margin-top:6px">
+                          <input type="text" class="fl" data-k="classNumber" placeholder="default classNumber (e.g. 3)" value="" spellcheck="false" style="margin-top:6px">
                           <div class="brain-types"><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_column" checked> column</label><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_beam" checked> beam</label><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_wall" checked> wall</label><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_slab" checked> slab</label><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_polybeam" checked> polybeam</label><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_footing" checked> footing</label><label style="display:block;font-size:12px;margin:3px 0"><input type="checkbox" class="fl" data-k="type_pile" checked> pile</label></div>
                           <div style="margin:8px 0 6px;font-size:11px;display:flex;align-items:center;gap:8px">
                             <label><input type="radio" class="brain-mode" value="pretty" checked> Pretty</label>
@@ -2088,7 +2089,7 @@ async function runWorkflowCore(signal) {
         state.brain = script;
         const cfg = readFlow(cur.el);
         state.brainTypes = Object.keys(cfg).filter((k) => k.startsWith("type_") && cfg[k]).map((k) => k.slice(5));
-        state.brainDefaults = { profile: cfg.profile, material: cfg.material };
+        state.brainDefaults = { profile: cfg.profile, material: cfg.material, classNumber: cfg.classNumber };
         cur.el.querySelector(".status").textContent = "✔ " + script;
         let records, dxfText;
         if (state.fileText) {
