@@ -996,7 +996,6 @@ function bodyFor(type, id) {
                           <div style="margin:8px 0 6px;font-size:11px;display:flex;align-items:center;gap:8px">
                             <label><input type="radio" class="brain-mode" value="pretty" checked> Pretty</label>
                             <label><input type="radio" class="brain-mode" value="raw"> Raw</label>
-                            <button type="button" class="brain-copy" style="margin-left:auto">Copy JSON</button>
                           </div>
                           <div class="status">no brain selected</div>
                           <pre class="brain-out" style="max-height:160px;overflow:auto;font-size:11px;margin:6px 0 0;white-space:pre-wrap">—</pre>`;
@@ -1183,7 +1182,7 @@ function createNode(type, x, y, { autoLoad = true } = {}) {
     <div class="node-head" style="--c:${t.color}">
       <span class="ic">${t.icon}</span>
       <span class="ttl">${t.label}</span>
-      ${type === "result" || FLOW_TYPES.has(type) ? `<button class="copy-btn" title="Copy JSON" aria-label="Copy JSON">⧉</button>` : ""}
+      ${type === "result" || type === "brain" || FLOW_TYPES.has(type) ? `<button class="copy-btn" title="Copy JSON" aria-label="Copy JSON">⧉</button>` : ""}
       <button class="del" title="Delete node">×</button>
     </div>
     <div class="node-body">${bodyFor(type, id)}</div>
@@ -1264,7 +1263,9 @@ function wireNode(node) {
     copyBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
     copyBtn.addEventListener("click", async (e) => {
       e.stopPropagation();
-      const text = FLOW_TYPES.has(node.type)
+      const text = node.type === "brain"
+        ? JSON.stringify(el._brainResult ?? null, null, 2)
+        : FLOW_TYPES.has(node.type)
         ? JSON.stringify(el._flowJson ?? null, null, 2)
         : el.querySelector(".out").textContent;
       try {
@@ -1289,20 +1290,6 @@ function wireNode(node) {
     r.name = "brain-mode-" + el.dataset.id;
     r.addEventListener("change", () => renderBrain(el));
   });
-  const brainCopy = el.querySelector(".brain-copy");
-  if (brainCopy) {
-    brainCopy.addEventListener("click", async () => {
-      if (el._brainResult === undefined) { setStatus("Nothing to copy — run the workflow first"); return; }
-      try {
-        await navigator.clipboard.writeText(JSON.stringify(el._brainResult, null, 2));
-        brainCopy.textContent = "Copied";
-      } catch (error) {
-        brainCopy.textContent = "!";
-        setStatus("Could not copy JSON: " + error.message);
-      }
-      setTimeout(() => { brainCopy.textContent = "Copy JSON"; }, 1200);
-    });
-  }
   el.querySelectorAll(".out-mode").forEach(r => {
     r.name = "out-mode-" + el.dataset.id;
     r.addEventListener("change", () => { if (el._result) renderResult(el); });

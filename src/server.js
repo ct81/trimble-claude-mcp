@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp & Telegram ChatBots, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #13"
+// #14"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -389,7 +389,7 @@ const maxLibraryBytes = 50 * 1024 * 1024;
 const workflowDocumentId = (name) => createHash('sha256').update(name.toLowerCase()).digest('hex');
 const workflowNodeTypes = new Set([
   'start', 'upload', 'upload_excel', 'upload_csv', 'upload_ifc', 'upload_dxf', 'upload_pdf',
-  'mcp', 'result', 'flow_if', 'flow_else', 'flow_switch', 'flow_for', 'flow_while',
+  'brain', 'mcp', 'result', 'flow_if', 'flow_else', 'flow_switch', 'flow_for', 'flow_while',
   'flow_do_while', 'flow_foreach', 'flow_break', 'flow_continue', 'flow_return',
   'flow_goto', 'export_excel', 'export_csv'
 ]);
@@ -401,6 +401,7 @@ const workflowNodePorts = {
   upload_ifc: { in: true, out: true },
   upload_dxf: { in: true, out: true },
   upload_pdf: { in: true, out: true },
+  brain: { in: true, out: true },
   mcp: { in: true, out: true },
   result: { in: true, out: true },
   flow_if: { in: true, out: true },
@@ -472,7 +473,7 @@ function validateWorkflowDocument(workflow) {
         args: settings.args
       };
     }
-    if (node.type.startsWith('flow_') && node.flow !== undefined) {
+    if ((node.type.startsWith('flow_') || node.type === 'brain') && node.flow !== undefined) {
       if (!node.flow || typeof node.flow !== 'object' || Array.isArray(node.flow) ||
           Object.keys(node.flow).length > 20) {
         throw new Error('Workflow contains invalid control-flow settings');
