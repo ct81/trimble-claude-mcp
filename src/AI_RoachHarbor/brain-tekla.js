@@ -10,6 +10,23 @@ const num = (value) => {
 // Tekla profile syntax uses "*" (e.g. 300*300); DXF data often has "300x300".
 const teklaProfile = (value) => String(value ?? "").trim().replace(/^(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)$/, "$1*$2");
 
+const round = (n) => Math.round(n * 10) / 10;
+
+// Section size from the DXF: width/depth, circle diameter, or the bounding box of a closed outline.
+function sizeProfile(args) {
+  const w = num(args.width), d = num(args.depth);
+  if (w && d) return `${round(w)}*${round(d)}`;
+  const dia = num(args.diameter) ?? num(args.attributes?.sourceDiameter);
+  if (dia) return `D${round(dia)}`;
+  const pts = args.attributes?.vertices;
+  if (Array.isArray(pts) && pts.length >= 3) {
+    const xs = pts.map((p) => Number(p.x)), ys = pts.map((p) => Number(p.y));
+    const bw = Math.max(...xs) - Math.min(...xs), bd = Math.max(...ys) - Math.min(...ys);
+    if (Number.isFinite(bw) && Number.isFinite(bd) && bw > 0 && bd > 0) return `${round(bw)}*${round(bd)}`;
+  }
+  return "";
+}
+
 function columnArgs(args, defaults) {
   const x = num(args.position?.x ?? args.startPoint?.x);
   const y = num(args.position?.y ?? args.startPoint?.y);
@@ -22,9 +39,7 @@ function columnArgs(args, defaults) {
   }
   return {
     x, y, z1, z2,
-    profile: teklaProfile(args.profile) ||
-      (num(args.width) && num(args.depth) ? `${num(args.width)}*${num(args.depth)}` : "") ||
-      defaults.profile,
+    profile: teklaProfile(args.profile) || sizeProfile(args) || defaults.profile,
     material: String(args.material ?? "").trim() || defaults.material,
     classNumber: String(args.class ?? "").trim() || defaults.classNumber
   };
