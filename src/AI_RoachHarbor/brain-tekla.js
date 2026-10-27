@@ -73,14 +73,34 @@ function profileFor(args, defaults, allowOutline = true) {
 }
 
 function columnArgs(args, defaults) {
-  const x = num(args.position?.x ?? args.startPoint?.x);
-  const y = num(args.position?.y ?? args.startPoint?.y);
+  const outlinePts = vertexPoints(args);
+  const bx = outlinePts.map((p) => p.x), by = outlinePts.map((p) => p.y);
+  const centre = /POLYLINE/i.test(String(args._src?.Type ?? "")) && outlinePts.length >= 3
+    ? { x: (Math.min(...bx) + Math.max(...bx)) / 2, y: (Math.min(...by) + Math.max(...by)) / 2 }
+    : null;
+  const x = centre ? centre.x : num(args.position?.x ?? args.startPoint?.x);
+  const y = centre ? centre.y : num(args.position?.y ?? args.startPoint?.y);
   const z1 = num(args.position?.z ?? args.startPoint?.z ?? args.level) ?? 0;
-  const length = num(args.length);
-  const endZ = num(args.endPoint?.z);
-  const z2 = length !== undefined ? z1 + length : endZ;
+  const entity = String(args._src?.Type ?? args.attributes?.dxfEntityType ?? "").toUpperCase();
+  const isCircle = entity === "CIRCLE";
+  const isOutline = /POLYLINE/.test(entity) && vertexPoints(args).length >= 3;
+  let z2;
+  if (isCircle || isOutline) {
+    // Plan-view section: Length_mm is the outline perimeter, so the height comes from the Brain default.
+    if (!defaults.height) throw new Error("set a default column height on the Brain node");
+    z2 = z1 + defaults.height;
+  } else {
+    const vertical = args.startPoint && args.endPoint &&
+      args.startPoint.x === args.endPoint.x && args.startPoint.y === args.endPoint.y;
+    if (!vertical && !(entity === "INSERT" || entity === "POINT")) {
+      throw new Error(`${entity || "entity"} is not a column section or vertical line`);
+    }
+    const length = num(args.length);
+    const endZ = num(args.endPoint?.z);
+    z2 = length !== undefined ? z1 + length : endZ !== undefined && endZ !== z1 ? endZ : defaults.height ? z1 + defaults.height : undefined;
+  }
   if (x === undefined || y === undefined || z2 === undefined || z2 === z1) {
-    throw new Error("column needs x, y and a non-zero height (Length_mm)");
+    throw new Error("column needs x, y and a non-zero height");
   }
   return {
     x, y, z1, z2,
@@ -214,12 +234,14 @@ export function brainToTekla(records, types, defaults = {}) {
   const fallback = {
     profile: String(defaults.profile || "").trim() || "300*300",
     material: String(defaults.material || "").trim() || "C30/37",
-    classNumber: String(defaults.classNumber ?? "").trim()
+    classNumber: String(defaults.classNumber ?? "").trim(),
+    height: num(defaults.height)
   };
   const converted = convertDxfJson(records);
   const wanted = new Set(types);
   const calls = [];
   const skipped = [];
+  const seen = new Set();
   for (const call of converted.calls) {
     const type = call.objectType;
     if (!wanted.has(type)) { skipped.push({ handle: call.handle, type, reason: "type not selected" }); continue; }
@@ -227,6 +249,9 @@ export function brainToTekla(records, types, defaults = {}) {
     try {
       const args = { ...call.args, _src: call.source };
       const built = BUILDERS[type](args, fallback);
+      const key = JSON.stringify([built.tool, built.arguments]);
+      if (seen.has(key)) { skipped.push({ handle: call.handle, type, reason: "duplicate of an earlier object" }); continue; }
+      seen.add(key);
       calls.push({ handle: call.handle, type, ...built, profileFrom: args._profileFrom || "n/a" });
     } catch (error) {
       skipped.push({ handle: call.handle, type, reason: error.message });
