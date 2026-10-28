@@ -1013,6 +1013,8 @@ function bodyFor(type, id) {
                             <input type="text" class="fl" data-k="polybeam_classNumber" placeholder="class number" value="" spellcheck="false" style="margin-top:4px">
                           </details>
                           <details style="margin-top:6px"><summary style="font-size:12px"><input type="checkbox" class="fl" data-k="type_wall"> wall</summary>
+                            <input type="text" class="fl" data-k="wall_shape" placeholder="shape: rectangle, triangle, or square" value="" spellcheck="false" style="margin-top:4px">
+                            <div class="hint">Rectangle uses four corners, triangle uses three, and square sets height equal to wall run.</div>
                             <input type="text" class="fl" data-k="wall_profile" placeholder="profile (blank = from DXF)" value="" spellcheck="false" style="margin-top:4px">
                             <input type="text" class="fl" data-k="wall_material" placeholder="material" value="" spellcheck="false" style="margin-top:4px">
                             <input type="number" class="fl" data-k="wall_height" placeholder="height mm" value="" style="margin-top:4px">
@@ -2213,7 +2215,7 @@ async function runWorkflowCore(signal) {
         state.brainTypes = Object.keys(cfg).filter((k) => k.startsWith("type_") && cfg[k]).map((k) => k.slice(5));
         state.brainDefaults = {};
         for (const t of ["column", "beam", "polybeam", "wall", "slab", "footing", "pile"]) {
-          state.brainDefaults[t] = { profile: cfg[t + "_profile"], material: cfg[t + "_material"], classNumber: cfg[t + "_classNumber"], height: cfg[t + "_height"] };
+          state.brainDefaults[t] = { profile: cfg[t + "_profile"], material: cfg[t + "_material"], classNumber: cfg[t + "_classNumber"], height: cfg[t + "_height"], shape: cfg[t + "_shape"] };
         }
         cur.el.querySelector(".status").textContent = "✔ " + script;
         let records, dxfText;

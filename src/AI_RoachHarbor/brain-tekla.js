@@ -181,20 +181,46 @@ function slabArgs(args, defaults) {
 function wallArgs(args, defaults) {
   const level = num(args.level) ?? 0;
   const a = pt(args.startPoint, level), b = pt(args.endPoint, level);
+  const requestedShape = String(defaults.shape ?? "").trim().toLowerCase();
+  const shape = requestedShape || "rectangle";
+  if (!["rectangle", "triangle", "square"].includes(shape)) {
+    throw new Error("wall shape must be rectangle, triangle, or square");
+  }
   // Wall height: the type's height setting wins, since Length_mm of a plan line is the wall's run, not its height.
-  const height = defaults.height || num(args.height) || num(args.length);
+  const configuredHeight = defaults.height || num(args.height) || num(args.length);
   const pts = [];
   for (const p of vertexPoints(args)) if (!pts.length || !same(p, pts[pts.length - 1])) pts.push(p);
   const flagged = /^(yes|true|1)$/i.test(String(args._src?.Closed ?? ""));
   const closed = pts.length > 2 && (flagged || same(pts[0], pts[pts.length - 1]));
   if (closed && same(pts[0], pts[pts.length - 1])) pts.pop();
+  if (closed && shape === "triangle") {
+    if (pts.length !== 3) throw new Error("triangle wall shape needs a closed 3-point outline");
+    const [p, q, r] = pts;
+    return {
+      tool: "tekla_create_wall",
+      arguments: {
+        x1: p.x, y1: p.y, z1: p.z, x2: q.x, y2: q.y, z2: q.z, x3: r.x, y3: r.y, z3: r.z,
+        profile: plateProfile(args, args.thickness ?? args.width, defaults),
+        ...common(args, defaults)
+      }
+    };
+  }
   if (!a || !b || same(a, b) || pts.length > 2) {
     if (pts.length < 2) throw new Error("wall needs distinct start and end points");
-    if (!height) throw new Error("wall needs a height (set it on the Brain node)");
+    if (requestedShape === "triangle" && closed) throw new Error("triangle wall shape needs a closed 3-point outline");
+    if (requestedShape && shape !== "triangle" && closed && pts.length !== 4) {
+      throw new Error(`${shape} wall shape needs a closed 4-point outline`);
+    }
+    if (!configuredHeight && shape !== "square") throw new Error("wall needs a height (set it on the Brain node)");
     const profile = plateProfile(args, args.thickness ?? args.width, defaults);
     const wall = (p, q) => ({
       tool: "tekla_create_wall",
-      arguments: { x1: p.x, y1: p.y, z1: p.z, x2: q.x, y2: q.y, z2: q.z, x3: q.x, y3: q.y, z3: q.z + height, profile, ...common(args, defaults) }
+      arguments: {
+        x1: p.x, y1: p.y, z1: p.z, x2: q.x, y2: q.y, z2: q.z,
+        x3: q.x, y3: q.y, z3: q.z + (shape === "square" ? Math.hypot(q.x - p.x, q.y - p.y) : configuredHeight),
+        ...(shape === "triangle" ? {} : { x4: p.x, y4: p.y, z4: p.z + (shape === "square" ? Math.hypot(q.x - p.x, q.y - p.y) : configuredHeight) }),
+        profile, ...common(args, defaults)
+      }
     });
     // A closed outline is a wall drawn as a thin rectangle: use its centreline along the long axis.
     if (closed && pts.length === 4) {
@@ -208,11 +234,13 @@ function wallArgs(args, defaults) {
     if (closed) segs.push(wall(pts[pts.length - 1], pts[0]));
     return segs;
   }
-  if (!height) throw new Error("wall needs a height (set it on the Brain node)");
+  if (!configuredHeight && shape !== "square") throw new Error("wall needs a height (set it on the Brain node)");
+  const height = shape === "square" ? Math.hypot(b.x - a.x, b.y - a.y) : configuredHeight;
   return {
     tool: "tekla_create_wall",
     arguments: {
       x1: a.x, y1: a.y, z1: a.z, x2: b.x, y2: b.y, z2: b.z, x3: b.x, y3: b.y, z3: b.z + height,
+      ...(shape === "triangle" ? {} : { x4: a.x, y4: a.y, z4: a.z + height }),
       profile: plateProfile(args, args.thickness ?? args.width, defaults),
       ...common(args, defaults)
     }
@@ -285,7 +313,8 @@ function settingsFor(type, defaults) {
     profile: text(own.profile, built.profile ?? ""),
     material: text(own.material, "C30/37") || "C30/37",
     classNumber: text(own.classNumber, ""),
-    height: num(own.height) ?? built.height
+    height: num(own.height) ?? built.height,
+    shape: text(own.shape, "")
   };
 }
 
@@ -319,8 +348,8 @@ export function brainToTekla(records, types, defaults = {}) {
       skipped.push({ handle: call.handle, type, reason: error.message });
     }
   }
-  for (const item of converted.skipped) skipped.push({ handle: item.handle, type: "unknown", reason: "not classified" });
   const mapped = {};
   for (const c of calls) mapped[c.tool] = (mapped[c.tool] || 0) + 1;
-  return { version: BRAIN_VERSION, totalRecords: converted.totalRecords, counts: converted.counts, mapped, calls, skipped };
+  const counts = Object.fromEntries(Object.entries(converted.counts).filter(([type]) => type !== "unknown" && type !== "ignored"));
+  return { version: BRAIN_VERSION, totalRecords: converted.calls.length, counts, mapped, calls, skipped };
 }
