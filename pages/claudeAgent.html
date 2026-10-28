@@ -844,6 +844,77 @@
                     color: var(--text-muted)
                 }
 
+        .composer-tools {
+            display: flex;
+            align-items: flex-end;
+            gap: .35rem;
+            flex-shrink: 0
+        }
+
+        .language-select {
+            height: 34px;
+            max-width: 128px;
+            padding: 0 .4rem;
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            background: var(--surface);
+            color: var(--text-muted);
+            font: inherit;
+            font-size: .75rem;
+            cursor: pointer
+        }
+
+        .language-select:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px
+        }
+
+        .voice-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: 9px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-muted);
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+            flex-shrink: 0;
+            transition: background .15s,color .15s,border-color .15s;
+            align-self: flex-end
+        }
+
+        .voice-btn:hover:not(:disabled) {
+            background: var(--surface-2);
+            color: var(--text);
+            border-color: var(--accent)
+        }
+
+        .voice-btn.listening {
+            background: var(--stop);
+            border-color: var(--stop);
+            color: #fff
+        }
+
+        .voice-btn:disabled {
+            opacity: .4;
+            cursor: not-allowed
+        }
+
+        .voice-btn svg {
+            width: 17px;
+            height: 17px
+        }
+
+        .voice-status {
+            max-width: 760px;
+            margin: .4rem auto 0;
+            min-height: 1rem;
+            font-size: .72rem;
+            color: var(--text-muted);
+            text-align: center
+        }
+
         .attach-btn {
             width: 34px;
             height: 34px;
@@ -1208,6 +1279,11 @@
                 padding: .75rem
             }
 
+            .language-select {
+                max-width: 104px;
+                font-size: .7rem
+            }
+
             .msg {
                 gap: .6rem
             }
@@ -1316,13 +1392,61 @@
                    accept="image/*,application/pdf,text/*,.md,.json,.csv,.log,.yaml,.yml,.xml,.html,.css,.js,.ts,.py,.rb,.go,.rs,.java,.c,.cpp,.h,.sh"
                    style="display:none">
             <textarea id="userInput" placeholder="Message Claude..." rows="1"></textarea>
-            <button class="send-btn" id="sendBtn" aria-label="Send">
-                <svg id="sendIcon" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 19V5M5 12l7-7 7 7" />
-                </svg>
-            </button>
+            <div class="composer-tools">
+                <select class="language-select" id="voiceLanguage" aria-label="Speech language"
+                        title="Auto uses your browser language. Select a language manually if needed.">
+                    <option value="auto">Auto</option>
+                    <option value="en-US">English (US)</option>
+                    <option value="en-GB">English (UK)</option>
+                    <option value="es-ES">Spanish (Spain)</option>
+                    <option value="es-MX">Spanish (Mexico)</option>
+                    <option value="fr-FR">French</option>
+                    <option value="fr-CA">French (Canada)</option>
+                    <option value="de-DE">German</option>
+                    <option value="it-IT">Italian</option>
+                    <option value="pt-BR">Portuguese (Brazil)</option>
+                    <option value="pt-PT">Portuguese (Portugal)</option>
+                    <option value="nl-NL">Dutch</option>
+                    <option value="sv-SE">Swedish</option>
+                    <option value="nb-NO">Norwegian</option>
+                    <option value="da-DK">Danish</option>
+                    <option value="fi-FI">Finnish</option>
+                    <option value="pl-PL">Polish</option>
+                    <option value="cs-CZ">Czech</option>
+                    <option value="ru-RU">Russian</option>
+                    <option value="uk-UA">Ukrainian</option>
+                    <option value="ar-SA">Arabic</option>
+                    <option value="hi-IN">Hindi</option>
+                    <option value="bn-IN">Bengali</option>
+                    <option value="zh-CN">Chinese (Simplified)</option>
+                    <option value="zh-TW">Chinese (Traditional)</option>
+                    <option value="ja-JP">Japanese</option>
+                    <option value="ko-KR">Korean</option>
+                    <option value="tr-TR">Turkish</option>
+                    <option value="vi-VN">Vietnamese</option>
+                    <option value="id-ID">Indonesian</option>
+                    <option value="th-TH">Thai</option>
+                    <option value="he-IL">Hebrew</option>
+                    <option value="el-GR">Greek</option>
+                    <option value="ro-RO">Romanian</option>
+                </select>
+                <button class="voice-btn" id="voiceBtn" type="button" aria-label="Start voice input"
+                        aria-pressed="false" title="Speak to enter text">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="9" y="2" width="6" height="12" rx="3"></rect>
+                        <path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"></path>
+                    </svg>
+                </button>
+                <button class="send-btn" id="sendBtn" aria-label="Send">
+                    <svg id="sendIcon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 19V5M5 12l7-7 7 7" />
+                    </svg>
+                </button>
+            </div>
         </div>
+        <div class="voice-status" id="voiceStatus" aria-live="polite"></div>
         <div class="composer-hint" id="composerHint">
             <kbd>Enter</kbd> to send · <kbd>Shift</kbd>+<kbd>Enter</kbd> for new line · drag files onto the box
         </div>
@@ -1506,6 +1630,9 @@ Think through problems step by step. Identify what the user actually wants, brea
             const composerHint = $('composerHint');
             const userInput = $('userInput');
             const composer = $('composer');
+            const voiceBtn = $('voiceBtn');
+            const voiceLanguage = $('voiceLanguage');
+            const voiceStatus = $('voiceStatus');
             const drawer = $('drawer');
             const overlay = $('overlay');
             const toast = $('toast');
@@ -1524,6 +1651,168 @@ Think through problems step by step. Identify what the user actually wants, brea
             const creditText = $('creditText');
             const creditLink = $('creditLink');
             const creditDismiss = $('creditDismiss');
+
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            let speechRecognition = null;
+            let speechListening = false;
+            let microphoneCount = null;
+            let speechBasePrefix = '';
+            let speechBaseSuffix = '';
+            let speechFinalTranscript = '';
+
+            function selectedSpeechLanguage() {
+                return voiceLanguage.value === 'auto'
+                    ? (navigator.language || document.documentElement.lang || 'en-US')
+                    : voiceLanguage.value;
+            }
+
+            function speechLanguageName(language) {
+                try {
+                    return new Intl.DisplayNames([navigator.language || 'en'], { type: 'language' }).of(language) || language;
+                } catch {
+                    return language;
+                }
+            }
+
+            function updateVoiceStatus(message) {
+                if (message) {
+                    voiceStatus.textContent = message;
+                    return;
+                }
+                const language = voiceLanguage.value === 'auto'
+                    ? `Auto: ${speechLanguageName(selectedSpeechLanguage())} (browser language)`
+                    : `Speech language: ${speechLanguageName(voiceLanguage.value)}`;
+                const microphone = microphoneCount === null
+                    ? 'Checking microphone…'
+                    : microphoneCount > 0
+                        ? 'Microphone detected (default input)'
+                        : 'No microphone detected';
+                voiceStatus.textContent = `${microphone} · ${language}`;
+            }
+
+            function renderSpeechTranscript(finalTranscript, interimTranscript = '') {
+                const transcript = finalTranscript + interimTranscript;
+                const separator = speechBasePrefix && transcript &&
+                    !/\s$/.test(speechBasePrefix) && !/^\s/.test(transcript) ? ' ' : '';
+                const insertion = speechBasePrefix + separator + transcript;
+                userInput.value = insertion + speechBaseSuffix;
+                const cursor = insertion.length;
+                userInput.setSelectionRange(cursor, cursor);
+                autoResize();
+            }
+
+            function setSpeechListening(listening) {
+                speechListening = listening;
+                voiceBtn.classList.toggle('listening', listening);
+                voiceBtn.setAttribute('aria-pressed', String(listening));
+                voiceBtn.setAttribute('aria-label', listening ? 'Stop voice input' : 'Start voice input');
+                voiceBtn.title = listening ? 'Stop voice input' : 'Speak to enter text';
+            }
+
+            async function detectMicrophone() {
+                if (!navigator.mediaDevices?.enumerateDevices) {
+                    microphoneCount = 0;
+                    updateVoiceStatus('Microphone detection requires a secure browser connection.');
+                    return;
+                }
+                try {
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    microphoneCount = devices.filter(device => device.kind === 'audioinput').length;
+                    updateVoiceStatus();
+                } catch (error) {
+                    console.error('Unable to detect microphone devices:', error);
+                    microphoneCount = null;
+                    updateVoiceStatus('Unable to check microphone access. Check browser permissions and try again.');
+                }
+            }
+
+            function startVoiceInput() {
+                if (!SpeechRecognition) {
+                    showToast('Speech recognition is not supported in this browser.');
+                    return;
+                }
+                if (speechListening) {
+                    speechRecognition?.stop();
+                    return;
+                }
+
+                speechBasePrefix = userInput.value.slice(0, userInput.selectionStart);
+                speechBaseSuffix = userInput.value.slice(userInput.selectionEnd);
+                speechFinalTranscript = '';
+
+                try {
+                    const recognition = new SpeechRecognition();
+                    speechRecognition = recognition;
+                    recognition.lang = selectedSpeechLanguage();
+                    recognition.continuous = true;
+                    recognition.interimResults = true;
+                    recognition.maxAlternatives = 1;
+                    setSpeechListening(true);
+                    updateVoiceStatus('Connecting to microphone…');
+                    recognition.onstart = () => {
+                        setSpeechListening(true);
+                        updateVoiceStatus(`Listening in ${speechLanguageName(recognition.lang)}…`);
+                    };
+                    recognition.onresult = event => {
+                        speechFinalTranscript = '';
+                        let interimTranscript = '';
+                        for (let i = 0; i < event.results.length; i++) {
+                            const result = event.results[i];
+                            if (result.isFinal) speechFinalTranscript += result[0].transcript;
+                            else interimTranscript += result[0].transcript;
+                        }
+                        renderSpeechTranscript(speechFinalTranscript, interimTranscript);
+                    };
+                    recognition.onerror = event => {
+                        const messages = {
+                            'not-allowed': 'Microphone access was denied. Allow microphone access in your browser settings.',
+                            'service-not-allowed': 'The browser speech recognition service is unavailable.',
+                            'audio-capture': 'No usable microphone was found. Connect a microphone and try again.',
+                            'no-speech': 'No speech was detected. Try speaking closer to the microphone.',
+                            network: 'Speech recognition needs a network connection in this browser.'
+                        };
+                        const message = messages[event.error] || `Speech recognition error: ${event.error}.`;
+                        renderSpeechTranscript(speechFinalTranscript);
+                        updateVoiceStatus(message);
+                        showToast(message);
+                    };
+                    recognition.onend = () => {
+                        renderSpeechTranscript(speechFinalTranscript);
+                        setSpeechListening(false);
+                        speechRecognition = null;
+                        updateVoiceStatus();
+                    };
+                    recognition.start();
+                } catch (error) {
+                    console.error('Unable to start speech recognition:', error);
+                    setSpeechListening(false);
+                    speechRecognition = null;
+                    const message = 'Unable to start speech recognition. Check microphone permissions and try again.';
+                    updateVoiceStatus(message);
+                    showToast(message);
+                }
+            }
+
+            voiceBtn.disabled = !SpeechRecognition;
+            if (!SpeechRecognition) {
+                voiceBtn.title = 'Speech recognition is not supported in this browser';
+                updateVoiceStatus('Speech recognition is not supported in this browser.');
+            } else {
+                updateVoiceStatus();
+            }
+            voiceBtn.addEventListener('click', startVoiceInput);
+            voiceLanguage.addEventListener('change', () => {
+                if (speechListening) {
+                    speechRecognition?.stop();
+                    showToast('Voice input stopped. Start again to use the selected language.');
+                } else {
+                    updateVoiceStatus();
+                }
+            });
+            if (navigator.mediaDevices?.addEventListener) {
+                navigator.mediaDevices.addEventListener('devicechange', detectMicrophone);
+            }
+            detectMicrophone();
 
             let toastTimer;
             function showToast(msg) {
