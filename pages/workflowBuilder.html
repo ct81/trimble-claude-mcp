@@ -669,6 +669,20 @@
     </div>
     <div class="sp-view" id="viewBug" hidden>
       <div class="hint-text" style="font-size:11px;color:#94a3b8"></div>
+
+      <script src="https://cdn.jsdelivr.net/npm/eruda@3.0.1"></script>
+      <script>
+        document.addEventListener('DOMContentLoaded', () => {
+          eruda.init();
+          eruda.get('entryBtn').hide(); // hide the floating gear
+
+          let consoleOpen = false;
+          document.getElementById('railBug').addEventListener('click', () => {
+            consoleOpen ? eruda.hide() : eruda.show();
+            consoleOpen = !consoleOpen;
+          });
+        });
+      </script>
     </div>
   </section>
   <nav class="rail" aria-label="Tools">
@@ -676,18 +690,6 @@
     <button id="railAgent" title="Agentic" aria-label="Agentic" aria-pressed="false">🪳</button>
     <button id="railBug" title="Bug Tracker" aria-label="Bug Tracker" aria-pressed="false">🐞</button>
   </nav>
-
-  <script src="https://cdn.jsdelivr.net/npm/eruda@3.0.1"></script>
-  <script>
-    eruda.init();
-    eruda.get('entryBtn').hide(); // hide the floating gear
-
-    let consoleOpen = false;
-    document.getElementById('railBug').addEventListener('click', () => {
-      consoleOpen ? eruda.hide() : eruda.show();
-      consoleOpen = !consoleOpen;
-    });
-  </script>
 </div>
 
 <div class="modal-backdrop" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
