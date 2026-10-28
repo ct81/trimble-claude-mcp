@@ -1,8 +1,8 @@
 {
 "icon": "https://ct81.github.io/trimble-claude-mcp/images/svg/ches.svg?color=%23FFFFFF",
-"title": "CHES Agent",
+"title": "BuildChester",
  "url": "https://trimble-claude-mcp-g86i.onrender.com/pages/claudeAgent.html",
-"description": "Chat with CHES Agent (Construction Helper & Engineering System) and utilize custom MCP tools.",
+"description": "Chat with BuildChester, a strong fit for BIM, Tekla, construction, and engineering automation.",
 "configCommand": "do_config",
 "enabled": true
 }
