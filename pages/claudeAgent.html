@@ -1430,7 +1430,7 @@
                     <option value="el-GR">Greek</option>
                     <option value="ro-RO">Romanian</option>
                 </select>
-                <button class="voice-btn" id="voiceBtn" type="button" aria-label="Start voice input"
+                <button class="voice-btn" id="voiceBtn" type="button" onclick="enableMic()" aria-label="Start voice input"
                         aria-pressed="false" title="Speak to enter text">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                          stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1537,6 +1537,12 @@
     <div class="toast" id="toast"></div>
 
     <script type="module">
+        async function enableMic() {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: true
+            });
+        }
+
         const __params = new URLSearchParams(location.search);
         const __isCallback = window.opener && (__params.has('code') || __params.has('error'));
 
@@ -3567,12 +3573,11 @@ Think through problems step by step. Identify what the user actually wants, brea
         }
     </script>
 
-
-    <iframe
+    <!-- <iframe
         src="misc/blank.html"
         allow="microphone; camera"
-        width="10"
-        height="10">
-    </iframe>
+        width="0"
+        height="0">
+    </iframe> -->
 </body>
 </html>
