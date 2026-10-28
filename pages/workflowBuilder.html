@@ -606,6 +606,13 @@
       🗑 Clear login cache
     </button>
 
+    <script src="../pages/js/i18n.js"></script>
+
+    <select data-lang-switcher></select>
+    <h1 data-i18n="title"></h1>
+    <p data-i18n="welcome" data-i18n-params='{"name":"Ann"}'></p>
+    <textarea data-i18n-placeholder="paste"></textarea>
+
     <div class="tip">
       <strong>How to use</strong><br>
       • Drag a component onto the canvas.<br>
@@ -667,7 +674,7 @@
       <div class="hint-text" style="font-size:11px;color:#94a3b8">Jobs run in this browser while the page is open. Workflows with upload nodes need a file chosen and will fail unattended.</div>
       <div id="schedList" style="display:flex;flex-direction:column;gap:6px"></div>
     </div>
-    <div class="sp-view" id="viewBug" style="width:100%" hidden>
+    <div class="sp-view" id="viewBug" hidden>
       <div class="hint-text" style="font-size:11px;color:#94a3b8"></div>
 
       <script src="https://cdn.jsdelivr.net/npm/eruda@3.0.1"></script>
