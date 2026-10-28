@@ -1,9 +1,9 @@
 /**
  * i18n.js - one-file translation script for any web app (no dependencies)
  *
- * Features: auto-detect language, language switcher (with flags, 100% width),
- * saved choice, RTL support, placeholders {name}, plurals, fallback language,
- * dynamic content, Intl formatting.
+ * Features: auto-detect language, language switcher with SVG flags (works on
+ * Windows), 100% width, saved choice, RTL support, placeholders {name}, plurals,
+ * fallback language, dynamic content, Intl formatting.
  *
  * HTML attributes:
  *   data-i18n="key"               -> element text
@@ -12,7 +12,7 @@
  *   data-i18n-title="key"         -> title
  *   data-i18n-aria-label="key"    -> aria-label
  *   data-i18n-params='{"name":"Ann"}'  -> values for {name}
- *   <select data-lang-switcher></select>  -> auto-filled language picker
+ *   <select data-lang-switcher></select>  -> replaced by a flag dropdown
  */
 (function (global) {
   "use strict";
@@ -25,11 +25,17 @@
     // Optional: load from files instead, e.g. "lang/{lang}.json"
     urlPattern: null,
     languages: {
-      en: "🇬🇧 English",
-      es: "🇪🇸 Español",
-      fr: "🇫🇷 Français",
-      ar: "🇸🇦 العربية",
-      hi: "🇮🇳 हिन्दी",
+      en: "English",
+      es: "Español",
+      fr: "Français",
+      hi: "हिन्दी",
+    },
+    // Inline SVG flags (no emoji, no external files). Add one per language.
+    flags: {
+      en: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 30"><rect width="60" height="30" fill="#012169"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#C8102E" stroke-width="3"/><path d="M30,0 V30 M0,15 H60" stroke="#fff" stroke-width="10"/><path d="M30,0 V30 M0,15 H60" stroke="#C8102E" stroke-width="6"/></svg>',
+      es: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 20"><rect width="30" height="20" fill="#C60B1E"/><rect y="5" width="30" height="10" fill="#FFC400"/></svg>',
+      fr: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 20"><rect width="10" height="20" fill="#0055A4"/><rect x="10" width="10" height="20" fill="#fff"/><rect x="20" width="10" height="20" fill="#EF4135"/></svg>',
+      hi: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 20"><rect width="30" height="6.67" fill="#FF9933"/><rect y="6.67" width="30" height="6.66" fill="#fff"/><rect y="13.33" width="30" height="6.67" fill="#138808"/><circle cx="15" cy="10" r="2.5" fill="none" stroke="#000080" stroke-width=".5"/><circle cx="15" cy="10" r=".5" fill="#000080"/></svg>',
     },
     translations: {
       en: {
@@ -49,12 +55,6 @@
         welcome: "Bienvenue, {name} !",
         palette_brand_description: "Conçu pour s’adapter, se connecter comme des nerfs et pensé pour prospérer",
         items: { one: "{count} élément", other: "{count} éléments" },
-      },
-      ar: {
-        title: "مصدّر JSON",
-        welcome: "مرحبًا، {name}!",
-        palette_brand_description: "مصمَّم للتكيّف، ويتّصل كالأعصاب، ومُعَدّ للازدهار",
-        items: { zero: "لا عناصر", one: "عنصر واحد", two: "عنصران", few: "{count} عناصر", many: "{count} عنصرًا", other: "{count} عنصر" },
       },
       hi: {
         title: "JSON एक्सपोर्टर",
@@ -136,6 +136,7 @@
 
     translateElement(document);
     document.querySelectorAll("[data-lang-switcher]").forEach((s) => (s.value = lang));
+    document.querySelectorAll(".i18n-dd").forEach((d) => d._refresh && d._refresh());
     listeners.forEach((fn) => fn(lang));
   }
 
@@ -152,15 +153,87 @@
     return config.defaultLang;
   }
 
-  function buildSwitchers() {
-    document.querySelectorAll("select[data-lang-switcher]").forEach((sel) => {
-      // full-width dropdown
-      sel.style.width = "100%";
-      sel.style.boxSizing = "border-box";
+  // ======== 3. LANGUAGE DROPDOWN (SVG flags, 100% width) ========
+  function flagImg(code) {
+    const svg = config.flags[code];
+    if (!svg) return "";
+    return '<img class="i18n-flag" alt="" src="data:image/svg+xml;utf8,' + encodeURIComponent(svg) + '">';
+  }
 
-      if (sel.options.length) return;
-      Object.entries(config.languages).forEach(([code, name]) => sel.add(new Option(name, code)));
+  function injectStyles() {
+    if (document.getElementById("i18n-styles")) return;
+    const style = document.createElement("style");
+    style.id = "i18n-styles";
+    style.textContent = `
+      .i18n-dd{position:relative;width:100%;box-sizing:border-box;font:inherit}
+      .i18n-dd-btn{width:100%;box-sizing:border-box;display:flex;align-items:center;gap:8px;padding:8px 10px;font:inherit;color:inherit;background:transparent;border:1px solid rgba(128,128,128,.5);border-radius:8px;cursor:pointer;text-align:start}
+      .i18n-caret{margin-inline-start:auto;opacity:.6;font-size:.8em}
+      .i18n-dd-list{position:absolute;inset-inline:0;top:calc(100% + 4px);z-index:9999;margin:0;padding:4px;list-style:none;background:Canvas;color:CanvasText;border:1px solid rgba(128,128,128,.5);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+      .i18n-dd-list[hidden]{display:none}
+      .i18n-dd-list li{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;cursor:pointer}
+      .i18n-dd-list li:hover,.i18n-dd-list li[aria-selected="true"]{background:rgba(128,128,128,.2)}
+      .i18n-flag{width:22px;height:15px;object-fit:cover;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.15);flex:none}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function buildSwitchers() {
+    injectStyles();
+    document.querySelectorAll("select[data-lang-switcher]").forEach((sel) => {
+      if (sel.dataset.i18nBuilt) return;
+      sel.dataset.i18nBuilt = "1";
+
+      // keep the native <select> as hidden state holder
+      if (!sel.options.length) {
+        Object.entries(config.languages).forEach(([code, name]) => sel.add(new Option(name, code)));
+      }
       sel.addEventListener("change", () => setLang(sel.value));
+      sel.style.display = "none";
+
+      const dd = document.createElement("div");
+      dd.className = "i18n-dd";
+      dd.innerHTML =
+        '<button type="button" class="i18n-dd-btn" aria-haspopup="listbox" aria-expanded="false"></button>' +
+        '<ul class="i18n-dd-list" role="listbox" hidden></ul>';
+      sel.insertAdjacentElement("afterend", dd);
+
+      const btn = dd.querySelector(".i18n-dd-btn");
+      const list = dd.querySelector(".i18n-dd-list");
+
+      Array.from(sel.options).forEach((opt) => {
+        const li = document.createElement("li");
+        li.setAttribute("role", "option");
+        li.dataset.code = opt.value;
+        li.innerHTML = flagImg(opt.value) + "<span></span>";
+        li.querySelector("span").textContent = opt.text;
+        li.addEventListener("click", () => {
+          sel.value = opt.value;
+          setLang(opt.value);
+          close();
+        });
+        list.appendChild(li);
+      });
+
+      function close() {
+        list.hidden = true;
+        btn.setAttribute("aria-expanded", "false");
+      }
+      btn.addEventListener("click", () => {
+        list.hidden = !list.hidden;
+        btn.setAttribute("aria-expanded", String(!list.hidden));
+      });
+      document.addEventListener("click", (e) => { if (!dd.contains(e.target)) close(); });
+      document.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
+
+      dd._refresh = () => {
+        const name = config.languages[current] || current;
+        btn.innerHTML = flagImg(current) + "<span></span><span class='i18n-caret'>▼</span>";
+        btn.querySelector("span").textContent = name;
+        list.querySelectorAll("li").forEach((li) =>
+          li.setAttribute("aria-selected", String(li.dataset.code === current))
+        );
+      };
+      dd._refresh();
     });
   }
 
@@ -171,7 +244,7 @@
     }).observe(document.body, { childList: true, subtree: true });
   }
 
-  // ======== 3. PUBLIC API ========
+  // ======== 4. PUBLIC API ========
   global.i18n = {
     t,
     setLang,
@@ -200,11 +273,14 @@
 
 <script src="i18n.js"></script>
 
-<select data-lang-switcher></select>
+<select data-lang-switcher></select>   // becomes a full-width flag dropdown
 
 <h1 data-i18n="title"></h1>
 <p data-i18n="welcome" data-i18n-params='{"name":"Ann"}'></p>
 <p data-i18n="palette_brand_description"></p>
+
+// To add a language: add it to config.languages, config.flags (SVG) and
+// config.translations.
 
 // In JavaScript:
 i18n.t("welcome", { name: "Ann" });   // "Welcome, Ann!"
