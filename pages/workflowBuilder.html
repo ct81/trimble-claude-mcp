@@ -160,11 +160,27 @@
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 45%;
   }
 
-  .canvas {
+  /* .canvas {
     position: relative; flex: 1; min-height: 0;
     overflow: auto; overscroll-behavior: contain;
     background:
       radial-gradient(circle at 1px 1px, #1e293b 1px, transparent 0) 0 0 / 22px 22px,
+      #0b1220;
+  } */
+   .canvas {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+
+    background:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none' stroke='%239ca3af' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M24 19C18 10 10 7 4 7 M40 19C46 10 54 7 60 7'/%3E%3Cpath d='M19 20Q32 13 45 20L49 31L42 43H22L15 31Z' fill='%239ca3af'/%3E%3Cellipse cx='17' cy='29' rx='5' ry='8' fill='%239ca3af'/%3E%3Cellipse cx='47' cy='29' rx='5' ry='8' fill='%239ca3af'/%3E%3Cpath d='M22 43Q32 48 42 43L38 51H26Z' fill='%239ca3af'/%3E%3Cpath d='M26 50Q23 56 28 60L31 52 M38 50Q41 56 36 60L33 52 M15 39L10 44 M49 39L54 44'/%3E%3C/svg%3E")
+        center center / 240px 240px no-repeat,
+
+      radial-gradient(circle at 1px 1px, #1e293b 1px, transparent 0)
+        0 0 / 22px 22px,
+
       #0b1220;
   }
   .canvas::-webkit-scrollbar { width: 12px; height: 12px; }
