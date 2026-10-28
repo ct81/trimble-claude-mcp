@@ -1,8 +1,9 @@
 /**
  * i18n.js - one-file translation script for any web app (no dependencies)
  *
- * Features: auto-detect language, language switcher, saved choice, RTL support,
- * placeholders {name}, plurals, fallback language, dynamic content, Intl formatting.
+ * Features: auto-detect language, language switcher (with flags, 100% width),
+ * saved choice, RTL support, placeholders {name}, plurals, fallback language,
+ * dynamic content, Intl formatting.
  *
  * HTML attributes:
  *   data-i18n="key"               -> element text
@@ -23,7 +24,13 @@
     rtl: ["ar", "he", "fa", "ur"],
     // Optional: load from files instead, e.g. "lang/{lang}.json"
     urlPattern: null,
-    languages: { en: "English", es: "Español", fr: "Français", ar: "العربية", hi: "हिन्दी" },
+    languages: {
+      en: "🇬🇧 English",
+      es: "🇪🇸 Español",
+      fr: "🇫🇷 Français",
+      ar: "🇸🇦 العربية",
+      hi: "🇮🇳 हिन्दी",
+    },
     translations: {
       en: {
         title: "JSON Exporter",
@@ -40,19 +47,19 @@
       fr: {
         title: "Exportateur JSON",
         welcome: "Bienvenue, {name} !",
-        palette_brand_description: "Téléverser un JSON",
+        palette_brand_description: "Conçu pour s’adapter, se connecter comme des nerfs et pensé pour prospérer",
         items: { one: "{count} élément", other: "{count} éléments" },
       },
       ar: {
         title: "مصدّر JSON",
         welcome: "مرحبًا، {name}!",
-        palette_brand_description: "رفع JSON",
+        palette_brand_description: "مصمَّم للتكيّف، ويتّصل كالأعصاب، ومُعَدّ للازدهار",
         items: { zero: "لا عناصر", one: "عنصر واحد", two: "عنصران", few: "{count} عناصر", many: "{count} عنصرًا", other: "{count} عنصر" },
       },
       hi: {
         title: "JSON एक्सपोर्टर",
         welcome: "स्वागत है, {name}!",
-        palette_brand_description: "JSON अपलोड करें",
+        palette_brand_description: "अनुकूलन के लिए निर्मित, तंत्रिकाओं की तरह जुड़ने वाला और फलने-फूलने के लिए डिज़ाइन किया गया",
         items: { one: "{count} आइटम", other: "{count} आइटम" },
       },
     },
@@ -92,7 +99,7 @@
 
   function translateElement(root) {
     const scope = root || document;
-    const q = (attr) => scope.querySelectorAll ? scope.querySelectorAll(`[${attr}]`) : [];
+    const q = (attr) => (scope.querySelectorAll ? scope.querySelectorAll(`[${attr}]`) : []);
     const params = (el) => {
       try { return JSON.parse(el.getAttribute("data-i18n-params") || "{}"); } catch { return {}; }
     };
@@ -147,6 +154,10 @@
 
   function buildSwitchers() {
     document.querySelectorAll("select[data-lang-switcher]").forEach((sel) => {
+      // full-width dropdown
+      sel.style.width = "100%";
+      sel.style.boxSizing = "border-box";
+
       if (sel.options.length) return;
       Object.entries(config.languages).forEach(([code, name]) => sel.add(new Option(name, code)));
       sel.addEventListener("change", () => setLang(sel.value));
@@ -193,8 +204,7 @@
 
 <h1 data-i18n="title"></h1>
 <p data-i18n="welcome" data-i18n-params='{"name":"Ann"}'></p>
-<textarea data-i18n-placeholder="paste"></textarea>
-<button data-i18n="export_csv"></button>
+<p data-i18n="palette_brand_description"></p>
 
 // In JavaScript:
 i18n.t("welcome", { name: "Ann" });   // "Welcome, Ann!"
