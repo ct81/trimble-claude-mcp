@@ -587,11 +587,11 @@
       </div>
     </div>
     <div class="palette-panel" id="panelExport" role="tabpanel" aria-labelledby="tabExport" hidden>
-      <div class="item" draggable="true" data-type="export_excel">
-        <span class="dot" style="background:#15803d"></span> Export Excel
+      <div class="item" draggable="true" data-type="export_dxf_excel">
+        <span class="dot" style="background:#15803d"></span> DXF ⇨ Excel
       </div>
-      <div class="item" draggable="true" data-type="export_csv">
-        <span class="dot" style="background:#0f766e"></span> Export CSV
+      <div class="item" draggable="true" data-type="export_dxf_csv">
+        <span class="dot" style="background:#0f766e"></span> DXF ⇨ CSV
       </div>
     </div>
 
@@ -774,8 +774,8 @@ const TYPES = {
   flow_continue: { label: "continue", color: "#db2777", icon: "🔀", hasIn: true, hasOut: true },
   flow_return: { label: "return", color: "#db2777", icon: "🔀", hasIn: true, hasOut: false },
   flow_goto: { label: "goto", color: "#db2777", icon: "🔀", hasIn: true, hasOut: true },
-  export_excel: { label: "Export Excel", color: "#15803d", icon: "📊", hasIn: true, hasOut: false },
-  export_csv: { label: "Export CSV", color: "#0f766e", icon: "📋", hasIn: true, hasOut: false }
+  export_dxf_excel: { label: "DXF ⇨ Excel", color: "#15803d", icon: "📊", hasIn: true, hasOut: false },
+  export_dxf_csv: { label: "DXF ⇨ CSV", color: "#0f766e", icon: "📋", hasIn: true, hasOut: false }
 };
 const LOOP_TYPES = new Set(["flow_for", "flow_while", "flow_do_while", "flow_foreach"]);
 const FLOW_TYPES = new Set(Object.keys(TYPES).filter((t) => t.startsWith("flow_")));
@@ -1153,8 +1153,8 @@ function bodyFor(type, id) {
     case "flow_return": return `<div class="hint">Ends this branch and returns the current result</div>`;
     case "flow_goto": return `<select class="fl" data-k="target"><option value="">— target node —</option></select>
                           <div class="hint">Jumps to the chosen node (max 100 jumps)</div>`;
-    case "export_excel":
-    case "export_csv": return `<div class="hint">Download the MCP result as ${type === "export_excel" ? "an Excel workbook" : "a CSV file"}</div>
+    case "export_dxf_excel":
+    case "export_dxf_csv": return `<div class="hint">Download the MCP result as ${type === "export_dxf_excel" ? "an Excel workbook" : "a CSV file"}</div>
                           <div class="status">waiting for workflow result</div>`;
     default: return "";
   }
@@ -2433,9 +2433,9 @@ async function runWorkflowCore(signal) {
         renderResult(cur.el);
       }
 
-      if (cur.type === "export_excel" || cur.type === "export_csv") {
+      if (cur.type === "export_dxf_excel" || cur.type === "export_dxf_csv") {
         if (!state.result) throw new Error("Run an MCP node before exporting its result");
-        const format = cur.type === "export_excel" ? "excel" : "csv";
+        const format = cur.type === "export_dxf_excel" ? "excel" : "csv";
         downloadWorkflowResult(format, state.result);
         cur.el.querySelector(".status").textContent = `✔ Downloaded workflow-result.${format === "excel" ? "xls" : "csv"}`;
       }
