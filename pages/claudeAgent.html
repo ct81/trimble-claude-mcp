@@ -1726,13 +1726,42 @@ Think through problems step by step. Identify what the user actually wants, brea
                 }
             }
 
-            function startVoiceInput() {
+            async function ensureMicrophoneAccess() {
+                if (!navigator.mediaDevices?.getUserMedia) return null;
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    stream.getTracks().forEach(track => track.stop());
+                    detectMicrophone();
+                    return null;
+                } catch (error) {
+                    if (error.name === 'NotFoundError') return 'No microphone was found. Connect one and try again.';
+                    if (error.name === 'NotAllowedError' || error.name === 'SecurityError') {
+                        if (window.self !== window.top) {
+                            return 'Microphone is blocked because this page is embedded. The host iframe needs allow="microphone", or open the page in its own tab.';
+                        }
+                        return 'Microphone is blocked. Click the lock/tune icon in the address bar, set Microphone to Allow, then reload the page.';
+                    }
+                    return `Unable to access the microphone (${error.name}).`;
+                }
+            }
+
+            async function startVoiceInput() {
                 if (!SpeechRecognition) {
                     showToast('Speech recognition is not supported in this browser.');
                     return;
                 }
                 if (speechListening) {
                     speechRecognition?.stop();
+                    return;
+                }
+
+                voiceBtn.disabled = true;
+                updateVoiceStatus('Requesting microphone access…');
+                const accessError = await ensureMicrophoneAccess();
+                voiceBtn.disabled = false;
+                if (accessError) {
+                    updateVoiceStatus(accessError);
+                    showToast(accessError);
                     return;
                 }
 
@@ -1765,7 +1794,7 @@ Think through problems step by step. Identify what the user actually wants, brea
                     };
                     recognition.onerror = event => {
                         const messages = {
-                            'not-allowed': 'Microphone access was denied. Allow microphone access in your browser settings.',
+                            'not-allowed': 'Microphone access was denied. Click the lock icon in the address bar, allow Microphone, and reload. If this page is embedded, the host iframe needs allow="microphone".',
                             'service-not-allowed': 'The browser speech recognition service is unavailable.',
                             'audio-capture': 'No usable microphone was found. Connect a microphone and try again.',
                             'no-speech': 'No speech was detected. Try speaking closer to the microphone.',
