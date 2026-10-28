@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- ✅ Required by YouTube to avoid Error 153 -->
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>YouTube Jukebox 🎵</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+      background: #1e1e2f;
+      color: #f0f0f0;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+
+    .jukebox {
+      background: #2a2a3b;
+      border-radius: 24px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+      padding: 24px;
+      max-width: 820px;
+      width: 100%;
+    }
+
+    h1 {
+      text-align: center;
+      font-weight: 500;
+      letter-spacing: 2px;
+      margin-bottom: 18px;
+      color: #ffd966;
+    }
+
+    /* ---------- Warning banner (file:// protocol) ---------- */
+    .warn-banner {
+      display: none;
+      background: #4a2020;
+      border: 1px solid #ff6b6b;
+      color: #ffd0d0;
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 18px;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    .warn-banner.show { display: block; }
+    .warn-banner strong { color: #ff8f8f; }
+    .warn-banner code {
+      background: rgba(0,0,0,0.35);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Consolas', monospace;
+      color: #ffd966;
+    }
+
+    /* ---------- Video ---------- */
+    .video-wrapper {
+      position: relative;
+      padding-bottom: 56.25%;
+      height: 0;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #000;
+      margin-bottom: 14px;
+    }
+    #player {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      border: 0;
+    }
+
+    /* ---------- Error / status message ---------- */
+    .status-msg {
+      display: none;
+      text-align: center;
+      font-size: 0.9rem;
+      padding: 10px 14px;
+      border-radius: 10px;
+      margin-bottom: 14px;
+      background: #4a2020;
+      color: #ffd0d0;
+      border: 1px solid #ff6b6b;
+    }
+    .status-msg.show { display: block; }
+
+    /* ---------- Now playing ---------- */
+    .now-playing {
+      text-align: center;
+      font-size: 1rem;
+      color: #bbb;
+      margin-bottom: 16px;
+      min-height: 1.4em;
+    }
+    .now-playing span { color: #ffd966; font-weight: 600; }
+
+    /* ---------- Controls ---------- */
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .controls button {
+      background: #3e3e5c;
+      border: none;
+      color: #f0f0f0;
+      font-size: 1.2rem;
+      padding: 10px 16px;
+      border-radius: 30px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 48px;
+    }
+    .controls button:hover:not(:disabled) { background: #50507a; }
+    .controls button:active:not(:disabled) { transform: scale(0.95); }
+    .controls button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .volume-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+    }
+    .volume-group label { font-size: 1.1rem; }
+    input[type="range"] {
+      width: 120px;
+      accent-color: #ffd966;
+      cursor: pointer;
+    }
+    input[type="range"]:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ---------- Playlist ---------- */
+    .playlist {
+      background: #1e1e2f;
+      border-radius: 16px;
+      padding: 12px;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+    .playlist h2 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #888;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+      padding-left: 8px;
+    }
+    .playlist ul { list-style: none; }
+    .playlist li {
+      padding: 10px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s;
+      font-size: 0.95rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .playlist li:hover { background: #2f2f48; }
+    .playlist li.active {
+      background: #ffd966;
+      color: #1e1e2f;
+      font-weight: 600;
+    }
+    .playlist li.active::before { content: "▶  "; }
+
+    .playlist::-webkit-scrollbar { width: 6px; }
+    .playlist::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<div class="jukebox">
+  <h1>🎵 YOUTUBE JUKEBOX</h1>
+
+  <!-- Shown automatically if the page is opened via file:// -->
+  <div class="warn-banner" id="fileWarning">
+    <strong>⚠️ You opened this file directly (file://).</strong><br>
+    YouTube blocks embeds without a valid <code>Referer</code> header, which causes
+    <strong>Error 153</strong> and a black video.<br>
+    <br>
+    <strong>Fix:</strong> serve the file over HTTP. In this folder run:<br>
+    <code>python -m http.server 8000</code><br>
+    then open <code>http://localhost:8000</code> in your browser.
+  </div>
+
+  <div class="video-wrapper">
+    <div id="player"></div>
+  </div>
+
+  <!-- Friendly error display -->
+  <div class="status-msg" id="statusMsg"></div>
+
+  <div class="now-playing" id="nowPlaying">Now playing: <span>—</span></div>
+
+  <div class="controls">
+    <button id="prevBtn"      title="Previous"   disabled>⏮</button>
+    <button id="playPauseBtn" title="Play/Pause" disabled>▶</button>
+    <button id="nextBtn"      title="Next"       disabled>⏭</button>
+
+    <div class="volume-group">
+      <label for="volumeSlider">🔊</label>
+      <input type="range" id="volumeSlider" min="0" max="100" value="80" disabled>
+    </div>
+  </div>
+
+  <div class="playlist">
+    <h2>PLAYLIST</h2>
+    <ul id="playlistList"></ul>
+  </div>
+</div>
+
+<script>
+  /* ============================================================
+     1.  PLAYLIST  —  replace videoId / title with your own.
+         The video must allow embedding (most music videos do).
+     ============================================================ */
+  const playlist = [
+    { videoId: 'dQw4w9WgXcQ', title: 'Rick Astley – Never Gonna Give You Up' },
+    { videoId: '9bZkp7q19f0', title: 'PSY – Gangnam Style' },
+    { videoId: 'kJQP7kiw5Fk', title: 'Luis Fonsi – Despacito ft. Daddy Yankee' },
+    { videoId: 'JGwWNGJdvx8', title: 'Ed Sheeran – Shape of You' },
+    { videoId: 'RgKAFK5djSk', title: 'Wiz Khalifa – See You Again ft. Charlie Puth' }
+  ];
+
+  /* ============================================================
+     2.  STATE
+     ============================================================ */
+  let ytPlayer      = null;    // NOT `player` – avoids DOM-id collision
+  let isPlayerReady = false;
+  let currentIndex  = 0;
+  let isPlaying     = false;   // tracked via onStateChange
+
+  const statusEl = document.getElementById('statusMsg');
+
+  /* ============================================================
+     3.  IMMEDIATE file:// CHECK
+     ============================================================ */
+  if (window.location.protocol === 'file:') {
+    document.getElementById('fileWarning').classList.add('show');
+  }
+
+  /* ============================================================
+     4.  LOAD THE YOUTUBE IFRAME API
+     ============================================================ */
+  const tag = document.createElement('script');
+  tag.src = 'https://www.youtube.com/iframe_api';
+  const firstScriptTag = document.getElementsByTagName('script')[0];
+  firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+  /* ============================================================
+     5.  CREATE PLAYER (guarded against double init)
+     ============================================================ */
+  function createPlayer() {
+    if (ytPlayer) return;
+
+    ytPlayer = new YT.Player('player', {
+      height: '100%',
+      width: '100%',
+      videoId: playlist[currentIndex].videoId,
+      playerVars: {
+        playsinline: 1,
+        controls: 0,
+        rel: 0,
+        modestbranding: 1,
+        origin: window.location.origin      // ✅ helps with Error 153
+      },
+      events: {
+        onReady:       onPlayerReady,
+        onStateChange: onPlayerStateChange,
+        onError:       onPlayerError
+      }
+    });
+  }
+
+  // Called by the API once it has loaded
+  function onYouTubeIframeAPIReady() {
+    createPlayer();
+  }
+
+  // Fallback in case the API script was cached and already fired
+  if (window.YT && typeof window.YT.Player === 'function') {
+    createPlayer();
+  }
+
+  /* ============================================================
+     6.  PLAYER EVENTS
+     ============================================================ */
+  function onPlayerReady(event) {
+    isPlayerReady = true;
+
+    event.target.setVolume(80);
+
+    // ✅ Silence "Unrecognized feature: 'web-share'"
+    try {
+      const iframe = event.target.getIframe();
+      if (iframe) {
+        const allow = iframe.getAttribute('allow') || '';
+        if (!allow.includes('web-share')) {
+          iframe.setAttribute('allow', allow ? allow + '; web-share' : 'web-share');
+        }
+      }
+    } catch (e) {
+      console.warn('Could not patch iframe allow attribute:', e);
+    }
+
+    enableControls(true);
+    renderPlaylist();
+    updateNowPlaying();
+    updatePlayPauseButton();
+    hideStatus();
+  }
+
+  function onPlayerStateChange(event) {
+    switch (event.data) {
+      case YT.PlayerState.PLAYING:
+        isPlaying = true;
+        updatePlayPauseButton();
+        hideStatus();
+        break;
+      case YT.PlayerState.PAUSED:
+        isPlaying = false;
+        updatePlayPauseButton();
+        break;
+      case YT.PlayerState.ENDED:
+        nextVideo();
+        break;
+    }
+  }
+
+  function onPlayerError(event) {
+    console.error('YouTube Player Error:', event.data);
+
+    const messages = {
+      2:   'Invalid video ID or parameters.',
+      5:   'HTML5 player error. Try reloading.',
+      100: 'Video not found — it may be private or deleted.',
+      101: 'The video owner has disabled embedding on other sites.',
+      150: 'The video owner has disabled embedding on other sites.',
+      153: 'Missing Referer header. You must serve this page over http:// or https:// — not file://.'
+    };
+
+    let msg = messages[event.data] || ('Unknown player error (' + event.data + ').');
+
+    if (event.data === 153 && window.location.protocol === 'file:') {
+      document.getElementById('fileWarning').classList.add('show');
+    }
+
+    showStatus(msg);
+    isPlaying = false;
+    updatePlayPauseButton();
+  }
+
+  /* ============================================================
+     7.  CORE FUNCTIONS  (all guarded by isPlayerReady)
+     ============================================================ */
+  function loadVideoByIndex(index) {
+    if (!isPlayerReady || !ytPlayer) return;
+    if (index < 0 || index >= playlist.length) return;
+
+    currentIndex = index;
+    hideStatus();
+    ytPlayer.loadVideoById(playlist[index].videoId);
+
+    updateNowPlaying();
+    highlightPlaylistItem(index);
+  }
+
+  function togglePlayPause() {
+    if (!isPlayerReady || !ytPlayer) return;
+
+    if (isPlaying) {
+      ytPlayer.pauseVideo();
+    } else {
+      ytPlayer.playVideo();
+    }
+  }
+
+  function nextVideo() {
+    if (!isPlayerReady || !ytPlayer) return;
+    loadVideoByIndex((currentIndex + 1) % playlist.length);
+  }
+
+  function prevVideo() {
+    if (!isPlayerReady || !ytPlayer) return;
+    loadVideoByIndex((currentIndex - 1 + playlist.length) % playlist.length);
+  }
+
+  function setVolume(value) {
+    if (!isPlayerReady || !ytPlayer) return;
+    ytPlayer.setVolume(value);
+  }
+
+  /* ============================================================
+     8.  UI HELPERS
+     ============================================================ */
+  function enableControls(enabled) {
+    document.getElementById('prevBtn').disabled      = !enabled;
+    document.getElementById('nextBtn').disabled      = !enabled;
+    document.getElementById('playPauseBtn').disabled = !enabled;
+    document.getElementById('volumeSlider').disabled = !enabled;
+  }
+
+  function updatePlayPauseButton() {
+    document.getElementById('playPauseBtn').textContent = isPlaying ? '⏸' : '▶';
+  }
+
+  function updateNowPlaying() {
+    document.querySelector('#nowPlaying span').textContent =
+      playlist[currentIndex].title;
+  }
+
+  function renderPlaylist() {
+    const ul = document.getElementById('playlistList');
+    ul.innerHTML = '';
+
+    playlist.forEach((item, i) => {
+      const li = document.createElement('li');
+      li.textContent = item.title;
+      li.dataset.index = i;
+      li.addEventListener('click', () => loadVideoByIndex(i));
+      if (i === currentIndex) li.classList.add('active');
+      ul.appendChild(li);
+    });
+  }
+
+  function highlightPlaylistItem(index) {
+    document.querySelectorAll('#playlistList li').forEach((li, i) => {
+      li.classList.toggle('active', i === index);
+    });
+  }
+
+  function showStatus(msg) {
+    statusEl.textContent = msg;
+    statusEl.classList.add('show');
+  }
+
+  function hideStatus() {
+    statusEl.classList.remove('show');
+  }
+
+  /* ============================================================
+     9.  WIRE UP CONTROLS
+     ============================================================ */
+  document.getElementById('playPauseBtn').addEventListener('click', togglePlayPause);
+  document.getElementById('nextBtn').addEventListener('click', nextVideo);
+  document.getElementById('prevBtn').addEventListener('click', prevVideo);
+
+  document.getElementById('volumeSlider').addEventListener('input', (e) => {
+    setVolume(Number(e.target.value));
+  });
+
+  /* ============================================================
+     10. KEYBOARD SHORTCUTS
+     Space = play/pause, → = next, ← = previous
+     ============================================================ */
+  document.addEventListener('keydown', (e) => {
+    if (e.target.matches('input, textarea')) return;
+
+    switch (e.code) {
+      case 'Space':
+        e.preventDefault();
+        togglePlayPause();
+        break;
+      case 'ArrowRight':
+        e.preventDefault();
+        nextVideo();
+        break;
+      case 'ArrowLeft':
+        e.preventDefault();
+        prevVideo();
+        break;
+    }
+  });
+</script>
+
+</body>
+</html>
