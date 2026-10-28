@@ -1843,6 +1843,20 @@ Think through problems step by step. Identify what the user actually wants, brea
             }
             detectMicrophone();
 
+            // Ask for microphone permission as soon as the page opens
+            (async () => {
+                if (!SpeechRecognition) return;
+                try {
+                    const status = await navigator.permissions?.query({ name: 'microphone' });
+                    if (status?.state === 'denied') {
+                        updateVoiceStatus(await ensureMicrophoneAccess() || undefined);
+                        return;
+                    }
+                } catch { }
+                const accessError = await ensureMicrophoneAccess();
+                updateVoiceStatus(accessError || undefined);
+            })();
+
             let toastTimer;
             function showToast(msg) {
                 toast.textContent = msg;
