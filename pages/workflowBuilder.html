@@ -587,10 +587,10 @@
       </div>
     </div>
     <div class="palette-panel" id="panelExport" role="tabpanel" aria-labelledby="tabExport" hidden>
-      <div class="item" draggable="true" data-type="export_dxf_excel">
+      <div class="item" draggable="true" data-type="export_dxf_excel" data-i18n="export_dxf_excel">
         <span class="dot" style="background:#15803d"></span> DXF ⇨ Excel
       </div>
-      <div class="item" draggable="true" data-type="export_dxf_csv">
+      <div class="item" draggable="true" data-type="export_dxf_csv" data-i18n="export_dxf_csv">
         <span class="dot" style="background:#0f766e"></span> DXF ⇨ CSV
       </div>
     </div>
@@ -606,10 +606,8 @@
       🗑 Clear login cache
     </button>
 
-    <!-- <script src="../pages/js/i18n.js"></script>
-
     <select data-lang-switcher></select>
-    <h1 data-i18n="title"></h1>
+    <!-- <h1 data-i18n="title"></h1>
     <p data-i18n="welcome" data-i18n-params='{"name":"Ann"}'></p>
     <textarea data-i18n-placeholder="paste"></textarea> -->
 
@@ -2892,5 +2890,7 @@ function autoSignIn() {
   start();
 })();
 </script>
+
+<script src="../pages/js/i18n.js"></script>
 </body>
 </html>
