@@ -1430,7 +1430,7 @@
                     <option value="el-GR">Greek</option>
                     <option value="ro-RO">Romanian</option>
                 </select>
-                <button class="voice-btn" id="voiceBtn" type="button" onclick="enableMic()" aria-label="Start voice input"
+                <button class="voice-btn" id="voiceBtn" type="button" aria-label="Start voice input"
                         aria-pressed="false" title="Speak to enter text">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                          stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1536,13 +1536,26 @@
 
     <div class="toast" id="toast"></div>
 
-    <script type="module">
-        async function enableMic() {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                audio: true
-            });
-        }
+    <script>
+        document.getElementById("voiceBtn").addEventListener("click", async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: true
+                });
 
+                console.log("Microphone enabled successfully!");
+
+                // Keep the stream available if you need it for speech recognition.
+                window.micStream = stream;
+
+            } catch (error) {
+                console.error("Microphone access failed:", error);
+                alert("Cannot access microphone: " + error.message);
+            }
+        });
+    </script>
+
+    <script type="module">
         const __params = new URLSearchParams(location.search);
         const __isCallback = window.opener && (__params.has('code') || __params.has('error'));
 
