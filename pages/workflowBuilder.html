@@ -667,10 +667,14 @@
       <div class="hint-text" style="font-size:11px;color:#94a3b8">Jobs run in this browser while the page is open. Workflows with upload nodes need a file chosen and will fail unattended.</div>
       <div id="schedList" style="display:flex;flex-direction:column;gap:6px"></div>
     </div>
+    <div class="sp-view" id="viewBug" hidden>
+      buggggg
+    </div>
   </section>
   <nav class="rail" aria-label="Tools">
     <button id="railChat" title="AI Chat" aria-label="AI Chat" aria-pressed="false">💬</button>
     <button id="railAgent" title="Agentic" aria-label="Agentic" aria-pressed="false">🪳</button>
+    <button id="railBug" title="Bug Tracker" aria-label="Bug Tracker" aria-pressed="false">🐞</button>
   </nav>
 </div>
 
@@ -2556,9 +2560,9 @@ function autoSignIn() {
    ========================================================================= */
 (function () {
   const panel = document.getElementById("sidepanel");
-  const views = { chat: document.getElementById("viewChat"), agent: document.getElementById("viewAgent") };
-  const rails = { chat: document.getElementById("railChat"), agent: document.getElementById("railAgent") };
-  const titles = { chat: "AI Chat (Claude)", agent: "Agentic — scheduled workflows" };
+  const views = { chat: document.getElementById("viewChat"), agent: document.getElementById("viewAgent"), bug: document.getElementById("viewBug")  };
+  const rails = { chat: document.getElementById("railChat"), agent: document.getElementById("railAgent"), bug: document.getElementById("railBug") };
+  const titles = { chat: "AI Chat (Claude)", agent: "Agentic — scheduled workflows", bug: "Bug Tracker" };
   let current = null;
 
   function toggle(name) {
@@ -2574,6 +2578,7 @@ function autoSignIn() {
   }
   rails.chat.addEventListener("click", () => toggle("chat"));
   rails.agent.addEventListener("click", () => toggle("agent"));
+  rails.bug.addEventListener("click", () => toggle("bug"));
 
   /* ---- chat ---- */
   const log = document.getElementById("chatLog");
