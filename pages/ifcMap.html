@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IFC on Map – pick location, infinite + persistent</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <style>
+        html, body {
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: system-ui, Arial, sans-serif;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        #three-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        #panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 3000;
+            width: min(340px, calc(100vw - 60px));
+            box-sizing: border-box;
+            background: #fff;
+            color: #222;
+            padding: 14px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px #0004;
+            font-size: 13px;
+            max-height: calc(100vh - 30px);
+            overflow-y: auto;
+        }
+
+            #panel label {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-top: 10px;
+            }
+
+                #panel label span {
+                    width: 84px;
+                    flex: none;
+                }
+
+            #panel input[type=range] {
+                flex: 1;
+            }
+
+            #panel .row {
+                display: flex;
+                gap: 6px;
+                margin-top: 12px;
+                flex-wrap: wrap;
+            }
+
+            #panel button {
+                padding: 6px 9px;
+                cursor: pointer;
+                font-size: 12px;
+            }
+
+        #ifcFile {
+            display: block;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        #fileName {
+            margin-top: 8px;
+            font-size: 12px;
+            overflow-wrap: anywhere;
+        }
+
+        #placementInfo {
+            margin-top: 6px;
+            font-size: 12px;
+            color: #036;
+        }
+
+        #hint {
+            margin-top: 10px;
+            font-size: 11px;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        #modelList {
+            margin-top: 10px;
+            font-size: 11px;
+        }
+
+            #modelList .item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 6px;
+                padding: 3px 6px;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+
+                #modelList .item.active {
+                    background: #e6f0ff;
+                }
+
+                #modelList .item .meta {
+                    color: #666;
+                    font-size: 10px;
+                }
+
+                #modelList .item .del {
+                    color: #c00;
+                    cursor: pointer;
+                    font-weight: bold;
+                    flex: none;
+                }
+
+        #status {
+            position: absolute;
+            top: 10px;
+            left: 54px;
+            z-index: 2000;
+            max-width: min(380px, calc(100vw - 400px));
+            box-sizing: border-box;
+            background: rgba(0,0,0,.85);
+            color: #7f7;
+            padding: 10px 12px;
+            border-radius: 6px;
+            font: 12px/1.5 monospace;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            pointer-events: none;
+        }
+
+            #status.error {
+                color: #f77;
+            }
+
+        #placementToggle.active {
+            background: #2ecc71;
+            color: #fff;
+            border: 1px solid #27ae60;
+        }
+
+        .model-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ff8c1a;
+            border: 2px solid #fff;
+            box-shadow: 0 0 4px #0008;
+            box-sizing: content-box;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <div id="panel">
+        <strong>IFC on map – pick location, infinite + persistent</strong>
+
+        <div class="row" style="margin-top:8px">
+            <button id="placementToggle" type="button">📍 Pick location on map: OFF</button>
+        </div>
+        <div class="row">
+            <button id="useCenter" type="button">Use map center</button>
+            <button id="clearPin" type="button">Clear pin</button>
+        </div>
+        <div id="placementInfo">Placement: <i>none — files will load at map center</i></div>
+
+        <input type="file" id="ifcFile" accept=".ifc" multiple>
+        <div id="fileName">No file loaded yet</div>
+
+        <label><span>Tilt</span><input type="range" id="tilt" min="0" max="80" value="55"><b id="tiltV">55°</b></label>
+        <label><span>Rotate</span><input type="range" id="bearing" min="-180" max="180" value="0"><b id="bearingV">0°</b></label>
+        <label><span>Model north</span><input type="range" id="north" min="-180" max="180" value="0"><b id="northV">0°</b></label>
+        <label><input type="checkbox" id="yup" checked> Loader output is Y-up</label>
+
+        <div class="row">
+            <button id="topView" type="button">Top view</button>
+            <button id="reset3d" type="button">3D view</button>
+            <button id="focusBtn" type="button">Focus</button>
+            <button id="clearModel" type="button">Delete active</button>
+        </div>
+        <div id="modelList"></div>
+        <div id="hint">
+            Toggle "Pick location", then click the map to drop a pin. Loaded IFC files anchor at that pin.
+            Right-click + drag (or Ctrl + drag) to tilt/rotate. Left-drag pans, wheel zooms. Models and their
+            locations are saved in IndexedDB and restored on reload.
+        </div>
+    </div>
+
+    <div id="status">Initializing…</div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/proj4@2.11.0/dist/proj4.js"></script>
+
+    <script type="importmap">
+        {
+          "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.module.js",
+            "three/": "https://cdn.jsdelivr.net/npm/three@0.152.2/",
+            "three/examples/jsm/utils/BufferGeometryUtils": "https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/utils/BufferGeometryUtils.js",
+            "three-mesh-bvh": "https://cdn.jsdelivr.net/npm/three-mesh-bvh@0.5.23/build/index.module.js",
+            "fflate": "https://cdn.jsdelivr.net/npm/fflate@0.7.4/esm/browser.js",
+            "web-ifc": "https://cdn.jsdelivr.net/npm/web-ifc@0.0.44/web-ifc-api.js",
+            "web-ifc-three": "https://cdn.jsdelivr.net/npm/web-ifc-three@0.0.126/IFCLoader.js"
+          }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { IFCLoader } from 'web-ifc-three';
+
+        const $ = (id) => document.getElementById(id);
+        const statusEl = $('status');
+        function log(msg, cls = '') { console.log(msg); statusEl.textContent = msg; statusEl.className = cls; }
+
+        // =====================================================
+        // LOCATION HELPERS (SVY21 conversion)
+        // =====================================================
+        const SVY21 = '+proj=tmerc +lat_0=1.366666666666667 +lon_0=103.8333333333333 +k=1 +x_0=28001.642 +y_0=38744.572 +ellps=WGS84 +units=m +no_defs';
+        const WGS84 = '+proj=longlat +datum=WGS84 +no_defs';
+
+        // Global origin — arbitrary, only used to keep local coordinates small.
+        const REF_LATLNG = { lat: 1.3331, lng: 103.7436 };
+        const refXY = proj4(WGS84, SVY21, [REF_LATLNG.lng, REF_LATLNG.lat]);
+        const REF_E = refXY[0], REF_N = refXY[1];
+
+        function latLngToLocal(lat, lng) {
+            const p = proj4(WGS84, SVY21, [lng, lat]);
+            return [p[0] - REF_E, p[1] - REF_N];
+        }
+        function localToLatLng(x, y) {
+            const g = proj4(SVY21, WGS84, [x + REF_E, y + REF_N]);
+            return [g[1], g[0]];
+        }
+
+        // =====================================================
+        // MAP
+        // =====================================================
+        const map = L.map('map', { boxZoom: false, maxZoom: 22 }).setView([REF_LATLNG.lat, REF_LATLNG.lng], 18);
+        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            { attribution: '&copy; OpenStreetMap contributors', maxZoom: 22, maxNativeZoom: 19 });
+        const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            { attribution: 'Imagery &copy; Esri', maxZoom: 22, maxNativeZoom: 19 });
+        osm.addTo(map);
+        L.control.layers({ 'Streets': osm, 'Satellite': sat }, null, { position: 'bottomright' }).addTo(map);
+
+        // Per-model origin dots layer
+        const modelDotsLayer = L.layerGroup().addTo(map);
+        const dotById = new Map();
+
+        // Placement pin
+        let placementLatLng = null;
+        let placementMarker = null;
+        let picking = false;
+
+        function updatePlacementInfo() {
+            if (placementLatLng) {
+                $('placementInfo').innerHTML =
+                    'Placement: <b>' + placementLatLng.lat.toFixed(6) + ', ' + placementLatLng.lng.toFixed(6) + '</b>';
+            } else {
+                $('placementInfo').innerHTML = 'Placement: <i>none — files will load at map center</i>';
+            }
+        }
+
+        function setPicking(on) {
+            picking = on;
+            $('placementToggle').textContent = '📍 Pick location on map: ' + (on ? 'ON (click map)' : 'OFF');
+            $('placementToggle').classList.toggle('active', on);
+            map.getContainer().style.cursor = on ? 'crosshair' : '';
+        }
+
+        $('placementToggle').addEventListener('click', () => setPicking(!picking));
+
+        map.on('click', (e) => {
+            if (!picking) return;
+            placementLatLng = e.latlng;
+            if (placementMarker) placementMarker.setLatLng(placementLatLng);
+            else {
+                placementMarker = L.marker(placementLatLng, {
+                    icon: L.divIcon({
+                        className: '',
+                        html: '<div style="width:14px;height:14px;border-radius:50%;background:#2ecc71;border:3px solid #fff;box-shadow:0 0 6px #0008;"></div>',
+                        iconSize: [20, 20], iconAnchor: [10, 10]
+                    })
+                }).addTo(map);
+            }
+            updatePlacementInfo();
+            log('Placement set: ' + placementLatLng.lat.toFixed(6) + ', ' + placementLatLng.lng.toFixed(6));
+            setPicking(false);
+        });
+
+        $('useCenter').addEventListener('click', () => {
+            placementLatLng = map.getCenter();
+            if (placementMarker) placementMarker.setLatLng(placementLatLng);
+            else {
+                placementMarker = L.marker(placementLatLng, {
+                    icon: L.divIcon({
+                        className: '',
+                        html: '<div style="width:14px;height:14px;border-radius:50%;background:#2ecc71;border:3px solid #fff;box-shadow:0 0 6px #0008;"></div>',
+                        iconSize: [20, 20], iconAnchor: [10, 10]
+                    })
+                }).addTo(map);
+            }
+            updatePlacementInfo();
+            log('Placement set to map center.');
+        });
+
+        $('clearPin').addEventListener('click', () => {
+            placementLatLng = null;
+            if (placementMarker) { map.removeLayer(placementMarker); placementMarker = null; }
+            updatePlacementInfo();
+            setPicking(false);
+        });
+
+        // =====================================================
+        // THREE SCENE
+        // =====================================================
+        const scene = new THREE.Scene();
+        const FOV = 45;
+        const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 1e6);
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.domElement.id = 'three-canvas';
+        document.body.appendChild(renderer.domElement);
+
+        scene.add(new THREE.HemisphereLight(0xffffff, 0x777788, 0.9));
+        const sun = new THREE.DirectionalLight(0xffffff, 0.9);
+        sun.position.set(-60, -100, 150);
+        scene.add(sun);
+
+        const view = { tilt: 55, bearing: 0 };
+
+        function renderScene() {
+            const s = map.getSize();
+            if (!s.x || !s.y) return;
+            const c = map.getCenter();
+            const [tx, ty] = latLngToLocal(c.lat, c.lng);
+            const mpp = 40075016.686 * Math.cos(c.lat * Math.PI / 180) / (256 * Math.pow(2, map.getZoom()));
+            const dist = (s.y * mpp / 2) / Math.tan(THREE.MathUtils.degToRad(FOV / 2));
+            const p = THREE.MathUtils.degToRad(view.tilt);
+            const b = THREE.MathUtils.degToRad(view.bearing);
+            const horiz = dist * Math.sin(p);
+            camera.position.set(tx - Math.sin(b) * horiz, ty - Math.cos(b) * horiz, dist * Math.cos(p));
+            camera.up.set(Math.sin(b), Math.cos(b), 0);
+            camera.lookAt(tx, ty, 0);
+            camera.aspect = s.x / s.y;
+            camera.near = Math.max(dist / 200, 0.05);
+            camera.far = dist * 50;
+            camera.updateProjectionMatrix();
+            renderer.setSize(s.x, s.y, false);
+            renderer.render(scene, camera);
+        }
+        let pending = false;
+        function requestRender() {
+            if (pending) return;
+            pending = true;
+            requestAnimationFrame(() => { pending = false; renderScene(); });
+        }
+        map.on('move zoom resize', requestRender);
+        window.addEventListener('resize', requestRender);
+
+        // =====================================================
+        // VIEW CONTROLS
+        // =====================================================
+        function setView(tilt, bearing) {
+            view.tilt = Math.max(0, Math.min(80, tilt));
+            view.bearing = ((bearing + 540) % 360) - 180;
+            $('tilt').value = view.tilt; $('tiltV').textContent = Math.round(view.tilt) + '°';
+            $('bearing').value = view.bearing; $('bearingV').textContent = Math.round(view.bearing) + '°';
+            requestRender();
+        }
+        $('tilt').addEventListener('input', e => setView(+e.target.value, view.bearing));
+        $('bearing').addEventListener('input', e => setView(view.tilt, +e.target.value));
+        $('topView').addEventListener('click', () => setView(0, 0));
+        $('reset3d').addEventListener('click', () => setView(55, 0));
+
+        const mapEl = map.getContainer();
+        mapEl.addEventListener('contextmenu', e => e.preventDefault());
+        let drag = null;
+        mapEl.addEventListener('mousedown', e => {
+            if (e.button === 2 || (e.button === 0 && e.ctrlKey)) {
+                drag = { x: e.clientX, y: e.clientY, tilt: view.tilt, bearing: view.bearing };
+                e.preventDefault(); e.stopPropagation();
+            }
+        }, true);
+        window.addEventListener('mousemove', e => {
+            if (!drag) return;
+            setView(drag.tilt + (e.clientY - drag.y) * 0.3, drag.bearing - (e.clientX - drag.x) * 0.4);
+        });
+        window.addEventListener('mouseup', () => { drag = null; });
+
+        // =====================================================
+        // MODEL MANAGEMENT
+        // =====================================================
+        const models = [];  // { id, name, holder, inner, lat, lng, north, yup, box, blob, dot }
+        let activeId = null;
+
+        function disposeObject(o) {
+            o.traverse(c => {
+                if (c.geometry) c.geometry.dispose();
+                if (c.material) (Array.isArray(c.material) ? c.material : [c.material]).forEach(m => m.dispose());
+            });
+        }
+
+        function setActive(id) {
+            activeId = id;
+            const m = models.find(x => x.id === id);
+            if (m) {
+                $('north').value = m.north ?? 0;
+                $('northV').textContent = (m.north ?? 0) + '°';
+                $('yup').checked = m.yup !== false;
+                $('fileName').textContent = m.name + '  @ ' + m.lat.toFixed(5) + ', ' + m.lng.toFixed(5);
+            } else {
+                $('fileName').textContent = 'No file loaded yet';
+            }
+            renderModelList();
+        }
+
+        function renderModelList() {
+            const list = $('modelList');
+            list.innerHTML = '';
+            if (!models.length) { list.innerHTML = '<i>No models loaded</i>'; return; }
+            models.forEach(m => {
+                const row = document.createElement('div');
+                row.className = 'item' + (m.id === activeId ? ' active' : '');
+                const label = document.createElement('span');
+                label.style.flex = '1';
+                label.style.overflowWrap = 'anywhere';
+                label.innerHTML = m.name + ' <span class="meta">@ ' + m.lat.toFixed(5) + ', ' + m.lng.toFixed(5) + '</span>';
+                label.onclick = () => setActive(m.id);
+                const del = document.createElement('span');
+                del.className = 'del';
+                del.textContent = '✕';
+                del.title = 'Delete this model';
+                del.onclick = (e) => { e.stopPropagation(); removeModel(m.id); };
+                row.appendChild(label);
+                row.appendChild(del);
+                list.appendChild(row);
+            });
+        }
+
+        function applyPlacementFor(m) {
+            m.inner.rotation.set(m.yup !== false ? Math.PI / 2 : 0, 0, 0);
+            m.holder.rotation.z = THREE.MathUtils.degToRad(-(m.north ?? 0));
+            const [lx, ly] = latLngToLocal(m.lat, m.lng);
+            m.holder.position.set(lx, ly, 0);
+            m.holder.updateMatrixWorld(true);
+            const box = new THREE.Box3().setFromObject(m.holder);
+            m.holder.position.z = -box.min.z;
+            m.holder.updateMatrixWorld(true);
+            m.box = new THREE.Box3().setFromObject(m.holder);
+            requestRender();
+        }
+
+        $('yup').addEventListener('change', () => {
+            const m = models.find(x => x.id === activeId);
+            if (!m) return;
+            m.yup = $('yup').checked;
+            applyPlacementFor(m);
+            saveModelToDB(m);
+        });
+        $('north').addEventListener('input', e => {
+            $('northV').textContent = e.target.value + '°';
+            const m = models.find(x => x.id === activeId);
+            if (!m) return;
+            m.north = parseFloat(e.target.value);
+            applyPlacementFor(m);
+        });
+        $('north').addEventListener('change', () => {
+            const m = models.find(x => x.id === activeId);
+            if (m) saveModelToDB(m);
+        });
+
+        $('focusBtn').addEventListener('click', () => {
+            const m = models.find(x => x.id === activeId);
+            if (!m) return;
+            map.setView([m.lat, m.lng], 19);
+        });
+
+        async function removeModel(id) {
+            const idx = models.findIndex(x => x.id === id);
+            if (idx < 0) return;
+            const m = models[idx];
+            scene.remove(m.holder);
+            disposeObject(m.holder);
+            if (m.dot) { modelDotsLayer.removeLayer(m.dot); dotById.delete(m.id); }
+            models.splice(idx, 1);
+            if (activeId === id) activeId = models.length ? models[models.length - 1].id : null;
+            setActive(activeId);
+            await deleteFromDB(id);
+            log('Model removed: ' + m.name);
+        }
+
+        $('clearModel').addEventListener('click', () => {
+            if (!activeId) { log('No active model to delete.'); return; }
+            removeModel(activeId);
+        });
+
+        // =====================================================
+        // IFC LOADING
+        // =====================================================
+        function loadIFCBlob(blob, name, opts = {}) {
+            const id = opts.id || ('m_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7));
+            const lat = (opts.lat !== undefined) ? opts.lat : (placementLatLng ? placementLatLng.lat : map.getCenter().lat);
+            const lng = (opts.lng !== undefined) ? opts.lng : (placementLatLng ? placementLatLng.lng : map.getCenter().lng);
+            const url = URL.createObjectURL(blob);
+            log('Loading ' + name + ' @ ' + lat.toFixed(5) + ', ' + lng.toFixed(5) + ' …');
+
+            const loader = new IFCLoader();
+            loader.ifcManager.setWasmPath('https://cdn.jsdelivr.net/npm/web-ifc@0.0.44/', true);
+
+            loader.load(url, (ifcModel) => {
+                try {
+                    const rawSize = new THREE.Box3().setFromObject(ifcModel).getSize(new THREE.Vector3());
+                    const maxRaw = Math.max(rawSize.x, rawSize.y, rawSize.z);
+                    const unit = maxRaw > 500 ? 0.001 : 1;
+                    ifcModel.scale.setScalar(unit);
+                    ifcModel.traverse(o => {
+                        if (!o.isMesh) return;
+                        (Array.isArray(o.material) ? o.material : [o.material]).forEach(mat => {
+                            mat.side = THREE.DoubleSide;
+                            mat.polygonOffset = true; mat.polygonOffsetFactor = 1; mat.polygonOffsetUnits = 1;
+                        });
+                        const edges = new THREE.LineSegments(
+                            new THREE.EdgesGeometry(o.geometry, 25),
+                            new THREE.LineBasicMaterial({ color: 0x1b1b1b })
+                        );
+                        o.add(edges);
+                    });
+
+                    const inner = new THREE.Group();
+                    inner.add(ifcModel);
+                    const holder = new THREE.Group();
+                    holder.add(inner);
+                    scene.add(holder);
+
+                    const m = {
+                        id, name, holder, inner,
+                        lat, lng,
+                        north: opts.north ?? 0,
+                        yup: opts.yup !== false,
+                        blob
+                    };
+
+                    // origin dot on the map
+                    const dot = L.marker([lat, lng], {
+                        icon: L.divIcon({
+                            className: '',
+                            html: '<div class="model-dot"></div>',
+                            iconSize: [14, 14], iconAnchor: [7, 7]
+                        }),
+                        interactive: false
+                    });
+                    dot.addTo(modelDotsLayer);
+                    m.dot = dot;
+                    dotById.set(id, dot);
+
+                    models.push(m);
+                    setActive(id);
+                    applyPlacementFor(m);
+                    saveModelToDB(m);
+
+                    log('IFC READY: ' + name + '\nOrigin: ' + lat.toFixed(6) + ', ' + lng.toFixed(6));
+                } catch (err) {
+                    console.error(err);
+                    log('IFC processing failed:\n' + err.message, 'error');
+                }
+            },
+                null,
+                (err) => { console.error(err); log('IFC LOAD FAILED\n' + (err?.message || err), 'error'); });
+        }
+
+        $('ifcFile').addEventListener('change', (e) => {
+            const files = Array.from(e.target.files || []);
+            files.forEach(f => {
+                if (!f.name.toLowerCase().endsWith('.ifc')) { log('Skipping non-.ifc file: ' + f.name, 'error'); return; }
+                loadIFCBlob(f, f.name);
+            });
+            e.target.value = '';
+        });
+
+        // =====================================================
+        // INDEXEDDB PERSISTENCE
+        // =====================================================
+        const DB_NAME = 'ifc-map-db';
+        const DB_STORE = 'models';
+        let dbPromise = null;
+
+        function openDB() {
+            if (dbPromise) return dbPromise;
+            dbPromise = new Promise((resolve, reject) => {
+                const req = indexedDB.open(DB_NAME, 1);
+                req.onupgradeneeded = () => {
+                    const db = req.result;
+                    if (!db.objectStoreNames.contains(DB_STORE)) {
+                        db.createObjectStore(DB_STORE, { keyPath: 'id' });
+                    }
+                };
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+            return dbPromise;
+        }
+
+        async function saveModelToDB(m) {
+            if (!m.blob) return;
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(DB_STORE, 'readwrite');
+                tx.objectStore(DB_STORE).put({
+                    id: m.id, name: m.name,
+                    lat: m.lat, lng: m.lng,
+                    north: m.north, yup: m.yup,
+                    blob: m.blob
+                });
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+
+        async function deleteFromDB(id) {
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(DB_STORE, 'readwrite');
+                tx.objectStore(DB_STORE).delete(id);
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+
+        async function loadAllFromDB() {
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(DB_STORE, 'readonly');
+                const req = tx.objectStore(DB_STORE).getAll();
+                req.onsuccess = () => resolve(req.result || []);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        // =====================================================
+        // BOOT
+        // =====================================================
+        map.whenReady(async () => {
+            requestRender();
+            try {
+                const saved = await loadAllFromDB();
+                if (saved.length) {
+                    log('Restoring ' + saved.length + ' saved model(s)…');
+                    for (const rec of saved) {
+                        if (!rec.blob) continue;
+                        loadIFCBlob(rec.blob, rec.name, {
+                            id: rec.id,
+                            lat: rec.lat, lng: rec.lng,
+                            north: rec.north, yup: rec.yup
+                        });
+                    }
+                } else {
+                    log('Ready. Pick a location on the map (or use map center), then load an IFC file.');
+                }
+            } catch (e) {
+                console.warn(e);
+                log('Ready. (Could not read saved models.)');
+            }
+            renderModelList();
+        });
+    </script>
+</body>
+</html>
