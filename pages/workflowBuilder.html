@@ -668,7 +668,7 @@
       <div id="schedList" style="display:flex;flex-direction:column;gap:6px"></div>
     </div>
     <div class="sp-view" id="viewBug" hidden>
-      buggggg
+      <div class="hint-text" style="font-size:11px;color:#94a3b8"></div>
     </div>
   </section>
   <nav class="rail" aria-label="Tools">
@@ -676,6 +676,18 @@
     <button id="railAgent" title="Agentic" aria-label="Agentic" aria-pressed="false">🪳</button>
     <button id="railBug" title="Bug Tracker" aria-label="Bug Tracker" aria-pressed="false">🐞</button>
   </nav>
+
+  <script src="https://cdn.jsdelivr.net/npm/eruda@3.0.1"></script>
+  <script>
+    eruda.init();
+    eruda.get('entryBtn').hide(); // hide the floating gear
+
+    let consoleOpen = false;
+    document.getElementById('railBug').addEventListener('click', () => {
+      consoleOpen ? eruda.hide() : eruda.show();
+      consoleOpen = !consoleOpen;
+    });
+  </script>
 </div>
 
 <div class="modal-backdrop" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
