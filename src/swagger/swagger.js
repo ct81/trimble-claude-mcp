@@ -1744,10 +1744,11 @@ export const swaggerDocument = {
               schema: {
                 type: 'object',
                 required: ['message'],
-                anyOf: [{ required: ['chatId'] }, { required: ['chatid'] }],
+                //anyOf: [{ required: ['chatId'] }, { required: ['chatid'] }],
+                anyOf: [{ required: ['chatId'] }],
                 properties: {
                   chatId: { type: 'string', description: 'Telegram chat ID.' },
-                  chatid: { type: 'string', description: 'Alias for chatId.' },
+                  //chatid: { type: 'string', description: 'Alias for chatId.' },
                   message: { type: 'string', minLength: 1 }
                 }
               }
