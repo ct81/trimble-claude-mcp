@@ -1053,9 +1053,13 @@
                         imageHeight: "auto"
                     },
                     {
-                        title: "第二章 · The Fist",
-                        text: "A fist is not only the hand, but the whole body.\nTwist from the waist, drive from the heel, and strike like thunder.",
+                        title: "tcp-sketchup.bat",
+                        text: "@echo off\nsetlocal\n\necho SketchUp Setup\n\n:: Prompt user for the ngrok.exe path\nset /p \"ngrokPath=Enter the full path to the folder containing ngrok.exe (no trailing backslash): \"\n\n:: Check if the path was entered\nif \"%ngrokPath%\"==\"\" (\n    echo No path entered. Exiting.\n    pause\n    exit /b 1\n)\n\n:: Check if ngrok.exe exists at the given path\nif not exist \"%ngrokPath%\\ngrok.exe\" (\n    echo ngrok.exe not found at \"%ngrokPath%\"\n    pause\n    exit /b 1\n)\n\n:: Run ngrok tcp 9876\necho Starting ngrok on TCP port 9876...\ncd /d \"%ngrokPath%\"\nngrok.exe tcp 9876\n\npause\nendlocal",
                         editable: true
+                    },
+                    {
+                        title: "ngrok.exe",
+                        text: "Return to Extension Manager and check that the extension is listed and enabled. Restart SketchUp if necessary."
                     }
                 ]
             },
@@ -1218,28 +1222,41 @@
                 //    ...(page.imageHeight ? { imageHeight: page.imageHeight } : {})
                 //}, null, 2);
                 const pageJSON = page.text;
-                const safeJSON = pageJSON.replace(/</g, '\\u003c');
+                const safeJSON = page.text;//pageJSON.replace(/</g, '\\u003c');
                 editorHTML = `
-                    <div class="inline-editor" data-page-index="${index}">
-                        <div class="inline-editor-header">
-                            <span class="inline-editor-title">📜 Edit script</span>
-                            <div class="inline-editor-actions">
-                                <button class="inline-icon-btn" data-action="apply" data-page-index="${index}" title="Apply" style="visibility: hidden">✔</button>
-                                <button class="inline-icon-btn" data-action="copy" data-page-index="${index}" title="Copy">📋</button>
-                                <button class="inline-icon-btn" data-action="bat" data-page-index="${index}" title="Download .bat">⬇ .bat</button>
+                        <div class="inline-editor" data-page-index="${index}">
+                            <div class="inline-editor-header">
+                                <span class="inline-editor-title">📜 Edit script</span>
+                                <div class="inline-editor-actions">
+                                    <button class="inline-icon-btn" data-action="apply" data-page-index="${index}" title="Apply" style="visibility: hidden">✔</button>
+                                    <button class="inline-icon-btn" data-action="copy" data-page-index="${index}" title="Copy">📋</button>
+                                    <button class="inline-icon-btn" data-action="bat" data-page-index="${index}" title="Download .bat">⬇ .bat</button>
+                                </div>
                             </div>
+                            <textarea class="inline-code" data-page-index="${index}" spellcheck="false">${safeJSON}</textarea>
                         </div>
-                        <textarea class="inline-code" data-page-index="${index}" spellcheck="false">${safeJSON}</textarea>
-                    </div>
-                `;
+                    `;
             }
 
+            //return `
+            //    <div class="face ${side}" data-page-index="${index}">
+            //        <div class="content">
+            //            <h2>${page.title}</h2>
+            //            ${imgHTML}
+            //            ${paragraphs}
+            //            ${editorHTML}
+            //        </div>
+            //        <span class="pnum">${index + 1}</span>
+            //    </div>
+            //`;
             return `
                 <div class="face ${side}" data-page-index="${index}">
                     <div class="content">
                         <h2>${page.title}</h2>
                         ${imgHTML}
-                        ${paragraphs}
+                        ${page.title === "tcp-sketchup.bat"
+                                ? "After downloaded the .bat, right click on it and unlock the 'Security: This file came from another computer and might be blocked to help protect the computer.'."
+                                : paragraphs}
                         ${editorHTML}
                     </div>
                     <span class="pnum">${index + 1}</span>
@@ -1269,22 +1286,22 @@
             const coverSheet = document.createElement("div");
             coverSheet.className = "sheet";
             coverSheet.innerHTML = `
-                <div class="face front cover-front">
-                    <div class="cover-inner">
-                        <span class="cover-kicker">${book.cover.kicker}</span>
-                        <h1>${book.cover.title}</h1>
-                        <div class="cover-rule"></div>
-                        <span class="cover-sub">${book.cover.sub}</span>
+                    <div class="face front cover-front">
+                        <div class="cover-inner">
+                            <span class="cover-kicker">${book.cover.kicker}</span>
+                            <h1>${book.cover.title}</h1>
+                            <div class="cover-rule"></div>
+                            <span class="cover-sub">${book.cover.sub}</span>
+                        </div>
                     </div>
-                </div>
-                <div class="face back cover-back">
-                    <div class="inside-cover">
-                        <div class="crest">${book.cover.crest}</div>
-                        <p class="exlibris">${book.cover.exlibris}</p>
-                        <p class="inside-note">${book.cover.note}</p>
+                    <div class="face back cover-back">
+                        <div class="inside-cover">
+                            <div class="crest">${book.cover.crest}</div>
+                            <p class="exlibris">${book.cover.exlibris}</p>
+                            <p class="inside-note">${book.cover.note}</p>
+                        </div>
                     </div>
-                </div>
-            `;
+                `;
             bookEl.appendChild(coverSheet);
             sheetEls.push(coverSheet);
 
@@ -1304,9 +1321,9 @@
             const endSheet = document.createElement("div");
             endSheet.className = "sheet";
             endSheet.innerHTML = `
-                <div class="face front cover-end"></div>
-                <div class="face back cover-end"></div>
-            `;
+                    <div class="face front cover-end"></div>
+                    <div class="face back cover-end"></div>
+                `;
             bookEl.appendChild(endSheet);
             sheetEls.push(endSheet);
 
@@ -1345,7 +1362,7 @@
                             copyButton.classList.remove('copied');
                             copyButton.textContent = '📋';
                         }, 1500);
-                        showToast('📋 Page JSON copied!');
+                        showToast('📋 Script copied!');
                     });
                 }
 
@@ -1353,27 +1370,27 @@
                     applyButton.addEventListener('click', (e) => {
                         e.stopPropagation();
                         try {
-                            const parsed = JSON.parse(textarea.value);
-                            if (typeof parsed.title !== 'string' || typeof parsed.text !== 'string') {
-                                throw new Error('title and text are required strings');
-                            }
-                            const updated = {
-                                ...currentBook.pages[pageIndex],
-                                title: parsed.title,
-                                text: parsed.text
-                            };
-                            if ('image' in parsed && parsed.image) updated.image = parsed.image;
-                            else delete updated.image;
+                            const parsed = textarea.value;// JSON.parse(textarea.value);
+                            //if (typeof parsed.title !== 'string' || typeof parsed.text !== 'string') {
+                            //    throw new Error('title and text are required strings');
+                            //}
+                            //const updated = {
+                            //    ...currentBook.pages[pageIndex],
+                            //    title: parsed.title,
+                            //    text: parsed.text
+                            //};
+                            //if ('image' in parsed && parsed.image) updated.image = parsed.image;
+                            //else delete updated.image;
 
-                            if ('imageWidth' in parsed && parsed.imageWidth) updated.imageWidth = parsed.imageWidth;
-                            else delete updated.imageWidth;
+                            //if ('imageWidth' in parsed && parsed.imageWidth) updated.imageWidth = parsed.imageWidth;
+                            //else delete updated.imageWidth;
 
-                            if ('imageHeight' in parsed && parsed.imageHeight) updated.imageHeight = parsed.imageHeight;
-                            else delete updated.imageHeight;
+                            //if ('imageHeight' in parsed && parsed.imageHeight) updated.imageHeight = parsed.imageHeight;
+                            //else delete updated.imageHeight;
 
-                            updated.editable = currentBook.pages[pageIndex].editable;
+                            //updated.editable = currentBook.pages[pageIndex].editable;
 
-                            currentBook.pages[pageIndex] = updated;
+                            //currentBook.pages[pageIndex] = updated;
 
                             const savedFlip = flippedCount;
                             buildBook(currentBook);
@@ -1382,41 +1399,91 @@
                             updateUI();
                             showToast('✔ Page updated!');
                         } catch (err) {
-                            showToast('✖ Invalid JSON: ' + err.message, true);
+                            showToast('✖ Invalid scripts: ' + err.message, true);
                         }
                     });
                 }
 
+                //if (batButton) {
+                //    batButton.addEventListener('click', (e) => {
+                //        e.stopPropagation();
+                //        try {
+                //            const parsed = textarea.value;// JSON.parse(textarea.value);
+                //            //if (typeof parsed.title !== 'string' || typeof parsed.text !== 'string') {
+                //            //    throw new Error('title and text are required strings');
+                //            //}
+                //            //const updated = {
+                //            //    ...currentBook.pages[pageIndex],
+                //            //    title: parsed.title,
+                //            //    text: parsed.text
+                //            //};
+                //            //if ('image' in parsed && parsed.image) updated.image = parsed.image;
+                //            //else delete updated.image;
+
+                //            //if ('imageWidth' in parsed && parsed.imageWidth) updated.imageWidth = parsed.imageWidth;
+                //            //else delete updated.imageWidth;
+
+                //            //if ('imageHeight' in parsed && parsed.imageHeight) updated.imageHeight = parsed.imageHeight;
+                //            //else delete updated.imageHeight;
+
+                //            //updated.editable = currentBook.pages[pageIndex].editable;
+
+                //            //currentBook.pages[pageIndex] = updated;
+
+                //            downloadEditorAsBat(textarea.value);
+                //            showToast('⬇ Downloaded .bat');
+                //        } catch (err) {
+                //            showToast('✖ Invalid JSON: ' + err.message, true);
+                //        }
+                //    });
+                //}
                 if (batButton) {
-                    batButton.addEventListener('click', (e) => {
+                    batButton.addEventListener('click', async (e) => {
                         e.stopPropagation();
+
+                        // Prevent double-fire
+                        if (batButton.dataset.busy === '1') return;
+                        batButton.dataset.busy = '1';
+
                         try {
-                            const parsed = JSON.parse(textarea.value);
-                            if (typeof parsed.title !== 'string' || typeof parsed.text !== 'string') {
-                                throw new Error('title and text are required strings');
+                            const textareaContent = textarea.value;
+
+                            // Build filename
+                            const lower = textareaContent.toLowerCase();
+                            let filename;
+                            if (lower.includes("sketchup setup")) {
+                                filename = "tcp-sketchup.bat";
+                            } else if (lower.includes("tekla structural designer setup")) {
+                                filename = "tcp-tsd.bat";
+                            } else if (lower.includes("tekla structures setup")) {
+                                filename = "http-tekla.bat";
+                            } else if (lower.includes("trimble connect")) {
+                                filename = "http-tc.bat";
+                            } else {
+                                filename = "script_data.bat";
                             }
-                            const updated = {
-                                ...currentBook.pages[pageIndex],
-                                title: parsed.title,
-                                text: parsed.text
-                            };
-                            if ('image' in parsed && parsed.image) updated.image = parsed.image;
-                            else delete updated.image;
 
-                            if ('imageWidth' in parsed && parsed.imageWidth) updated.imageWidth = parsed.imageWidth;
-                            else delete updated.imageWidth;
+                            // Create download
+                            const blob = new Blob([textareaContent], { type: 'application/octet-stream' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = filename;
+                            a.style.display = 'none';
+                            document.body.appendChild(a);
+                            a.click();
 
-                            if ('imageHeight' in parsed && parsed.imageHeight) updated.imageHeight = parsed.imageHeight;
-                            else delete updated.imageHeight;
+                            // Clean up after the browser has had time to start the download
+                            setTimeout(() => {
+                                document.body.removeChild(a);
+                                URL.revokeObjectURL(url);
+                                delete batButton.dataset.busy;
+                            }, 1500);
 
-                            updated.editable = currentBook.pages[pageIndex].editable;
-
-                            currentBook.pages[pageIndex] = updated;
-
-                            downloadEditorAsBat(textarea.value);
-                            showToast('⬇ Downloaded .bat');
+                            showToast('⬇ Downloaded ' + filename);
                         } catch (err) {
-                            showToast('✖ Invalid JSON: ' + err.message, true);
+                            delete batButton.dataset.busy;
+                            showToast('✖ Error: ' + err.message, true);
                         }
                     });
                 }
@@ -1433,7 +1500,19 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'page_data.bat';
+            let title = "script_data.bat";
+            if (textareaContent.includes("SketchUp Setup")) {
+                title = "tcp-sketchup.bat";
+            } else if (textareaContent.includes("Tekla Structures Setup")) {
+                title = "http-tekla.bat";
+            } else if (textareaContent.includes("Tekla Structural Designer Setup")) {
+                title = "tcp-tsd.bat";
+            } else if (textareaContent.includes("Trimble Connect")) {
+                title = "http-tc.bat";
+            } else {
+                title = "script_data.bat";
+            }
+            a.download = title;// 'page_data.bat';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
