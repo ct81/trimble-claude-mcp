@@ -1734,7 +1734,7 @@ export const swaggerDocument = {
     '/api/mcp/telegram/send': {
       post: {
         tags: ['Telegram'],
-        summary: 'Send a Telegram message through GREEN-API',
+        summary: 'Send a Telegram message through GREEN-API, @userinfobot',
         operationId: 'send_telegram_message_rest',
         security: [{ bearerAuth: [] }],
         requestBody: {
