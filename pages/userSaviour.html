@@ -210,19 +210,19 @@
             --glow: rgba(230,200,119,.5);
         }
 
-        .spine-tea {
+        .spine-tekla {
             --spine-bg: linear-gradient(90deg, #081a10 0%, #143022 14%, #2a5a3e 42%, #2a5a3e 58%, #153020 86%, #061408 100%);
             --text-color: #c4e0a8;
             --glow: rgba(196,224,168,.5);
         }
 
-        .spine-sword {
+        .spine-tsd {
             --spine-bg: linear-gradient(90deg, #1a0404 0%, #3a0a0a 14%, #6a1a1a 42%, #6a1a1a 58%, #300808 86%, #120202 100%);
             --text-color: #f0b0a0;
             --glow: rgba(240,176,160,.5);
         }
 
-        .spine-roman {
+        .spine-tc {
             --spine-bg: linear-gradient(90deg, #2a1404 0%, #4a2408 14%, #8a4a18 42%, #8a4a18 58%, #4a2408 86%, #1a0a02 100%);
             --text-color: #f5d78a;
             --glow: rgba(245,215,138,.55);
@@ -238,7 +238,7 @@
             justify-content: center;
             color: var(--text-color);
             font-family: "Songti SC", Georgia, serif;
-            font-size: 15px;
+            font-size: 12px;
             letter-spacing: .22em;
             text-shadow: 0 0 14px var(--glow);
             pointer-events: none;
@@ -947,34 +947,34 @@
 
                     <div class="shelf-book deco d2"></div>
 
-                    <button class="shelf-book pick spine-tea"
-                            data-book="tea"
-                            style="--h: 224px; --w: 50px;"
+                    <button class="shelf-book pick spine-tekla"
+                            data-book="tekla"
+                            style="--h: 224px; --w: 60px;"
                             aria-label="Open the tea ceremony manual">
                         <span class="spine-band band-top"></span>
-                        <span class="spine-text">茶經</span>
+                        <span class="spine-text">MCP STRUCTURES TEKLA</span>
                         <span class="spine-band band-bot"></span>
                     </button>
 
                     <div class="shelf-book deco d3"></div>
 
-                    <button class="shelf-book pick spine-sword"
-                            data-book="sword"
-                            style="--h: 232px; --w: 52px;"
+                    <button class="shelf-book pick spine-tsd"
+                            data-book="tsd"
+                            style="--h: 232px; --w: 66px;"
                             aria-label="Open the sword manual">
                         <span class="spine-band band-top"></span>
-                        <span class="spine-text">劍譜</span>
+                        <span class="spine-text">MCP DESIGNER STRUCTURAL TEKLA</span>
                         <span class="spine-band band-bot"></span>
                     </button>
 
                     <div class="shelf-book deco d4"></div>
 
-                    <button class="shelf-book pick spine-roman"
-                            data-book="roman"
-                            style="--h: 238px; --w: 56px;"
+                    <button class="shelf-book pick spine-tc"
+                            data-book="tc"
+                            style="--h: 238px; --w: 58px;"
                             aria-label="Open the Romance of the Three Kingdoms">
                         <span class="spine-band band-top"></span>
-                        <span class="spine-text">三國演義</span>
+                        <span class="spine-text">MCP CONNECT TRIMBLE</span>
                         <span class="spine-band band-bot"></span>
                     </button>
 
@@ -1060,8 +1060,8 @@
                 ]
             },
 
-            tea: {
-                id: "tea",
+            tekla: {
+                id: "tekla",
                 theme: {
                     frontBg: "radial-gradient(ellipse at 34% 18%, #2a5a3e 0%, #143022 52%, #061408 100%)",
                     frontColor: "#c4e0a8",
@@ -1070,8 +1070,8 @@
                     endBg: "radial-gradient(ellipse at 66% 22%, #2a5a3e 0%, #143022 52%, #061408 100%)"
                 },
                 cover: {
-                    kicker: "陸羽遺風", title: "茶經", sub: "Tea Ceremony Manual",
-                    crest: "茶", exlibris: "清心齋",
+                    kicker: "泰克拉结构", title: "Tekla Structures", sub: "User Manual",
+                    crest: "结构", exlibris: "T.C.S",
                     note: "A leaf, a cup,\na moment of stillness."
                 },
                 pages: [
@@ -1084,8 +1084,8 @@
                 ]
             },
 
-            sword: {
-                id: "sword",
+            tsd: {
+                id: "tsd",
                 theme: {
                     frontBg: "radial-gradient(ellipse at 34% 18%, #6a1a1a 0%, #3a0a0a 52%, #120202 100%)",
                     frontColor: "#f0b0a0",
@@ -1094,8 +1094,8 @@
                     endBg: "radial-gradient(ellipse at 66% 22%, #6a1a1a 0%, #3a0a0a 52%, #120202 100%)"
                 },
                 cover: {
-                    kicker: "華山劍宗", title: "劍譜", sub: "Sword Manual",
-                    crest: "劍", exlibris: "聽雨樓",
+                    kicker: "泰克拉结构设计", title: "Tekla Structural Designer", sub: "User Manual",
+                    crest: "设计", exlibris: "T.C.S",
                     note: "The blade is a mirror\nof the one who holds it."
                 },
                 pages: [
@@ -1108,8 +1108,8 @@
                 ]
             },
 
-            roman: {
-                id: "roman",
+            tc: {
+                id: "tc",
                 theme: {
                     frontBg: "radial-gradient(ellipse at 34% 18%, #8a4a18 0%, #4a2408 52%, #1a0a02 100%)",
                     frontColor: "#f5d78a",
@@ -1118,8 +1118,8 @@
                     endBg: "radial-gradient(ellipse at 66% 22%, #8a4a18 0%, #4a2408 52%, #1a0a02 100%)"
                 },
                 cover: {
-                    kicker: "章回演義", title: "三國演義", sub: "Romance of the Three Kingdoms",
-                    crest: "義", exlibris: "臥龍崗",
+                    kicker: "天宝协同平台", title: "Trimble Connect", sub: "User Manual",
+                    crest: "天宝", exlibris: "T.C.S",
                     note: "The empire, long divided,\nmust unite; long united, must divide."
                 },
                 pages: [
