@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>武術秘笈 · Kung Fu Manual</title>
+
+<style>
+:root{
+    --ink: #1f2a33;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 26px;
+    padding: 26px 16px;
+    background: radial-gradient(circle at 50% 25%, #0e2742 0%, #030a12 78%);
+    font-family: Georgia, "Times New Roman", "Songti SC", serif;
+    color: #dbe7f3;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+h2.title {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 14px;
+    letter-spacing: .32em;
+    text-transform: uppercase;
+    color: #7fa3c4;
+    font-weight: 600;
+}
+
+/* ---------------- BOOK ---------------- */
+
+.book {
+    position: relative;
+    width: min(92vw, 760px);
+    aspect-ratio: 3 / 2;
+    perspective: 2400px;
+    perspective-origin: 50% 50%;
+    border-radius: 12px;
+    background: transparent;
+    box-shadow: 0 30px 60px -26px rgba(0,0,0,.9);
+    cursor: grab;
+    touch-action: pan-y;
+}
+.book.dragging { cursor: grabbing; }
+
+.cast-shadow {
+    position: absolute;
+    top: 6%;
+    bottom: 6%;
+    width: 52%;
+    left: 24%;
+    background: radial-gradient(ellipse at 50% 50%,
+        rgba(0,0,0,.62) 0%,
+        rgba(0,0,0,.34) 38%,
+        rgba(0,0,0,0) 72%);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 8000;
+    will-change: left, opacity;
+}
+
+.book::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    margin-left: -1.5px;
+    background: linear-gradient(180deg,
+        rgba(0,0,0,.55), rgba(0,0,0,.15), rgba(0,0,0,.55));
+    opacity: .22;
+    z-index: 99999;
+    pointer-events: none;
+}
+
+/* ---------------- SHEETS ---------------- */
+
+.sheet {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 50%;
+    height: 100%;
+    transform-origin: left center;
+    transform-style: preserve-3d;
+    transform: rotateY(0deg);
+    will-change: transform;
+}
+
+/* ---------------- FACES (static) ---------------- */
+
+.face {
+    position: absolute;
+    inset: 0;
+    padding: 32px 30px 42px;
+    background: linear-gradient(160deg, #fdfcf7 0%, #f2ecdd 100%);
+    color: var(--ink);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: inset 0 0 55px rgba(40, 70, 100, .08);
+}
+
+.face.front { border-radius: 0 12px 12px 0; }
+.face.back  { border-radius: 12px 0 0 12px; transform: rotateY(180deg); }
+
+.face.front::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 64px;
+    background: linear-gradient(90deg, rgba(20,45,75,.16), rgba(20,45,75,0));
+    pointer-events: none;
+}
+.face.back::before {
+    content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 64px;
+    background: linear-gradient(270deg, rgba(20,45,75,.16), rgba(20,45,75,0));
+    pointer-events: none;
+}
+
+/* ---------------- BLUE COVER FACES ---------------- */
+
+.face.cover-front,
+.face.cover-end {
+    background: radial-gradient(ellipse at 34% 18%, #1c4a7a 0%, #0b2542 52%, #04101e 100%);
+    color: #e8c96e;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    border: 1px solid rgba(150, 195, 235, .22);
+}
+.face.cover-end {
+    background: radial-gradient(ellipse at 66% 22%, #1c4a7a 0%, #0b2542 52%, #04101e 100%);
+}
+
+.cover-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 24px;
+    border: 1px solid rgba(210, 175, 90, .48);
+    border-radius: 4px;
+    box-shadow: inset 0 0 40px rgba(120, 170, 220, .12);
+    background: rgba(5, 20, 36, .18);
+    position: relative;
+    z-index: 2;
+}
+
+.cover-kicker {
+    font-family: Arial, sans-serif;
+    font-size: clamp(7px, 1vw, 10px);
+    letter-spacing: .46em;
+    text-transform: uppercase;
+    color: #87aed2;
+}
+
+.cover-inner h1 {
+    margin: 0;
+    font-size: clamp(22px, 4vw, 44px);
+    line-height: 1.15;
+    color: #e6c877;
+    letter-spacing: .10em;
+    text-shadow: 0 2px 18px rgba(230,200,119,.30);
+}
+
+.cover-rule {
+    width: clamp(60px, 14vw, 130px);
+    height: 1px;
+    margin: 2px 0;
+    background: linear-gradient(90deg, transparent, #c6a75a, transparent);
+}
+
+.cover-sub {
+    font-family: Arial, sans-serif;
+    font-size: clamp(7px, 1vw, 10px);
+    letter-spacing: .40em;
+    text-transform: uppercase;
+    color: #8fb4d4;
+}
+
+.face.cover-back {
+    background: radial-gradient(ellipse at 72% 28%, #163d63 0%, #0a2038 58%, #030d18 100%);
+    color: #bfa25c;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    border: 1px solid rgba(150, 195, 235, .16);
+}
+
+.inside-cover {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    z-index: 2;
+}
+
+.crest {
+    width: clamp(50px, 10vw, 80px);
+    height: clamp(50px, 10vw, 80px);
+    border: 1px solid rgba(200,168,90,.55);
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: clamp(20px, 3.2vw, 30px);
+    color: #d9b25f;
+    box-shadow: inset 0 0 24px rgba(200,168,90,.14);
+}
+
+.exlibris {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    font-size: clamp(8px, 1.1vw, 11px);
+    letter-spacing: .46em;
+    text-transform: uppercase;
+    color: #a88f4e;
+}
+
+.inside-note {
+    margin: 0;
+    font-size: clamp(8px, 1.15vw, 12px);
+    line-height: 1.8;
+    font-style: italic;
+    color: #8fa9bf;
+}
+
+/* ---------------- PAGE CONTENT ---------------- */
+
+.content {
+    position: relative;
+    z-index: 2;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.content h2 {
+    margin: 0 0 4px;
+    font-size: clamp(15px, 2.3vw, 25px);
+    line-height: 1.2;
+    color: #1c3b5a;
+    letter-spacing: .02em;
+    border-bottom: 1px solid rgba(28, 59, 90, .16);
+    padding-bottom: 8px;
+}
+
+.content p {
+    margin: 0;
+    font-size: clamp(10px, 1.35vw, 15px);
+    line-height: 1.8;
+    color: #3a4a57;
+}
+
+.pnum {
+    position: absolute;
+    bottom: 15px;
+    font-family: Arial, sans-serif;
+    font-size: 11px;
+    letter-spacing: .12em;
+    color: #9aabba;
+    z-index: 2;
+}
+.face.front .pnum { right: 26px; }
+.face.back  .pnum { left: 26px; }
+
+/* ---------------- CURL SEGMENTS ---------------- */
+
+.seg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: var(--segW, 24px);
+    height: 100%;
+    transform-origin: left center;
+    transform-style: preserve-3d;
+    will-change: transform;
+}
+
+.seg-slice {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    pointer-events: none;
+}
+.seg-slice.back { transform: rotateY(180deg); }
+
+.replica {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    padding: 32px 30px 42px;
+    box-sizing: border-box;
+    overflow: hidden;
+    background: linear-gradient(160deg, #fdfcf7 0%, #f2ecdd 100%);
+    color: var(--ink);
+    box-shadow: inset 0 0 55px rgba(40, 70, 100, .08);
+    display: flex;
+    flex-direction: column;
+    pointer-events: none;
+}
+.replica.is-cover-front,
+.replica.is-cover-end {
+    background: radial-gradient(ellipse at 34% 18%, #1c4a7a 0%, #0b2542 52%, #04101e 100%);
+    color: #e8c96e;
+    border: 1px solid rgba(150,195,235,.22);
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+.replica.is-cover-end {
+    background: radial-gradient(ellipse at 66% 22%, #1c4a7a 0%, #0b2542 52%, #04101e 100%);
+}
+
+.seg-shade {
+    position: absolute;
+    inset: 0;
+    background: #0a0a14;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 10;
+}
+
+/* ---------------- CONTROLS ---------------- */
+
+.controls {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+button {
+    border: none;
+    padding: 12px 24px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    color: #062033;
+    background: linear-gradient(180deg, #7fb2e0, #3d7fb8);
+    box-shadow: 0 6px 16px -6px rgba(90,150,210,.8);
+    transition: transform .15s ease, box-shadow .2s ease, background .2s ease;
+}
+button:hover:not(:disabled) {
+    background: linear-gradient(180deg, #9cc8ee, #4a8fc8);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 22px -8px rgba(90,150,210,.95);
+}
+button:active:not(:disabled) { transform: translateY(1px); }
+button:disabled { opacity: .32; cursor: not-allowed; box-shadow: none; }
+
+.counter {
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    letter-spacing: .14em;
+    color: #7fa3c4;
+    min-width: 92px;
+    text-align: center;
+}
+
+/* ---------------- RESPONSIVE ---------------- */
+
+@media (max-width: 640px) {
+    .face, .replica { padding: 16px 14px 28px; }
+    .face.front::before, .face.back::before { width: 32px; }
+    .content { gap: 8px; }
+    .content h2 { font-size: 14px; padding-bottom: 5px; }
+    .content p  { font-size: 9.5px; line-height: 1.65; }
+    .pnum { font-size: 9px; bottom: 9px; }
+    .face.front .pnum { right: 13px; }
+    .face.back  .pnum { left: 13px; }
+    button { padding: 10px 16px; font-size: 11px; }
+    .counter { min-width: 70px; font-size: 10px; }
+    .cover-inner { padding: 12px 16px; gap: 8px; }
+    .cover-kicker { letter-spacing: .30em; }
+    .cover-sub { letter-spacing: .28em; }
+}
+</style>
+</head>
+
+<body>
+
+<h2 class="title">武術秘笈 · Kung Fu Manual</h2>
+
+<div class="book" id="book"></div>
+
+<div class="controls">
+    <button id="prevBtn">◀ Previous</button>
+    <span class="counter" id="counter">Cover</span>
+    <button id="nextBtn">Next ▶</button>
+</div>
+
+<script>
+/* ------------------------------------------------------------------
+   BOOK DATA
+------------------------------------------------------------------ */
+const bookData = [
+    { title: "入門 · The Entrance",   text: "The way of kung fu begins with a single breath.\nStand firm, empty your mind, and prepare to learn." },
+    { title: "第一章 · Horse Stance", text: "The horse stance builds the root of all power.\nFeet wide, knees bent, back straight — hold until the legs remember." },
+    { title: "第二章 · The Fist",     text: "A fist is not only the hand, but the whole body.\nTwist from the waist, drive from the heel, and strike like thunder." },
+    { title: "第三章 · The Palm",     text: "The palm is softer than the fist, yet can be more sudden.\nOpen the hand, relax the wrist, and release energy like a wave." },
+    { title: "第四章 · Footwork",     text: "A good fighter is always moving.\nStep lightly, keep your centre low, and never cross your feet in battle." },
+    { title: "第五章 · Breathing",    text: "Breath is the bridge between mind and body.\nInhale through the nose, sink the air to the belly, and exhale through the mouth." },
+    { title: "第六章 · Discipline",   text: "Skill without discipline is like a blade without an edge.\nTrain every day, respect your teacher, and never misuse what you learn." }
+];
+
+/* ------------------------------------------------------------------
+   TUNABLES
+------------------------------------------------------------------ */
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const FLIP_MS  = reduceMotion ? 1 : 1000;   // full auto-flip duration
+const N_SEG    = 18;                        // segments per sheet
+const BEND_DEG = 55;                        // peak curl (increased from 30)
+const CURVE_P  = 0.7;                       // <1 = tighter curl at free edge
+const SWIPE_RATIO = 0.55;                   // drag distance for full flip
+
+/* ------------------------------------------------------------------
+   SETUP
+------------------------------------------------------------------ */
+const bookEl  = document.getElementById("book");
+const prevBtn = document.getElementById("prevBtn");
+const nextBtn = document.getElementById("nextBtn");
+const counter = document.getElementById("counter");
+
+const totalPages = bookData.length;
+const sheetEls   = [];
+let flippedCount = 0;
+let busy         = false;
+
+const castShadow = document.createElement("div");
+castShadow.className = "cast-shadow";
+bookEl.appendChild(castShadow);
+
+/* --- easing --- */
+function easeInOutCubic(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2; }
+function easeOutCubic(t)   { return 1 - Math.pow(1 - t, 3); }
+
+/* --- markup helpers --- */
+function pageMarkup(index) {
+    const page = bookData[index];
+    if (!page) return "";
+    const paragraphs = page.text.split("\n").map(l => `<p>${l}</p>`).join("");
+    return `<div class="content"><h2>${page.title}</h2>${paragraphs}</div><span class="pnum">${index + 1}</span>`;
+}
+
+function faceHTML(index, side) {
+    const inner = index >= totalPages ? "" : pageMarkup(index);
+    return `<div class="face ${side}">${inner}</div>`;
+}
+
+/* ---------- 1. Front cover ---------- */
+const coverSheet = document.createElement("div");
+coverSheet.className = "sheet";
+coverSheet.innerHTML = `
+    <div class="face front cover-front">
+        <div class="cover-inner">
+            <span class="cover-kicker">少林秘傳</span>
+            <h1>武術秘笈</h1>
+            <div class="cover-rule"></div>
+            <span class="cover-sub">Kung Fu Manual</span>
+        </div>
+    </div>
+    <div class="face back cover-back">
+        <div class="inside-cover">
+            <div class="crest">武</div>
+            <p class="exlibris">藏經閣</p>
+            <p class="inside-note">This manual belongs to<br>whoever walks the path.</p>
+        </div>
+    </div>
+`;
+bookEl.appendChild(coverSheet);
+sheetEls.push(coverSheet);
+
+/* ---------- 2. Content sheets ---------- */
+const contentSheetCount = Math.ceil(totalPages / 2);
+for (let i = 0; i < contentSheetCount; i++) {
+    const sheet = document.createElement("div");
+    sheet.className = "sheet";
+    sheet.innerHTML = faceHTML(i * 2, "front") + faceHTML(i * 2 + 1, "back");
+    bookEl.appendChild(sheet);
+    sheetEls.push(sheet);
+}
+
+/* ---------- 3. Blue end cover ---------- */
+const endSheet = document.createElement("div");
+endSheet.className = "sheet";
+endSheet.innerHTML = `
+    <div class="face front cover-end"></div>
+    <div class="face back cover-end"></div>
+`;
+bookEl.appendChild(endSheet);
+sheetEls.push(endSheet);
+
+const totalSheets = sheetEls.length;
+
+/* ------------------------------------------------------------------
+   Z-ORDER
+------------------------------------------------------------------ */
+function layoutZ() {
+    sheetEls.forEach((el, i) => {
+        el.style.zIndex = (i < flippedCount) ? 50 + i : 500 + (totalSheets - i);
+    });
+}
+
+/* ------------------------------------------------------------------
+   BUILD FLIP (segmented curl state)
+------------------------------------------------------------------ */
+function buildFlip(sheet, forward) {
+    const frontFace = sheet.querySelector(".face.front");
+    const backFace  = sheet.querySelector(".face.back");
+    const frontHTML = frontFace ? frontFace.innerHTML : "";
+    const backHTML  = backFace  ? backFace.innerHTML  : "";
+
+    const isCoverFront = frontFace && frontFace.classList.contains("cover-front");
+    const isCoverBack  = backFace  && backFace.classList.contains("cover-back");
+    const isEndFront   = frontFace && frontFace.classList.contains("cover-end");
+    const isEndBack    = backFace  && backFace.classList.contains("cover-end");
+
+    let backBg = "linear-gradient(160deg, #fdfcf7 0%, #f2ecdd 100%)";
+    if (isCoverBack)    backBg = "radial-gradient(ellipse at 72% 28%, #163d63 0%, #0a2038 58%, #030d18 100%)";
+    else if (isEndBack) backBg = "radial-gradient(ellipse at 66% 22%, #1c4a7a 0%, #0b2542 52%, #04101e 100%)";
+
+    const originalHTML = sheet.innerHTML;
+    const rect    = sheet.getBoundingClientRect();
+    const sheetW  = rect.width  || 300;
+    const bookW   = rect.width  * 2 || 600;
+    const segW    = sheetW / N_SEG;
+    const pageW   = sheetW;
+
+    sheet.style.transition = "none";
+    sheet.style.transform  = "none";
+    sheet.innerHTML = "";
+
+    let rootEl = null, parentEl = null;
+    const segEls      = [];
+    const frontShades = [];
+    const backShades  = [];
+
+    for (let i = 0; i < N_SEG; i++) {
+        const seg = document.createElement("div");
+        seg.className = "seg";
+        seg.style.setProperty("--segW", segW + "px");
+        seg.style.left = i === 0 ? "0" : "100%";
+
+        const frontSlice = document.createElement("div");
+        frontSlice.className = "seg-slice front";
+        const frontRep = document.createElement("div");
+        frontRep.className = "replica" + (isCoverFront ? " is-cover-front" : "") + (isEndFront ? " is-cover-end" : "");
+        frontRep.style.width = pageW + "px";
+        frontRep.style.left  = (-i * segW) + "px";
+        frontRep.innerHTML   = frontHTML;
+        frontSlice.appendChild(frontRep);
+        const fShade = document.createElement("div");
+        fShade.className = "seg-shade";
+        frontSlice.appendChild(fShade);
+        frontShades.push(fShade);
+
+        const backSlice = document.createElement("div");
+        backSlice.className = "seg-slice back";
+        backSlice.style.background = backBg;
+        const backRep = document.createElement("div");
+        backRep.className = "replica" + (isCoverBack ? " is-cover-front" : "") + (isEndBack ? " is-cover-end" : "");
+        backRep.style.width = pageW + "px";
+        backRep.style.left  = ((i + 1) * segW - pageW) + "px";
+        backRep.innerHTML   = backHTML;
+        backSlice.appendChild(backRep);
+        const bShade = document.createElement("div");
+        bShade.className = "seg-shade";
+        backSlice.appendChild(bShade);
+        backShades.push(bShade);
+
+        seg.appendChild(frontSlice);
+        seg.appendChild(backSlice);
+
+        if (parentEl) parentEl.appendChild(seg);
+        else          rootEl = seg;
+        parentEl = seg;
+        segEls.push(seg);
+    }
+    sheet.appendChild(rootEl);
+
+    return { sheet, forward, segEls, frontShades, backShades, segW, sheetW, bookW, originalHTML };
+}
+
+/* ------------------------------------------------------------------
+   SET PROGRESS (p = 0 → 1)
+------------------------------------------------------------------ */
+function setProgress(state, p) {
+    const { segEls, frontShades, backShades, segW, bookW, forward } = state;
+
+    const base = forward ? -180 * p : -180 * (1 - p);
+    const bend = BEND_DEG * Math.sin(Math.PI * p);
+
+    let prevCum = 0;
+    let edgeX   = 0;
+
+    for (let i = 0; i < N_SEG; i++) {
+        const s   = i / (N_SEG - 1);
+        const cum = base + bend * Math.pow(1 - s, CURVE_P);
+        const delta = cum - prevCum;
+        segEls[i].style.transform = `rotateY(${delta}deg)`;
+
+        const shadeOp = Math.sin(Math.abs(cum) * Math.PI / 180) * 0.6;
+        frontShades[i].style.opacity = shadeOp;
+        backShades[i].style.opacity  = shadeOp;
+
+        if (i > 0) edgeX += segW * Math.cos(prevCum * Math.PI / 180);
+        prevCum = cum;
+    }
+    edgeX += segW * Math.cos(prevCum * Math.PI / 180);
+
+    const edgePct = 50 + (edgeX / bookW) * 100;
+    castShadow.style.left    = `calc(${edgePct}% - 26%)`;
+    castShadow.style.opacity = Math.sin(Math.PI * p) * 0.75;
+}
+
+/* ------------------------------------------------------------------
+   COMMIT / CANCEL
+------------------------------------------------------------------ */
+function finishFlip(state) {
+    const { sheet, forward, originalHTML } = state;
+    sheet.innerHTML = originalHTML;
+    sheet.style.transform = forward ? "rotateY(-180deg)" : "rotateY(0deg)";
+    void sheet.offsetHeight;
+    sheet.style.transition = "";
+}
+
+function cancelFlip(state) {
+    const { sheet, forward, originalHTML } = state;
+    sheet.innerHTML = originalHTML;
+    sheet.style.transform = forward ? "rotateY(0deg)" : "rotateY(-180deg)";
+    void sheet.offsetHeight;
+    sheet.style.transition = "";
+}
+
+/* ------------------------------------------------------------------
+   ANIMATE PROGRESS
+------------------------------------------------------------------ */
+function animateProgress(state, fromP, toP, duration, easeFn, onDone) {
+    const start = performance.now();
+    function frame(now) {
+        let t = (now - start) / duration;
+        if (t > 1) t = 1;
+        const et = easeFn ? easeFn(t) : t;
+        setProgress(state, fromP + (toP - fromP) * et);
+        if (t < 1) requestAnimationFrame(frame);
+        else if (onDone) onDone();
+    }
+    requestAnimationFrame(frame);
+}
+
+/* ------------------------------------------------------------------
+   UI
+------------------------------------------------------------------ */
+function updateUI() {
+    prevBtn.disabled = flippedCount === 0 || busy;
+    nextBtn.disabled = flippedCount >= totalSheets || busy;
+
+    if (flippedCount === 0) {
+        counter.textContent = "Cover";
+    } else if (flippedCount >= totalSheets) {
+        counter.textContent = "End";
+    } else {
+        const shown = Math.min(totalPages, flippedCount * 2 - 1);
+        counter.textContent = `${shown} / ${totalPages}`;
+    }
+}
+
+/* ------------------------------------------------------------------
+   PROGRAMMATIC FLIP (buttons)
+------------------------------------------------------------------ */
+function turnForward() {
+    if (busy || flippedCount >= totalSheets) return;
+    busy = true;
+    updateUI();
+
+    const sheet = sheetEls[flippedCount];
+    sheet.style.zIndex = 9999;
+    const state = buildFlip(sheet, true);
+
+    animateProgress(state, 0, 1, FLIP_MS, easeInOutCubic, () => {
+        finishFlip(state);
+        flippedCount++;
+        layoutZ();
+        busy = false;
+        updateUI();
+    });
+}
+
+function turnBackward() {
+    if (busy || flippedCount === 0) return;
+    busy = true;
+    updateUI();
+
+    const sheet = sheetEls[flippedCount - 1];
+    sheet.style.zIndex = 9999;
+    const state = buildFlip(sheet, false);
+
+    animateProgress(state, 0, 1, FLIP_MS, easeInOutCubic, () => {
+        finishFlip(state);
+        flippedCount--;
+        layoutZ();
+        busy = false;
+        updateUI();
+    });
+}
+
+/* ------------------------------------------------------------------
+   SWIPE / DRAG
+------------------------------------------------------------------ */
+let activeDrag = null;
+
+function getDirection(e) {
+    const rect = bookEl.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const onRight = x >= rect.width / 2;
+    if (onRight && flippedCount < totalSheets) return { forward: true,  rect };
+    if (!onRight && flippedCount > 0)          return { forward: false, rect };
+    return null;
+}
+
+bookEl.addEventListener("pointerdown", (e) => {
+    if (busy || activeDrag) return;
+    const dir = getDirection(e);
+    if (!dir) return;
+
+    activeDrag = {
+        pointerId: e.pointerId,
+        startX: e.clientX,
+        startY: e.clientY,
+        startTime: performance.now(),
+        rect: dir.rect,
+        forward: dir.forward,
+        state: null,
+        started: false
+    };
+    try { bookEl.setPointerCapture(e.pointerId); } catch(err) {}
+});
+
+bookEl.addEventListener("pointermove", (e) => {
+    if (!activeDrag || e.pointerId !== activeDrag.pointerId) return;
+    const dx = e.clientX - activeDrag.startX;
+    const dy = e.clientY - activeDrag.startY;
+
+    if (!activeDrag.started) {
+        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+        if (Math.abs(dy) > Math.abs(dx) * 1.3) {
+            try { bookEl.releasePointerCapture(activeDrag.pointerId); } catch(err) {}
+            activeDrag = null;
+            return;
+        }
+        // begin preview
+        activeDrag.started = true;
+        bookEl.classList.add("dragging");
+        const sheet = activeDrag.forward
+            ? sheetEls[flippedCount]
+            : sheetEls[flippedCount - 1];
+        sheet.style.zIndex = 9999;
+        activeDrag.state = buildFlip(sheet, activeDrag.forward);
+    }
+
+    const bookW = activeDrag.rect.width;
+    let p = activeDrag.forward
+        ? -dx / (bookW * SWIPE_RATIO)
+        :  dx / (bookW * SWIPE_RATIO);
+    p = Math.max(0, Math.min(1, p));
+    setProgress(activeDrag.state, p);
+});
+
+bookEl.addEventListener("pointerup", (e) => {
+    if (!activeDrag || e.pointerId !== activeDrag.pointerId) return;
+    const drag = activeDrag;
+    activeDrag = null;
+    bookEl.classList.remove("dragging");
+    try { bookEl.releasePointerCapture(drag.pointerId); } catch(err) {}
+
+    if (!drag.started) {
+        // Treat as a click
+        const rect = bookEl.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        if (x < rect.width / 2) turnBackward();
+        else                    turnForward();
+        return;
+    }
+
+    const dx = e.clientX - drag.startX;
+    const dt = performance.now() - drag.startTime;
+    const velocity = Math.abs(dx) / Math.max(dt, 1);
+
+    const bookW = drag.rect.width;
+    let p = drag.forward
+        ? -dx / (bookW * SWIPE_RATIO)
+        :  dx / (bookW * SWIPE_RATIO);
+    p = Math.max(0, Math.min(1, p));
+
+    const commit = p > 0.35 || velocity > 0.4;
+
+    busy = true;
+    updateUI();
+
+    if (commit) {
+        animateProgress(drag.state, p, 1, 400, easeOutCubic, () => {
+            finishFlip(drag.state);
+            if (drag.forward) flippedCount++;
+            else              flippedCount--;
+            layoutZ();
+            busy = false;
+            updateUI();
+        });
+    } else {
+        animateProgress(drag.state, p, 0, 300, easeOutCubic, () => {
+            cancelFlip(drag.state);
+            layoutZ();
+            busy = false;
+            updateUI();
+        });
+    }
+});
+
+bookEl.addEventListener("pointercancel", (e) => {
+    if (!activeDrag || e.pointerId !== activeDrag.pointerId) return;
+    const drag = activeDrag;
+    activeDrag = null;
+    bookEl.classList.remove("dragging");
+    try { bookEl.releasePointerCapture(drag.pointerId); } catch(err) {}
+    if (drag.started && drag.state) {
+        cancelFlip(drag.state);
+        layoutZ();
+    }
+});
+
+/* ------------------------------------------------------------------
+   KEYBOARD
+------------------------------------------------------------------ */
+document.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); turnForward(); }
+    else if (e.key === "ArrowLeft")              { e.preventDefault(); turnBackward(); }
+});
+
+/* ------------------------------------------------------------------
+   BUTTONS
+------------------------------------------------------------------ */
+prevBtn.addEventListener("click", (e) => { e.stopPropagation(); turnBackward(); });
+nextBtn.addEventListener("click", (e) => { e.stopPropagation(); turnForward(); });
+
+/* ------------------------------------------------------------------
+   INIT
+------------------------------------------------------------------ */
+sheetEls.forEach(s => { s.style.transform = "rotateY(0deg)"; });
+layoutZ();
+updateUI();
+</script>
+
+</body>
+</html>

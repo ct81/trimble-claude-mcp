@@ -1,0 +1,1912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>書架 · Bookshelf of Manuals</title>
+
+    <style>
+        :root {
+            --ink: #1f2a33;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 26px 16px;
+            background: radial-gradient(circle at 50% 25%, #0e2742 0%, #030a12 78%);
+            font-family: Georgia, "Times New Roman", "Songti SC", serif;
+            color: #dbe7f3;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            overflow: hidden;
+            grid-template-areas: "scene";
+        }
+
+        .title {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 14px;
+            letter-spacing: .32em;
+            text-transform: uppercase;
+            color: #7fa3c4;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .hidden {
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        /* ---- scenes ---- */
+        .shelf-scene, .book-scene {
+            grid-area: scene;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 22px;
+            width: 100%;
+            justify-self: center;
+            align-self: center;
+            will-change: opacity;
+        }
+
+        .book-scene {
+            perspective: 2400px;
+            perspective-origin: 50% 50%;
+        }
+
+        /* ---- shelf ---- */
+        .shelf-wrap {
+            position: relative;
+            display: flex;
+            justify-content: center;
+        }
+
+        .shelf {
+            position: relative;
+            width: min(94vw, 760px);
+            height: 340px;
+            background: radial-gradient(ellipse at 50% 0%, #2a1d12 0%, #160e07 70%), linear-gradient(180deg, #1c1309 0%, #0d0804 100%);
+            border: 8px solid #4a3520;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: inset 0 0 90px rgba(0,0,0,.95), inset 0 10px 30px rgba(0,0,0,.7), 0 26px 50px rgba(0,0,0,.65);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+            .shelf::before {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background: radial-gradient(ellipse at 50% 8%, rgba(255,205,130,.12) 0%, transparent 55%);
+                pointer-events: none;
+                z-index: 0;
+            }
+
+        .shelf-books {
+            display: flex;
+            align-items: flex-end;
+            gap: 6px;
+            padding-bottom: 26px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .shelf-plank {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 26px;
+            background: linear-gradient(180deg, #8a6642 0%, #5a3f26 40%, #33220f 100%);
+            border-top: 1px solid rgba(255,220,170,.28);
+            box-shadow: 0 -6px 16px rgba(0,0,0,.6);
+            z-index: 1;
+        }
+
+        .shelf-book {
+            position: relative;
+            border-radius: 2px 3px 3px 2px;
+            box-shadow: 2px 4px 10px rgba(0,0,0,.55), inset -2px 0 4px rgba(0,0,0,.45);
+        }
+
+            .shelf-book.deco {
+                height: var(--h);
+                width: var(--w);
+                background: var(--bg);
+            }
+
+        .d1 {
+            --h: 188px;
+            --w: 26px;
+            --bg: linear-gradient(90deg, #2a1a10, #523a24 50%, #2a1a10);
+        }
+
+        .d2 {
+            --h: 162px;
+            --w: 22px;
+            --bg: linear-gradient(90deg, #3a1a1a, #6a3030 50%, #3a1a1a);
+        }
+
+        .d3 {
+            --h: 198px;
+            --w: 25px;
+            --bg: linear-gradient(90deg, #1a2a1a, #3a5a3a 50%, #1a2a1a);
+        }
+
+        .d4 {
+            --h: 172px;
+            --w: 20px;
+            --bg: linear-gradient(90deg, #2a2a3a, #4a4a6a 50%, #2a2a3a);
+        }
+
+        .d5 {
+            --h: 184px;
+            --w: 28px;
+            --bg: linear-gradient(90deg, #2a1a0a, #5a3a1a 50%, #2a1a0a);
+        }
+
+        .shelf-book.pick {
+            height: var(--h);
+            width: var(--w);
+            background: var(--spine-bg);
+            color: var(--text-color);
+            cursor: pointer;
+            border: none;
+            padding: 0;
+            border-radius: 3px 4px 4px 3px;
+            box-shadow: 2px 0 0 rgba(255,255,255,.12), 5px 8px 18px rgba(0,0,0,.65), inset -2px 0 5px rgba(0,0,0,.5), inset 2px 0 2px rgba(255,255,255,.10);
+            transition: transform .3s cubic-bezier(.2,.8,.2,1), box-shadow .3s ease;
+            transform-origin: center bottom;
+            z-index: 3;
+            will-change: transform;
+        }
+
+            .shelf-book.pick:hover, .shelf-book.pick:focus-visible {
+                transform: translateY(-14px);
+                box-shadow: 2px 0 0 rgba(255,255,255,.22), 10px 18px 34px rgba(0,0,0,.75), 0 0 42px var(--glow), inset -2px 0 5px rgba(0,0,0,.5);
+                outline: none;
+            }
+
+            .shelf-book.pick:active {
+                transform: translateY(-6px) scale(.98);
+            }
+
+            .shelf-book.pick.opening {
+                animation: bookLift .55s cubic-bezier(.2,.8,.2,1) forwards;
+            }
+
+        @keyframes bookLift {
+            0% {
+                transform: translateY(-14px) scale(1);
+                opacity: 1;
+            }
+
+            60% {
+                transform: translateY(-50px) scale(.85) rotate(-6deg);
+                opacity: .8;
+            }
+
+            100% {
+                transform: translateY(-80px) scale(.6) rotate(-12deg);
+                opacity: 0;
+            }
+        }
+
+        .spine-sketchup {
+            --spine-bg: linear-gradient(90deg, #061a2e 0%, #0d2b48 14%, #1c4a7a 42%, #1c4a7a 58%, #0a2038 86%, #04101e 100%);
+            --text-color: #e6c877;
+            --glow: rgba(230,200,119,.5);
+        }
+
+        .spine-tea {
+            --spine-bg: linear-gradient(90deg, #081a10 0%, #143022 14%, #2a5a3e 42%, #2a5a3e 58%, #153020 86%, #061408 100%);
+            --text-color: #c4e0a8;
+            --glow: rgba(196,224,168,.5);
+        }
+
+        .spine-sword {
+            --spine-bg: linear-gradient(90deg, #1a0404 0%, #3a0a0a 14%, #6a1a1a 42%, #6a1a1a 58%, #300808 86%, #120202 100%);
+            --text-color: #f0b0a0;
+            --glow: rgba(240,176,160,.5);
+        }
+
+        .spine-roman {
+            --spine-bg: linear-gradient(90deg, #2a1404 0%, #4a2408 14%, #8a4a18 42%, #8a4a18 58%, #4a2408 86%, #1a0a02 100%);
+            --text-color: #f5d78a;
+            --glow: rgba(245,215,138,.55);
+        }
+
+        .spine-text {
+            position: absolute;
+            inset: 42px 0;
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-color);
+            font-family: "Songti SC", Georgia, serif;
+            font-size: 15px;
+            letter-spacing: .22em;
+            text-shadow: 0 0 14px var(--glow);
+            pointer-events: none;
+        }
+
+        .spine-band {
+            position: absolute;
+            left: 5px;
+            right: 5px;
+            height: 3px;
+            border-radius: 1px;
+            background: linear-gradient(90deg, rgba(200,168,90,.3), var(--text-color), rgba(200,168,90,.3));
+            pointer-events: none;
+            opacity: .9;
+        }
+
+        .band-top {
+            top: 22px;
+        }
+
+        .band-bot {
+            bottom: 22px;
+        }
+
+        .shelf-glow {
+            position: absolute;
+            bottom: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 220px;
+            height: 100px;
+            background: radial-gradient(ellipse at center, rgba(230,200,119,.22) 0%, transparent 70%);
+            filter: blur(24px);
+            pointer-events: none;
+            animation: glowPulse 3.6s ease-in-out infinite;
+            z-index: 0;
+        }
+
+        @keyframes glowPulse {
+            0%,100% {
+                opacity: .5;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+
+        .hint {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            letter-spacing: .08em;
+            color: #6f8fa8;
+            text-align: center;
+        }
+
+            .hint kbd {
+                background: rgba(127,163,196,.16);
+                border: 1px solid rgba(127,163,196,.35);
+                border-radius: 3px;
+                padding: 1px 6px;
+                font-family: inherit;
+                font-size: 11px;
+                color: #a8c4dc;
+            }
+
+        /* ---- book ---- */
+        .book-stage {
+            position: relative;
+            transform-origin: center center;
+            will-change: transform, opacity;
+        }
+
+        .book {
+            position: relative;
+            width: min(96vw, 1100px);
+            aspect-ratio: 2 / 1.25;
+            perspective: 2400px;
+            perspective-origin: 50% 50%;
+            border-radius: 12px;
+            background: transparent;
+            box-shadow: 0 30px 60px -26px rgba(0,0,0,.9);
+            cursor: grab;
+            touch-action: pan-y;
+        }
+
+            .book.dragging {
+                cursor: grabbing;
+            }
+
+        .cast-shadow {
+            position: absolute;
+            top: 6%;
+            bottom: 6%;
+            width: 52%;
+            left: 24%;
+            background: radial-gradient(ellipse at 50% 50%, rgba(0,0,0,.62) 0%, rgba(0,0,0,.34) 38%, rgba(0,0,0,0) 72%);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 8000;
+            will-change: left, opacity;
+        }
+
+        .book::after {
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            margin-left: -1.5px;
+            background: linear-gradient(180deg, rgba(0,0,0,.55), rgba(0,0,0,.15), rgba(0,0,0,.55));
+            opacity: .22;
+            z-index: 99999;
+            pointer-events: none;
+        }
+
+        .sheet {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            width: 50%;
+            height: 100%;
+            transform-origin: left center;
+            transform-style: preserve-3d;
+            transform: rotateY(0deg);
+            will-change: transform;
+        }
+
+        /* ---- faces ---- */
+        .face {
+            position: absolute;
+            inset: 0;
+            padding: 32px 30px 42px;
+            background: linear-gradient(160deg, #fdfcf7 0%, #f2ecdd 100%);
+            color: var(--ink);
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: inset 0 0 55px rgba(40, 70, 100, .08);
+        }
+
+            .face.front {
+                border-radius: 0 12px 12px 0;
+            }
+
+            .face.back {
+                border-radius: 12px 0 0 12px;
+                transform: rotateY(180deg);
+            }
+
+            .face.front::before {
+                content: "";
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 64px;
+                background: linear-gradient(90deg, rgba(20,45,75,.16), rgba(20,45,75,0));
+                pointer-events: none;
+            }
+
+            .face.back::before {
+                content: "";
+                position: absolute;
+                right: 0;
+                top: 0;
+                bottom: 0;
+                width: 64px;
+                background: linear-gradient(270deg, rgba(20,45,75,.16), rgba(20,45,75,0));
+                pointer-events: none;
+            }
+
+            .face.cover-front {
+                background: var(--cover-front-bg, radial-gradient(ellipse at 34% 18%, #1c4a7a 0%, #0b2542 52%, #04101e 100%));
+                color: var(--cover-front-text, #e8c96e);
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                border: 1px solid rgba(255,255,255,.16);
+            }
+
+            .face.cover-back {
+                background: var(--cover-back-bg, radial-gradient(ellipse at 72% 28%, #163d63 0%, #0a2038 58%, #030d18 100%));
+                color: var(--cover-back-text, #bfa25c);
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                border: 1px solid rgba(255,255,255,.10);
+            }
+
+            .face.cover-end {
+                background: var(--cover-end-bg, radial-gradient(ellipse at 66% 22%, #1c4a7a 0%, #0b2542 52%, #04101e 100%));
+            }
+
+        .cover-inner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            padding: 18px 24px;
+            border: 1px solid rgba(255,255,255,.24);
+            border-radius: 4px;
+            box-shadow: inset 0 0 40px rgba(255,255,255,.06);
+            background: rgba(0,0,0,.14);
+            position: relative;
+            z-index: 2;
+        }
+
+        .cover-kicker {
+            font-family: Arial, sans-serif;
+            font-size: clamp(7px, 1vw, 10px);
+            letter-spacing: .46em;
+            text-transform: uppercase;
+            opacity: .78;
+        }
+
+        .cover-inner h1 {
+            margin: 0;
+            font-size: clamp(22px, 4vw, 44px);
+            line-height: 1.15;
+            letter-spacing: .10em;
+            text-shadow: 0 2px 18px currentColor;
+            filter: brightness(1.05);
+        }
+
+        .cover-rule {
+            width: clamp(60px, 14vw, 130px);
+            height: 1px;
+            background: linear-gradient(90deg, transparent, currentColor, transparent);
+            opacity: .75;
+        }
+
+        .cover-sub {
+            font-family: Arial, sans-serif;
+            font-size: clamp(7px, 1vw, 10px);
+            letter-spacing: .40em;
+            text-transform: uppercase;
+            opacity: .75;
+        }
+
+        .inside-cover {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .crest {
+            width: clamp(50px, 10vw, 80px);
+            height: clamp(50px, 10vw, 80px);
+            border: 1px solid currentColor;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            font-size: clamp(20px, 3.2vw, 30px);
+            opacity: .88;
+            box-shadow: inset 0 0 24px rgba(255,255,255,.08);
+        }
+
+        .exlibris {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            font-size: clamp(8px, 1.1vw, 11px);
+            letter-spacing: .46em;
+            text-transform: uppercase;
+            opacity: .72;
+        }
+
+        .inside-note {
+            margin: 0;
+            font-size: clamp(8px, 1.15vw, 12px);
+            line-height: 1.8;
+            font-style: italic;
+            opacity: .82;
+            text-align: center;
+        }
+
+        .content {
+            position: relative;
+            z-index: 2;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+        }
+
+            .content h2 {
+                margin: 0 0 4px;
+                font-size: clamp(15px, 2.3vw, 25px);
+                line-height: 1.2;
+                color: #1c3b5a;
+                letter-spacing: .02em;
+                border-bottom: 1px solid rgba(28, 59, 90, .16);
+                padding-bottom: 8px;
+            }
+
+            .content p {
+                margin: 0;
+                font-size: clamp(10px, 1.35vw, 15px);
+                line-height: 1.8;
+                color: #3a4a57;
+                white-space: pre-line;
+            }
+
+            /* No height clamp — per-image size (imageWidth/imageHeight) is authoritative.
+           object-fit removed so the image is not cropped/squashed. */
+            .content img {
+                max-width: 100%;
+                border-radius: 4px;
+                margin: 6px 0;
+                border: 1px solid rgba(28, 59, 90, .2);
+                box-shadow: 0 2px 6px rgba(0,0,0,.1);
+                display: block;
+            }
+
+        /* ==================== INLINE EDITOR ==================== */
+        .inline-editor {
+            margin-top: 14px;
+            border: 1px solid rgba(28, 59, 90, .25);
+            border-radius: 6px;
+            background: #0b0e14;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .inline-editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 10px;
+            background: #0d1017;
+            border-bottom: 1px solid rgba(191,162,92,.25);
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .inline-editor-title {
+            font-family: Arial, sans-serif;
+            font-size: 9px;
+            letter-spacing: .14em;
+            text-transform: uppercase;
+            color: #bfa25c;
+            font-weight: 700;
+        }
+
+        .inline-editor-actions {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .inline-icon-btn {
+            background: #2a2f3f;
+            border: 1px solid #bfa25c;
+            color: #e8d8b0;
+            padding: 3px 8px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: Arial, sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            transition: all .2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            white-space: nowrap;
+        }
+
+            .inline-icon-btn:hover {
+                background: #3c4358;
+                box-shadow: 0 0 8px rgba(191,162,92,.5);
+            }
+
+            .inline-icon-btn.copied {
+                background: #1e5a2a;
+                border-color: #3e9e4e;
+                color: #c8f0c8;
+            }
+
+        .inline-code {
+            width: 100%;
+            min-height: 90px;
+            height: 425px;
+            background: #0b0e14;
+            color: #d4d8e2;
+            border: none;
+            padding: 8px 10px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 10px;
+            line-height: 1.5;
+            resize: vertical;
+            outline: none;
+            tab-size: 2;
+        }
+
+            .inline-code:focus {
+                background: #0a0d13;
+                box-shadow: inset 0 0 0 2px rgba(191,162,92,.2);
+            }
+
+        .pnum {
+            position: absolute;
+            bottom: 15px;
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            letter-spacing: .12em;
+            color: #9aabba;
+            z-index: 2;
+        }
+
+        .face.front .pnum {
+            right: 26px;
+        }
+
+        .face.back .pnum {
+            left: 26px;
+        }
+
+        /* ---- curl ---- */
+        .seg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: var(--segW, 24px);
+            height: 100%;
+            transform-origin: left center;
+            transform-style: preserve-3d;
+            will-change: transform;
+        }
+
+        .seg-slice {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            pointer-events: none;
+        }
+
+            .seg-slice.back {
+                transform: rotateY(180deg);
+            }
+
+        .replica {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            padding: 32px 30px 42px;
+            box-sizing: border-box;
+            overflow: hidden;
+            background: linear-gradient(160deg, #fdfcf7 0%, #f2ecdd 100%);
+            color: var(--ink);
+            box-shadow: inset 0 0 55px rgba(40, 70, 100, .08);
+            display: flex;
+            flex-direction: column;
+            pointer-events: none;
+        }
+
+            .replica.is-cover-front {
+                background: var(--cover-front-bg, radial-gradient(ellipse at 34% 18%, #1c4a7a 0%, #0b2542 52%, #04101e 100%));
+                color: var(--cover-front-text, #e8c96e);
+                border: 1px solid rgba(255,255,255,.16);
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+            }
+
+            .replica.is-cover-back {
+                background: var(--cover-back-bg, radial-gradient(ellipse at 72% 28%, #163d63 0%, #0a2038 58%, #030d18 100%));
+                color: var(--cover-back-text, #bfa25c);
+                border: 1px solid rgba(255,255,255,.10);
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+            }
+
+            .replica.is-cover-end {
+                background: var(--cover-end-bg, radial-gradient(ellipse at 66% 22%, #1c4a7a 0%, #0b2542 52%, #04101e 100%));
+            }
+
+        .seg-shade {
+            position: absolute;
+            inset: 0;
+            background: #0a0a14;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* ---- controls ---- */
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        button {
+            border: none;
+            padding: 12px 24px;
+            border-radius: 999px;
+            cursor: pointer;
+            font-family: Arial, sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: .04em;
+            color: #062033;
+            background: linear-gradient(180deg, #7fb2e0, #3d7fb8);
+            box-shadow: 0 6px 16px -6px rgba(90,150,210,.8);
+            transition: transform .15s ease, box-shadow .2s ease, background .2s ease;
+        }
+
+            button:hover:not(:disabled) {
+                background: linear-gradient(180deg, #9cc8ee, #4a8fc8);
+                transform: translateY(-1px);
+                box-shadow: 0 10px 22px -8px rgba(90,150,210,.95);
+            }
+
+            button:active:not(:disabled) {
+                transform: translateY(1px);
+            }
+
+            button:disabled {
+                opacity: .32;
+                cursor: not-allowed;
+                box-shadow: none;
+            }
+
+        .close-btn {
+            background: transparent;
+            border: 1px solid rgba(127,163,196,.4);
+            color: #8fb4d4;
+            padding: 9px 20px;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: none;
+        }
+
+            .close-btn:hover:not(:disabled) {
+                background: rgba(127,163,196,.12);
+                color: #c4dcf0;
+                transform: none;
+                box-shadow: none;
+            }
+
+        .counter {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            letter-spacing: .14em;
+            color: #7fa3c4;
+            min-width: 92px;
+            text-align: center;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(120px);
+            background: #1e5a2a;
+            color: #c8f0c8;
+            padding: 12px 28px;
+            border-radius: 8px;
+            border: 1px solid #3e9e4e;
+            font-family: Arial, sans-serif;
+            font-size: 13px;
+            letter-spacing: .05em;
+            opacity: 0;
+            transition: all .35s cubic-bezier(.23, 1, .32, 1);
+            pointer-events: none;
+            z-index: 99999;
+            box-shadow: 0 8px 24px rgba(0,0,0,.5);
+        }
+
+            .toast.show {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+
+        @media (max-width: 640px) {
+            .shelf {
+                height: 260px;
+            }
+
+            .shelf-book.pick {
+                --h: 190px !important;
+                --w: 44px !important;
+            }
+
+            .spine-text {
+                font-size: 15px;
+                inset: 34px 0;
+            }
+
+            .band-top {
+                top: 18px;
+            }
+
+            .band-bot {
+                bottom: 18px;
+            }
+
+            .d1 {
+                --h: 150px;
+            }
+
+            .d2 {
+                --h: 130px;
+            }
+
+            .d3 {
+                --h: 158px;
+            }
+
+            .d4 {
+                --h: 138px;
+            }
+
+            .hint {
+                font-size: 11px;
+            }
+
+            .face, .replica {
+                padding: 16px 14px 28px;
+            }
+
+                .face.front::before, .face.back::before {
+                    width: 32px;
+                }
+
+            .content {
+                gap: 8px;
+            }
+
+                .content h2 {
+                    font-size: 14px;
+                    padding-bottom: 5px;
+                }
+
+                .content p {
+                    font-size: 9.5px;
+                    line-height: 1.65;
+                }
+
+            .pnum {
+                font-size: 9px;
+                bottom: 9px;
+            }
+
+            .face.front .pnum {
+                right: 13px;
+            }
+
+            .face.back .pnum {
+                left: 13px;
+            }
+
+            button {
+                padding: 10px 16px;
+                font-size: 11px;
+            }
+
+            .counter {
+                min-width: 70px;
+                font-size: 10px;
+            }
+
+            .cover-inner {
+                padding: 12px 16px;
+                gap: 8px;
+            }
+
+            .inline-code {
+                font-size: 9px;
+                min-height: 60px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ==================== SHELF ==================== -->
+    <div class="shelf-scene" id="shelfScene">
+        <h2 class="title">📚 書架 · Bookshelf</h2>
+
+        <div class="shelf-wrap">
+            <div class="shelf">
+                <div class="shelf-books">
+                    <div class="shelf-book deco d1"></div>
+
+                    <button class="shelf-book pick spine-sketchup"
+                            data-book="sketchup"
+                            style="--h: 238px; --w: 54px;"
+                            aria-label="Open the SketchUp MCP manual">
+                        <span class="spine-band band-top"></span>
+                        <span class="spine-text">MCP SketchUp</span>
+                        <span class="spine-band band-bot"></span>
+                    </button>
+
+                    <div class="shelf-book deco d2"></div>
+
+                    <button class="shelf-book pick spine-tea"
+                            data-book="tea"
+                            style="--h: 224px; --w: 50px;"
+                            aria-label="Open the tea ceremony manual">
+                        <span class="spine-band band-top"></span>
+                        <span class="spine-text">茶經</span>
+                        <span class="spine-band band-bot"></span>
+                    </button>
+
+                    <div class="shelf-book deco d3"></div>
+
+                    <button class="shelf-book pick spine-sword"
+                            data-book="sword"
+                            style="--h: 232px; --w: 52px;"
+                            aria-label="Open the sword manual">
+                        <span class="spine-band band-top"></span>
+                        <span class="spine-text">劍譜</span>
+                        <span class="spine-band band-bot"></span>
+                    </button>
+
+                    <div class="shelf-book deco d4"></div>
+
+                    <button class="shelf-book pick spine-roman"
+                            data-book="roman"
+                            style="--h: 238px; --w: 56px;"
+                            aria-label="Open the Romance of the Three Kingdoms">
+                        <span class="spine-band band-top"></span>
+                        <span class="spine-text">三國演義</span>
+                        <span class="spine-band band-bot"></span>
+                    </button>
+
+                    <div class="shelf-book deco d5"></div>
+                </div>
+                <div class="shelf-plank"></div>
+            </div>
+            <div class="shelf-glow"></div>
+        </div>
+
+        <p class="hint">Pick a book to open it</p>
+    </div>
+
+    <!-- ==================== BOOK ==================== -->
+    <div class="book-scene hidden" id="bookScene">
+        <div class="book-stage" id="bookStage">
+            <div class="book" id="book"></div>
+        </div>
+        <div class="controls" id="controlsEl">
+            <button id="prevBtn">◀ Previous</button>
+            <span class="counter" id="counter">Cover</span>
+            <button id="nextBtn">Next ▶</button>
+        </div>
+        <button class="close-btn" id="closeBtn">✕ Close book</button>
+    </div>
+
+    <!-- toast -->
+    <div class="toast" id="toast">Copied!</div>
+
+    <script>
+        /* ==================================================================
+           BOOK LIBRARY — each book has its own theme, cover, and pages
+        ================================================================== */
+        const BOOKS = {
+            sketchup: {
+                id: "sketchup",
+                theme: {
+                    frontBg: "radial-gradient(ellipse at 34% 18%, #1c4a7a 0%, #0b2542 52%, #04101e 100%)",
+                    frontColor: "#e8c96e",
+                    backBg: "radial-gradient(ellipse at 72% 28%, #163d63 0%, #0a2038 58%, #030d18 100%)",
+                    backColor: "#bfa25c",
+                    endBg: "radial-gradient(ellipse at 66% 22%, #1c4a7a 0%, #0b2542 52%, #04101e 100%)"
+                },
+                cover: {
+                    kicker: "草图大师", title: "SketchUp MCP", sub: "User Manual",
+                    crest: "草图", exlibris: "T.C.S",
+                    note: "This manual belongs to<br>whoever walks the path."
+                },
+                pages: [
+                    {
+                        title: "1. Open SketchUp",
+                        text: "Launch SketchUp and open a model, or start with a blank model.",
+                        image: "https://images.openai.com/static-rsc-4/u5iSu6fK84zuvWg1RjZVfP4I6JjPDP2T3jrWabg8ZcGZgrTRV-xQ01D1usQDIjfIkS4JHwEK9laxU51aFHb2HjPqKyTGuuSLFCMiarO0Ie0-k56nlxR8vx-h74EK3HEahr3a6oa1rB045o7TMeBOLcz9xiLn_ON3xxUx-4ywFSU?purpose=inline&utm_source=chatgpt.com",
+                        imageWidth: "auto",
+                        imageHeight: "auto"
+                    },
+                    {
+                        title: "2. Open Extension Manager",
+                        text: "Go to <b>Extensions → Extension Manager</b>. Depending on your SketchUp version, you may find it under <b>Window → Extension Manager</b>.",
+                        image: "https://images.openai.com/static-rsc-4/0lxVCHUaR5I-XxRYFd8n10yUfWhREsg2xHwZBKlfbibW0egjiCo5q13jfsGifOSX-2zRyA_ndmqbAtI8B1W9xg-5bELec1B-DuGcXS1h39rvNXo_956cJqjZ6itNynceRvqnWo8tUwIey5Q8Sd79vPJFtcDjCzgIdWe0UsGG5XY?purpose=inline&utm_source=chatgpt.com",
+                        imageWidth: "auto",
+                        imageHeight: "auto"
+                    },
+                    {
+                        title: "3. Install the .rbz file",
+                        text: "<ul style='list-style-type: disc;'><li>Click <b>Install Extension</b>.</li><li>Browse to mcp_for_sketchup_v0.3.1 - signed.rbz.</li><li>Select the file and confirm installation.</ul>",
+                        image: "https://images.openai.com/static-rsc-4/yW3BlOU3QqFIWmgA-tsVyDtiEA9eHJeot9fE5aW_Wu1z6vI-_ploRK6hjEmcmf-Uprcu0iF4gOmCfVjeb2KMoc9VVwrkKq_9JF7S6O7518Bj-RwFKJ7g_pzo-2EhJFjgfPKqpGt5NzI2fwfEL_mDfw4UxyTbOR97aoW2xhYfVww?purpose=inline&utm_source=chatgpt.com",
+                        imageWidth: "auto",
+                        imageHeight: "auto"
+                    },
+                    {
+                        title: "4. Verify installation",
+                        text: "Return to Extension Manager and check that the extension is listed and enabled. Restart SketchUp if necessary.",
+                        image: "https://images.openai.com/static-rsc-4/tHhHkaFvTqpFXbAjW7oqCZobQSzxhpFXGduqKtBnlE4y8cOq-f8T3zv0W7CzWkjkfQgqU13h1vd7HgRsYCmHMkkkA_v6rTZnraBzhGEaARuDLeQUiDo7buuw7IjBcIRz3LyG6HmzXnyGS055IvCPkfuihwcpLajV_vjNIzpW7Ug?purpose=inline&utm_source=chatgpt.com",
+                        imageWidth: "auto",
+                        imageHeight: "auto"
+                    },
+                    {
+                        title: "第二章 · The Fist",
+                        text: "A fist is not only the hand, but the whole body.\nTwist from the waist, drive from the heel, and strike like thunder.",
+                        editable: true
+                    }
+                ]
+            },
+
+            tea: {
+                id: "tea",
+                theme: {
+                    frontBg: "radial-gradient(ellipse at 34% 18%, #2a5a3e 0%, #143022 52%, #061408 100%)",
+                    frontColor: "#c4e0a8",
+                    backBg: "radial-gradient(ellipse at 72% 28%, #1f4530 0%, #0e2418 58%, #04100a 100%)",
+                    backColor: "#a0c484",
+                    endBg: "radial-gradient(ellipse at 66% 22%, #2a5a3e 0%, #143022 52%, #061408 100%)"
+                },
+                cover: {
+                    kicker: "陸羽遺風", title: "茶經", sub: "Tea Ceremony Manual",
+                    crest: "茶", exlibris: "清心齋",
+                    note: "A leaf, a cup,\na moment of stillness."
+                },
+                pages: [
+                    { title: "茶道入門 · The Entrance", text: "The way of tea begins with water and stillness.\nWarm the cup, calm the mind, and prepare to receive." },
+                    { title: "茶具 · Tea Utensils", text: "The teapot, the gaiwan, the fairness cup, the tasting cup.\nEach vessel has its purpose and its place." },
+                    { title: "泡茶 · Brewing", text: "Water should be hot but never boiling.\nPour high to cool it, low to steep, and never rush the leaves." },
+                    { title: "品茶 · Tasting", text: "The first sip is aroma, the second flavour, the third aftertaste.\nHold the tea on the tongue and let it speak." },
+                    { title: "茶禮 · Tea Etiquette", text: "Serve elders first, fill cups to seven-tenths,\nand tap two fingers lightly to thank the pourer." },
+                    { title: "禪茶一味 · Zen and Tea", text: "Tea and meditation are one flavour.\nEach cup is complete in itself — nothing to add, nothing to remove." }
+                ]
+            },
+
+            sword: {
+                id: "sword",
+                theme: {
+                    frontBg: "radial-gradient(ellipse at 34% 18%, #6a1a1a 0%, #3a0a0a 52%, #120202 100%)",
+                    frontColor: "#f0b0a0",
+                    backBg: "radial-gradient(ellipse at 72% 28%, #501010 0%, #280505 58%, #0a0101 100%)",
+                    backColor: "#d09080",
+                    endBg: "radial-gradient(ellipse at 66% 22%, #6a1a1a 0%, #3a0a0a 52%, #120202 100%)"
+                },
+                cover: {
+                    kicker: "華山劍宗", title: "劍譜", sub: "Sword Manual",
+                    crest: "劍", exlibris: "聽雨樓",
+                    note: "The blade is a mirror\nof the one who holds it."
+                },
+                pages: [
+                    { title: "劍道入門 · The Entrance", text: "The way of the sword begins with a quiet heart.\nDraw the blade only when the mind is already still." },
+                    { title: "握劍 · The Grip", text: "Hold the hilt as you would hold a bird —\nfirm enough to keep it, loose enough to let it live." },
+                    { title: "劍式 · Sword Forms", text: "Thrust, cut, parry, deflect.\nEvery form flows into the next, like water finding its course." },
+                    { title: "步法 · Footwork", text: "Move like a shadow, land like a leaf.\nThe feet decide the fight before the blade is drawn." },
+                    { title: "心劍合一 · Mind and Blade", text: "When mind and blade become one,\nyou no longer swing the sword — the sword swings you." },
+                    { title: "收劍 · The Sheath", text: "Return the blade to its sheath with the same care as drawing it.\nThe last motion is the beginning of the next." }
+                ]
+            },
+
+            roman: {
+                id: "roman",
+                theme: {
+                    frontBg: "radial-gradient(ellipse at 34% 18%, #8a4a18 0%, #4a2408 52%, #1a0a02 100%)",
+                    frontColor: "#f5d78a",
+                    backBg: "radial-gradient(ellipse at 72% 28%, #6a3a10 0%, #3a1a06 58%, #120602 100%)",
+                    backColor: "#e0c070",
+                    endBg: "radial-gradient(ellipse at 66% 22%, #8a4a18 0%, #4a2408 52%, #1a0a02 100%)"
+                },
+                cover: {
+                    kicker: "章回演義", title: "三國演義", sub: "Romance of the Three Kingdoms",
+                    crest: "義", exlibris: "臥龍崗",
+                    note: "The empire, long divided,\nmust unite; long united, must divide."
+                },
+                pages: [
+                    { title: "第一回 · 桃園結義", text: "In a peach garden, three men swore brotherhood.\nLiu Bei, Guan Yu, and Zhang Fei pledged their lives to each other and to the realm." },
+                    { title: "第二回 · 三顧茅廬", text: "Three times Liu Bei visited the thatched cottage.\nOnly on the third did Zhuge Liang rise to serve him — and the world changed." },
+                    { title: "第三回 · 赤壁之戰", text: "The winds of the east came at the call of a fan.\nCao Cao's great fleet burned, and the three kingdoms took shape." },
+                    { title: "第四回 · 過五關斬六將", text: "Guan Yu rode alone through five gates, cutting down six generals.\nHis loyalty to his brother moved heaven and earth." },
+                    { title: "第五回 · 空城計", text: "A city with no soldiers, a man on the wall playing the lute.\nZhuge Liang's calm deceived a hundred thousand men." },
+                    { title: "第六回 · 三分歸一", text: "In the end, the three kingdoms fell to Jin.\nHeroes rise and fall, but the tale endures." }
+                ]
+            }
+        };
+
+        /* ==================================================================
+           TUNABLES
+        ================================================================== */
+        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const FLIP_MS = reduceMotion ? 1 : 1000;
+        const N_SEG = 18;
+        const BEND_DEG = 55;
+        const CURVE_P = 0.7;
+        const SWIPE_RATIO = 0.55;
+
+        /* ==================================================================
+           DOM & STATE
+        ================================================================== */
+        const bookEl = document.getElementById("book");
+        const bookStage = document.getElementById("bookStage");
+        const bookScene = document.getElementById("bookScene");
+        const shelfScene = document.getElementById("shelfScene");
+        const prevBtn = document.getElementById("prevBtn");
+        const nextBtn = document.getElementById("nextBtn");
+        const counter = document.getElementById("counter");
+        const closeBtn = document.getElementById("closeBtn");
+        const controlsEl = document.getElementById("controlsEl");
+        const toast = document.getElementById("toast");
+
+        const sheetEls = [];
+        let flippedCount = 0;
+        let busy = false;
+        let opening = false;
+        let closing = false;
+        let currentBook = null;
+        let currentTheme = null;
+
+        const castShadow = document.createElement("div");
+        castShadow.className = "cast-shadow";
+        bookEl.appendChild(castShadow);
+
+        /* ==================================================================
+           HELPERS
+        ================================================================== */
+        function easeInOutCubic(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+        function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+        function escapeAttr(s) {
+            return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        let toastTimer = null;
+        function showToast(msg, isError) {
+            toast.textContent = msg;
+            toast.style.background = isError ? '#5a1e1e' : '#1e5a2a';
+            toast.style.borderColor = isError ? '#9e3e3e' : '#3e9e4e';
+            toast.style.color = isError ? '#f0c8c8' : '#c8f0c8';
+            toast.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+        }
+
+        /* Build the HTML for a page face.
+           Supports per-page imageWidth / imageHeight (any CSS size value).
+           When only height is set, width:"auto" preserves the aspect ratio. */
+        function faceHTML(pages, index, side) {
+            const page = pages[index];
+            if (!page) return `<div class="face ${side}"></div>`;
+
+            const paragraphs = page.text.split("\n").map(l => `<p>${l}</p>`).join("");
+
+            // Per-image size override
+            let imgStyle = "";
+            if (page.imageWidth) imgStyle += `width:${page.imageWidth};`;
+            if (page.imageHeight) imgStyle += `height:${page.imageHeight};`;
+
+            const imgHTML = page.image
+                ? `<img src="${escapeAttr(page.image)}" alt="${escapeAttr(page.title)}" loading="lazy"${imgStyle ? ` style="${imgStyle}"` : ""} onerror="this.style.display='none'">`
+                : "";
+
+            let editorHTML = "";
+            if (page.editable) {
+                //const pageJSON = JSON.stringify({
+                //    title: page.title,
+                //    text: page.text,
+                //    ...(page.image ? { image: page.image } : {}),
+                //    ...(page.imageWidth ? { imageWidth: page.imageWidth } : {}),
+                //    ...(page.imageHeight ? { imageHeight: page.imageHeight } : {})
+                //}, null, 2);
+                const pageJSON = page.text;
+                const safeJSON = pageJSON.replace(/</g, '\\u003c');
+                editorHTML = `
+                    <div class="inline-editor" data-page-index="${index}">
+                        <div class="inline-editor-header">
+                            <span class="inline-editor-title">📜 Edit script</span>
+                            <div class="inline-editor-actions">
+                                <button class="inline-icon-btn" data-action="apply" data-page-index="${index}" title="Apply" style="visibility: hidden">✔</button>
+                                <button class="inline-icon-btn" data-action="copy" data-page-index="${index}" title="Copy">📋</button>
+                                <button class="inline-icon-btn" data-action="bat" data-page-index="${index}" title="Download .bat">⬇ .bat</button>
+                            </div>
+                        </div>
+                        <textarea class="inline-code" data-page-index="${index}" spellcheck="false">${safeJSON}</textarea>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="face ${side}" data-page-index="${index}">
+                    <div class="content">
+                        <h2>${page.title}</h2>
+                        ${imgHTML}
+                        ${paragraphs}
+                        ${editorHTML}
+                    </div>
+                    <span class="pnum">${index + 1}</span>
+                </div>
+            `;
+        }
+
+        /* ==================================================================
+           BUILD BOOK
+        ================================================================== */
+        function buildBook(book) {
+            currentBook = book;
+            currentTheme = book.theme;
+            bookEl.innerHTML = "";
+            bookEl.appendChild(castShadow);
+            sheetEls.length = 0;
+            flippedCount = 0;
+            busy = false;
+
+            bookEl.style.setProperty("--cover-front-bg", book.theme.frontBg);
+            bookEl.style.setProperty("--cover-front-text", book.theme.frontColor);
+            bookEl.style.setProperty("--cover-back-bg", book.theme.backBg);
+            bookEl.style.setProperty("--cover-back-text", book.theme.backColor);
+            bookEl.style.setProperty("--cover-end-bg", book.theme.endBg);
+
+            // front cover sheet
+            const coverSheet = document.createElement("div");
+            coverSheet.className = "sheet";
+            coverSheet.innerHTML = `
+                <div class="face front cover-front">
+                    <div class="cover-inner">
+                        <span class="cover-kicker">${book.cover.kicker}</span>
+                        <h1>${book.cover.title}</h1>
+                        <div class="cover-rule"></div>
+                        <span class="cover-sub">${book.cover.sub}</span>
+                    </div>
+                </div>
+                <div class="face back cover-back">
+                    <div class="inside-cover">
+                        <div class="crest">${book.cover.crest}</div>
+                        <p class="exlibris">${book.cover.exlibris}</p>
+                        <p class="inside-note">${book.cover.note}</p>
+                    </div>
+                </div>
+            `;
+            bookEl.appendChild(coverSheet);
+            sheetEls.push(coverSheet);
+
+            // content sheets
+            const contentSheetCount = Math.ceil(book.pages.length / 2);
+            for (let i = 0; i < contentSheetCount; i++) {
+                const sheet = document.createElement("div");
+                sheet.className = "sheet";
+                sheet.innerHTML =
+                    faceHTML(book.pages, i * 2, "front") +
+                    faceHTML(book.pages, i * 2 + 1, "back");
+                bookEl.appendChild(sheet);
+                sheetEls.push(sheet);
+            }
+
+            // end cover sheet
+            const endSheet = document.createElement("div");
+            endSheet.className = "sheet";
+            endSheet.innerHTML = `
+                <div class="face front cover-end"></div>
+                <div class="face back cover-end"></div>
+            `;
+            bookEl.appendChild(endSheet);
+            sheetEls.push(endSheet);
+
+            sheetEls.forEach(s => { s.style.transform = "rotateY(0deg)"; });
+            layoutZ();
+            updateUI();
+            bindInlineEditors();
+        }
+
+        /* ==================================================================
+           INLINE EDITOR BINDING & HANDLERS
+        ================================================================== */
+        function bindInlineEditors() {
+            bookEl.querySelectorAll('.inline-editor').forEach(editor => {
+                const pageIndex = parseInt(editor.dataset.pageIndex, 10);
+                const textarea = editor.querySelector('.inline-code');
+                const copyButton = editor.querySelector('[data-action="copy"]');
+                const applyButton = editor.querySelector('[data-action="apply"]');
+                const batButton = editor.querySelector('[data-action="bat"]');
+
+                editor.addEventListener('pointerdown', e => e.stopPropagation());
+                editor.addEventListener('click', e => e.stopPropagation());
+
+                if (copyButton) {
+                    copyButton.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        try {
+                            await navigator.clipboard.writeText(textarea.value);
+                        } catch (err) {
+                            textarea.select();
+                            document.execCommand('copy');
+                        }
+                        copyButton.classList.add('copied');
+                        copyButton.textContent = '✔';
+                        setTimeout(() => {
+                            copyButton.classList.remove('copied');
+                            copyButton.textContent = '📋';
+                        }, 1500);
+                        showToast('📋 Page JSON copied!');
+                    });
+                }
+
+                if (applyButton) {
+                    applyButton.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        try {
+                            const parsed = JSON.parse(textarea.value);
+                            if (typeof parsed.title !== 'string' || typeof parsed.text !== 'string') {
+                                throw new Error('title and text are required strings');
+                            }
+                            const updated = {
+                                ...currentBook.pages[pageIndex],
+                                title: parsed.title,
+                                text: parsed.text
+                            };
+                            if ('image' in parsed && parsed.image) updated.image = parsed.image;
+                            else delete updated.image;
+
+                            if ('imageWidth' in parsed && parsed.imageWidth) updated.imageWidth = parsed.imageWidth;
+                            else delete updated.imageWidth;
+
+                            if ('imageHeight' in parsed && parsed.imageHeight) updated.imageHeight = parsed.imageHeight;
+                            else delete updated.imageHeight;
+
+                            updated.editable = currentBook.pages[pageIndex].editable;
+
+                            currentBook.pages[pageIndex] = updated;
+
+                            const savedFlip = flippedCount;
+                            buildBook(currentBook);
+                            flippedCount = Math.min(savedFlip, sheetEls.length);
+                            layoutZ();
+                            updateUI();
+                            showToast('✔ Page updated!');
+                        } catch (err) {
+                            showToast('✖ Invalid JSON: ' + err.message, true);
+                        }
+                    });
+                }
+
+                if (batButton) {
+                    batButton.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        try {
+                            const parsed = JSON.parse(textarea.value);
+                            if (typeof parsed.title !== 'string' || typeof parsed.text !== 'string') {
+                                throw new Error('title and text are required strings');
+                            }
+                            const updated = {
+                                ...currentBook.pages[pageIndex],
+                                title: parsed.title,
+                                text: parsed.text
+                            };
+                            if ('image' in parsed && parsed.image) updated.image = parsed.image;
+                            else delete updated.image;
+
+                            if ('imageWidth' in parsed && parsed.imageWidth) updated.imageWidth = parsed.imageWidth;
+                            else delete updated.imageWidth;
+
+                            if ('imageHeight' in parsed && parsed.imageHeight) updated.imageHeight = parsed.imageHeight;
+                            else delete updated.imageHeight;
+
+                            updated.editable = currentBook.pages[pageIndex].editable;
+
+                            currentBook.pages[pageIndex] = updated;
+
+                            downloadEditorAsBat(textarea.value);
+                            showToast('⬇ Downloaded .bat');
+                        } catch (err) {
+                            showToast('✖ Invalid JSON: ' + err.message, true);
+                        }
+                    });
+                }
+            });
+        }
+
+        /* ==================================================================
+           DOWNLOAD EDITOR CONTENT AS .BAT
+        ================================================================== */
+        function downloadEditorAsBat(textareaContent) {
+            const batContent = textareaContent;
+
+            const blob = new Blob([batContent], { type: 'application/bat' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'page_data.bat';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        /* ==================================================================
+           Z-ORDER
+        ================================================================== */
+        function layoutZ() {
+            const totalSheets = sheetEls.length;
+            sheetEls.forEach((el, i) => {
+                el.style.zIndex = (i < flippedCount) ? 50 + i : 500 + (totalSheets - i);
+            });
+        }
+
+        /* ==================================================================
+           CURVED FLIP ENGINE
+        ================================================================== */
+        function buildFlip(sheet, forward) {
+            const frontFace = sheet.querySelector(".face.front");
+            const backFace = sheet.querySelector(".face.back");
+            const frontHTML = frontFace ? frontFace.innerHTML : "";
+            const backHTML = backFace ? backFace.innerHTML : "";
+
+            const isCoverFront = frontFace && frontFace.classList.contains("cover-front");
+            const isCoverBack = backFace && backFace.classList.contains("cover-back");
+            const isEndFront = frontFace && frontFace.classList.contains("cover-end");
+            const isEndBack = backFace && backFace.classList.contains("cover-end");
+
+            let backBg = "linear-gradient(160deg, #fdfcf7 0%, #f2ecdd 100%)";
+            if (isCoverBack) backBg = currentTheme.backBg;
+            else if (isEndBack) backBg = currentTheme.endBg;
+
+            const originalHTML = sheet.innerHTML;
+            const rect = sheet.getBoundingClientRect();
+            const sheetW = rect.width || 300;
+            const bookW = sheetW * 2;
+            const segW = sheetW / N_SEG;
+            const pageW = sheetW;
+
+            sheet.style.transition = "none";
+            sheet.style.transform = "none";
+            sheet.innerHTML = "";
+
+            let rootEl = null, parentEl = null;
+            const segEls = [], frontShades = [], backShades = [];
+
+            for (let i = 0; i < N_SEG; i++) {
+                const seg = document.createElement("div");
+                seg.className = "seg";
+                seg.style.setProperty("--segW", segW + "px");
+                seg.style.left = i === 0 ? "0" : "100%";
+
+                const frontSlice = document.createElement("div");
+                frontSlice.className = "seg-slice front";
+                const frontRep = document.createElement("div");
+                frontRep.className = "replica" + (isCoverFront ? " is-cover-front" : "") + (isEndFront ? " is-cover-end" : "");
+                frontRep.style.width = pageW + "px";
+                frontRep.style.left = (-i * segW) + "px";
+                frontRep.innerHTML = frontHTML;
+                frontSlice.appendChild(frontRep);
+                const fShade = document.createElement("div");
+                fShade.className = "seg-shade";
+                frontSlice.appendChild(fShade);
+                frontShades.push(fShade);
+
+                const backSlice = document.createElement("div");
+                backSlice.className = "seg-slice back";
+                backSlice.style.background = backBg;
+                const backRep = document.createElement("div");
+                backRep.className = "replica" + (isCoverBack ? " is-cover-back" : "") + (isEndBack ? " is-cover-end" : "");
+                backRep.style.width = pageW + "px";
+                backRep.style.left = ((i + 1) * segW - pageW) + "px";
+                backRep.innerHTML = backHTML;
+                backSlice.appendChild(backRep);
+                const bShade = document.createElement("div");
+                bShade.className = "seg-shade";
+                backSlice.appendChild(bShade);
+                backShades.push(bShade);
+
+                seg.appendChild(frontSlice);
+                seg.appendChild(backSlice);
+
+                if (parentEl) parentEl.appendChild(seg);
+                else rootEl = seg;
+                parentEl = seg;
+                segEls.push(seg);
+            }
+            sheet.appendChild(rootEl);
+
+            return { sheet, forward, segEls, frontShades, backShades, segW, sheetW, bookW, originalHTML };
+        }
+
+        function setProgress(state, p) {
+            const { segEls, frontShades, backShades, segW, bookW, forward } = state;
+            const base = forward ? -180 * p : -180 * (1 - p);
+            const bend = BEND_DEG * Math.sin(Math.PI * p);
+
+            let prevCum = 0, edgeX = 0;
+            for (let i = 0; i < N_SEG; i++) {
+                const s = i / (N_SEG - 1);
+                const cum = base + bend * Math.pow(1 - s, CURVE_P);
+                const delta = cum - prevCum;
+                segEls[i].style.transform = `rotateY(${delta}deg)`;
+
+                const shadeOp = Math.sin(Math.abs(cum) * Math.PI / 180) * 0.6;
+                frontShades[i].style.opacity = shadeOp;
+                backShades[i].style.opacity = shadeOp;
+
+                if (i > 0) edgeX += segW * Math.cos(prevCum * Math.PI / 180);
+                prevCum = cum;
+            }
+            edgeX += segW * Math.cos(prevCum * Math.PI / 180);
+
+            const edgePct = 50 + (edgeX / bookW) * 100;
+            castShadow.style.left = `calc(${edgePct}% - 26%)`;
+            castShadow.style.opacity = Math.sin(Math.PI * p) * 0.75;
+        }
+
+        function finishFlip(state) {
+            const { sheet, forward, originalHTML } = state;
+            sheet.innerHTML = originalHTML;
+            sheet.style.transform = forward ? "rotateY(-180deg)" : "rotateY(0deg)";
+            void sheet.offsetHeight;
+            sheet.style.transition = "";
+            bindInlineEditors();
+        }
+
+        function cancelFlip(state) {
+            const { sheet, forward, originalHTML } = state;
+            sheet.innerHTML = originalHTML;
+            sheet.style.transform = forward ? "rotateY(0deg)" : "rotateY(-180deg)";
+            void sheet.offsetHeight;
+            sheet.style.transition = "";
+            bindInlineEditors();
+        }
+
+        function animateProgress(state, fromP, toP, duration, easeFn, onDone) {
+            const start = performance.now();
+            function frame(now) {
+                let t = (now - start) / duration;
+                if (t > 1) t = 1;
+                const et = easeFn ? easeFn(t) : t;
+                setProgress(state, fromP + (toP - fromP) * et);
+                if (t < 1) requestAnimationFrame(frame);
+                else if (onDone) onDone();
+            }
+            requestAnimationFrame(frame);
+        }
+
+        /* ==================================================================
+           UI
+        ================================================================== */
+        function updateUI() {
+            const totalPages = currentBook ? currentBook.pages.length : 0;
+            const totalSheets = sheetEls.length;
+
+            prevBtn.disabled = flippedCount === 0 || busy;
+            nextBtn.disabled = flippedCount >= totalSheets || busy;
+
+            if (flippedCount === 0) counter.textContent = "Cover";
+            else if (flippedCount >= totalSheets) counter.textContent = "End";
+            else {
+                const shown = Math.min(totalPages, flippedCount * 2 - 1);
+                counter.textContent = `${shown} / ${totalPages}`;
+            }
+        }
+
+        /* ==================================================================
+           FLIP ACTIONS
+        ================================================================== */
+        function turnForward() {
+            if (busy || flippedCount >= sheetEls.length) return;
+            busy = true;
+            updateUI();
+
+            const sheet = sheetEls[flippedCount];
+            sheet.style.zIndex = 9999;
+            const state = buildFlip(sheet, true);
+
+            animateProgress(state, 0, 1, FLIP_MS, easeInOutCubic, () => {
+                finishFlip(state);
+                flippedCount++;
+                layoutZ();
+                busy = false;
+                updateUI();
+            });
+        }
+
+        function turnBackward() {
+            if (busy || flippedCount === 0) return;
+            busy = true;
+            updateUI();
+
+            const sheet = sheetEls[flippedCount - 1];
+            sheet.style.zIndex = 9999;
+            const state = buildFlip(sheet, false);
+
+            animateProgress(state, 0, 1, FLIP_MS, easeInOutCubic, () => {
+                finishFlip(state);
+                flippedCount--;
+                layoutZ();
+                busy = false;
+                updateUI();
+            });
+        }
+
+        /* ==================================================================
+           OPEN / CLOSE
+        ================================================================== */
+        function openBook(bookId, shelfEl) {
+            if (opening || closing) return;
+            const book = BOOKS[bookId];
+            if (!book) return;
+            opening = true;
+
+            shelfEl.classList.add("opening");
+
+            buildBook(book);
+            bookScene.classList.remove("hidden");
+            bookScene.style.opacity = "0";
+            bookScene.style.pointerEvents = "none";
+
+            void bookScene.offsetHeight;
+
+            const stageRect = bookStage.getBoundingClientRect();
+            const shelfRect = shelfEl.getBoundingClientRect();
+
+            const dx = (shelfRect.left + shelfRect.width / 2) - (stageRect.left + stageRect.width / 2);
+            const dy = (shelfRect.top + shelfRect.height / 2) - (stageRect.top + stageRect.height / 2);
+            const scale = Math.max(0.12, Math.min(1, shelfRect.width / stageRect.width));
+
+            bookStage.style.transition = "none";
+            bookStage.style.transform = `translate(${dx}px, ${dy}px) scale(${scale}) rotateY(-30deg)`;
+            bookStage.style.opacity = "0";
+            controlsEl.style.opacity = "0";
+            closeBtn.style.opacity = "0";
+
+            void bookStage.offsetHeight;
+
+            requestAnimationFrame(() => {
+                bookScene.style.transition = "opacity .35s ease";
+                bookScene.style.opacity = "1";
+                bookScene.style.pointerEvents = "";
+
+                bookStage.style.transition = "transform 1.1s cubic-bezier(.2,.85,.25,1), opacity .6s ease .05s";
+                bookStage.style.transform = "translate(0,0) scale(1) rotateY(0deg)";
+                bookStage.style.opacity = "1";
+
+                shelfScene.style.transition = "opacity .5s ease";
+                shelfScene.style.opacity = "0";
+
+                setTimeout(() => {
+                    controlsEl.style.transition = "opacity .4s ease";
+                    closeBtn.style.transition = "opacity .4s ease";
+                    controlsEl.style.opacity = "1";
+                    closeBtn.style.opacity = "1";
+                }, 720);
+            });
+
+            setTimeout(() => {
+                shelfScene.classList.add("hidden");
+                shelfEl.classList.remove("opening");
+                shelfScene.style.opacity = "";
+                shelfScene.style.transition = "";
+                bookStage.style.transition = "";
+                opening = false;
+            }, 1200);
+        }
+
+        function closeBook() {
+            if (closing || opening) return;
+            if (!currentBook) return;
+            closing = true;
+
+            const shelfEl = document.querySelector(`[data-book="${currentBook.id}"]`);
+            if (!shelfEl) {
+                bookScene.classList.add("hidden");
+                closing = false;
+                return;
+            }
+
+            const shelfRect = shelfEl.getBoundingClientRect();
+            const stageRect = bookStage.getBoundingClientRect();
+
+            const dx = (shelfRect.left + shelfRect.width / 2) - (stageRect.left + stageRect.width / 2);
+            const dy = (shelfRect.top + shelfRect.height / 2) - (stageRect.top + stageRect.height / 2);
+            const scale = Math.max(0.12, Math.min(1, shelfRect.width / stageRect.width));
+
+            shelfScene.classList.remove("hidden");
+            void shelfScene.offsetHeight;
+            shelfScene.style.transition = "opacity .55s ease .15s";
+            shelfScene.style.opacity = "1";
+
+            controlsEl.style.transition = "opacity .2s";
+            closeBtn.style.transition = "opacity .2s";
+            controlsEl.style.opacity = "0";
+            closeBtn.style.opacity = "0";
+
+            bookStage.style.transition = "transform .95s cubic-bezier(.55,.02,.75,.35), opacity .55s ease .4s";
+            bookStage.style.transform = `translate(${dx}px, ${dy}px) scale(${scale}) rotateY(-30deg)`;
+            bookStage.style.opacity = "0";
+
+            bookScene.style.transition = "opacity .4s ease .5s";
+            bookScene.style.opacity = "0";
+
+            setTimeout(() => {
+                bookScene.classList.add("hidden");
+                bookScene.style.opacity = "";
+                bookScene.style.transition = "";
+                bookScene.style.pointerEvents = "";
+                bookStage.style.transform = "";
+                bookStage.style.opacity = "";
+                bookStage.style.transition = "";
+                shelfScene.style.opacity = "";
+                shelfScene.style.transition = "";
+                controlsEl.style.opacity = "";
+                closeBtn.style.opacity = "";
+                controlsEl.style.transition = "";
+                closeBtn.style.transition = "";
+                currentBook = null;
+                closing = false;
+            }, 1000);
+        }
+
+        /* ==================================================================
+           SWIPE / DRAG
+        ================================================================== */
+        let activeDrag = null;
+
+        function getDirection(e) {
+            const rect = bookEl.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const onRight = x >= rect.width / 2;
+            if (onRight && flippedCount < sheetEls.length) return { forward: true, rect };
+            if (!onRight && flippedCount > 0) return { forward: false, rect };
+            return null;
+        }
+
+        bookEl.addEventListener("pointerdown", (e) => {
+            if (busy || activeDrag) return;
+            if (e.target.closest && e.target.closest('.inline-editor')) return;
+            const dir = getDirection(e);
+            if (!dir) return;
+            activeDrag = {
+                pointerId: e.pointerId,
+                startX: e.clientX, startY: e.clientY,
+                startTime: performance.now(),
+                rect: dir.rect, forward: dir.forward,
+                state: null, started: false
+            };
+            try { bookEl.setPointerCapture(e.pointerId); } catch (err) { }
+        });
+
+        bookEl.addEventListener("pointermove", (e) => {
+            if (!activeDrag || e.pointerId !== activeDrag.pointerId) return;
+            const dx = e.clientX - activeDrag.startX;
+            const dy = e.clientY - activeDrag.startY;
+
+            if (!activeDrag.started) {
+                if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+                if (Math.abs(dy) > Math.abs(dx) * 1.3) {
+                    try { bookEl.releasePointerCapture(activeDrag.pointerId); } catch (err) { }
+                    activeDrag = null;
+                    return;
+                }
+                activeDrag.started = true;
+                bookEl.classList.add("dragging");
+                const sheet = activeDrag.forward
+                    ? sheetEls[flippedCount]
+                    : sheetEls[flippedCount - 1];
+                sheet.style.zIndex = 9999;
+                activeDrag.state = buildFlip(sheet, activeDrag.forward);
+            }
+
+            const bookW = activeDrag.rect.width;
+            let p = activeDrag.forward
+                ? -dx / (bookW * SWIPE_RATIO)
+                : dx / (bookW * SWIPE_RATIO);
+            p = Math.max(0, Math.min(1, p));
+            setProgress(activeDrag.state, p);
+        });
+
+        bookEl.addEventListener("pointerup", (e) => {
+            if (!activeDrag || e.pointerId !== activeDrag.pointerId) return;
+            const drag = activeDrag;
+            activeDrag = null;
+            bookEl.classList.remove("dragging");
+            try { bookEl.releasePointerCapture(drag.pointerId); } catch (err) { }
+
+            if (!drag.started) {
+                if (e.target.closest && e.target.closest('.inline-editor')) return;
+                const rect = bookEl.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                if (x < rect.width / 2) turnBackward();
+                else turnForward();
+                return;
+            }
+
+            const dx = e.clientX - drag.startX;
+            const dt = performance.now() - drag.startTime;
+            const velocity = Math.abs(dx) / Math.max(dt, 1);
+            const bookW = drag.rect.width;
+
+            let p = drag.forward
+                ? -dx / (bookW * SWIPE_RATIO)
+                : dx / (bookW * SWIPE_RATIO);
+            p = Math.max(0, Math.min(1, p));
+
+            const commit = p > 0.35 || velocity > 0.4;
+            busy = true;
+            updateUI();
+
+            if (commit) {
+                animateProgress(drag.state, p, 1, 400, easeOutCubic, () => {
+                    finishFlip(drag.state);
+                    if (drag.forward) flippedCount++;
+                    else flippedCount--;
+                    layoutZ();
+                    busy = false;
+                    updateUI();
+                });
+            } else {
+                animateProgress(drag.state, p, 0, 300, easeOutCubic, () => {
+                    cancelFlip(drag.state);
+                    layoutZ();
+                    busy = false;
+                    updateUI();
+                });
+            }
+        });
+
+        bookEl.addEventListener("pointercancel", (e) => {
+            if (!activeDrag || e.pointerId !== activeDrag.pointerId) return;
+            const drag = activeDrag;
+            activeDrag = null;
+            bookEl.classList.remove("dragging");
+            try { bookEl.releasePointerCapture(drag.pointerId); } catch (err) { }
+            if (drag.started && drag.state) {
+                cancelFlip(drag.state);
+                layoutZ();
+            }
+        });
+
+        /* ==================================================================
+           EVENTS
+        ================================================================== */
+        document.querySelectorAll(".shelf-book.pick").forEach(el => {
+            el.addEventListener("click", () => openBook(el.dataset.book, el));
+        });
+
+        closeBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            closeBook();
+        });
+
+        prevBtn.addEventListener("click", (e) => { e.stopPropagation(); turnBackward(); });
+        nextBtn.addEventListener("click", (e) => { e.stopPropagation(); turnForward(); });
+
+        document.addEventListener("keydown", (e) => {
+            if (bookScene.classList.contains("hidden")) return;
+            if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') return;
+
+            if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); turnForward(); }
+            else if (e.key === "ArrowLeft") { e.preventDefault(); turnBackward(); }
+            else if (e.key === "Escape") { closeBook(); }
+        });
+
+        /* ==================================================================
+           INIT
+        ================================================================== */
+    </script>
+
+</body>
+</html>
