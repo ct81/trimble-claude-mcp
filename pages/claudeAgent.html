@@ -3434,24 +3434,56 @@ Think through problems step by step. Identify what the user actually wants, brea
                 hideCreditBanner();
                 sessionStorage.removeItem(LS.creditBannerDismissed);
                 updateModeLabel();
+                // const empty = document.createElement('div');
+                // empty.className = 'empty-state';
+                // empty.id = 'emptyState';
+                // empty.innerHTML = `
+                //       <div class="logo-lg"><img src="https://ct81.github.io/trimble-claude-mcp/images/svg/ches.svg" alt="BuildChester Logo" /></div>
+                //       <h2>How can I help you today?</h2>
+                //       <p>Works as plain chat. Connect MCP in Settings to unlock tools. Attach files with the 📎 button.</p>
+                //       <div class="suggestions">
+                //         <button class="suggestion" data-prompt="Explain how MCP works in one paragraph.">
+                //           <span class="ico">◇</span> Explain how MCP works
+                //         </button>
+                //         <button class="suggestion" data-prompt="Write a JavaScript debounce function with a usage example.">
+                //           <span class="ico">◇</span> Write a debounce function
+                //         </button>
+                //         <button class="suggestion" data-prompt="What tools do you have available right now?">
+                //           <span class="ico">◇</span> List available tools
+                //         </button>
+                //       </div>`;
+                // chatWrap.appendChild(empty);
+                const firstName = document.getElementById("hdnUserFirstName")?.value?.trim() || "";
+                const greeting = firstName ? `Hi, ${firstName},` : "Hi,";
+
                 const empty = document.createElement('div');
                 empty.className = 'empty-state';
                 empty.id = 'emptyState';
+
                 empty.innerHTML = `
-                      <div class="logo-lg"><img src="https://ct81.github.io/trimble-claude-mcp/images/svg/ches.svg" alt="BuildChester Logo" /></div>
-                      <h2>How can I help you today?</h2>
-                      <p>Works as plain chat. Connect MCP in Settings to unlock tools. Attach files with the 📎 button.</p>
-                      <div class="suggestions">
+                    <div class="logo-lg">
+                        <img src="https://ct81.github.io/trimble-claude-mcp/images/svg/ches.svg" alt="BuildChester Logo" />
+                    </div>
+
+                    <h2>${greeting} How can I help you today?</h2>
+
+                    <p>Works as plain chat. Connect MCP in Settings to unlock tools. Attach files with the 📎 button.</p>
+
+                    <div class="suggestions">
                         <button class="suggestion" data-prompt="Explain how MCP works in one paragraph.">
-                          <span class="ico">◇</span> Explain how MCP works
+                            <span class="ico">◇</span> Explain how MCP works
                         </button>
+
                         <button class="suggestion" data-prompt="Write a JavaScript debounce function with a usage example.">
-                          <span class="ico">◇</span> Write a debounce function
+                            <span class="ico">◇</span> Write a debounce function
                         </button>
+
                         <button class="suggestion" data-prompt="What tools do you have available right now?">
-                          <span class="ico">◇</span> List available tools
+                            <span class="ico">◇</span> List available tools
                         </button>
-                      </div>`;
+                    </div>
+                `;
+
                 chatWrap.appendChild(empty);
                 empty.querySelectorAll('.suggestion').forEach(btn => {
                     btn.addEventListener('click', () => {
