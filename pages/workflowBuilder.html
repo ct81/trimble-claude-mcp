@@ -11,6 +11,7 @@
 
 <script src="workflowbuilder-master.js" type="module" defer></script>
 <script src="/src/AI_RoachHarbor/jsonExporter.js"></script>
+<script src="/src/AI_RoachHarbor/jsonDisplay.js"></script>
 
 <title>RoachHarbor - Built to Adapt, Connect Like Nerves & Designed to Thrive.</title>
 <style>
@@ -586,6 +587,12 @@
       <div class="item" draggable="true" data-type="result">
         <span class="dot" style="background:#d97706"></span> Get Result
       </div>
+      <div class="item" draggable="true" data-type="cz">
+        <span class="dot" style="background:#0284c7"></span> GridView
+      </div>
+      <div class="item" draggable="true" data-type="output_form">
+        <span class="dot" style="background:#9333ea"></span> FormView
+      </div>
     </div>
     <div class="palette-panel" id="panelExport" role="tabpanel" aria-labelledby="tabExport" hidden>
       <div class="item" draggable="true" data-type="export_dxf_excel">
@@ -792,6 +799,8 @@ const TYPES = {
   brain:  { label: "Brain",    color: "#e11d48", icon: "🧠", hasIn: true,  hasOut: true  },
   mcp:    { label: "Call MCP",   color: "#7c3aed", icon: "🔌", hasIn: true,  hasOut: true  },
   result: { label: "Get Result", color: "#d97706", icon: "✅", hasIn: true,  hasOut: true  },
+  output_grid: { label: "GridView", color: "#0284c7", icon: "▦", hasIn: true, hasOut: false },
+  output_form: { label: "FormView", color: "#9333ea", icon: "🗒", hasIn: true, hasOut: false },
   flow_if: { label: "if", color: "#db2777", icon: "🔀", hasIn: true, hasOut: true },
   flow_else: { label: "else", color: "#db2777", icon: "🔀", hasIn: true, hasOut: true },
   flow_switch: { label: "switch", color: "#db2777", icon: "🔀", hasIn: true, hasOut: true },
@@ -1166,6 +1175,9 @@ function bodyFor(type, id) {
                           <textarea class="args" rows="3" spellcheck="false" style="width:100%;margin-top:6px;font-family:monospace;font-size:11px" placeholder='arguments JSON; file placeholders are replaced'>{"file_base64":"{{file_base64}}","filename":"{{filename}}"}</textarea>
                           <div class="status">not called yet</div>`;
     case "result": return `<div style="margin-bottom:6px;font-size:11px"><label><input type="radio" class="out-mode" value="pretty" checked> Pretty</label> <label style="margin-left:8px"><input type="radio" class="out-mode" value="raw"> Raw</label></div><div class="out">—</div>`;
+    case "output_grid":
+    case "output_form": return `<div class="status">waiting for workflow result</div>
+                          <div class="dyn-view" id="dynview-${id}" style="max-height:260px;overflow:auto;font-size:11px;margin-top:6px"></div>`;
     case "flow_if":
     case "flow_else": return `<div class="hint">${type === "flow_if" ? "Continue only if the result contains columns" : "Continue only if the result has no columns"}</div>`;
     case "flow_switch": return `<input type="text" class="fl" data-k="field" placeholder="field to switch on (e.g. type)" value="type" spellcheck="false">
@@ -2496,6 +2508,13 @@ async function runWorkflowCore(signal) {
         const format = cur.type === "export_dxf_excel" ? "excel" : "csv";
         downloadWorkflowResult(format, state.result);
         cur.el.querySelector(".status").textContent = `✔ Downloaded workflow-result.${format === "excel" ? "xls" : "csv"}`;
+      }
+
+      if (cur.type === "output_grid" || cur.type === "output_form") {
+        if (!state.result) throw new Error("Run an MCP node before displaying its result");
+        const rows = exportRows(state.result);
+        jsonDisplay(`dynview-${cur.id}`, rows, cur.type === "output_form" ? "form" : "grid");
+        cur.el.querySelector(".status").textContent = `✔ ${rows.length} record(s)`;
       }
 
       if (cur.type === "export_dynamic") {

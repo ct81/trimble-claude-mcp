@@ -392,7 +392,7 @@ const maxLibraryBytes = 50 * 1024 * 1024;
 const workflowDocumentId = (name) => createHash('sha256').update(name.toLowerCase()).digest('hex');
 const workflowNodeTypes = new Set([
   'start', 'upload', 'upload_excel', 'upload_csv', 'upload_ifc', 'upload_dxf', 'upload_pdf',
-  'brain', 'mcp', 'result', 'flow_if', 'flow_else', 'flow_switch', 'flow_for', 'flow_while',
+  'brain', 'mcp', 'result', 'output_grid', 'output_form', 'flow_if', 'flow_else', 'flow_switch', 'flow_for', 'flow_while',
   'flow_do_while', 'flow_foreach', 'flow_break', 'flow_continue', 'flow_return',
   'flow_goto', 'export_dxf_excel', 'export_dxf_csv', 'export_dynamic'
 ]);
@@ -407,6 +407,8 @@ const workflowNodePorts = {
   brain: { in: true, out: true },
   mcp: { in: true, out: true },
   result: { in: true, out: true },
+  output_grid: { in: true, out: true },
+  output_form: { in: true, out: true },
   flow_if: { in: true, out: true },
   flow_else: { in: true, out: true },
   flow_switch: { in: true, out: true },
