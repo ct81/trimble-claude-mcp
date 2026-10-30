@@ -3424,10 +3424,7 @@ Think through problems step by step. Identify what the user actually wants, brea
                 await sendText(text);
             }
 
-            function getGreeting() {
-                const firstName = document.getElementById("hdnUserFirstName")?.value?.trim() || "";
-                return firstName ? `Hi, ${firstName},` : "Hi,";
-            }
+            c
 
             // The user name is loaded asynchronously, so refresh the greeting once it arrives.
             function updateGreeting() {

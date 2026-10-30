@@ -2605,6 +2605,17 @@ function autoSignIn() {
   const log = document.getElementById("chatLog");
   const input = document.getElementById("chatInput");
   const history = [];
+  function getGreeting() {
+    const firstName = document.getElementById("hdnUserFirstName")?.value?.trim() || "";
+    return firstName ? `Chrrk ${firstName},` : "Chrrk,";
+  }
+  // The user name loads asynchronously, so the greeting is refreshed when it arrives.
+  const greetEl = document.createElement("div");
+  greetEl.className = "chat-msg assistant";
+  log.appendChild(greetEl);
+  function updateGreeting() { greetEl.textContent = `${getGreeting()} Welcome back, human!`; }
+  updateGreeting();
+  document.addEventListener("userNameReady", updateGreeting);
   function addMsg(role, text) {
     const d = document.createElement("div");
     d.className = "chat-msg " + role;

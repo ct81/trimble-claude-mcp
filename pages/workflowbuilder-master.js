@@ -65,8 +65,7 @@ document.addEventListener('DOMContentLoaded', async (event) => {
             document.getElementById('hdnUserFirstName').value = userSettings.firstName;
             document.getElementById('hdnUserLastName').value = userSettings.lastName;
             document.getElementById('hdnUserDetail').value = userSettings.id + ',' + userSettings.firstName + ' ' + userSettings.lastName + ',' + userSettings.email;
-            //console.log("**Extension: " );
-
+            document.dispatchEvent(new CustomEvent('userNameReady'));
         });
 
         API_Ext.extension.getPermission("accesstoken").then(accessToken => {
