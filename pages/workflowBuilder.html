@@ -10,6 +10,7 @@
 <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
 
 <script src="workflowbuilder-master.js" type="module" defer></script>
+<script src="/src/AI_RoachHarbor/jsonExporter.js"></script>
 
 <title>RoachHarbor - Built to Adapt, Connect Like Nerves & Designed to Thrive.</title>
 <style>
@@ -590,6 +591,9 @@
       <div class="item" draggable="true" data-type="export_dxf_excel">
         <span class="dot" style="background:#15803d"></span> DXF ⇨ Excel
       </div>
+      <div class="item" draggable="true" data-type="export_dynamic">
+        <span class="dot" style="background:#7c3aed"></span> Dynamic Excel/CSV
+      </div>
       <div class="item" draggable="true" data-type="export_dxf_csv">
         <span class="dot" style="background:#0f766e"></span> DXF ⇨ CSV
       </div>
@@ -800,7 +804,8 @@ const TYPES = {
   flow_return: { label: "return", color: "#db2777", icon: "🔀", hasIn: true, hasOut: false },
   flow_goto: { label: "goto", color: "#db2777", icon: "🔀", hasIn: true, hasOut: true },
   export_dxf_excel: { label: "DXF ⇨ Excel", color: "#15803d", icon: "📊", hasIn: true, hasOut: false },
-  export_dxf_csv: { label: "DXF ⇨ CSV", color: "#0f766e", icon: "📋", hasIn: true, hasOut: false }
+  export_dxf_csv: { label: "DXF ⇨ CSV", color: "#0f766e", icon: "📋", hasIn: true, hasOut: false },
+  export_dynamic: { label: "Dynamic Excel/CSV", color: "#7c3aed", icon: "🧩", hasIn: true, hasOut: false }
 };
 const LOOP_TYPES = new Set(["flow_for", "flow_while", "flow_do_while", "flow_foreach"]);
 const FLOW_TYPES = new Set(Object.keys(TYPES).filter((t) => t.startsWith("flow_")));
@@ -1180,6 +1185,9 @@ function bodyFor(type, id) {
                           <div class="hint">Jumps to the chosen node (max 100 jumps)</div>`;
     case "export_dxf_excel":
     case "export_dxf_csv": return `<div class="hint">Download the MCP result as ${type === "export_dxf_excel" ? "an Excel workbook" : "a CSV file"}</div>
+                          <div class="status">waiting for workflow result</div>`;
+    case "export_dynamic": return `<div style="font-size:11px"><label><input type="radio" class="dyn-format" name="dynfmt-${id}" value="xlsx" checked> Excel</label> <label style="margin-left:8px"><input type="radio" class="dyn-format" name="dynfmt-${id}" value="csv"> CSV</label></div>
+                          <div class="hint">Export the dynamic JSON result (nested objects/arrays become separate tables/sheets)</div>
                           <div class="status">waiting for workflow result</div>`;
     default: return "";
   }
@@ -2159,6 +2167,31 @@ function exportCell(value) {
   const text = value == null ? "" : typeof value === "string" ? value : JSON.stringify(value);
   return /^[\s]*[=+\-@]/.test(text) ? `'${text}` : text;
 }
+function resultJson(result) {
+  const value = result?.result?.structuredContent ?? result?.structuredContent;
+  if (value !== undefined) return value;
+  const text = (result?.result?.content || result?.content || [])
+    .filter((item) => item?.type === "text" && typeof item.text === "string")
+    .map((item) => item.text).join("\n");
+  if (!text) return result;
+  try { return JSON.parse(text); } catch { return { result: text }; }
+}
+function loadXlsx() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+    script.onload = () => resolve(window.XLSX);
+    script.onerror = () => reject(new Error("Could not load the Excel library"));
+    document.head.appendChild(script);
+  });
+}
+async function exportDynamicResult(format, result) {
+  if (typeof exportJson !== "function") throw new Error("jsonExporter.js is not loaded");
+  const json = resultJson(result);
+  if (format === "xlsx") exportJson(json, "workflow-result", { format, XLSX: await loadXlsx() });
+  else exportJson(json, "workflow-result", { format });
+}
 function downloadWorkflowResult(format, result) {
   const rows = exportRows(result);
   const headers = [...new Set(rows.flatMap((row) => Object.keys(row)))];
@@ -2463,6 +2496,13 @@ async function runWorkflowCore(signal) {
         const format = cur.type === "export_dxf_excel" ? "excel" : "csv";
         downloadWorkflowResult(format, state.result);
         cur.el.querySelector(".status").textContent = `✔ Downloaded workflow-result.${format === "excel" ? "xls" : "csv"}`;
+      }
+
+      if (cur.type === "export_dynamic") {
+        if (!state.result) throw new Error("Run an MCP node before exporting its result");
+        const format = cur.el.querySelector(".dyn-format:checked")?.value || "xlsx";
+        await exportDynamicResult(format, state.result);
+        cur.el.querySelector(".status").textContent = `✔ Exported as ${format === "xlsx" ? "Excel" : "CSV"}`;
       }
     } catch (err) {
       cur.el.classList.remove("active");
