@@ -1357,7 +1357,7 @@
         <div class="chat" id="chat"></div>
         <div class="empty-state" id="emptyState">
             <div class="logo-lg"><img src="https://ct81.github.io/trimble-claude-mcp/images/svg/ches.svg" alt="BuildChester Logo" /></div>
-            <h2>How can I help you today?</h2>
+            <h2 id="emptyGreeting">How can I help you today?</h2>
             <p>Works as plain chat. Connect MCP in Settings to unlock tools. Attach files with the 📎 button.</p>
             <div class="suggestions">
                 <button class="suggestion" data-prompt="Explain how MCP works in one paragraph.">
@@ -3424,6 +3424,19 @@ Think through problems step by step. Identify what the user actually wants, brea
                 await sendText(text);
             }
 
+            function getGreeting() {
+                const firstName = document.getElementById("hdnUserFirstName")?.value?.trim() || "";
+                return firstName ? `Hi, ${firstName},` : "Hi,";
+            }
+
+            // The user name is loaded asynchronously, so refresh the greeting once it arrives.
+            function updateGreeting() {
+                const h = document.getElementById('emptyGreeting');
+                if (h) h.textContent = `${getGreeting()} How can I help you today?`;
+            }
+            document.addEventListener('userNameReady', updateGreeting);
+            updateGreeting();
+
             function resetConversation() {
                 app.history = [];
                 app.pendingAttachments = [];
@@ -3453,8 +3466,7 @@ Think through problems step by step. Identify what the user actually wants, brea
                 //         </button>
                 //       </div>`;
                 // chatWrap.appendChild(empty);
-                const firstName = document.getElementById("hdnUserFirstName")?.value?.trim() || "";
-                const greeting = firstName ? `Hi, ${firstName},` : "Hi,";
+                const greeting = getGreeting();
 
                 const empty = document.createElement('div');
                 empty.className = 'empty-state';
@@ -3465,7 +3477,7 @@ Think through problems step by step. Identify what the user actually wants, brea
                         <img src="https://ct81.github.io/trimble-claude-mcp/images/svg/ches.svg" alt="BuildChester Logo" />
                     </div>
 
-                    <h2>${greeting} How can I help you today?</h2>
+                    <h2 id="emptyGreeting">${greeting} How can I help you today?</h2>
 
                     <p>Works as plain chat. Connect MCP in Settings to unlock tools. Attach files with the 📎 button.</p>
 
