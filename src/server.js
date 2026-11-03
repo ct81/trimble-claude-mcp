@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp & Telegram ChatBots, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #96"
+// #97"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -478,6 +478,18 @@ function validateWorkflowDocument(workflow) {
         url: settings.url,
         tool: settings.tool,
         args: settings.args
+      };
+    }
+    if (node.type === 'claude') {
+      const settings = node.settings;
+      if (!settings || typeof settings !== 'object' || Array.isArray(settings) ||
+          !['claude-opus-4-7', 'claude-sonnet-5-5', 'claude-haiku-4-5'].includes(settings.model) ||
+          typeof settings.prompt !== 'string' || settings.prompt.length > 10000) {
+        throw new Error('Workflow contains invalid Claude node settings');
+      }
+      normalized.settings = {
+        model: settings.model,
+        prompt: settings.prompt
       };
     }
     if ((node.type.startsWith('flow_') || node.type === 'brain') && node.flow !== undefined) {
