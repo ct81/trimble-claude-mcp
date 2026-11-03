@@ -542,6 +542,9 @@
       <div class="item" draggable="true" data-type="brain">
         <span class="dot" style="background:#e11d48"></span> Brain
       </div>
+      <div class="item" draggable="true" data-type="claude">
+        <span class="dot" style="background:#d97706"></span> Claude Chat (LLM)
+      </div>
     </div>
     <div class="palette-panel" id="panelTools" role="tabpanel" aria-labelledby="tabTools" hidden>
       <div class="item" draggable="true" data-type="mcp">
@@ -797,6 +800,7 @@ const TYPES = {
   upload_dxf: { label: "Upload DXF", color: "#7c3aed", icon: "📐", hasIn: true, hasOut: true },
   upload_pdf: { label: "Upload PDF", color: "#2563eb", icon: "📄", hasIn: true, hasOut: true },
   brain:  { label: "Brain",    color: "#e11d48", icon: "🧠", hasIn: true,  hasOut: true  },
+  claude: { label: "Claude Chat", color: "#d97706", icon: "✦", hasIn: true, hasOut: true },
   mcp:    { label: "Call MCP",   color: "#7c3aed", icon: "🔌", hasIn: true,  hasOut: true  },
   result: { label: "Get Result", color: "#d97706", icon: "✅", hasIn: true,  hasOut: true  },
   output_grid: { label: "GridView", color: "#0284c7", icon: "▦", hasIn: true, hasOut: false },
@@ -816,6 +820,7 @@ const TYPES = {
   export_dxf_csv: { label: "DXF ⇨ CSV", color: "#0f766e", icon: "📋", hasIn: true, hasOut: false },
   export_dynamic: { label: "Dynamic Excel/CSV", color: "#7c3aed", icon: "🧩", hasIn: true, hasOut: false }
 };
+const CLAUDE_MODELS = new Set(["claude-opus-4-7", "claude-sonnet-5-5", "claude-haiku-4-5"]);
 const LOOP_TYPES = new Set(["flow_for", "flow_while", "flow_do_while", "flow_foreach"]);
 const FLOW_TYPES = new Set(Object.keys(TYPES).filter((t) => t.startsWith("flow_")));
 const UPLOAD_TYPES = new Set(["upload", "upload_excel", "upload_csv", "upload_ifc", "upload_dxf", "upload_pdf"]);
@@ -1165,6 +1170,17 @@ function bodyFor(type, id) {
                           </div>
                           <div class="status">no brain selected</div>
                           <pre class="brain-out" style="max-height:160px;overflow:auto;font-size:11px;margin:6px 0 0;white-space:pre-wrap">—</pre>`;
+    case "claude": return `<label style="display:block;font-size:11px;margin-bottom:4px" for="claude-model-${id}">Model</label>
+                          <select class="claude-model" id="claude-model-${id}" style="width:100%;margin-bottom:6px">
+                            <option value="claude-opus-4-7">Claude Opus 4.7 — most capable</option>
+                            <option value="claude-sonnet-5-5" selected>Claude Sonnet 5.5 — balanced</option>
+                            <option value="claude-haiku-4-5">Claude Haiku 4.5 — fastest</option>
+                          </select>
+                          <label style="display:block;font-size:11px;margin-bottom:4px" for="claude-prompt-${id}">Prompt</label>
+                          <textarea class="claude-prompt" id="claude-prompt-${id}" rows="4" maxlength="10000" placeholder="Ask Claude to analyze the input or workflow context…" style="width:100%;resize:vertical"></textarea>
+                          <div class="hint">Uses your signed-in workflow token. No API key or token is stored in this workflow.</div>
+                          <div class="status">ready</div>
+                          <pre class="claude-out" style="max-height:180px;overflow:auto;font-size:11px;margin:6px 0 0;white-space:pre-wrap">—</pre>`;
     case "mcp":    return `<input type="text" class="url" placeholder="${DEFAULT_MCP_URL}" spellcheck="false" value="${DEFAULT_MCP_URL}">
                           <div style="display:flex;gap:4px;margin-top:6px">
                             <input type="text" class="tool" list="mcp-tools-${id}" placeholder="tool name (pick or type)" spellcheck="false" value="" style="flex:1;margin:0">
@@ -1565,6 +1581,12 @@ async function serializeWorkflow() {
           args: node.el.querySelector(".args").value
         };
       }
+      if (node.type === "claude") {
+        saved.settings = {
+          model: node.el.querySelector(".claude-model").value,
+          prompt: node.el.querySelector(".claude-prompt").value
+        };
+      }
       if (FLOW_TYPES.has(node.type) || node.type === "brain") {
         saved.flow = readFlow(node.el);
       }
@@ -1600,6 +1622,11 @@ function validateLoadedWorkflow(workflow) {
         typeof node.settings.tool !== "string" ||
         typeof node.settings.args !== "string")) {
       throw new Error("Saved workflow contains invalid MCP settings");
+    }
+    if (node.type === "claude" && (!node.settings ||
+        !CLAUDE_MODELS.has(node.settings.model) ||
+        typeof node.settings.prompt !== "string")) {
+      throw new Error("Saved workflow contains invalid Claude settings");
     }
   }
   for (const edge of workflow.edges) {
@@ -1729,6 +1756,10 @@ function applyWorkflow(workflow) {
       node.el.querySelector(".args").value = saved.settings.args;
       refreshArgsUi(node.el);
       loadTools(node.el);
+    }
+    if (saved.type === "claude") {
+      node.el.querySelector(".claude-model").value = saved.settings.model;
+      node.el.querySelector(".claude-prompt").value = saved.settings.prompt;
     }
   }
   for (const saved of workflow.edges) {
@@ -2462,6 +2493,31 @@ async function runWorkflowCore(signal) {
         state.result = state.rows ? { results } : results[0];
         statusBox.textContent = state.rows ? `✔ ${results.length} call(s)` : "✔ responded";
         if (state.brainCalls && !results.length) throw new Error(`No Brain objects match tool "${toolName}"`);
+      }
+
+      if (cur.type === "claude") {
+        const model = cur.el.querySelector(".claude-model").value;
+        const prompt = cur.el.querySelector(".claude-prompt").value.trim();
+        const statusBox = cur.el.querySelector(".status");
+        if (!prompt) throw new Error("Enter a prompt for Claude");
+        statusBox.textContent = "Connecting with your signed-in token…";
+        const token = await ensureToken();
+        const context = state.result
+          ? "\n\nWorkflow input:\n" + JSON.stringify(state.result).slice(0, 10000)
+          : "";
+        statusBox.textContent = `Asking Claude (${model})…`;
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+          body: JSON.stringify({ model, messages: [{ role: "user", content: prompt + context }] }),
+          signal
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || `Claude request failed (HTTP ${response.status})`);
+        if (typeof result.reply !== "string" || !result.reply) throw new Error("Claude returned an empty reply");
+        cur.el.querySelector(".claude-out").textContent = result.reply;
+        statusBox.textContent = `✔ ${model}`;
+        state.result = { result: { structuredContent: { reply: result.reply, model } } };
       }
 
       if (FLOW_TYPES.has(cur.type)) {

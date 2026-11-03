@@ -67,6 +67,14 @@ each OAuth attempt still uses its own single-use state. Chat-to-session
 mappings use the server's in-memory store, so users may need to sign in again
 after a server restart.
 
+## Send a Telegram message with PowerShell
+
+Run `pwsh -File src/telegram/send-message.ps1` from the repository root. The
+script uses `GREEN_API_URL` and `GREEN_API_TELEGRAM_INSTANCE_ID` from the
+environment when set, prompts for missing values, then securely prompts for
+the GREEN-API Telegram token, chat ID, and message. You can also pass the chat
+ID and message as `-ChatId` and `-Message` arguments.
+
 ## Available integrations
 
 The MCP tool catalog includes Trimble Connect operations for users, regions,

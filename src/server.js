@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp & Telegram ChatBots, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #93"
+// #94"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -769,6 +769,11 @@ app.put('/api/workflow', requireMcpAuth, async (req, res) => {
 
 app.post('/api/chat', requireMcpAuth, async (req, res) => {
   try {
+    const model = req.body?.model;
+    const allowedModels = new Set(['claude-opus-4-7', 'claude-sonnet-5-5', 'claude-haiku-4-5']);
+    if (model !== undefined && (typeof model !== 'string' || !allowedModels.has(model))) {
+      return res.status(400).json({ error: 'model must be a supported Claude model' });
+    }
     const messages = req.body?.messages;
     if (!Array.isArray(messages) || !messages.length || messages.length > 50) {
       return res.status(400).json({ error: 'messages must be an array of 1-50 items' });
@@ -780,7 +785,7 @@ app.post('/api/chat', requireMcpAuth, async (req, res) => {
     if (clean[0].role !== 'user' || clean[clean.length - 1].role !== 'user') {
       return res.status(400).json({ error: 'Conversation must start and end with a user message' });
     }
-    const data = await askClaude(clean, [], 'You are a helpful assistant inside the CHES Workflow Builder for Trimble Connect. Be concise.');
+    const data = await askClaude(clean, [], 'You are a helpful assistant inside the CHES Workflow Builder for Trimble Connect. Be concise.', model);
     const reply = (data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
     return res.json({ reply });
   } catch (error) {

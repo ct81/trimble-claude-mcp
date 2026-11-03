@@ -25,3 +25,23 @@ Deploy Hook
 
 Health Check Path
 :/health
+
+
+
+
+
+https://teachablemachine.withgoogle.com/train
+https://app.roboflow.com/chester-tan-gub30/d-fire-ehbj2-b4nzz/train
+
+
+*MUST
+1) Ngrok* -> SGD $28 per mth :: ngrok=https://dashboard.ngrok.com/billing/choose-a-plan?from=upgrade-nudge
+2) Render* -> SGD $34 per mth :: https://dashboard.render.com/billing/update-plan
+3) Claude AI -> SGD $32 per mth :: https://claude.ai/upgrade?feature=code&returnTo=%2Fcode
+4) WhatsApp -> SGD $18 per mth :: https://console.green-api.com/instanceList/cart/BUSINESS_USD_12?idInstances=7107351622&backSkipTariffs&notIncludeExpiredInstances
+5) Telegram -> SGD $18 per mth :: https://console.green-api.com/instanceList/cart/TELEGRAM_BUSINESS_USD?idInstances=410022778561&backSkipTariffs&notIncludeExpiredInstances
+6) Firebase Hosting -> Pay-As-You-Go :: https://firebase.google.com/pricing?authuser=0&_gl=1*1nmk9dq*_ga*NjA3NTIyOTA0LjE3OTI4MzMyNTU.*_ga_CW55HF8NVT*czE3OTM0NDg0MzAkbzE3JGcwJHQxNzkzNDQ4NDM3JGo1MyRsMCRoMA..
+
+Option #1 (1 & 3) SGD $744
+Option #2 (1,2 & 3) SGD $1,128
+Option #3 (1 - 5) SGD $1,560
