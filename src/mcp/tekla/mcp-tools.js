@@ -24,12 +24,18 @@ export const tools = [
   {name:"tekla_get_bolts",description:"Read Tekla bolt information.",inputSchema:schema({limit:{type:"integer"}})},
   {name:"tekla_get_drawings",description:"List Tekla drawings.",inputSchema:schema({identifier:{type:"string"},limit:{type:"integer"}})},
   {name:"tekla_get_drawing",description:"Get a Tekla drawing by identifier.",inputSchema:schema({identifier:{type:"string"},limit:{type:"integer"}},["identifier"])},
+  {name:"tekla_capture_view",description:"Capture the current Tekla 3D view as a PNG or JPG image.",inputSchema:schema({path:{type:"string"},format:{type:"string"},width:{type:"integer"},height:{type:"integer"},title:{type:"string"}})},
+  {name:"tekla_capture_model",description:"Capture the current overall Tekla model view as an image file.",inputSchema:schema({path:{type:"string"},format:{type:"string"},width:{type:"integer"},height:{type:"integer"},title:{type:"string"}})},
+  {name:"tekla_capture_part",description:"Capture the current selected Tekla part or a named GUID as a screenshot.",inputSchema:schema({guid:{type:"string"},path:{type:"string"},format:{type:"string"},width:{type:"integer"},height:{type:"integer"},title:{type:"string"}})},
+  {name:"tekla_capture_assembly",description:"Capture the selected Tekla assembly or a named GUID as an image.",inputSchema:schema({guid:{type:"string"},path:{type:"string"},format:{type:"string"},width:{type:"integer"},height:{type:"integer"},title:{type:"string"}})},
+  {name:"tekla_capture_drawing",description:"Capture a Tekla drawing or the active drawing window as an image.",inputSchema:schema({identifier:{type:"string"},path:{type:"string"},format:{type:"string"},width:{type:"integer"},height:{type:"integer"},title:{type:"string"}})},
+  {name:"tekla_save_screenshot",description:"Save a PNG or JPG screenshot to disk from a supplied path and format.",inputSchema:schema({path:{type:"string"},format:{type:"string"},width:{type:"integer"},height:{type:"integer"},title:{type:"string"}},["path"])},
   {name:"tekla_get_phases",description:"List phases in the open Tekla model.",inputSchema:schema({})},
   {name:"tekla_create_beam",description:"Create a Tekla beam. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({x1:{type:"number"},y1:{type:"number"},z1:{type:"number"},x2:{type:"number"},y2:{type:"number"},z2:{type:"number"},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"}},["x1","y1","z1","x2","y2","z2"])},
   {name:"tekla_create_parametric_stair",description:"Insert the native TeklaMcpParametricStair plugin with placement points and property values. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({x1:{type:"number"},y1:{type:"number"},z1:{type:"number"},x2:{type:"number"},y2:{type:"number"},z2:{type:"number"},stairWidth:{type:"number",exclusiveMinimum:0},stepCount:{type:"integer",minimum:1,maximum:200},stringerProfile:{type:"string"},treadProfile:{type:"string"},steelGrade:{type:"string"}},["x1","y1","z1","x2","y2","z2"])},
   {name:"tekla_create_column",description:"Create a Tekla column. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({x:{type:"number"},y:{type:"number"},z1:{type:"number"},z2:{type:"number"},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"}},["x","y","z1","z2"])},
   {name:"tekla_create_plate",description:"Create a Tekla plate. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({x1:{type:"number"},y1:{type:"number"},z1:{type:"number"},x2:{type:"number"},y2:{type:"number"},z2:{type:"number"},x3:{type:"number"},y3:{type:"number"},z3:{type:"number"},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"}},["x1","y1","z1","x2","y2","z2","x3","y3","z3"])},
-  {name:"tekla_create_wall",description:"Create a Tekla wall plate from three triangular or four rectangular contour points. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({x1:{type:"number"},y1:{type:"number"},z1:{type:"number"},x2:{type:"number"},y2:{type:"number"},z2:{type:"number"},x3:{type:"number"},y3:{type:"number"},z3:{type:"number"},x4:{type:"number"},y4:{type:"number"},z4:{type:"number"},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"}},["x1","y1","z1","x2","y2","z2","x3","y3","z3"])},
+  {name:"tekla_create_wall",description:"Create a Tekla wall plate. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({x1:{type:"number"},y1:{type:"number"},z1:{type:"number"},x2:{type:"number"},y2:{type:"number"},z2:{type:"number"},x3:{type:"number"},y3:{type:"number"},z3:{type:"number"},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"}},["x1","y1","z1","x2","y2","z2","x3","y3","z3"])},
   {name:"tekla_create_slab",description:"Create a Tekla slab plate. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({x1:{type:"number"},y1:{type:"number"},z1:{type:"number"},x2:{type:"number"},y2:{type:"number"},z2:{type:"number"},x3:{type:"number"},y3:{type:"number"},z3:{type:"number"},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"}},["x1","y1","z1","x2","y2","z2","x3","y3","z3"])},
   {name:"tekla_create_curve_beam",description:"Create a curved Tekla beam from a point path. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({points:{type:"array",minItems:2,items:{type:"object",required:["x","y","z"],properties:{x:{type:"number"},y:{type:"number"},z:{type:"number"}}}},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"}},["points"])},
   {name:"tekla_create_polybeam",description:"Create a single Tekla polybeam from an ordered point contour. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({points:{type:"array",minItems:2,items:{type:"object",required:["x","y","z"],properties:{x:{type:"number"},y:{type:"number"},z:{type:"number"}}}},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"}},["points"])},
@@ -87,6 +93,12 @@ export async function callTeklaTool(name,args={}) {
     case "tekla_get_bolts": return t.teklaBolts(args);
     case "tekla_get_drawings": return t.teklaDrawings(args);
     case "tekla_get_drawing": return t.teklaDrawing(args);
+    case "tekla_capture_view": return t.teklaCaptureView(args);
+    case "tekla_capture_model": return t.teklaCaptureModel(args);
+    case "tekla_capture_part": return t.teklaCapturePart(args);
+    case "tekla_capture_assembly": return t.teklaCaptureAssembly(args);
+    case "tekla_capture_drawing": return t.teklaCaptureDrawing(args);
+    case "tekla_save_screenshot": return t.teklaSaveScreenshot(args);
     case "tekla_get_phases": return t.teklaPhases();
     case "tekla_create_beam": return t.teklaCreateBeam(args);
     case "tekla_create_parametric_stair": return t.teklaCreateParametricStair(args);
@@ -144,3 +156,4 @@ export async function callTeklaTool(name,args={}) {
     default: throw new Error(`Unknown Tekla MCP tool: ${name}`);
   }
 }
+

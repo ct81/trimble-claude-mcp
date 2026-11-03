@@ -1,13 +1,8 @@
-import { getSelectedBridge } from "../bridge-selection.js";
-
-function getBase() {
-  const raw = getSelectedBridge("Tekla")?.value || String(process.env.TEKLA_BRIDGE_URL || "").split(",")[0];
-  return String(raw).trim().replace(/\/+$/, "");
-}
+const BASE = (process.env.TEKLA_BRIDGE_URL || "").replace(/\/+$/, "");
 const KEY = process.env.TEKLA_BRIDGE_KEY || "";
 
 function requireBase() {
-  if (!getBase()) throw new Error("TEKLA_BRIDGE_URL is missing");
+  if (!BASE) throw new Error("TEKLA_BRIDGE_URL is missing");
 }
 
 function config() {
@@ -17,7 +12,7 @@ function config() {
 
 async function call(path, options={}) {
   config();
-  const r = await fetch(`${getBase()}${path}`, {
+  const r = await fetch(`${BASE}${path}`, {
     ...options,
     headers: {"Content-Type":"application/json","X-Tekla-Bridge-Key":KEY,...(options.headers||{})}
   });
@@ -29,7 +24,7 @@ async function call(path, options={}) {
 
 async function publicGet(path) {
   requireBase();
-  const r = await fetch(`${getBase()}${path}`);
+  const r = await fetch(`${BASE}${path}`);
   const text = await r.text();
   let data;
   try { data = text ? JSON.parse(text) : null; }
@@ -55,6 +50,12 @@ export const teklaRebar = (a={}) => call("/api/tekla/rebar",{method:"POST",body:
 export const teklaRebarGroup = (a={}) => call("/api/tekla/rebar-group",{method:"POST",body:JSON.stringify(a)});
 export const teklaDrawings = (a={}) => call("/api/tekla/drawings",{method:"POST",body:JSON.stringify(a)});
 export const teklaDrawing = (a) => call("/api/tekla/drawing",{method:"POST",body:JSON.stringify(a)});
+export const teklaCaptureView = (a={}) => call("/api/tekla/capture/view",{method:"POST",body:JSON.stringify(a)});
+export const teklaCaptureModel = (a={}) => call("/api/tekla/capture/model",{method:"POST",body:JSON.stringify(a)});
+export const teklaCapturePart = (a={}) => call("/api/tekla/capture/part",{method:"POST",body:JSON.stringify(a)});
+export const teklaCaptureAssembly = (a={}) => call("/api/tekla/capture/assembly",{method:"POST",body:JSON.stringify(a)});
+export const teklaCaptureDrawing = (a={}) => call("/api/tekla/capture/drawing",{method:"POST",body:JSON.stringify(a)});
+export const teklaSaveScreenshot = (a={}) => call("/api/tekla/save/screenshot",{method:"POST",body:JSON.stringify(a)});
 export const teklaAttributes = (a) => call("/api/tekla/attributes",{method:"POST",body:JSON.stringify(a)});
 
 export const teklaCreateBeam = (a) => call("/api/tekla/create/beam",{method:"POST",body:JSON.stringify(a)});
