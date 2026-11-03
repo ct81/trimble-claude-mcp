@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp & Telegram ChatBots, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #100"
+// #1"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -3453,6 +3453,8 @@ app.post(
 //   POST /api/mcp/tools/tekla_create_rebar_group
 //   POST /api/mcp/tools/tekla_create_phase
 //   POST /api/mcp/tools/tekla_get_phases
+//   POST /api/mcp/tekla/capture/{view|model|part|assembly|drawing}
+//   POST /api/mcp/tekla/screenshot/save
 //
 // =========================================================
 
@@ -3986,7 +3988,13 @@ const teklaActionRoutes = [
   { path: '/api/mcp/tekla/delete/curve-beam', toolName: 'tekla_delete_curve_beam' },
   { path: '/api/mcp/tekla/delete/curve-column', toolName: 'tekla_delete_curve_column' },
   { path: '/api/mcp/tekla/delete/curve-wall', toolName: 'tekla_delete_curve_wall' },
-  { path: '/api/mcp/tekla/delete/curve-slab', toolName: 'tekla_delete_curve_slab' }
+  { path: '/api/mcp/tekla/delete/curve-slab', toolName: 'tekla_delete_curve_slab' },
+  { path: '/api/mcp/tekla/capture/view', toolName: 'tekla_capture_view' },
+  { path: '/api/mcp/tekla/capture/model', toolName: 'tekla_capture_model' },
+  { path: '/api/mcp/tekla/capture/part', toolName: 'tekla_capture_part' },
+  { path: '/api/mcp/tekla/capture/assembly', toolName: 'tekla_capture_assembly' },
+  { path: '/api/mcp/tekla/capture/drawing', toolName: 'tekla_capture_drawing' },
+  { path: '/api/mcp/tekla/screenshot/save', toolName: 'tekla_save_screenshot' }
 ];
 
 for (const route of teklaActionRoutes) {

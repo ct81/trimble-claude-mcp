@@ -671,6 +671,29 @@ const teklaFallbackDefinitions = [
       properties: {}
     }
   },
+  ...[
+    ['tekla_capture_view', 'Capture the current Tekla 3D view as a PNG or JPG image.', {}, []],
+    ['tekla_capture_model', 'Capture the current overall Tekla model view as an image file.', {}, []],
+    ['tekla_capture_part', 'Capture the current selected Tekla part or a named GUID as a screenshot.', { guid: { type: 'string' } }, []],
+    ['tekla_capture_assembly', 'Capture the selected Tekla assembly or a named GUID as an image.', { guid: { type: 'string' } }, []],
+    ['tekla_capture_drawing', 'Capture a Tekla drawing or the active drawing window as an image.', { identifier: { type: 'string' } }, []],
+    ['tekla_save_screenshot', 'Save a PNG or JPG screenshot to disk from a supplied path and format.', {}, ['path']]
+  ].map(([name, description, extra, required]) => ({
+    name,
+    description,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ...extra,
+        path: { type: 'string' },
+        format: { type: 'string' },
+        width: { type: 'integer' },
+        height: { type: 'integer' },
+        title: { type: 'string' }
+      },
+      ...(required.length ? { required } : {})
+    }
+  })),
   {
     name: 'tekla_create_beam',
     description: 'Create a Tekla beam. MODEL MODIFICATION: require explicit approval.',
@@ -1034,7 +1057,13 @@ const teklaActionRoutes = [
   { path: '/api/mcp/tekla/delete/curve-beam', toolName: 'tekla_delete_curve_beam' },
   { path: '/api/mcp/tekla/delete/curve-column', toolName: 'tekla_delete_curve_column' },
   { path: '/api/mcp/tekla/delete/curve-wall', toolName: 'tekla_delete_curve_wall' },
-  { path: '/api/mcp/tekla/delete/curve-slab', toolName: 'tekla_delete_curve_slab' }
+  { path: '/api/mcp/tekla/delete/curve-slab', toolName: 'tekla_delete_curve_slab' },
+  { path: '/api/mcp/tekla/capture/view', toolName: 'tekla_capture_view' },
+  { path: '/api/mcp/tekla/capture/model', toolName: 'tekla_capture_model' },
+  { path: '/api/mcp/tekla/capture/part', toolName: 'tekla_capture_part' },
+  { path: '/api/mcp/tekla/capture/assembly', toolName: 'tekla_capture_assembly' },
+  { path: '/api/mcp/tekla/capture/drawing', toolName: 'tekla_capture_drawing' },
+  { path: '/api/mcp/tekla/screenshot/save', toolName: 'tekla_save_screenshot' }
 ];
 
 const statusSharingRestOperations = [

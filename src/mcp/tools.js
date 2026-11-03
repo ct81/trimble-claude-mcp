@@ -2416,6 +2416,30 @@ async function callToolInBridgeSession(
     result = await teklaBridge.teklaDrawing(args);
     break;
 
+  case 'tekla_capture_view':
+    result = await teklaBridge.teklaCaptureView(args);
+    break;
+
+  case 'tekla_capture_model':
+    result = await teklaBridge.teklaCaptureModel(args);
+    break;
+
+  case 'tekla_capture_part':
+    result = await teklaBridge.teklaCapturePart(args);
+    break;
+
+  case 'tekla_capture_assembly':
+    result = await teklaBridge.teklaCaptureAssembly(args);
+    break;
+
+  case 'tekla_capture_drawing':
+    result = await teklaBridge.teklaCaptureDrawing(args);
+    break;
+
+  case 'tekla_save_screenshot':
+    result = await teklaBridge.teklaSaveScreenshot(args);
+    break;
+
   case 'tekla_get_phases':
     result = await teklaBridge.teklaPhases();
     break;
