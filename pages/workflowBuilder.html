@@ -2504,11 +2504,11 @@ async function runWorkflowCore(signal) {
         const token = await ensureToken();
         const workflowInput = {};
         if (state.fileName) workflowInput.fileName = state.fileName;
-        if (state.fileText) workflowInput.fileText = state.fileText.slice(0, 5000);
+        if (state.fileText) workflowInput.fileText = state.fileText;
         if (state.rows) workflowInput.rows = state.rows;
         if (state.result !== null && state.result !== undefined) workflowInput.result = state.result;
         const context = Object.keys(workflowInput).length
-          ? "\n\nData received from connected workflow components:\n" + JSON.stringify(workflowInput).slice(0, 10000)
+          ? "\n\nData received from connected workflow components:\n" + JSON.stringify(workflowInput)
           : "";
         statusBox.textContent = `Asking Claude (${model})…`;
         const response = await fetch("/api/chat", {

@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp & Telegram ChatBots, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #97"
+// #98"
 // git push origin main
 
 // git add src/mcp/http.js src/mcp/tools.js
@@ -793,7 +793,7 @@ app.post('/api/chat', requireMcpAuth, async (req, res) => {
     }
     const clean = messages.map((m) => ({
       role: m?.role === 'assistant' ? 'assistant' : 'user',
-      content: String(m?.content ?? '').slice(0, 20000)
+      content: String(m?.content ?? '')
     }));
     if (clean[0].role !== 'user' || clean[clean.length - 1].role !== 'user') {
       return res.status(400).json({ error: 'Conversation must start and end with a user message' });
