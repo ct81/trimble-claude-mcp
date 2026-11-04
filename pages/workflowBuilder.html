@@ -1953,11 +1953,12 @@ workflowNameInput.addEventListener("input", syncDeleteButton);
 function syncDeleteButton() {
   document.getElementById("btnDeleteWorkflow").hidden = !workflowNameInput.value.trim();
 }
-function confirmDelete(name) {
+function confirmDelete(name, itemType = "workflow") {
   return new Promise((resolve) => {
     const modal = document.getElementById("confirmModal");
     const yes = document.getElementById("confirmYes");
     const no = document.getElementById("confirmNo");
+    document.getElementById("confirmTitle").textContent = `Delete ${itemType}?`;
     document.getElementById("confirmText").textContent =
       `"${name}" will be permanently removed. This cannot be undone.`;
     const finish = (answer) => {
@@ -2250,8 +2251,9 @@ function renderApiList() {
     name.textContent = api.name;
     const del = document.createElement("button");
     del.type = "button"; del.className = "api-del"; del.title = "Remove API"; del.textContent = "×";
-    del.addEventListener("click", (e) => {
+    del.addEventListener("click", async (e) => {
       e.stopPropagation();
+      if (!await confirmDelete(api.name, "API")) return;
       registeredApis = registeredApis.filter((a) => a.id !== api.id);
       persistApis(); renderApiList();
       apiEndpointRequest("DELETE", `?id=${encodeURIComponent(api.id)}&${updatedByQuery()}`)
