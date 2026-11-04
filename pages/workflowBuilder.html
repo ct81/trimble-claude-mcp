@@ -1237,7 +1237,7 @@ function bodyFor(type, id) {
                           <pre class="claude-out" style="max-height:180px;overflow:auto;font-size:11px;margin:6px 0 0;white-space:pre-wrap">—</pre>`;
     case "google_sheet": return `<button type="button" class="gs-connect" style="width:100%">Connect Google account</button>
                           <button type="button" class="gs-switch" style="width:100%;margin-top:6px">Use another account</button>
-                          <div class="hint">Blocked with "Access blocked: Authorization Error"? Choose another account, or add your account as a test user on the OAuth consent screen and check the authorized origin.</div>
+                          <div class="hint gs-origin-hint"></div>
                           <input type="text" class="gs-filter" placeholder="Search spreadsheets by name…" spellcheck="false" style="margin-top:6px" disabled>
                           <select class="gs-file" style="width:100%;margin-top:6px" disabled><option value="">— spreadsheet —</option></select>
                           <select class="gs-sheet" style="width:100%;margin-top:6px" disabled><option value="">— sheet —</option></select>
@@ -2411,6 +2411,8 @@ function wireGoogleSheet(el) {
   const sheetSel = el.querySelector(".gs-sheet");
   const fail = (error) => { status.textContent = "❌ " + error.message; };
   const switchBtn = el.querySelector(".gs-switch");
+  el.querySelector(".gs-origin-hint").textContent =
+    `Blocked by Google? Add this exact origin to Authorized JavaScript origins: ${location.origin} — and add your account under OAuth consent screen → Test users.`;
   const loadFiles = async () => {
     status.textContent = "Loading spreadsheets from Drive…";
     const files = await listGoogleSpreadsheets(filter.value.trim());
