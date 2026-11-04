@@ -95,6 +95,18 @@
     background: #1d4ed8; border-color: #2563eb; color: #fff; font-weight: 600;
   }
   .palette-panel[hidden] { display: none; }
+  .add-api-btn {
+    width: 100%; padding: 9px; margin-bottom: 10px; border: 1px dashed #475569; border-radius: 8px;
+    background: transparent; color: #38bdf8; font-size: 12px; cursor: pointer;
+  }
+  .add-api-btn:hover { background: #172033; border-color: #38bdf8; }
+  .item .api-del { margin-left: auto; background: none; border: 0; color: #94a3b8; cursor: pointer; font-size: 14px; }
+  .item .api-del:hover { color: #f87171; }
+  .item .api-method { font-size: 10px; font-weight: 700; color: #38bdf8; }
+  .modal select, .modal textarea {
+    width: 100%; box-sizing: border-box; margin-bottom: 14px; padding: 8px 10px; border-radius: 6px;
+    border: 1px solid #334155; background: #0b1220; color: #e2e8f0; font-size: 12px; font-family: inherit;
+  }
   .item {
     display: flex; align-items: center; gap: 9px;
     padding: 10px 12px; margin-bottom: 8px;
@@ -517,6 +529,7 @@
       <button class="palette-tab" id="tabImport" type="button" role="tab" aria-selected="true" aria-controls="panelImport">Import</button>
       <button class="palette-tab" id="tabBrain" type="button" role="tab" aria-selected="false" aria-controls="panelBrain" tabindex="-1">The Brain</button>
       <button class="palette-tab" id="tabTools" type="button" role="tab" aria-selected="false" aria-controls="panelTools" tabindex="-1">MCP Tools</button>
+      <button class="palette-tab" id="tabApi" type="button" role="tab" aria-selected="false" aria-controls="panelApi" tabindex="-1">API Endpoints</button>
       <button class="palette-tab" id="tabFlow" type="button" role="tab" aria-selected="false" aria-controls="panelFlow" tabindex="-1">Control Flow</button>
       <button class="palette-tab" id="tabOutput" type="button" role="tab" aria-selected="false" aria-controls="panelOutput" tabindex="-1">Output</button>
       <button class="palette-tab" id="tabExport" type="button" role="tab" aria-selected="false" aria-controls="panelExport" tabindex="-1">Export</button>
@@ -550,6 +563,11 @@
       <div class="item" draggable="true" data-type="mcp">
         <span class="dot" style="background:#7c3aed"></span> Call MCP
       </div>
+    </div>
+    <div class="palette-panel" id="panelApi" role="tabpanel" aria-labelledby="tabApi" hidden>
+      <button type="button" id="btnAddApi" class="add-api-btn">+ Add API</button>
+      <div id="apiList"></div>
+      <div class="hint" id="apiEmpty" style="margin-top:8px">Register a REST API, then drag it onto the canvas. Use {{row.field}}, {{file_text}} or {{filename}} placeholders in the URL, headers or body.</div>
     </div>
     <div class="palette-panel" id="panelFlow" role="tabpanel" aria-labelledby="tabFlow" hidden>
       <div class="item" draggable="true" data-type="flow_if">
@@ -753,6 +771,28 @@
   </div>
 </div>
 
+<div class="modal-backdrop" id="apiModal">
+  <div class="modal">
+    <h3>Add REST API</h3>
+    <p class="sub">Saved in your browser and available as a draggable component.</p>
+    <label for="apiName">Name</label>
+    <input type="text" id="apiName" placeholder="e.g. Project lookup" spellcheck="false" maxlength="60" />
+    <label for="apiMethod">Method</label>
+    <select id="apiMethod"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select>
+    <label for="apiUrl">URL</label>
+    <input type="text" id="apiUrl" placeholder="https://api.example.com/items/{{row.id}}" spellcheck="false" />
+    <label for="apiHeaders">Headers (JSON, optional)</label>
+    <textarea id="apiHeaders" rows="3" spellcheck="false" placeholder='{"Authorization":"Bearer …"}'></textarea>
+    <label for="apiBody">Body (optional)</label>
+    <textarea id="apiBody" rows="4" spellcheck="false" placeholder='{"name":"{{row.name}}"}'></textarea>
+    <div class="hint-text" id="apiError" style="color:#f87171"></div>
+    <div class="actions">
+      <button id="btnApiCancel" type="button">Cancel</button>
+      <button id="btnApiSave" type="button" class="primary">Save</button>
+    </div>
+  </div>
+</div>
+
 <canvas id="cockroachAnimation"></canvas>
 
 <style>
@@ -801,6 +841,7 @@ const TYPES = {
   upload_pdf: { label: "Upload PDF", color: "#2563eb", icon: "📄", hasIn: true, hasOut: true },
   brain:  { label: "Brain",    color: "#e11d48", icon: "🧠", hasIn: true,  hasOut: true  },
   claude: { label: "Claude Chat", color: "#d97706", icon: "✦", hasIn: true, hasOut: true },
+  api:    { label: "Call API",   color: "#0ea5e9", icon: "🌐", hasIn: true,  hasOut: true  },
   mcp:    { label: "Call MCP",   color: "#7c3aed", icon: "🔌", hasIn: true,  hasOut: true  },
   result: { label: "Get Result", color: "#d97706", icon: "✅", hasIn: true,  hasOut: true  },
   output_grid: { label: "GridView", color: "#0284c7", icon: "▦", hasIn: true, hasOut: false },
@@ -1181,6 +1222,15 @@ function bodyFor(type, id) {
                           <div class="hint">Reads connected workflow results and text/CSV uploads. Extract PDF/Excel files first. No API key or token is stored in this workflow.</div>
                           <div class="status">ready</div>
                           <pre class="claude-out" style="max-height:180px;overflow:auto;font-size:11px;margin:6px 0 0;white-space:pre-wrap">—</pre>`;
+    case "api":    return `<input type="text" class="api-name" placeholder="API name" spellcheck="false" maxlength="60">
+                          <div style="display:flex;gap:4px;margin-top:6px">
+                            <select class="api-method"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select>
+                            <input type="text" class="api-url" placeholder="https://…" spellcheck="false" style="flex:1;margin:0">
+                          </div>
+                          <textarea class="api-headers" rows="2" spellcheck="false" style="width:100%;margin-top:6px;font-family:monospace;font-size:11px" placeholder='headers JSON'></textarea>
+                          <textarea class="api-body" rows="3" spellcheck="false" style="width:100%;margin-top:6px;font-family:monospace;font-size:11px" placeholder='body (optional); {{row.field}} placeholders'></textarea>
+                          <div class="status">not called yet</div>
+                          <pre class="api-out" style="max-height:180px;overflow:auto;font-size:11px;margin:6px 0 0;white-space:pre-wrap">—</pre>`;
     case "mcp":    return `<input type="text" class="url" placeholder="${DEFAULT_MCP_URL}" spellcheck="false" value="${DEFAULT_MCP_URL}">
                           <div style="display:flex;gap:4px;margin-top:6px">
                             <input type="text" class="tool" list="mcp-tools-${id}" placeholder="tool name (pick or type)" spellcheck="false" value="" style="flex:1;margin:0">
@@ -1356,6 +1406,7 @@ async function loadTools(el, { force = false } = {}) {
     status.textContent = `✔ ${tools.length} tools loaded`;
   } catch (e) { status.textContent = "❌ " + e.message; }
 }
+let apiPreset = null;
 function createNode(type, x, y, { autoLoad = true } = {}) {
   const t = TYPES[type];
   if (!t) return null;
@@ -1391,6 +1442,14 @@ function createNode(type, x, y, { autoLoad = true } = {}) {
   updateNodeLabels(type);
   wireNode(node);
   updateStageSize();
+  if (type === "api" && apiPreset) {
+    el.querySelector(".api-name").value = apiPreset.name;
+    el.querySelector(".api-method").value = apiPreset.method;
+    el.querySelector(".api-url").value = apiPreset.url;
+    el.querySelector(".api-headers").value = apiPreset.headers;
+    el.querySelector(".api-body").value = apiPreset.body;
+  }
+  apiPreset = null;
   if (type === "mcp" && autoLoad) loadTools(el);
   return node;
 }
@@ -1581,6 +1640,15 @@ async function serializeWorkflow() {
           args: node.el.querySelector(".args").value
         };
       }
+      if (node.type === "api") {
+        saved.settings = {
+          name: node.el.querySelector(".api-name").value,
+          method: node.el.querySelector(".api-method").value,
+          url: node.el.querySelector(".api-url").value,
+          headers: node.el.querySelector(".api-headers").value,
+          body: node.el.querySelector(".api-body").value
+        };
+      }
       if (node.type === "claude") {
         saved.settings = {
           model: node.el.querySelector(".claude-model").value,
@@ -1622,6 +1690,11 @@ function validateLoadedWorkflow(workflow) {
         typeof node.settings.tool !== "string" ||
         typeof node.settings.args !== "string")) {
       throw new Error("Saved workflow contains invalid MCP settings");
+    }
+    if (node.type === "api" && (!node.settings ||
+        !["name", "method", "url", "headers", "body"].every((k) => typeof node.settings[k] === "string") ||
+        !API_METHODS.includes(node.settings.method))) {
+      throw new Error("Saved workflow contains invalid API settings");
     }
     if (node.type === "claude" && (!node.settings ||
         !CLAUDE_MODELS.has(node.settings.model) ||
@@ -1756,6 +1829,13 @@ function applyWorkflow(workflow) {
       node.el.querySelector(".args").value = saved.settings.args;
       refreshArgsUi(node.el);
       loadTools(node.el);
+    }
+    if (saved.type === "api") {
+      node.el.querySelector(".api-name").value = saved.settings.name;
+      node.el.querySelector(".api-method").value = saved.settings.method;
+      node.el.querySelector(".api-url").value = saved.settings.url;
+      node.el.querySelector(".api-headers").value = saved.settings.headers;
+      node.el.querySelector(".api-body").value = saved.settings.body;
     }
     if (saved.type === "claude") {
       node.el.querySelector(".claude-model").value = saved.settings.model;
@@ -1950,12 +2030,25 @@ document.addEventListener("keydown", (e) => {
 /* =========================================================================
    8. PALETTE
    ========================================================================= */
-document.querySelectorAll(".item").forEach((item) => {
+const API_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"];
+const APIS_KEY = "trimble-workflow-apis-v1";
+let registeredApis = [];
+try {
+  const stored = JSON.parse(localStorage.getItem(APIS_KEY) || "[]");
+  if (Array.isArray(stored)) registeredApis = stored.filter((a) => a && typeof a.id === "string" &&
+    ["name", "method", "url", "headers", "body"].every((k) => typeof a[k] === "string") && API_METHODS.includes(a.method));
+} catch {}
+function setApiPreset(item) {
+  apiPreset = item.dataset.apiId ? registeredApis.find((a) => a.id === item.dataset.apiId) || null : null;
+}
+function wirePaletteItem(item) {
   item.addEventListener("dragstart", (e) => {
+    setApiPreset(item);
     e.dataTransfer.setData("text/plain", item.dataset.type);
     e.dataTransfer.effectAllowed = "copy";
   });
   item.addEventListener("dblclick", () => {
+    setApiPreset(item);
     const r = canvas.getBoundingClientRect();
     const p = stagePoint({
       clientX: r.left + canvas.clientWidth / 2,
@@ -1964,7 +2057,8 @@ document.querySelectorAll(".item").forEach((item) => {
     createNode(item.dataset.type, p.x - 106, p.y - 26);
     drawEdges(); closeMenuIfMobile();
   });
-});
+}
+document.querySelectorAll(".item").forEach(wirePaletteItem);
 // HTML5 drag-and-drop does not fire on touch screens: hold an item, then drag it onto the canvas. A quick tap adds it at the centre.
 (function touchPalette() {
   let ghost = null, timer = null, type = null, startX = 0, startY = 0, dragging = false, moved = false;
@@ -1984,17 +2078,19 @@ document.querySelectorAll(".item").forEach((item) => {
   };
   const place = (x, y) => { ghost.style.left = x - 40 + "px"; ghost.style.top = y - 20 + "px"; };
   const coarse = window.matchMedia("(pointer: coarse)").matches;
-  document.querySelectorAll(".item").forEach((item) => {
+  window.wireTouchItem = (item) => {
     // Native drag would swallow the touch (pointercancel) on touch screens.
     if (coarse) item.draggable = false;
     item.style.touchAction = "pan-y";
     item.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse") return;
+      setApiPreset(item);
       type = item.dataset.type; startX = e.clientX; startY = e.clientY; moved = false;
       timer = setTimeout(() => { timer = null; begin(item, startX, startY); }, 280);
     });
     item.addEventListener("touchmove", (e) => { if (dragging) e.preventDefault(); }, { passive: false });
-  });
+  };
+  document.querySelectorAll(".item").forEach(window.wireTouchItem);
   document.addEventListener("pointermove", (e) => {
     if (!type) return;
     if (dragging) { place(e.clientX, e.clientY); return; }
@@ -2068,6 +2164,74 @@ if (isMobile()) app.classList.add("menu-closed");
 /* =========================================================================
    10. SETTINGS MODAL
    ========================================================================= */
+/* API endpoint registry */
+const apiModal = document.getElementById("apiModal");
+const apiListEl = document.getElementById("apiList");
+function renderApiList() {
+  apiListEl.textContent = "";
+  document.getElementById("apiEmpty").hidden = registeredApis.length > 0;
+  for (const api of registeredApis) {
+    const item = document.createElement("div");
+    item.className = "item";
+    item.draggable = true;
+    item.dataset.type = "api";
+    item.dataset.apiId = api.id;
+    item.title = api.url;
+    const dot = document.createElement("span");
+    dot.className = "dot"; dot.style.background = "#0ea5e9";
+    const method = document.createElement("span");
+    method.className = "api-method"; method.textContent = api.method;
+    const name = document.createElement("span");
+    name.textContent = api.name;
+    const del = document.createElement("button");
+    del.type = "button"; del.className = "api-del"; del.title = "Remove API"; del.textContent = "×";
+    del.addEventListener("click", (e) => {
+      e.stopPropagation();
+      registeredApis = registeredApis.filter((a) => a.id !== api.id);
+      persistApis(); renderApiList();
+    });
+    item.append(dot, method, name, del);
+    wirePaletteItem(item);
+    window.wireTouchItem(item);
+    apiListEl.appendChild(item);
+  }
+}
+function persistApis() {
+  try { localStorage.setItem(APIS_KEY, JSON.stringify(registeredApis)); } catch {}
+}
+document.getElementById("btnAddApi").addEventListener("click", () => {
+  for (const id of ["apiName", "apiUrl", "apiHeaders", "apiBody"]) document.getElementById(id).value = "";
+  document.getElementById("apiMethod").value = "GET";
+  document.getElementById("apiError").textContent = "";
+  apiModal.classList.add("open");
+  document.getElementById("apiName").focus();
+});
+document.getElementById("btnApiCancel").addEventListener("click", () => apiModal.classList.remove("open"));
+apiModal.addEventListener("click", (e) => { if (e.target === apiModal) apiModal.classList.remove("open"); });
+document.getElementById("btnApiSave").addEventListener("click", () => {
+  const err = document.getElementById("apiError");
+  const name = document.getElementById("apiName").value.trim();
+  const url = document.getElementById("apiUrl").value.trim();
+  const headers = document.getElementById("apiHeaders").value.trim();
+  if (!name) { err.textContent = "Enter a name."; return; }
+  if (!/^https?:\/\//i.test(url)) { err.textContent = "URL must start with http:// or https://"; return; }
+  if (headers) {
+    try {
+      const parsed = JSON.parse(headers);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error();
+    } catch { err.textContent = "Headers must be a JSON object."; return; }
+  }
+  registeredApis.push({
+    id: "api" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    name, url, headers,
+    method: document.getElementById("apiMethod").value,
+    body: document.getElementById("apiBody").value
+  });
+  persistApis(); renderApiList();
+  apiModal.classList.remove("open");
+});
+renderApiList();
+
 const settingsModal = document.getElementById("settingsModal");
 const inputClientId = document.getElementById("inputClientId");
 const inputRedirect = document.getElementById("inputRedirectUri");
@@ -2493,6 +2657,42 @@ async function runWorkflowCore(signal) {
         state.result = state.rows ? { results } : results[0];
         statusBox.textContent = state.rows ? `✔ ${results.length} call(s)` : "✔ responded";
         if (state.brainCalls && !results.length) throw new Error(`No Brain objects match tool "${toolName}"`);
+      }
+
+      if (cur.type === "api") {
+        const statusBox = cur.el.querySelector(".status");
+        const method = cur.el.querySelector(".api-method").value;
+        const urlTpl = cur.el.querySelector(".api-url").value.trim();
+        if (!urlTpl) throw new Error("Set the API URL");
+        let headersTpl;
+        try { headersTpl = JSON.parse(cur.el.querySelector(".api-headers").value.trim() || "{}"); }
+        catch { throw new Error("Headers must be valid JSON"); }
+        const bodyTpl = cur.el.querySelector(".api-body").value;
+        const rowList = state.rows || [null];
+        const results = [];
+        for (let r = 0; r < rowList.length; r++) {
+          if (signal.aborted) throw new DOMException("Aborted", "AbortError");
+          const lk = rowList[r] ? lowerKeys(rowList[r]) : {};
+          const fill = (str, enc) => String(str)
+            .replace(/\{\{row\.([\w.]+)\}\}/g, (_, k) => { const v = String(lk[k.toLowerCase()] ?? ""); return enc ? encodeURIComponent(v) : v; })
+            .replace(/\{\{file_text\}\}/g, state.fileText || "")
+            .replace(/\{\{filename\}\}/g, state.fileName || "");
+          const headers = Object.fromEntries(Object.entries(headersTpl).map(([k, v]) => [k, fill(v)]));
+          const url = fill(urlTpl, true);
+          if (!/^https?:\/\//i.test(url)) throw new Error("API URL must start with http:// or https://");
+          if (rowList.length > 1 || rowList[r]) statusBox.textContent = `Row ${r + 1}/${rowList.length}…`;
+          else statusBox.textContent = "Calling " + new URL(url).hostname + " …";
+          const hasBody = !["GET", "HEAD"].includes(method) && bodyTpl.trim();
+          const res = await fetch(url, { method, headers, body: hasBody ? fill(bodyTpl) : undefined, signal });
+          const text = await res.text();
+          let data; try { data = JSON.parse(text); } catch { data = text; }
+          if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+          results.push(data);
+        }
+        const payload = state.rows ? results : results[0];
+        cur.el.querySelector(".api-out").textContent = typeof payload === "string" ? payload : JSON.stringify(payload, null, 2);
+        state.result = { result: { structuredContent: state.rows ? { results } : (payload && typeof payload === "object" ? payload : { value: payload }) } };
+        statusBox.textContent = `✔ ${results.length} call(s)`;
       }
 
       if (cur.type === "claude") {
