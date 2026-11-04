@@ -527,6 +527,7 @@
     </div>
     <div class="palette-tabs" role="tablist" aria-label="Workflow component categories">
       <button class="palette-tab" id="tabImport" type="button" role="tab" aria-selected="true" aria-controls="panelImport">Import</button>
+      <button class="palette-tab" id="tabServices" type="button" role="tab" aria-selected="false" aria-controls="panelServices" tabindex="-1">Import Services</button>
       <button class="palette-tab" id="tabBrain" type="button" role="tab" aria-selected="false" aria-controls="panelBrain" tabindex="-1">The Brain</button>
       <button class="palette-tab" id="tabTools" type="button" role="tab" aria-selected="false" aria-controls="panelTools" tabindex="-1">MCP Tools</button>
       <button class="palette-tab" id="tabApi" type="button" role="tab" aria-selected="false" aria-controls="panelApi" tabindex="-1">API Endpoints</button>
@@ -550,6 +551,12 @@
       <div class="item" draggable="true" data-type="upload_pdf">
         <span class="dot" style="background:#2563eb"></span> Upload PDF
       </div>
+    </div>
+    <div class="palette-panel" id="panelServices" role="tabpanel" aria-labelledby="tabServices" hidden>
+      <div class="item" draggable="true" data-type="google_sheet">
+        <span class="dot" style="background:#0f9d58"></span> Google Sheets
+      </div>
+      <div class="hint">Connect your Google account, pick a spreadsheet from Drive, and its sheets are discovered automatically.</div>
     </div>
     <div class="palette-panel" id="panelBrain" role="tabpanel" aria-labelledby="tabBrain" hidden>
       <div class="item" draggable="true" data-type="brain">
@@ -751,6 +758,10 @@
     <label for="inputClientId">Trimble Client ID</label>
     <input type="password" id="inputClientId" placeholder="e.g. 6a3f9b1c-…" spellcheck="false" autocomplete="off" />
 
+    <label for="inputGoogleClientId">Google OAuth Client ID (for Google Sheets)</label>
+    <input type="text" id="inputGoogleClientId" placeholder="xxxx.apps.googleusercontent.com" spellcheck="false" autocomplete="off" />
+    <div class="hint-text">Create a <strong>Web application</strong> OAuth client in Google Cloud Console and add this page's origin under <strong>Authorized JavaScript origins</strong>. Enable the Drive and Sheets APIs.</div>
+
     <label for="inputRedirectUri">Redirect URI</label>
     <div class="row">
       <input type="text" id="inputRedirectUri" readonly />
@@ -839,6 +850,7 @@ const TYPES = {
   upload_ifc: { label: "Upload IFC", color: "#0891b2", icon: "🏗", hasIn: true, hasOut: true },
   upload_dxf: { label: "Upload DXF", color: "#7c3aed", icon: "📐", hasIn: true, hasOut: true },
   upload_pdf: { label: "Upload PDF", color: "#2563eb", icon: "📄", hasIn: true, hasOut: true },
+  google_sheet: { label: "Google Sheets", color: "#0f9d58", icon: "🟩", hasIn: true, hasOut: true },
   brain:  { label: "Brain",    color: "#e11d48", icon: "🧠", hasIn: true,  hasOut: true  },
   claude: { label: "Claude Chat", color: "#d97706", icon: "✦", hasIn: true, hasOut: true },
   api:    { label: "Call API",   color: "#0ea5e9", icon: "🌐", hasIn: true,  hasOut: true  },
@@ -1223,6 +1235,13 @@ function bodyFor(type, id) {
                           <div class="hint">Reads connected workflow results and text/CSV uploads. Extract PDF/Excel files first. No API key or token is stored in this workflow.</div>
                           <div class="status">ready</div>
                           <pre class="claude-out" style="max-height:180px;overflow:auto;font-size:11px;margin:6px 0 0;white-space:pre-wrap">—</pre>`;
+    case "google_sheet": return `<button type="button" class="gs-connect" style="width:100%">Connect Google account</button>
+                          <input type="text" class="gs-filter" placeholder="Search spreadsheets by name…" spellcheck="false" style="margin-top:6px" disabled>
+                          <select class="gs-file" style="width:100%;margin-top:6px" disabled><option value="">— spreadsheet —</option></select>
+                          <select class="gs-sheet" style="width:100%;margin-top:6px" disabled><option value="">— sheet —</option></select>
+                          <label style="display:block;margin-top:6px;font-size:11px"><input type="checkbox" class="gs-header" checked> First row is header</label>
+                          <div class="status">not connected</div>
+                          <div class="gs-preview" style="max-height:140px;overflow:auto;font-size:11px;margin-top:6px"></div>`;
     case "api":    return `<input type="text" class="api-name" placeholder="API name" spellcheck="false" maxlength="60">
                           <div style="display:flex;gap:4px;margin-top:6px">
                             <select class="api-method"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select>
@@ -1443,6 +1462,7 @@ function createNode(type, x, y, { autoLoad = true } = {}) {
   updateNodeLabels(type);
   wireNode(node);
   updateStageSize();
+  if (type === "google_sheet") wireGoogleSheet(el);
   if (type === "api" && apiPreset) {
     el.querySelector(".api-name").value = apiPreset.name;
     el.querySelector(".api-method").value = apiPreset.method;
@@ -1641,6 +1661,14 @@ async function serializeWorkflow() {
           args: node.el.querySelector(".args").value
         };
       }
+      if (node.type === "google_sheet") {
+        saved.settings = {
+          spreadsheetId: node.el.querySelector(".gs-file").value,
+          spreadsheetName: node.el.querySelector(".gs-file").selectedOptions[0]?.textContent || "",
+          sheet: node.el.querySelector(".gs-sheet").value,
+          header: node.el.querySelector(".gs-header").checked
+        };
+      }
       if (node.type === "api") {
         saved.settings = {
           name: node.el.querySelector(".api-name").value,
@@ -1691,6 +1719,11 @@ function validateLoadedWorkflow(workflow) {
         typeof node.settings.tool !== "string" ||
         typeof node.settings.args !== "string")) {
       throw new Error("Saved workflow contains invalid MCP settings");
+    }
+    if (node.type === "google_sheet" && (!node.settings ||
+        typeof node.settings.spreadsheetId !== "string" || typeof node.settings.spreadsheetName !== "string" ||
+        typeof node.settings.sheet !== "string" || typeof node.settings.header !== "boolean")) {
+      throw new Error("Saved workflow contains invalid Google Sheets settings");
     }
     if (node.type === "api" && (!node.settings ||
         !["name", "method", "url", "headers", "body"].every((k) => typeof node.settings[k] === "string") ||
@@ -1831,6 +1864,7 @@ function applyWorkflow(workflow) {
       refreshArgsUi(node.el);
       loadTools(node.el);
     }
+    if (saved.type === "google_sheet") restoreGoogleSheet(node.el, saved.settings);
     if (saved.type === "api") {
       node.el.querySelector(".api-name").value = saved.settings.name;
       node.el.querySelector(".api-method").value = saved.settings.method;
@@ -2263,6 +2297,174 @@ document.getElementById("btnApiSave").addEventListener("click", () => {
 });
 renderApiList();
 
+/* Google Sheets import service */
+const GOOGLE_SCOPES = "https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/spreadsheets.readonly";
+let googleAuth = { token: "", expiry: 0 };
+let googleScriptPromise = null;
+function loadGoogleIdentity() {
+  if (window.google?.accounts?.oauth2) return Promise.resolve();
+  if (!googleScriptPromise) {
+    googleScriptPromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.onload = resolve;
+      script.onerror = () => { googleScriptPromise = null; reject(new Error("Could not load Google sign-in")); };
+      document.head.appendChild(script);
+    });
+  }
+  return googleScriptPromise;
+}
+async function ensureGoogleToken(interactive) {
+  if (googleAuth.token && Date.now() < googleAuth.expiry - 30000) return googleAuth.token;
+  const clientId = (settings.googleClientId || "").trim();
+  if (!clientId) {
+    openSettings();
+    throw new Error("Enter your Google OAuth Client ID in ⚙ Settings, then connect again");
+  }
+  await loadGoogleIdentity();
+  return new Promise((resolve, reject) => {
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: GOOGLE_SCOPES,
+      callback: (response) => {
+        if (response.error || !response.access_token) return reject(new Error(response.error_description || response.error || "Google sign-in failed"));
+        googleAuth = { token: response.access_token, expiry: Date.now() + Number(response.expires_in || 3600) * 1000 };
+        resolve(googleAuth.token);
+      },
+      error_callback: (err) => reject(new Error(err?.type === "popup_closed" ? "Google sign-in was cancelled" : (err?.message || "Google sign-in failed")))
+    });
+    client.requestAccessToken({ prompt: interactive ? "" : "none" });
+  });
+}
+async function googleFetch(url) {
+  const token = await ensureGoogleToken(false);
+  const response = await fetch(url, { headers: { Authorization: "Bearer " + token } });
+  if (response.status === 401) googleAuth = { token: "", expiry: 0 };
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error?.message || `Google API error (HTTP ${response.status})`);
+  return data;
+}
+async function listGoogleSpreadsheets(nameFilter) {
+  const clauses = ["mimeType='application/vnd.google-apps.spreadsheet'", "trashed=false"];
+  if (nameFilter) clauses.push(`name contains '${nameFilter.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`);
+  const params = new URLSearchParams({
+    q: clauses.join(" and "), orderBy: "modifiedTime desc", pageSize: "50",
+    fields: "files(id,name)", supportsAllDrives: "true", includeItemsFromAllDrives: "true"
+  });
+  return (await googleFetch("https://www.googleapis.com/drive/v3/files?" + params)).files || [];
+}
+async function listGoogleSheetTitles(spreadsheetId) {
+  const data = await googleFetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}?fields=sheets.properties.title`);
+  return (data.sheets || []).map((sheet) => sheet.properties.title);
+}
+async function readGoogleSheetRows(spreadsheetId, sheetTitle, hasHeader) {
+  const range = encodeURIComponent(`'${sheetTitle.replace(/'/g, "''")}'`);
+  const data = await googleFetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${range}?valueRenderOption=UNFORMATTED_VALUE`);
+  const values = data.values || [];
+  if (!values.length) return [];
+  const width = Math.max(...values.map((r) => r.length));
+  let headers, body;
+  if (hasHeader) {
+    const seen = new Map();
+    headers = Array.from({ length: width }, (_, i) => {
+      const base = String(values[0][i] ?? "").trim() || `Column ${i + 1}`;
+      const count = seen.get(base) || 0;
+      seen.set(base, count + 1);
+      return count ? `${base}_${count + 1}` : base;
+    });
+    body = values.slice(1);
+  } else {
+    headers = Array.from({ length: width }, (_, i) => `Column ${i + 1}`);
+    body = values;
+  }
+  return body.map((r) => Object.fromEntries(headers.map((h, i) => [h, r[i] ?? ""])));
+}
+function renderGoogleSheetPreview(el, rows) {
+  const box = el.querySelector(".gs-preview");
+  box.textContent = "";
+  if (!rows.length) { box.textContent = "Sheet is empty"; return; }
+  const cols = Object.keys(rows[0]);
+  const table = document.createElement("table");
+  table.style.cssText = "border-collapse:collapse;width:100%";
+  const addRow = (cells, tag) => {
+    const tr = table.insertRow();
+    for (const value of cells) {
+      const cell = document.createElement(tag);
+      cell.textContent = String(value);
+      cell.style.cssText = "border:1px solid #475569;padding:2px 4px;text-align:left";
+      tr.appendChild(cell);
+    }
+  };
+  addRow(cols, "th");
+  rows.slice(0, 10).forEach((row) => addRow(cols.map((c) => row[c] ?? ""), "td"));
+  box.appendChild(table);
+  if (rows.length > 10) box.appendChild(document.createTextNode(`… ${rows.length - 10} more row(s)`));
+}
+function wireGoogleSheet(el) {
+  const status = el.querySelector(".status");
+  const connect = el.querySelector(".gs-connect");
+  const filter = el.querySelector(".gs-filter");
+  const fileSel = el.querySelector(".gs-file");
+  const sheetSel = el.querySelector(".gs-sheet");
+  const fail = (error) => { status.textContent = "❌ " + error.message; };
+  const loadFiles = async () => {
+    status.textContent = "Loading spreadsheets from Drive…";
+    const files = await listGoogleSpreadsheets(filter.value.trim());
+    const keep = fileSel.value;
+    fileSel.replaceChildren(new Option("— spreadsheet —", ""), ...files.map((f) => new Option(f.name, f.id)));
+    if (keep && files.some((f) => f.id === keep)) fileSel.value = keep;
+    fileSel.disabled = filter.disabled = false;
+    status.textContent = `✔ ${files.length} spreadsheet(s) found`;
+  };
+  const loadSheets = async () => {
+    sheetSel.replaceChildren(new Option("— sheet —", ""));
+    sheetSel.disabled = true;
+    if (!fileSel.value) return;
+    status.textContent = "Discovering sheets…";
+    const titles = await listGoogleSheetTitles(fileSel.value);
+    sheetSel.replaceChildren(new Option("— sheet —", ""), ...titles.map((t) => new Option(t, t)));
+    sheetSel.disabled = false;
+    if (titles.length === 1) sheetSel.value = titles[0];
+    status.textContent = `✔ ${titles.length} sheet(s) discovered`;
+  };
+  el._gsLoadSheets = loadSheets;
+  connect.addEventListener("click", async () => {
+    try {
+      await ensureGoogleToken(true);
+      connect.textContent = "Google connected ✔ (refresh list)";
+      await loadFiles();
+    } catch (error) { fail(error); }
+  });
+  let timer = null;
+  filter.addEventListener("input", () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => loadFiles().catch(fail), 400);
+  });
+  fileSel.addEventListener("change", () => loadSheets().catch(fail));
+  sheetSel.addEventListener("change", async () => {
+    if (!sheetSel.value) return;
+    try {
+      status.textContent = "Reading sheet…";
+      const rows = await readGoogleSheetRows(fileSel.value, sheetSel.value, el.querySelector(".gs-header").checked);
+      renderGoogleSheetPreview(el, rows);
+      status.textContent = `✔ ${rows.length} row(s)`;
+    } catch (error) { fail(error); }
+  });
+}
+function restoreGoogleSheet(el, saved) {
+  el.querySelector(".gs-header").checked = saved.header;
+  if (!saved.spreadsheetId) return;
+  const fileSel = el.querySelector(".gs-file");
+  const sheetSel = el.querySelector(".gs-sheet");
+  fileSel.replaceChildren(new Option("— spreadsheet —", ""), new Option(saved.spreadsheetName || saved.spreadsheetId, saved.spreadsheetId));
+  fileSel.value = saved.spreadsheetId;
+  sheetSel.replaceChildren(new Option("— sheet —", ""), new Option(saved.sheet, saved.sheet));
+  sheetSel.value = saved.sheet;
+  fileSel.disabled = sheetSel.disabled = false;
+  el.querySelector(".status").textContent = "Saved selection — connect Google to refresh the lists";
+}
+
 const settingsModal = document.getElementById("settingsModal");
 const inputClientId = document.getElementById("inputClientId");
 const inputRedirect = document.getElementById("inputRedirectUri");
@@ -2270,6 +2472,7 @@ const inputRedirect = document.getElementById("inputRedirectUri");
 async function openSettings() {
   await trimbleClientIdReady;
   inputClientId.value = settings.clientId || "";
+  document.getElementById("inputGoogleClientId").value = settings.googleClientId || "";
   inputRedirect.value = REDIRECT_URI;
   settingsModal.classList.add("open");
   setTimeout(() => inputClientId.focus(), 60);
@@ -2280,6 +2483,9 @@ document.getElementById("btnSettings").addEventListener("click", openSettings);
 document.getElementById("btnSettingsCancel").addEventListener("click", closeSettings);
 document.getElementById("btnSettingsSave").addEventListener("click", () => {
   settings.clientId = inputClientId.value.trim();
+  const newGoogleId = document.getElementById("inputGoogleClientId").value.trim();
+  if (newGoogleId !== (settings.googleClientId || "")) googleAuth = { token: "", expiry: 0 };
+  settings.googleClientId = newGoogleId;
   saveSettings(settings);
   closeSettings();
   setStatus(settings.clientId ? "Settings saved" : "Settings saved (Client ID empty)");
@@ -2595,6 +2801,20 @@ async function runWorkflowCore(signal) {
           : file ? await file.text()
           : new TextDecoder().decode(Uint8Array.from(atob(stored.base64), (c) => c.charCodeAt(0)));
         cur.el.querySelector(".status").textContent = "✔ " + state.fileName;
+      }
+
+      if (cur.type === "google_sheet") {
+        const statusBox = cur.el.querySelector(".status");
+        const id = cur.el.querySelector(".gs-file").value;
+        const sheet = cur.el.querySelector(".gs-sheet").value;
+        if (!id || !sheet) throw new Error("Connect Google and choose a spreadsheet and sheet");
+        statusBox.textContent = "Reading sheet…";
+        const rows = await readGoogleSheetRows(id, sheet, cur.el.querySelector(".gs-header").checked);
+        state.rows = null;
+        state.brainCalls = null;
+        state.result = { result: { structuredContent: { rows } } };
+        renderGoogleSheetPreview(cur.el, rows);
+        statusBox.textContent = `✔ ${rows.length} row(s) from "${sheet}"`;
       }
 
       if (cur.type === "brain") {

@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp & Telegram ChatBots, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #4"
+// #5"
 // git push origin main
 
 // git add .
@@ -399,7 +399,7 @@ const maxLibraryBytes = 50 * 1024 * 1024;
 const workflowDocumentId = (name) => createHash('sha256').update(name.toLowerCase()).digest('hex');
 const workflowNodeTypes = new Set([
   'start', 'upload', 'upload_excel', 'upload_csv', 'upload_ifc', 'upload_dxf', 'upload_pdf',
-  'brain', 'mcp', 'api', 'claude', 'result', 'output_grid', 'output_form', 'flow_if', 'flow_else', 'flow_switch', 'flow_for', 'flow_while',
+  'brain', 'google_sheet', 'mcp', 'api', 'claude', 'result', 'output_grid', 'output_form', 'flow_if', 'flow_else', 'flow_switch', 'flow_for', 'flow_while',
   'flow_do_while', 'flow_foreach', 'flow_break', 'flow_continue', 'flow_return',
   'flow_goto', 'export_dxf_excel', 'export_dxf_csv', 'export_dynamic'
 ]);
@@ -414,6 +414,7 @@ const workflowNodePorts = {
   brain: { in: true, out: true },
   mcp: { in: true, out: true },
   api: { in: true, out: true },
+  google_sheet: { in: true, out: true },
   claude: { in: true, out: true },
   result: { in: true, out: true },
   output_grid: { in: true, out: true },
@@ -486,6 +487,22 @@ function validateWorkflowDocument(workflow) {
         url: settings.url,
         tool: settings.tool,
         args: settings.args
+      };
+    }
+    if (node.type === 'google_sheet') {
+      const settings = node.settings;
+      if (!settings || typeof settings !== 'object' || Array.isArray(settings) ||
+          typeof settings.spreadsheetId !== 'string' || settings.spreadsheetId.length > 200 ||
+          typeof settings.spreadsheetName !== 'string' || settings.spreadsheetName.length > 300 ||
+          typeof settings.sheet !== 'string' || settings.sheet.length > 200 ||
+          typeof settings.header !== 'boolean') {
+        throw new Error('Workflow contains invalid Google Sheets node settings');
+      }
+      normalized.settings = {
+        spreadsheetId: settings.spreadsheetId,
+        spreadsheetName: settings.spreadsheetName,
+        sheet: settings.sheet,
+        header: settings.header
       };
     }
     if (node.type === 'api') {
