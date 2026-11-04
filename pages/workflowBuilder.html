@@ -1086,6 +1086,7 @@ async function ensureToken() {
 
       setAuthBadge("signed-in", "Signed in to Trimble");
       if (typeof refreshWorkflowNames === "function") refreshWorkflowNames(accessToken).catch(() => {});
+      if (typeof loadApisFromServer === "function") loadApisFromServer();
       return accessToken;
     } catch (err) {
       setAuthBadge("error", "Sign-in failed");
@@ -2189,6 +2190,9 @@ function renderApiList() {
       e.stopPropagation();
       registeredApis = registeredApis.filter((a) => a.id !== api.id);
       persistApis(); renderApiList();
+      apiEndpointRequest("DELETE", `?id=${encodeURIComponent(api.id)}&${updatedByQuery()}`)
+        .then(() => setStatus(`Deleted API "${api.name}" from Firebase`))
+        .catch((error) => { if (!/not found/i.test(error.message)) setStatus("Could not delete API from Firebase: " + error.message); });
     });
     item.append(dot, method, name, del);
     wirePaletteItem(item);
@@ -2198,6 +2202,29 @@ function renderApiList() {
 }
 function persistApis() {
   try { localStorage.setItem(APIS_KEY, JSON.stringify(registeredApis)); } catch {}
+}
+async function apiEndpointRequest(method, query, body) {
+  const token = await ensureToken();
+  const response = await fetch("/api/workflow/api-endpoint" + query, {
+    method,
+    headers: { "Authorization": "Bearer " + token, ...(body ? { "Content-Type": "application/json" } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+    cache: "no-store"
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+  return result;
+}
+async function loadApisFromServer() {
+  try {
+    const result = await apiEndpointRequest("GET", "?" + updatedByQuery());
+    if (!Array.isArray(result.endpoints)) throw new Error("Invalid API endpoint list");
+    registeredApis = result.endpoints.filter((a) => a && typeof a.id === "string" &&
+      ["name", "method", "url", "headers", "body"].every((k) => typeof a[k] === "string") && API_METHODS.includes(a.method));
+    persistApis(); renderApiList();
+  } catch (error) {
+    setStatus("Could not load API endpoints from Firebase: " + error.message);
+  }
 }
 document.getElementById("btnAddApi").addEventListener("click", () => {
   for (const id of ["apiName", "apiUrl", "apiHeaders", "apiBody"]) document.getElementById(id).value = "";
@@ -2221,14 +2248,18 @@ document.getElementById("btnApiSave").addEventListener("click", () => {
       if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error();
     } catch { err.textContent = "Headers must be a JSON object."; return; }
   }
-  registeredApis.push({
+  const api = {
     id: "api" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     name, url, headers,
     method: document.getElementById("apiMethod").value,
     body: document.getElementById("apiBody").value
-  });
+  };
+  registeredApis.push(api);
   persistApis(); renderApiList();
   apiModal.classList.remove("open");
+  apiEndpointRequest("PUT", "", { ...api, updatedBy: currentUserEmail() })
+    .then(() => setStatus(`Saved API "${api.name}" to Firebase`))
+    .catch((error) => setStatus(`Saved API "${api.name}" in this browser only — Firebase save failed: ${error.message}`));
 });
 renderApiList();
 

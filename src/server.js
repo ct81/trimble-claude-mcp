@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp & Telegram ChatBots, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #2"
+// #3"
 // git push origin main
 
 // git add .
@@ -389,6 +389,9 @@ const app = express();
 const workflowStorageDirectory = path.join(process.cwd(), 'pages', 'datastorage');
 const workflowStoragePath = path.join(workflowStorageDirectory, 'workflowbuilder.json');
 const workflowDbPath = 'workflowbuilder';
+const apiMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+const apiEndpointDbPath = `${workflowDbPath}/api_endpoint`;
+const maxApiEndpoints = 200;
 const maxWorkflows = 100;
 const maxWorkflowFileBase64 = 8 * 1024 * 1024;
 const maxWorkflowBytes = 9 * 1024 * 1024;
@@ -396,7 +399,7 @@ const maxLibraryBytes = 50 * 1024 * 1024;
 const workflowDocumentId = (name) => createHash('sha256').update(name.toLowerCase()).digest('hex');
 const workflowNodeTypes = new Set([
   'start', 'upload', 'upload_excel', 'upload_csv', 'upload_ifc', 'upload_dxf', 'upload_pdf',
-  'brain', 'mcp', 'claude', 'result', 'output_grid', 'output_form', 'flow_if', 'flow_else', 'flow_switch', 'flow_for', 'flow_while',
+  'brain', 'mcp', 'api', 'claude', 'result', 'output_grid', 'output_form', 'flow_if', 'flow_else', 'flow_switch', 'flow_for', 'flow_while',
   'flow_do_while', 'flow_foreach', 'flow_break', 'flow_continue', 'flow_return',
   'flow_goto', 'export_dxf_excel', 'export_dxf_csv', 'export_dynamic'
 ]);
@@ -410,6 +413,7 @@ const workflowNodePorts = {
   upload_pdf: { in: true, out: true },
   brain: { in: true, out: true },
   mcp: { in: true, out: true },
+  api: { in: true, out: true },
   claude: { in: true, out: true },
   result: { in: true, out: true },
   output_grid: { in: true, out: true },
@@ -482,6 +486,24 @@ function validateWorkflowDocument(workflow) {
         url: settings.url,
         tool: settings.tool,
         args: settings.args
+      };
+    }
+    if (node.type === 'api') {
+      const settings = node.settings;
+      if (!settings || typeof settings !== 'object' || Array.isArray(settings) ||
+          !apiMethods.includes(settings.method) ||
+          typeof settings.name !== 'string' || settings.name.length > 100 ||
+          typeof settings.url !== 'string' || settings.url.length > 2048 ||
+          typeof settings.headers !== 'string' || settings.headers.length > 10000 ||
+          typeof settings.body !== 'string' || settings.body.length > 50000) {
+        throw new Error('Workflow contains invalid API node settings');
+      }
+      normalized.settings = {
+        name: settings.name,
+        method: settings.method,
+        url: settings.url,
+        headers: settings.headers,
+        body: settings.body
       };
     }
     if (node.type === 'claude') {
@@ -781,6 +803,99 @@ app.put('/api/workflow', requireMcpAuth, async (req, res) => {
     }
     console.error('[Workflow] Failed to save workflow:', error);
     return res.status(500).json({ error: 'Failed to save workflow' });
+  }
+});
+
+function apiEndpointError(message, status = 400) {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+}
+
+function validateApiEndpoint(body) {
+  const id = body?.id;
+  if (typeof id !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(id)) throw apiEndpointError('API endpoint id is invalid');
+  const { name, method, url, headers, body: requestBody } = body;
+  if (typeof name !== 'string' || !name.trim() || name.length > 100 || /[\u0000-\u001f\u007f]/.test(name)) {
+    throw apiEndpointError('API endpoint name must be 1-100 characters');
+  }
+  if (!apiMethods.includes(method)) throw apiEndpointError('API endpoint method is invalid');
+  if (typeof url !== 'string' || url.length > 2048 || !/^https?:\/\//i.test(url)) {
+    throw apiEndpointError('API endpoint URL must start with http:// or https://');
+  }
+  if (typeof headers !== 'string' || headers.length > 10000) throw apiEndpointError('API endpoint headers are invalid');
+  if (headers.trim()) {
+    let parsed;
+    try { parsed = JSON.parse(headers); } catch { throw apiEndpointError('API endpoint headers must be a JSON object'); }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw apiEndpointError('API endpoint headers must be a JSON object');
+  }
+  if (typeof requestBody !== 'string' || requestBody.length > 50000) throw apiEndpointError('API endpoint body is invalid');
+  return { id, name: name.trim(), method, url, headers, body: requestBody };
+}
+
+function requireRealtimeDb() {
+  if (!realtimeDb) throw apiEndpointError('Firebase Realtime Database is not configured on the server', 503);
+}
+
+app.get('/api/workflow/api-endpoint', requireMcpAuth, async (req, res) => {
+  try {
+    requireRealtimeDb();
+    res.set('Cache-Control', 'no-store');
+    const updatedBy = normalizeUpdatedBy(req.query.updatedBy);
+    const items = (await realtimeDb.ref(apiEndpointDbPath).get()).val() || {};
+    const endpoints = Object.entries(items)
+      .filter(([, item]) => !updatedBy || normalizeUpdatedBy(item?.updatedBy) === updatedBy)
+      .map(([id, item]) => ({ id, ...item }));
+    return res.json({ endpoints });
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message });
+    console.error('[ApiEndpoint] Failed to list:', error);
+    return res.status(500).json({ error: 'Failed to load API endpoints' });
+  }
+});
+
+app.put('/api/workflow/api-endpoint', requireMcpAuth, async (req, res) => {
+  try {
+    requireRealtimeDb();
+    const endpoint = validateApiEndpoint(req.body);
+    const updatedBy = normalizeUpdatedBy(req.body?.updatedBy);
+    const ref = realtimeDb.ref(`${apiEndpointDbPath}/${endpoint.id}`);
+    const existing = await ref.get();
+    if (existing.exists()) {
+      if (updatedBy && normalizeUpdatedBy(existing.val()?.updatedBy) !== updatedBy) {
+        throw apiEndpointError('API endpoint belongs to another user', 403);
+      }
+    } else if (Object.keys((await realtimeDb.ref(apiEndpointDbPath).get()).val() || {}).length >= maxApiEndpoints) {
+      throw apiEndpointError('API endpoint library is limited to 200 entries');
+    }
+    const { id, ...fields } = endpoint;
+    await ref.set({ ...fields, updatedAt: new Date().toISOString(), updatedBy });
+    return res.json({ saved: true, id });
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message });
+    console.error('[ApiEndpoint] Failed to save:', error);
+    return res.status(500).json({ error: 'Failed to save API endpoint' });
+  }
+});
+
+app.delete('/api/workflow/api-endpoint', requireMcpAuth, async (req, res) => {
+  try {
+    requireRealtimeDb();
+    const id = req.query.id;
+    if (typeof id !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(id)) throw apiEndpointError('API endpoint id is invalid');
+    const updatedBy = normalizeUpdatedBy(req.query.updatedBy);
+    const ref = realtimeDb.ref(`${apiEndpointDbPath}/${id}`);
+    const existing = await ref.get();
+    if (!existing.exists()) return res.status(404).json({ error: 'API endpoint was not found' });
+    if (updatedBy && normalizeUpdatedBy(existing.val()?.updatedBy) !== updatedBy) {
+      throw apiEndpointError('API endpoint belongs to another user', 403);
+    }
+    await ref.remove();
+    return res.json({ deleted: true, id });
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message });
+    console.error('[ApiEndpoint] Failed to delete:', error);
+    return res.status(500).json({ error: 'Failed to delete API endpoint' });
   }
 });
 
