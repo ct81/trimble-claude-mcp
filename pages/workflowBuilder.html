@@ -241,7 +241,11 @@
   .canvas::-webkit-scrollbar-thumb:hover { background: #475569; }
   .canvas::-webkit-scrollbar-corner { background: #0b1220; }
 
-  .stage { position: relative; }
+  .stage-viewport { position: relative; }
+  .stage {
+    position: absolute; top: 0; left: 0;
+    transform-origin: top left;
+  }
 
   #edges {
     position: absolute; inset: 0; width: 100%; height: 100%;
@@ -655,6 +659,7 @@
     <div class="tip">
       <strong>How to use</strong><br>
       • Drag a component onto the canvas.<br>
+      • Use the mouse wheel to zoom in and out.<br>
       • Drag from an <code>out</code> port ● to an <code>in</code> port ● to connect.<br>
       • Click a connection line to delete it.<br>
       • Press <code>Delete</code> to remove a selected node.<br>
@@ -686,10 +691,12 @@
     </div>
 
     <div class="canvas" id="canvas">
-      <div class="stage" id="stage">
-        <svg id="edges" xmlns="http://www.w3.org/2000/svg">
-          <path id="tempPath" class="edge"></path>
-        </svg>
+      <div class="stage-viewport" id="stageViewport">
+        <div class="stage" id="stage">
+          <svg id="edges" xmlns="http://www.w3.org/2000/svg">
+            <path id="tempPath" class="edge"></path>
+          </svg>
+        </div>
       </div>
     </div>
   </main>
@@ -826,6 +833,7 @@ const NS       = "http://www.w3.org/2000/svg";
 const app      = document.getElementById("app");
 const canvas   = document.getElementById("canvas");
 const stage    = document.getElementById("stage");
+const stageViewport = document.getElementById("stageViewport");
 const svg      = document.getElementById("edges");
 const tempPath = document.getElementById("tempPath");
 const statusEl = document.getElementById("status");
@@ -883,6 +891,8 @@ const STAGE_MIN = 340, STAGE_PAD = 260, MAX_COORD = 8000;
 let nodes = [], edges = [];
 let nodeSeq = 0, edgeSeq = 0;
 let dragState = null, connecting = null, selected = null;
+let canvasZoom = 1;
+const MIN_CANVAS_ZOOM = 0.25, MAX_CANVAS_ZOOM = 2.5;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const setStatus = (t) => (statusEl.textContent = t);
@@ -1120,7 +1130,7 @@ setupAuthChannel();
    ========================================================================= */
 function stagePoint(e) {
   const r = stage.getBoundingClientRect();
-  return { x: e.clientX - r.left, y: e.clientY - r.top };
+  return { x: (e.clientX - r.left) / canvasZoom, y: (e.clientY - r.top) / canvasZoom };
 }
 function outPos(n) { return { x: n.x + n.el.offsetWidth, y: n.y + n.el.offsetHeight / 2 }; }
 function inPos(n)  { return { x: n.x,                   y: n.y + n.el.offsetHeight / 2 }; }
@@ -1129,8 +1139,8 @@ function bezier(p1, p2) {
   return `M ${p1.x} ${p1.y} C ${p1.x + dx} ${p1.y}, ${p2.x - dx} ${p2.y}, ${p2.x} ${p2.y}`;
 }
 function updateStageSize() {
-  let w = Math.max(canvas.clientWidth,  STAGE_MIN);
-  let h = Math.max(canvas.clientHeight, STAGE_MIN);
+  let w = Math.max(canvas.clientWidth / canvasZoom,  STAGE_MIN);
+  let h = Math.max(canvas.clientHeight / canvasZoom, STAGE_MIN);
   for (const n of nodes) {
     w = Math.max(w, n.x + n.el.offsetWidth  + STAGE_PAD);
     h = Math.max(h, n.y + n.el.offsetHeight + STAGE_PAD);
@@ -1139,7 +1149,25 @@ function updateStageSize() {
   const ws = w + "px", hs = h + "px";
   if (stage.style.width  !== ws) stage.style.width  = ws;
   if (stage.style.height !== hs) stage.style.height = hs;
+  stage.style.transform = `scale(${canvasZoom})`;
+  stageViewport.style.width = (w * canvasZoom) + "px";
+  stageViewport.style.height = (h * canvasZoom) + "px";
 }
+canvas.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  const nextZoom = Math.max(MIN_CANVAS_ZOOM, Math.min(MAX_CANVAS_ZOOM, canvasZoom * Math.exp(-e.deltaY * 0.001)));
+  if (nextZoom === canvasZoom) return;
+
+  const bounds = canvas.getBoundingClientRect();
+  const cursorX = e.clientX - bounds.left - canvas.clientLeft;
+  const cursorY = e.clientY - bounds.top - canvas.clientTop;
+  const contentX = (canvas.scrollLeft + cursorX) / canvasZoom;
+  const contentY = (canvas.scrollTop + cursorY) / canvasZoom;
+  canvasZoom = nextZoom;
+  updateStageSize();
+  canvas.scrollLeft = contentX * canvasZoom - cursorX;
+  canvas.scrollTop = contentY * canvasZoom - cursorY;
+}, { passive: false });
 function autoScroll(e) {
   const r = canvas.getBoundingClientRect();
   const zone = 60, maxSpeed = 18;
@@ -1515,8 +1543,8 @@ function wireNode(node) {
     el.classList.add("sized");
     el.style.height = startH + "px";
     const move = (ev) => {
-      el.style.width  = Math.max(160, startW + ev.clientX - startX) + "px";
-      el.style.height = Math.max(90,  startH + ev.clientY - startY) + "px";
+      el.style.width  = Math.max(160, startW + (ev.clientX - startX) / canvasZoom) + "px";
+      el.style.height = Math.max(90,  startH + (ev.clientY - startY) / canvasZoom) + "px";
       drawEdges(); updateStageSize();
     };
     const up = () => {
