@@ -1,3 +1,5 @@
+![Alt Text](https://ct81.github.io/trimble-claude-mcp/images/svg/roachharbor-logo-dark.svg)
+
 # Trimble Connect MCP — Render + Firebase
 
 Node.js MCP server and OAuth backend for Trimble Connect, with a Firebase-hosted extension UI and optional local Tekla and SketchUp bridges.
