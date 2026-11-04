@@ -1236,6 +1236,8 @@ function bodyFor(type, id) {
                           <div class="status">ready</div>
                           <pre class="claude-out" style="max-height:180px;overflow:auto;font-size:11px;margin:6px 0 0;white-space:pre-wrap">—</pre>`;
     case "google_sheet": return `<button type="button" class="gs-connect" style="width:100%">Connect Google account</button>
+                          <button type="button" class="gs-switch" style="width:100%;margin-top:6px">Use another account</button>
+                          <div class="hint">Blocked with "Access blocked: Authorization Error"? Choose another account, or add your account as a test user on the OAuth consent screen and check the authorized origin.</div>
                           <input type="text" class="gs-filter" placeholder="Search spreadsheets by name…" spellcheck="false" style="margin-top:6px" disabled>
                           <select class="gs-file" style="width:100%;margin-top:6px" disabled><option value="">— spreadsheet —</option></select>
                           <select class="gs-sheet" style="width:100%;margin-top:6px" disabled><option value="">— sheet —</option></select>
@@ -2315,8 +2317,8 @@ function loadGoogleIdentity() {
   }
   return googleScriptPromise;
 }
-async function ensureGoogleToken(interactive) {
-  if (googleAuth.token && Date.now() < googleAuth.expiry - 30000) return googleAuth.token;
+async function ensureGoogleToken(interactive, chooseAccount = false) {
+  if (!chooseAccount && googleAuth.token && Date.now() < googleAuth.expiry - 30000) return googleAuth.token;
   const clientId = (settings.googleClientId || "").trim();
   if (!clientId) {
     openSettings();
@@ -2334,7 +2336,7 @@ async function ensureGoogleToken(interactive) {
       },
       error_callback: (err) => reject(new Error(err?.type === "popup_closed" ? "Google sign-in was cancelled" : (err?.message || "Google sign-in failed")))
     });
-    client.requestAccessToken({ prompt: interactive ? "" : "none" });
+    client.requestAccessToken({ prompt: chooseAccount ? "select_account consent" : interactive ? "" : "none" });
   });
 }
 async function googleFetch(url) {
@@ -2408,6 +2410,7 @@ function wireGoogleSheet(el) {
   const fileSel = el.querySelector(".gs-file");
   const sheetSel = el.querySelector(".gs-sheet");
   const fail = (error) => { status.textContent = "❌ " + error.message; };
+  const switchBtn = el.querySelector(".gs-switch");
   const loadFiles = async () => {
     status.textContent = "Loading spreadsheets from Drive…";
     const files = await listGoogleSpreadsheets(filter.value.trim());
@@ -2432,6 +2435,18 @@ function wireGoogleSheet(el) {
   connect.addEventListener("click", async () => {
     try {
       await ensureGoogleToken(true);
+      connect.textContent = "Google connected ✔ (refresh list)";
+      await loadFiles();
+    } catch (error) { fail(error); }
+  });
+  switchBtn.addEventListener("click", async () => {
+    try {
+      if (googleAuth.token && window.google?.accounts?.oauth2) google.accounts.oauth2.revoke(googleAuth.token, () => {});
+      googleAuth = { token: "", expiry: 0 };
+      fileSel.replaceChildren(new Option("— spreadsheet —", ""));
+      sheetSel.replaceChildren(new Option("— sheet —", ""));
+      fileSel.disabled = sheetSel.disabled = filter.disabled = true;
+      await ensureGoogleToken(true, true);
       connect.textContent = "Google connected ✔ (refresh list)";
       await loadFiles();
     } catch (error) { fail(error); }
