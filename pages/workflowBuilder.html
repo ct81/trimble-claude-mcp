@@ -2364,6 +2364,18 @@ function fileToBase64(file) {
   });
 }
 
+// Unwrapped JSON payload of a node result, without flattening nested data.
+function rawResultJson(result) {
+  const value = result?.result?.structuredContent ?? result?.structuredContent;
+  if (value !== undefined) return value;
+  const text = (result?.result?.content || result?.content || [])
+    .filter((item) => item?.type === "text" && typeof item.text === "string")
+    .map((item) => item.text).join("\n");
+  if (text) {
+    try { return JSON.parse(text); } catch { return { result: text }; }
+  }
+  return result;
+}
 function exportRows(result) {
   let value = result?.result?.structuredContent ?? result?.structuredContent;
   if (value === undefined) {
@@ -2804,9 +2816,9 @@ async function runWorkflowCore(signal) {
 
       if (cur.type === "output_grid" || cur.type === "output_form") {
         if (!state.result) throw new Error("Run an MCP node before displaying its result");
-        const rows = exportRows(state.result);
-        jsonDisplay(`dynview-${cur.id}`, rows, cur.type === "output_form" ? "form" : "grid");
-        cur.el.querySelector(".status").textContent = `✔ ${rows.length} record(s)`;
+        const data = rawResultJson(state.result);
+        jsonDisplay(`dynview-${cur.id}`, data, cur.type === "output_form" ? "form" : "grid");
+        cur.el.querySelector(".status").textContent = Array.isArray(data) ? `✔ ${data.length} record(s)` : "✔ displayed";
       }
 
       if (cur.type === "export_dynamic") {
