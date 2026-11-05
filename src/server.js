@@ -2,13 +2,14 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp & Telegram ChatBots, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #28"
+// #29"
 // git push origin main
 
 // git add .
 // git commit -m "Update site"
 // git push origin main
 
+//Traditional crest vs modern simplified logo
 
 //https://console.cloud.google.com/auth/clients?utm_source=chatgpt.com&project=my-test-212801
 
