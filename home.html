@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="description" content="RoachHarbor connects Trimble Connect, Google Sheets, project files, MCP tools, and optional Claude AI in visual workflows for architecture, engineering, and construction." />
+	<title>RoachHarbor | Connected AEC Workflows</title>
+	<style>
+		:root { color-scheme: light; --text: #202629; --muted: #526168; --accent: #006b60; --line: #d3dfdb; }
+		* { box-sizing: border-box; }
+		body { margin: 0; background: #f7faf9; color: var(--text); font-family: Georgia, serif; line-height: 1.7; }
+		.wrap { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+		header { background: #fff; border-bottom: 1px solid var(--line); }
+		header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-top: 18px; padding-bottom: 18px; }
+		.brand { display: block; width: 190px; max-width: 100%; height: auto; }
+		nav { display: flex; flex-wrap: wrap; gap: 16px; }
+		a { color: var(--accent); text-underline-offset: 3px; }
+		a:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+		main { padding-top: 32px; padding-bottom: 48px; overflow-wrap: anywhere; }
+		h1 { margin: 0 0 12px; font-size: 32px; line-height: 1.2; }
+		h2 { margin: 0 0 12px; font-size: 22px; line-height: 1.3; }
+		h3 { margin: 0 0 8px; font-size: 18px; line-height: 1.3; }
+		p { margin: 0 0 16px; }
+		.intro { max-width: 720px; }
+		.subtitle { color: var(--muted); }
+		.open-app { display: inline-block; padding: 10px 18px; background: var(--accent); color: #fff; border-radius: 6px; text-decoration: none; }
+		.open-app:hover { background: #00534b; }
+		section { margin-top: 32px; padding-top: 28px; border-top: 1px solid var(--line); }
+		.features { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 32px; }
+		.features p { margin-bottom: 0; }
+		ul { margin: 0 0 16px; padding-left: 24px; }
+		li { margin-bottom: 8px; }
+		footer { border-top: 1px solid var(--line); color: var(--muted); padding: 20px 0; }
+		footer p { margin: 0; }
+		@media (max-width: 600px) {
+			.wrap { padding-left: 18px; padding-right: 18px; }
+			header .wrap { align-items: flex-start; flex-direction: column; gap: 12px; }
+			.features { grid-template-columns: minmax(0, 1fr); }
+		}
+	</style>
+</head>
+<body>
+	<header>
+		<div class="wrap">
+			<img class="brand" src="https://ct81.github.io/trimble-claude-mcp/images/svg/roachharbor-logo-dark.svg" alt="RoachHarbor" />
+			<nav aria-label="Main navigation">
+				<a href="#integrations">Integrations</a>
+				<a href="#google-sheets">Google Sheets</a>
+				<a href="privacy.html">Privacy policy</a>
+			</nav>
+		</div>
+	</header>
+	<main class="wrap">
+		<div class="intro">
+			<h1>RoachHarbor</h1>
+			<p class="subtitle">Connected workflows for architecture, engineering, and construction.</p>
+			<p>RoachHarbor brings project files, spreadsheets, Trimble Connect operations, and connected tools into a visual Workflow Builder. Build a workflow to import information, process it, call an API or MCP tool, and display or export the result.</p>
+			<a class="open-app" href="https://trimble-claude-mcp-g86i.onrender.com/pages/workflowBuilder.html">Open Workflow Builder</a>
+		</div>
+
+		<section id="integrations" aria-labelledby="integrations-title">
+			<h2 id="integrations-title">Project Data and Connected Tools</h2>
+			<div class="features">
+				<div>
+					<h3>Files and Results</h3>
+					<p>Import PDF, Excel, CSV, IFC, and DXF files. Use connected extraction or conversion tools, inspect results in grid or form views, and export supported results to Excel or CSV.</p>
+				</div>
+				<div>
+					<h3>Trimble Connect</h3>
+					<p>Sign in with Trimble to use available project, file, model, organizer, property-set, topic, and Status Sharing operations through MCP tools.</p>
+				</div>
+				<div>
+					<h3>APIs and Local Bridges</h3>
+					<p>Connect REST APIs and MCP services to workflow data. Tekla, TSD, and SketchUp integrations depend on the corresponding configured bridge or service; cloud hosting alone cannot access software on your workstation.</p>
+				</div>
+				<div>
+					<h3>Optional Claude AI</h3>
+					<p>Ask Claude questions or connect a Claude component to analyze workflow input. AI features require a configured server-side Anthropic integration. Review generated answers before using them for project decisions.</p>
+				</div>
+			</div>
+		</section>
+
+		<section id="google-sheets" aria-labelledby="google-title">
+			<h2 id="google-title">Connect Your Google Sheets</h2>
+			<p>The Google Sheets import component lets you sign in with your own Google account, discover spreadsheets in Drive, select a sheet, and import its rows into a workflow.</p>
+			<ul>
+				<li><strong>Read-only Drive access</strong> discovers spreadsheet names and identifiers.</li>
+				<li><strong>Read-only Sheets access</strong> discovers sheet names and reads rows from your selected sheet.</li>
+				<li>The component does not request permission to edit or delete your Google files. Google authorization is handled by Google; RoachHarbor does not ask for your Google password.</li>
+			</ul>
+			<p>A configured Google OAuth client is required. While that OAuth app is in Testing mode, only accounts approved as test users can sign in.</p>
+			<p>Imported rows can be displayed or exported. If you connect them to Claude, MCP tools, or REST API components, running the workflow can send that data to those destinations. Review the workflow before running it.</p>
+		</section>
+
+		<section aria-labelledby="workflows-title">
+			<h2 id="workflows-title">Saved Workflows and Messaging</h2>
+			<p>Save named workflows for reuse. Server storage uses Firebase Realtime Database when configured, with local server-disk storage as a fallback. Uploaded files can be included in server-saved workflows.</p>
+			<p>Scheduled workflows run in your browser while the page is open. WhatsApp and Telegram integrations are available when configured by the operator and require the relevant account authorization.</p>
+		</section>
+
+		<section aria-labelledby="privacy-title">
+			<h2 id="privacy-title">Your Data and Privacy</h2>
+			<p>Account connections and workflow choices determine what information is processed. Settings and local workflow copies are stored in your browser; saving workflows or running connected components can send information to the application server and selected providers.</p>
+			<p>Read our <a href="privacy.html">Privacy Policy</a> for details about Google data access, AI requests, storage, third-party services, and deletion options.</p>
+			<p>RoachHarbor is a project integration application. References to Google, Trimble, Anthropic, and other providers identify compatible services and do not imply endorsement.</p>
+		</section>
+	</main>
+	<footer>
+		<div class="wrap">
+			<p>RoachHarbor &middot; Trimble Claude MCP &middot; <a href="privacy.html">Privacy policy</a></p>
+		</div>
+	</footer>
+</body>
+</html>
