@@ -5,6 +5,9 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	<meta name="description" content="RoachHarbor connects Trimble Connect, Google Sheets, project files, MCP tools, and optional Claude AI in visual workflows for architecture, engineering, and construction." />
 	<title>RoachHarbor | Connected AEC Workflows</title>
+	<!-- After verifying this site in Google Search Console with the "HTML tag" method, paste the tag here, for example:
+	<meta name="google-site-verification" content="YOUR_TOKEN" />
+	-->
 	<style>
 		:root { color-scheme: light; --text: #202629; --muted: #526168; --accent: #006b60; --line: #d3dfdb; }
 		* { box-sizing: border-box; }
@@ -28,8 +31,14 @@
 		section { margin-top: 32px; padding-top: 28px; border-top: 1px solid var(--line); }
 		.features { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 32px; }
 		.features p { margin-bottom: 0; }
-		ul { margin: 0 0 16px; padding-left: 24px; }
+		ul, ol { margin: 0 0 16px; padding-left: 24px; }
 		li { margin-bottom: 8px; }
+		.table-scroll { overflow-x: auto; margin-bottom: 16px; }
+		table { width: 100%; border-collapse: collapse; font-size: 15px; background: #fff; }
+		th, td { text-align: left; vertical-align: top; padding: 10px 12px; border: 1px solid var(--line); }
+		th { background: #eef4f2; }
+		code { font-family: Consolas, monospace; font-size: 13px; overflow-wrap: anywhere; }
+		.notice { border-left: 4px solid var(--accent); background: #fff; padding: 12px 16px; margin-bottom: 16px; }
 		footer { border-top: 1px solid var(--line); color: var(--muted); padding: 20px 0; }
 		footer p { margin: 0; }
 		@media (max-width: 600px) {
@@ -44,75 +53,110 @@
 		<div class="wrap">
 			<img class="brand" src="images/svg/roachharbor-logo-dark.svg" alt="RoachHarbor" />
 			<nav aria-label="Main navigation">
-				<a href="#integrations">Integrations</a>
-				<a href="#google-sheets">Google Sheets</a>
+				<a href="#about">About</a>
+				<a href="#features">Features</a>
+				<a href="#google-data">Google data use</a>
 				<a href="privacy.html">Privacy policy</a>
 			</nav>
 		</div>
 	</header>
+
 	<main class="wrap">
-		<div class="intro">
+		<div class="intro" id="about">
 			<h1>RoachHarbor</h1>
 			<p class="subtitle">Connected workflows for architecture, engineering, and construction.</p>
-			<p>RoachHarbor is the brand of the Trimble Claude MCP application and its Workflow Builder. Developer and support contact: <a href="mailto:noodletan@outlook.com">noodletan@outlook.com</a>.</p>
-			<p>RoachHarbor brings project files, spreadsheets, Trimble Connect operations, and connected tools into a visual Workflow Builder. Build a workflow to import information, process it, call an API or MCP tool, and display or export the result.</p>
+			<p>RoachHarbor is a web application (also known as Trimble Claude MCP) with a visual Workflow Builder. You use it to bring project files, spreadsheets, and Trimble Connect data into one workflow: import information, process it, call an API or MCP tool, and display or export the result.</p>
+			<p>RoachHarbor is developed and operated by an independent developer. Support and privacy contact: <a href="mailto:noodletan@outlook.com">noodletan@outlook.com</a>.</p>
+			<p>This page is public. You do not need to sign in to read it, to read the <a href="privacy.html">Privacy Policy</a>, or to see what data the app requests.</p>
 			<a class="open-app" href="pages/workflowBuilder.html">Open Workflow Builder</a>
 		</div>
 
-		<section id="integrations" aria-labelledby="integrations-title">
-			<h2 id="integrations-title">Project Data and Connected Tools</h2>
+		<section id="features" aria-labelledby="features-title">
+			<h2 id="features-title">What RoachHarbor Does</h2>
 			<div class="features">
 				<div>
-					<h3>Files and Results</h3>
+					<h3>Files and results</h3>
 					<p>Import PDF, Excel, CSV, IFC, and DXF files. Use connected extraction or conversion tools, inspect results in grid or form views, and export supported results to Excel or CSV.</p>
 				</div>
 				<div>
-					<h3>Trimble Connect</h3>
-					<p>Sign in with Trimble to use available project, file, model, organizer, property-set, topic, and Status Sharing operations through MCP tools.</p>
+					<h3>Google Sheets import</h3>
+					<p>Sign in with your own Google account, pick one of your spreadsheets and a sheet inside it, and import its rows into a workflow for display, processing, or export.</p>
 				</div>
 				<div>
-					<h3>APIs and Local Bridges</h3>
-					<p>Connect REST APIs and MCP services to workflow data. Tekla, TSD, and SketchUp integrations depend on the corresponding configured bridge or service; cloud hosting alone cannot access software on your workstation.</p>
+					<h3>Trimble Connect</h3>
+					<p>Sign in with Trimble to use project, file, model, organizer, property-set, topic, and Status Sharing operations through MCP tools.</p>
+				</div>
+				<div>
+					<h3>APIs and local bridges</h3>
+					<p>Connect REST APIs and MCP services to workflow data. Tekla, Trimble Structural Designer, and SketchUp integrations need the matching bridge or service running on your own workstation; cloud hosting alone cannot reach software on your computer.</p>
 				</div>
 				<div>
 					<h3>Optional Claude AI</h3>
-					<p>Ask Claude questions or connect a Claude component to analyze workflow input. AI features require a configured server-side Anthropic integration. Review generated answers before using them for project decisions.</p>
+					<p>Ask Claude questions or connect a Claude component to analyze workflow input. This requires a server-side Anthropic integration. Review generated answers before using them for project decisions.</p>
+				</div>
+				<div>
+					<h3>Saved workflows and messaging</h3>
+					<p>Save named workflows for reuse. Scheduled workflows run in your browser while the page is open. WhatsApp and Telegram messaging are available only when configured by the operator and authorized by the relevant account.</p>
 				</div>
 			</div>
 		</section>
 
-		<section id="google-sheets" aria-labelledby="google-title">
-			<h2 id="google-title">Connect Your Google Sheets</h2>
-			<p>The Google Sheets import component lets you sign in with your own Google account, discover spreadsheets in Drive, select a sheet, and import its rows into a workflow.</p>
+		<section id="google-data" aria-labelledby="google-title">
+			<h2 id="google-title">Why RoachHarbor Requests Your Google Data</h2>
+			<p>Google access is used for one purpose: letting you import rows from your own Google Sheets into a workflow. It is requested only when you choose the Google Sheets import component and click to connect. Google handles sign-in, and RoachHarbor never sees or asks for your Google password.</p>
+			<div class="table-scroll">
+				<table>
+					<thead>
+						<tr><th>Permission requested</th><th>What it lets RoachHarbor do</th><th>Why it is needed</th></tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td>View your Google Drive files (read-only)<br /><code>https://www.googleapis.com/auth/drive.readonly</code></td>
+							<td>List the names and IDs of your spreadsheets so you can choose one.</td>
+							<td>You pick the spreadsheet from a list inside the app instead of pasting an ID. Only spreadsheet names and IDs are used for the picker.</td>
+						</tr>
+						<tr>
+							<td>View your Google Sheets spreadsheets (read-only)<br /><code>https://www.googleapis.com/auth/spreadsheets.readonly</code></td>
+							<td>Read the sheet names and the rows of the spreadsheet you selected.</td>
+							<td>These rows are the input to your workflow.</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
 			<ul>
-				<li><strong>Read-only Drive access</strong> discovers spreadsheet names and identifiers.</li>
-				<li><strong>Read-only Sheets access</strong> discovers sheet names and reads rows from your selected sheet.</li>
-				<li>These permissions cover more than one selected file. Drive access supports spreadsheet discovery, while Sheets access supplies the row data used by your workflow.</li>
-				<li>The component does not request permission to edit or delete your Google files. Google authorization is handled by Google; RoachHarbor does not ask for your Google password.</li>
+				<li>RoachHarbor does not request permission to edit, create, share, or delete any of your Google files.</li>
+				<li>Only the spreadsheet and sheet you select are read. Other Drive files are not opened.</li>
+				<li>Google authorization tokens are kept in your browser's memory and are not stored on our server. Closing the page ends the session.</li>
+				<li>The selected spreadsheet ID and sheet name can be saved inside a workflow if you save it.</li>
+				<li>We do not sell your Google data, use it for advertising, or use it to train AI models.</li>
+				<li>Imported rows are shown to you and can be exported by you. If you connect them to Claude, MCP tools, or REST API components, running the workflow sends that data to the destination you chose. Review the workflow before running it.</li>
 			</ul>
-			<p>A configured Google OAuth client is required. While that OAuth app is in Testing mode, only accounts approved as test users can sign in.</p>
-			<p>Imported rows can be displayed or exported. If you connect them to Claude, MCP tools, or REST API components, running the workflow can send that data to those destinations. Review the workflow before running it.</p>
+			<div class="notice">
+				<p>RoachHarbor's use and transfer of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+			</div>
+			<p><strong>Revoke access any time:</strong> open your <a href="https://myaccount.google.com/permissions">Google Account permissions</a>, select RoachHarbor, and choose Remove access.</p>
 		</section>
 
-		<section aria-labelledby="workflows-title">
-			<h2 id="workflows-title">Saved Workflows and Messaging</h2>
-			<p>Save named workflows for reuse. Server storage uses Firebase Realtime Database when configured, with local server-disk storage as a fallback. Uploaded files can be included in server-saved workflows.</p>
-			<p>Scheduled workflows run in your browser while the page is open. WhatsApp and Telegram integrations are available when configured by the operator and require the relevant account authorization.</p>
+		<section aria-labelledby="other-data-title">
+			<h2 id="other-data-title">Other Data the App Handles</h2>
+			<ul>
+				<li><strong>Trimble sign-in:</strong> supplies your account details, project information, and authorization tokens so RoachHarbor can perform the project operations you authorize.</li>
+				<li><strong>Imported files:</strong> PDF, Excel, CSV, IFC, and DXF files are processed only to produce the extraction, conversion, analysis, or export you request.</li>
+				<li><strong>Claude components:</strong> your prompt and the workflow data you connect are sent to our server and to Anthropic to generate an answer.</li>
+				<li><strong>Saved workflows:</strong> names, settings, schedules, and optionally uploaded files are stored in your browser and, if you save to the server, in Firebase Realtime Database or on the server's disk.</li>
+			</ul>
+			<p>See the <a href="privacy.html">Privacy Policy</a> for retention, third-party services, and how to request deletion, or email <a href="mailto:noodletan@outlook.com">noodletan@outlook.com</a>.</p>
 		</section>
 
-		<section aria-labelledby="privacy-title">
-			<h2 id="privacy-title">Your Data and Privacy</h2>
-			<p>Trimble sign-in supplies account and project information and authorization tokens so the application can associate your session with your account and perform authorized project operations. Imported files and spreadsheet rows provide the input for extraction, conversion, analysis, and exports. Saved workflow names, settings, and schedules let you reuse those operations.</p>
-			<p>Account connections and workflow choices determine what information is processed. Settings and local workflow copies are stored in your browser; saving workflows or running connected components can send information to the application server and selected providers.</p>
-			<p>Google Sheets authorization tokens are held in browser memory. Selected spreadsheet identifiers and sheet names can be saved with a workflow. Claude components send your prompt and connected workflow context to the server and Anthropic; API and MCP components send configured input to their selected services.</p>
-			<p>You can choose whether to connect accounts and can revoke Google access through your Google Account settings. This homepage and the privacy policy are public; account authorization is needed only for connected application features.</p>
-			<p>Read our <a href="privacy.html">Privacy Policy</a> for details about Google data access, AI requests, storage, third-party services, and deletion options.</p>
-			<p>RoachHarbor is a project integration application. References to Google, Trimble, Anthropic, and other providers identify compatible services and do not imply endorsement.</p>
+		<section aria-labelledby="notice-title">
+			<h2 id="notice-title">Independence Notice</h2>
+			<p>RoachHarbor is an independent project integration application. References to Google, Trimble, Anthropic, Tekla, SketchUp, and other providers identify compatible services and do not imply endorsement or affiliation.</p>
 		</section>
 	</main>
+
 	<footer>
 		<div class="wrap">
-			<p>RoachHarbor &middot; Trimble Claude MCP &middot; <a href="privacy.html">Privacy policy</a> &middot; <a href="mailto:noodletan@outlook.com">Contact</a></p>
+			<p>RoachHarbor &middot; <a href="privacy.html">Privacy policy</a> &middot; <a href="mailto:noodletan@outlook.com">Contact</a></p>
 		</div>
 	</footer>
 </body>
