@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Space Shooter - Robotech Co-op</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        :root {
+            --neon-blue: #00eaff;
+            --neon-border: #1f3b5c;
+            --bg-dark: #030b17;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #111;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100dvh; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            touch-action: none;
+            user-select: none; 
+            -webkit-user-select: none;
+            overflow: hidden;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 450px; 
+            height: 100dvh; 
+            max-height: 900px;
+            background: var(--bg-dark);
+            border-left: 2px solid var(--neon-border);
+            border-right: 2px solid var(--neon-border);
+            box-shadow: 0 0 20px rgba(0, 234, 255, 0.2);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+        }
+
+        /* Fullscreen Adjustments */
+        #game-container:fullscreen,
+        #game-container:-webkit-full-screen {
+            max-width: 100%;
+            max-height: 100%;
+            width: 100vw;
+            height: 100vh;
+            border: none;
+        }
+
+        /* Top UI */
+        #top-ui {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid var(--neon-border);
+            background: #0a1525;
+            z-index: 10;
+            flex-shrink: 0; 
+            gap: 5px;
+        }
+
+        .stat-box {
+            border: 1px solid var(--neon-border);
+            border-radius: 5px;
+            padding: 5px 8px;
+            text-align: center;
+            background: rgba(0, 234, 255, 0.05);
+            box-shadow: inset 0 0 10px rgba(0, 234, 255, 0.1);
+            flex-grow: 1;
+            min-width: 50px;
+        }
+
+        .stat-label { font-size: 10px; color: var(--neon-blue); letter-spacing: 1px; }
+        .stat-value { font-size: 18px; font-weight: bold; }
+        #lives-display { color: #ff2a2a; font-size: 18px; transition: font-size 0.2s; }
+
+        /* Utility Buttons (Fullscreen & Quit) */
+        .util-box {
+            border: 1px solid var(--neon-border);
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            flex-grow: 0;
+            flex-basis: 40px;
+            transition: all 0.2s;
+            font-size: 18px;
+            color: white;
+        }
+
+        #fs-box { border-color: #00eaff; background: rgba(0, 234, 255, 0.1); }
+        #fs-box:hover, #fs-box:active { background: rgba(0, 234, 255, 0.3); box-shadow: inset 0 0 10px rgba(0, 234, 255, 0.5); }
+        
+        #quit-box { border-color: #ff2a2a; background: rgba(255, 42, 42, 0.1); }
+        #quit-box:hover, #quit-box:active { background: rgba(255, 42, 42, 0.3); box-shadow: inset 0 0 10px rgba(255, 42, 42, 0.5); }
+
+        /* Canvas wrapper */
+        #canvas-wrapper {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            background: radial-gradient(circle at center, #0a1b3a 0%, #030b17 100%);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            max-height: 100%;
+            aspect-ratio: 4 / 5;
+            object-fit: contain;
+        }
+
+        /* Bottom UI */
+        #bottom-ui {
+            padding: 10px;
+            padding-bottom: max(15px, env(safe-area-inset-bottom)); 
+            background: #0a1525;
+            border-top: 1px solid var(--neon-border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 10;
+            flex-shrink: 0; 
+        }
+
+        #status-bar {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 350px;
+            margin-bottom: 10px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        #bomb-status { color: #ff9900; text-shadow: 0 0 5px #ff9900; transition: all 0.2s; }
+        #mode-status { color: #00eaff; text-shadow: 0 0 5px #00eaff; transition: all 0.2s; }
+
+        #controls-layout {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 350px;
+            align-items: center;
+        }
+
+        .d-pad {
+            display: grid;
+            grid-template-columns: 45px 45px 45px;
+            grid-template-rows: 45px 45px;
+            gap: 5px;
+            align-items: center;
+            justify-items: center;
+        }
+
+        .d-pad .up { grid-column: 2; grid-row: 1; }
+        .d-pad .left { grid-column: 1; grid-row: 2; }
+        .d-pad .down { grid-column: 2; grid-row: 2; }
+        .d-pad .right { grid-column: 3; grid-row: 2; }
+
+        .action-buttons { display: flex; flex-direction: column; gap: 10px; }
+
+        .key-btn {
+            background: #1a2c47;
+            border: 1px solid var(--neon-border);
+            color: white;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 20px;
+            box-shadow: 0 4px 0 #0b1423;
+            cursor: pointer;
+            touch-action: none;
+            transition: all 0.1s;
+        }
+
+        .shoot-btn { width: 90px; height: 45px; font-size: 16px; font-weight: bold; border-radius: 8px; background: #2a1525; border-color: #ff2a2a; color: #ff2a2a; }
+        .transform-btn { width: 90px; height: 35px; font-size: 12px; font-weight: bold; border-radius: 6px; background: #152a2a; border-color: #00eaff; color: #00eaff; }
+
+        .key-btn:active, .key-btn.pressed { background: #2a456d; box-shadow: 0 1px 0 #0b1423; transform: translateY(3px); border-color: var(--neon-blue); }
+        .shoot-btn:active, .shoot-btn.pressed { background: #4d1a1a; border-color: #ff5555; }
+        .transform-btn:active, .transform-btn.pressed { background: #1a4d4d; border-color: #ffffff; }
+
+        /* Modals & Menus */
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(3, 11, 23, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .menu-btn {
+            background: #1a2c47;
+            border: 2px solid var(--neon-blue);
+            color: white;
+            padding: 15px 30px;
+            margin: 10px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 80%;
+            max-width: 250px;
+            text-shadow: 0 0 5px var(--neon-blue);
+            box-shadow: 0 0 10px rgba(0, 234, 255, 0.2);
+        }
+        
+        .menu-btn:hover { background: #2a456d; }
+        
+        .room-code-display {
+            font-size: 36px;
+            color: #00ff00;
+            letter-spacing: 5px;
+            font-weight: bold;
+            margin: 20px 0;
+            text-shadow: 0 0 10px #00ff00;
+        }
+
+        input[type="text"] {
+            padding: 15px;
+            font-size: 24px;
+            width: 200px;
+            text-align: center;
+            text-transform: uppercase;
+            border: 2px solid var(--neon-blue);
+            border-radius: 8px;
+            background: #0a1525;
+            color: white;
+            outline: none;
+            margin-bottom: 20px;
+        }
+
+        #game-over {
+            display: none; 
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #ff2a2a;
+            box-shadow: 0 0 20px rgba(255, 42, 42, 0.3);
+            border-radius: 10px;
+        }
+        #game-over h2 { color: #ff2a2a; margin-top: 0; }
+        button { background: var(--neon-blue); border: none; padding: 12px 24px; font-weight: bold; cursor: pointer; border-radius: 5px; margin-top: 15px; font-size: 16px; width: 100%; }
+
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- Top UI -->
+        <div id="top-ui">
+            <div class="stat-box">
+                <div class="stat-label">SCORE</div>
+                <div class="stat-value" id="score">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">LIVES</div>
+                <div class="stat-value" id="lives-display">❤❤❤❤❤</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">LEVEL</div>
+                <div class="stat-value" id="level">1</div>
+            </div>
+            
+            <!-- Fullscreen Button -->
+            <div class="util-box" id="fs-box" onclick="toggleFullscreen()" title="Toggle Fullscreen">⛶</div>
+            
+            <!-- Quit Button -->
+            <div class="util-box" id="quit-box" onclick="quitToMenu()" title="Quit to Menu">✖</div>
+        </div>
+
+        <!-- Canvas Wrapper -->
+        <div id="canvas-wrapper">
+            <canvas id="game" width="400" height="500"></canvas>
+        </div>
+
+        <!-- Bottom UI -->
+        <div id="bottom-ui">
+            <div id="status-bar">
+                <div id="bomb-status">BOMB IN: 10</div>
+                <div id="mode-status">MODE: FIGHTER</div>
+            </div>
+            
+            <div id="controls-layout">
+                <!-- D-Pad -->
+                <div class="d-pad">
+                    <div id="btn-up" class="key-btn up">↑</div>
+                    <div id="btn-left" class="key-btn left">←</div>
+                    <div id="btn-down" class="key-btn down">↓</div>
+                    <div id="btn-right" class="key-btn right">→</div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="action-buttons">
+                    <div id="btn-shoot" class="key-btn shoot-btn">SHOOT</div>
+                    <div id="btn-transform" class="key-btn transform-btn">TRANSFORM</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Multiplayer Lobby Menu -->
+        <div id="lobby-menu" class="overlay">
+            <h2 style="color: var(--neon-blue); text-shadow: 0 0 10px var(--neon-blue);">ROBOTECH CO-OP</h2>
+            <button class="menu-btn" onclick="startSolo()">SINGLE PLAYER</button>
+            <button class="menu-btn" onclick="showHostMenu()">HOST GAME</button>
+            <button class="menu-btn" onclick="showJoinMenu()">JOIN GAME</button>
+            <p style="font-size: 12px; color: #888; margin-top: 20px;">Note: P1 (Host) uses WASD. P2 (Client) uses Arrow Keys.<br>On-screen controls work for both.</p>
+        </div>
+
+        <!-- Host Waiting Screen -->
+        <div id="host-screen" class="overlay" style="display: none;">
+            <h3>ROOM CODE</h3>
+            <div id="room-code-text" class="room-code-display">...</div>
+            <p>Waiting for Player 2 to join...</p>
+            <button class="menu-btn" onclick="cancelMultiplayer()" style="margin-top: 40px; border-color: #ff2a2a; color: #ff2a2a;">CANCEL</button>
+        </div>
+
+        <!-- Join Screen -->
+        <div id="join-screen" class="overlay" style="display: none;">
+            <h3>ENTER ROOM CODE</h3>
+            <input type="text" id="room-code-input" maxlength="4" placeholder="CODE">
+            <button class="menu-btn" onclick="joinGame()">CONNECT</button>
+            <button class="menu-btn" onclick="cancelMultiplayer()" style="border-color: #ff2a2a; color: #ff2a2a;">BACK</button>
+        </div>
+
+        <!-- Game Over Overlay -->
+        <div id="game-over" class="overlay">
+            <h2>GAME OVER</h2>
+            <p>Final Score: <span id="final-score">0</span></p>
+            <button onclick="returnToLobby()">MAIN MENU</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Setup Canvas & Context ---
+        const canvas = document.getElementById("game");
+        const ctx = canvas.getContext("2d");
+        
+        // UI Elements
+        const scoreEl = document.getElementById("score");
+        const livesEl = document.getElementById("lives-display");
+        const levelEl = document.getElementById("level");
+        const bombStatusEl = document.getElementById("bomb-status");
+        const modeStatusEl = document.getElementById("mode-status");
+        const gameOverEl = document.getElementById("game-over");
+        const fsBox = document.getElementById("fs-box");
+
+        // Network Variables
+        let peer = null;
+        let conn = null;
+        let isMultiplayer = false;
+        let isHost = true; 
+        let player2Connected = false;
+
+        // Software List
+        const softwareList = [
+            { name: "TEKLA", color: "#008080", logoUrl: "logos/tekla.png" },
+            { name: "ALLPLAN", color: "#E30613", logoUrl: "logos/allplan.png" },
+            { name: "IMPACT", color: "#004B87", logoUrl: "logos/impact.png" },
+            { name: "IDAT", color: "#F5A623", logoUrl: "logos/idat.png" },
+            { name: "REVIT", color: "#186BFF", logoUrl: "logos/revit.png" },
+            { name: "GRAITEC", color: "#E2001A", logoUrl: "logos/graitec.png" },
+            { name: "CADWORK", color: "#FFC000", logoUrl: "logos/cadwork.png" },
+            { name: "PLANBAR", color: "#005CA9", logoUrl: "logos/planbar.png" },
+            { name: "ERKAT", color: "#008C45", logoUrl: "logos/erkat.png" }
+        ];
+
+        softwareList.forEach(sw => {
+            const img = new Image();
+            img.src = sw.logoUrl;
+            img.onload = () => { sw.imageLoaded = true; };
+            img.onerror = () => { sw.imageLoaded = false; };
+            sw.image = img;
+        });
+
+        // --- Game Variables ---
+        let p1 = { x: 100, y: 400, mode: "FIGHTER" };
+        let p2 = { x: 300, y: 400, mode: "FIGHTER" };
+        
+        let softwareBlocks = []; 
+        let bullets = [];
+        let particles = [];
+        let score = 0;
+        let lives = 5; 
+        let level = 1;
+        let gameActive = false; 
+        let keys = {};
+        let shootCooldown1 = 0;
+        let shootCooldown2 = 0;
+        let frames = 0;
+        
+        let killCount = 0;
+        let killsForBomb = 10;
+        let screenFlash = 0; 
+
+        const modeStats = {
+            FIGHTER: { speed: 7, fireRate: 15, color: "#00eaff" },
+            GERWALK: { speed: 5, fireRate: 10, color: "#ffcc00" },
+            BATTROID: { speed: 3, fireRate: 8, color: "#ff2a2a" }
+        };
+
+        // --- Fullscreen Logic ---
+        function toggleFullscreen() {
+            let elem = document.getElementById("game-container");
+            
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                if (elem.requestFullscreen) {
+                    elem.requestFullscreen();
+                } else if (elem.webkitRequestFullscreen) { /* Safari */
+                    elem.webkitRequestFullscreen();
+                }
+                fsBox.innerText = "🗗"; // Change icon to indicate 'Exit'
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) { /* Safari */
+                    document.webkitExitFullscreen();
+                }
+                fsBox.innerText = "⛶"; // Restore icon
+            }
+        }
+
+        // Listen for Esc key exiting fullscreen to reset the icon
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement) fsBox.innerText = "⛶";
+        });
+        document.addEventListener('webkitfullscreenchange', () => {
+            if (!document.webkitFullscreenElement) fsBox.innerText = "⛶";
+        });
+
+
+        // --- Multiplayer Logic ---
+        function startSolo() {
+            isMultiplayer = false;
+            document.getElementById("lobby-menu").style.display = "none";
+            resetGame();
+        }
+
+        function showHostMenu() {
+            document.getElementById("lobby-menu").style.display = "none";
+            document.getElementById("host-screen").style.display = "flex";
+            isHost = true;
+            isMultiplayer = true;
+
+            const code = Math.random().toString(36).substring(2, 6).toUpperCase();
+            document.getElementById("room-code-text").innerText = code;
+
+            peer = new Peer('ROBO-' + code);
+            peer.on('open', (id) => {
+                peer.on('connection', (connection) => {
+                    conn = connection;
+                    setupConnection();
+                });
+            });
+            peer.on('error', (err) => {
+                alert("Network Error: " + err);
+                cancelMultiplayer();
+            });
+        }
+
+        function showJoinMenu() {
+            document.getElementById("lobby-menu").style.display = "none";
+            document.getElementById("join-screen").style.display = "flex";
+        }
+
+        function joinGame() {
+            const code = document.getElementById("room-code-input").value.toUpperCase();
+            if (code.length < 4) return alert("Enter valid code");
+
+            isHost = false;
+            isMultiplayer = true;
+
+            peer = new Peer();
+            peer.on('open', () => {
+                conn = peer.connect('ROBO-' + code);
+                setupConnection();
+            });
+            peer.on('error', (err) => {
+                alert("Could not connect. Check code.");
+            });
+        }
+
+        function setupConnection() {
+            conn.on('open', () => {
+                player2Connected = true;
+                document.getElementById("host-screen").style.display = "none";
+                document.getElementById("join-screen").style.display = "none";
+                resetGame();
+            });
+
+            conn.on('data', (data) => {
+                if (data.type === 'input' && isHost) {
+                    if (data.left) p2.x -= modeStats[p2.mode].speed;
+                    if (data.right) p2.x += modeStats[p2.mode].speed;
+                    if (data.up) p2.y -= modeStats[p2.mode].speed;
+                    if (data.down) p2.y += modeStats[p2.mode].speed;
+                    if (data.shoot) shootWeapon(2);
+                    if (data.transform) transformP2();
+                } else if (data.type === 'state' && !isHost) {
+                    applyState(data.state);
+                } else if (data.type === 'quit') {
+                    alert("The other player has left the game.");
+                    cancelMultiplayer();
+                }
+            });
+
+            conn.on('close', () => {
+                if (gameActive) {
+                    alert("Player disconnected");
+                    cancelMultiplayer();
+                }
+            });
+        }
+
+        function cancelMultiplayer() {
+            if (peer) peer.destroy();
+            peer = null; conn = null; 
+            isMultiplayer = false; player2Connected = false;
+            gameActive = false;
+            document.getElementById("host-screen").style.display = "none";
+            document.getElementById("join-screen").style.display = "none";
+            document.getElementById("lobby-menu").style.display = "flex";
+            gameOverEl.style.display = "none";
+        }
+
+        // --- Quit Game Logic ---
+        function quitToMenu() {
+            if (!gameActive) return; 
+
+            if (confirm("Are you sure you want to quit to the main menu?")) {
+                gameActive = false;
+                
+                if (isMultiplayer && conn && conn.open) {
+                    conn.send({ type: 'quit' });
+                }
+
+                if (isMultiplayer) {
+                    cancelMultiplayer();
+                } else {
+                    document.getElementById("lobby-menu").style.display = "flex";
+                    gameOverEl.style.display = "none";
+                }
+            }
+        }
+
+        function returnToLobby() {
+            gameOverEl.style.display = "none";
+            document.getElementById("lobby-menu").style.display = "flex";
+            if(peer) cancelMultiplayer();
+        }
+
+        // --- Game Mechanics ---
+        function transformP2() {
+            if (p2.mode === "FIGHTER") p2.mode = "GERWALK";
+            else if (p2.mode === "GERWALK") p2.mode = "BATTROID";
+            else p2.mode = "FIGHTER";
+            createExplosion(p2.x, p2.y, "#ffffff");
+        }
+
+        function spawnSoftware() {
+            const sw = softwareList[Math.floor(Math.random() * softwareList.length)];
+            const size = 70; 
+            const baseSpeed = Math.random() * 1.5 + 1;
+            const speedMultiplier = Math.pow(1.05, level - 1); 
+
+            softwareBlocks.push({
+                x: Math.random() * (canvas.width - size) + size/2,
+                y: -size,
+                width: size, height: size, radius: size / 2, 
+                speed: baseSpeed * speedMultiplier + (level * 0.1),
+                angle: (Math.random() - 0.5) * 0.5, rotSpeed: (Math.random() - 0.5) * 0.03,
+                name: sw.name, color: sw.color, image: sw.image, imageLoaded: sw.imageLoaded
+            });
+        }
+
+        function shootWeapon(playerNum) {
+            const p = playerNum === 1 ? p1 : p2;
+            let cd = playerNum === 1 ? shootCooldown1 : shootCooldown2;
+            
+            if (cd <= 0) {
+                const bSpeed = 10;
+                const col = modeStats[p.mode].color;
+                if (p.mode === "FIGHTER") {
+                    bullets.push({ x: p.x, y: p.y - 20, vx: 0, vy: -bSpeed, width: 4, height: 15, color: col });
+                } else if (p.mode === "GERWALK") {
+                    bullets.push({ x: p.x - 12, y: p.y - 10, vx: 0, vy: -bSpeed, width: 4, height: 15, color: col });
+                    bullets.push({ x: p.x + 12, y: p.y - 10, vx: 0, vy: -bSpeed, width: 4, height: 15, color: col });
+                } else if (p.mode === "BATTROID") {
+                    bullets.push({ x: p.x, y: p.y - 20, vx: 0, vy: -bSpeed, width: 5, height: 20, color: col });
+                    bullets.push({ x: p.x - 10, y: p.y - 10, vx: -3, vy: -bSpeed, width: 4, height: 15, color: col });
+                    bullets.push({ x: p.x + 10, y: p.y - 10, vx: 3, vy: -bSpeed, width: 4, height: 15, color: col });
+                }
+                if (playerNum === 1) shootCooldown1 = modeStats[p.mode].fireRate;
+                else shootCooldown2 = modeStats[p.mode].fireRate;
+            }
+        }
+
+        function createExplosion(x, y, color) {
+            for (let i = 0; i < 12; i++) {
+                particles.push({
+                    x: x, y: y, vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6, life: 1, color: color
+                });
+            }
+        }
+
+        function triggerBomb() {
+            screenFlash = 1.0;
+            softwareBlocks.forEach(s => {
+                createExplosion(s.x, s.y, s.color);
+                score += 50;
+            });
+            softwareBlocks = []; 
+            killCount = 0;
+            updateUI();
+        }
+
+        // --- Drawing ---
+        function drawShip(p, isP2 = false) {
+            const currentColor = modeStats[p.mode].color;
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = currentColor;
+            
+            ctx.fillStyle = "#ffffff";
+            ctx.strokeStyle = currentColor;
+            ctx.lineWidth = 2;
+
+            if (isP2) {
+                ctx.fillStyle = "#ff2a2a";
+                ctx.font = "12px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("P2", 0, -35);
+                ctx.fillStyle = "#ffffff";
+            }
+
+            if (p.mode === "FIGHTER") {
+                ctx.beginPath(); ctx.moveTo(0, -25); ctx.lineTo(8, -5); ctx.lineTo(25, 15); ctx.lineTo(15, 20); ctx.lineTo(5, 10); ctx.lineTo(5, 20); ctx.lineTo(10, 25); ctx.lineTo(0, 22); ctx.lineTo(-10, 25); ctx.lineTo(-5, 20); ctx.lineTo(-5, 10); ctx.lineTo(-15, 20); ctx.lineTo(-25, 15); ctx.lineTo(-8, -5); ctx.closePath();
+                ctx.fill(); ctx.stroke();
+                ctx.fillStyle = currentColor; ctx.beginPath(); ctx.ellipse(0, -5, 4, 8, 0, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = "#ff9900"; ctx.beginPath(); ctx.moveTo(-4, 22); ctx.lineTo(4, 22); ctx.lineTo(0, 35 + Math.random() * 10); ctx.closePath(); ctx.fill();
+            } else if (p.mode === "GERWALK") {
+                ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(30, 0); ctx.lineTo(35, 15); ctx.lineTo(5, 10); ctx.lineTo(-5, 10); ctx.lineTo(-35, 15); ctx.lineTo(-30, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = currentColor; ctx.beginPath(); ctx.moveTo(0, -20); ctx.lineTo(8, 5); ctx.lineTo(-8, 5); ctx.closePath(); ctx.fill();
+                ctx.fillStyle = "#ffffff"; ctx.fillRect(-20, 0, 8, 15); ctx.fillRect(12, 0, 8, 15);
+                ctx.beginPath(); ctx.moveTo(-10, 5); ctx.lineTo(-15, 30); ctx.lineTo(-5, 30); ctx.lineTo(0, 10); ctx.moveTo(10, 5); ctx.lineTo(15, 30); ctx.lineTo(5, 30); ctx.lineTo(0, 10); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = "#ff9900"; ctx.fillRect(-13, 30, 4, 8 + Math.random() * 5); ctx.fillRect(9, 30, 4, 8 + Math.random() * 5);
+            } else if (p.mode === "BATTROID") {
+                ctx.beginPath(); ctx.moveTo(-8, 10); ctx.lineTo(-12, 30); ctx.lineTo(-2, 30); ctx.lineTo(0, 15); ctx.moveTo(8, 10); ctx.lineTo(12, 30); ctx.lineTo(2, 30); ctx.lineTo(0, 15); ctx.fill(); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(-15, -10); ctx.lineTo(15, -10); ctx.lineTo(10, 15); ctx.lineTo(-10, 15); ctx.closePath(); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = currentColor; ctx.beginPath(); ctx.moveTo(-5, -20); ctx.lineTo(5, -20); ctx.lineTo(3, -10); ctx.lineTo(-3, -10); ctx.closePath(); ctx.fill();
+                ctx.fillStyle = "#fff"; ctx.fillRect(-4, -16, 8, 2);
+                ctx.fillStyle = "#ffffff"; ctx.fillRect(-22, -10, 6, 20); ctx.fillRect(16, -10, 6, 20);
+                ctx.fillStyle = "#444"; ctx.fillRect(-4, -5, 8, 25); ctx.fillStyle = currentColor; ctx.fillRect(-2, -5, 4, 10);
+                ctx.fillStyle = "#ff9900"; ctx.fillRect(-6, 15, 4, 10 + Math.random() * 5); ctx.fillRect(2, 15, 4, 10 + Math.random() * 5);
+            }
+            ctx.restore();
+        }
+
+        function drawSoftware() {
+            softwareBlocks.forEach(s => {
+                ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.angle);
+                ctx.fillStyle = s.color; ctx.shadowBlur = 10; ctx.shadowColor = s.color;
+                ctx.beginPath(); ctx.arc(0, 0, s.width/2, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(0, 0, s.width/2 - 4, 0, Math.PI * 2); ctx.fill();
+                if (s.imageLoaded && s.image.complete) {
+                    const imgSize = s.width - 14; ctx.drawImage(s.image, -imgSize/2, -imgSize/2, imgSize, imgSize);
+                } else {
+                    ctx.fillStyle = "#000000"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    ctx.font = `bold 10px Arial`; ctx.fillText(s.name, 0, 0);
+                }
+                ctx.restore();
+            });
+        }
+
+        function drawBullets() {
+            bullets.forEach(b => {
+                ctx.fillStyle = b.color; ctx.shadowBlur = 10; ctx.shadowColor = b.color;
+                ctx.fillRect(b.x - b.width/2, b.y - b.height/2, b.width, b.height);
+            });
+            ctx.shadowBlur = 0;
+        }
+
+        function drawParticles() {
+            particles.forEach(p => {
+                ctx.fillStyle = `rgba(255, 255, 255, ${p.life})`;
+                ctx.fillRect(p.x, p.y, 3, 3);
+            });
+        }
+
+        // --- State Syncing ---
+        function getGameState() {
+            return {
+                p1: p1, p2: p2, score: score, lives: lives, level: level, killCount: killCount,
+                softwareBlocks: softwareBlocks.map(s => ({x: s.x, y: s.y, angle: s.angle, color: s.color, name: s.name, imageLoaded: s.imageLoaded})),
+                bullets: bullets, particles: particles, screenFlash: screenFlash
+            };
+        }
+
+        function applyState(state) {
+            p1 = state.p1; p2 = state.p2;
+            score = state.score; lives = state.lives; level = state.level; killCount = state.killCount;
+            bullets = state.bullets; particles = state.particles; screenFlash = state.screenFlash;
+            
+            softwareBlocks = state.softwareBlocks.map(s => {
+                const sw = softwareList.find(sw => sw.name === s.name);
+                return { ...s, image: sw ? sw.image : null };
+            });
+            
+            updateUI();
+        }
+
+        // --- Main Loop ---
+        function update() {
+            if (!gameActive) return;
+
+            frames++;
+            if (shootCooldown1 > 0) shootCooldown1--;
+            if (shootCooldown2 > 0) shootCooldown2--;
+            if (screenFlash > 0) screenFlash -= 0.05;
+
+            if (isMultiplayer && !isHost) {
+                if (conn && conn.open) {
+                    conn.send({
+                        type: 'input',
+                        left: keys["ArrowLeft"], right: keys["ArrowRight"],
+                        up: keys["ArrowUp"], down: keys["ArrowDown"],
+                        shoot: keys["Space"], transform: keys["KeyT"]
+                    });
+                }
+                return; 
+            }
+
+            let p1Speed = modeStats[p1.mode].speed;
+            if (keys["KeyA"] || (keys["ArrowLeft"] && !isMultiplayer)) p1.x -= p1Speed;
+            if (keys["KeyD"] || (keys["ArrowRight"] && !isMultiplayer)) p1.x += p1Speed;
+            if (keys["KeyW"] || (keys["ArrowUp"] && !isMultiplayer)) p1.y -= p1Speed;
+            if (keys["KeyS"] || (keys["ArrowDown"] && !isMultiplayer)) p1.y += p1Speed;
+            
+            if (keys["Space"] && !isMultiplayer) shootWeapon(1);
+
+            p1.x = Math.max(20, Math.min(canvas.width - 20, p1.x));
+            p1.y = Math.max(40, Math.min(canvas.height - 20, p1.y));
+
+            if (isMultiplayer && player2Connected) {
+                p2.x = Math.max(20, Math.min(canvas.width - 20, p2.x));
+                p2.y = Math.max(40, Math.min(canvas.height - 20, p2.y));
+            }
+
+            const spawnRate = Math.max(15, Math.floor(60 * Math.pow(0.95, level - 1)));
+            if (frames % spawnRate === 0) spawnSoftware();
+
+            bullets.forEach((b, index) => {
+                b.x += b.vx; b.y += b.vy;
+                if (b.y < -30 || b.x < -30 || b.x > canvas.width + 30) bullets.splice(index, 1);
+            });
+
+            softwareBlocks.forEach((s, sIndex) => {
+                s.y += s.speed; s.angle += s.rotSpeed;
+                if (s.y > canvas.height + s.radius) softwareBlocks.splice(sIndex, 1);
+
+                let hitbox1 = p1.mode === "BATTROID" ? 20 : (p1.mode === "GERWALK" ? 16 : 12);
+                let dist1 = Math.hypot(s.x - p1.x, s.y - p1.y);
+                if (dist1 < s.radius + hitbox1 && gameActive) {
+                    softwareBlocks.splice(sIndex, 1);
+                    createExplosion(p1.x, p1.y, "#00eaff");
+                    lives--; updateUI();
+                    if (lives <= 0) gameOver();
+                    else { p1.x = 100; p1.y = 400; }
+                }
+
+                if (isMultiplayer && player2Connected && gameActive) {
+                    let hitbox2 = p2.mode === "BATTROID" ? 20 : (p2.mode === "GERWALK" ? 16 : 12);
+                    let dist2 = Math.hypot(s.x - p2.x, s.y - p2.y);
+                    if (dist2 < s.radius + hitbox2) {
+                        softwareBlocks.splice(sIndex, 1);
+                        createExplosion(p2.x, p2.y, "#00eaff");
+                        lives--; updateUI();
+                        if (lives <= 0) gameOver();
+                        else { p2.x = 300; p2.y = 400; }
+                    }
+                }
+            });
+
+            bullets.forEach((b, bIndex) => {
+                softwareBlocks.forEach((s, sIndex) => {
+                    if (Math.hypot(s.x - b.x, s.y - b.y) < s.radius) {
+                        softwareBlocks.splice(sIndex, 1); bullets.splice(bIndex, 1);
+                        createExplosion(b.x, b.y, s.color); 
+                        score += 10; killCount++;
+                        while (score >= level * 200) { level++; lives = Math.min(9, Math.max(lives, 5) + 3); }
+                        if (killCount >= killsForBomb) triggerBomb();
+                        else updateUI();
+                    }
+                });
+            });
+
+            particles.forEach((p, index) => {
+                p.x += p.vx; p.y += p.vy; p.life -= 0.02;
+                if (p.life <= 0) particles.splice(index, 1);
+            });
+
+            if (isMultiplayer && isHost && conn && conn.open && frames % 2 === 0) {
+                conn.send({ type: 'state', state: getGameState() });
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#ffffff";
+            for(let i=0; i<50; i++) {
+                ctx.fillRect((i * 73) % canvas.width, (i * 37 + frames * 0.5) % canvas.height, 1.5, 1.5);
+            }
+            
+            if (gameActive) {
+                drawShip(p1, false);
+                if (isMultiplayer && player2Connected) drawShip(p2, true);
+            }
+            
+            drawSoftware(); drawBullets(); drawParticles();
+
+            if (screenFlash > 0) {
+                ctx.fillStyle = `rgba(255, 255, 255, ${screenFlash})`;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            update();
+            requestAnimationFrame(draw);
+        }
+
+        function updateUI() {
+            scoreEl.innerText = score; levelEl.innerText = level;
+            let hearts = ""; for(let i=0; i<lives; i++) hearts += "❤";
+            livesEl.innerText = hearts; livesEl.style.fontSize = lives > 5 ? "13px" : "18px";
+            
+            if (killCount >= killsForBomb) {
+                bombStatusEl.innerText = "BOMB READY!"; bombStatusEl.style.color = "#00ff00"; bombStatusEl.style.textShadow = "0 0 10px #00ff00";
+            } else {
+                bombStatusEl.innerText = `BOMB IN: ${killsForBomb - killCount}`; bombStatusEl.style.color = "#ff9900"; bombStatusEl.style.textShadow = "0 0 5px #ff9900";
+            }
+            const currentMode = isHost ? p1.mode : p2.mode;
+            modeStatusEl.innerText = `MODE: ${currentMode}`;
+            modeStatusEl.style.color = modeStats[currentMode].color;
+            modeStatusEl.style.textShadow = `0 0 5px ${modeStats[currentMode].color}`;
+        }
+
+        function gameOver() {
+            gameActive = false;
+            document.getElementById("final-score").innerText = score;
+            gameOverEl.style.display = "flex";
+            keys = {}; 
+            document.querySelectorAll('.key-btn').forEach(btn => btn.classList.remove('pressed'));
+        }
+
+        function resetGame() {
+            p1 = { x: 100, y: 400, mode: "FIGHTER" };
+            p2 = { x: 300, y: 400, mode: "FIGHTER" };
+            softwareBlocks = []; bullets = []; particles = [];
+            score = 0; lives = 5; level = 1; killCount = 0; screenFlash = 0;
+            gameActive = true; gameOverEl.style.display = "none";
+            updateUI();
+            requestAnimationFrame(draw);
+        }
+
+        // --- Input Handling ---
+        window.addEventListener("keydown", (e) => {
+            if(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Space"].includes(e.code)) e.preventDefault(); 
+            keys[e.code] = true;
+            
+            if ((e.code === "KeyT" || e.code === "KeyF") && gameActive && (isHost || !isMultiplayer)) {
+                if (p1.mode === "FIGHTER") p1.mode = "GERWALK";
+                else if (p1.mode === "GERWALK") p1.mode = "BATTROID";
+                else p1.mode = "FIGHTER";
+                createExplosion(p1.x, p1.y, "#ffffff");
+                updateUI();
+            }
+        });
+
+        window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+        function bindButtonControls(elementId, keyCode, isTransform = false) {
+            const el = document.getElementById(elementId);
+            const press = (e) => { 
+                e.preventDefault(); 
+                el.classList.add("pressed"); 
+                
+                if (isTransform) {
+                    if (!isMultiplayer || !isHost) { 
+                        if (isHost) { 
+                            if (p1.mode === "FIGHTER") p1.mode = "GERWALK"; else if (p1.mode === "GERWALK") p1.mode = "BATTROID"; else p1.mode = "FIGHTER";
+                        } else {
+                            if (p2.mode === "FIGHTER") p2.mode = "GERWALK"; else if (p2.mode === "GERWALK") p2.mode = "BATTROID"; else p2.mode = "FIGHTER";
+                        }
+                        createExplosion(isHost ? p1.x : p2.x, isHost ? p1.y : p2.y, "#ffffff");
+                    }
+                } else {
+                    keys[keyCode] = true; 
+                }
+            };
+            const release = (e) => { 
+                if (e) e.preventDefault(); 
+                keys[keyCode] = false; el.classList.remove("pressed"); 
+            };
+
+            el.addEventListener("mousedown", press); el.addEventListener("mouseup", release); el.addEventListener("mouseleave", release);
+            el.addEventListener("touchstart", press, {passive: false}); el.addEventListener("touchend", release, {passive: false}); el.addEventListener("touchcancel", release, {passive: false});
+        }
+
+        bindButtonControls("btn-up", "ArrowUp");
+        bindButtonControls("btn-down", "ArrowDown");
+        bindButtonControls("btn-left", "ArrowLeft");
+        bindButtonControls("btn-right", "ArrowRight");
+        bindButtonControls("btn-shoot", "Space");
+        bindButtonControls("btn-transform", null, true);
+
+        window.addEventListener("touchend", () => {
+            keys = {}; document.querySelectorAll('.key-btn').forEach(btn => btn.classList.remove('pressed'));
+        });
+
+    </script>
+</body>
+</html>
