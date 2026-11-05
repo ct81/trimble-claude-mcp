@@ -18,7 +18,7 @@
         .player-stat { flex: 1; }
         .p1-color { color: #00eaff; }
         .p2-color { color: #ff2a2a; }
-        #lives1-display, #lives2-display { font-size: 16px; }
+        #local-lives, #remote-lives { font-size: 16px; }
         .util-box { border: 1px solid var(--neon-border); border-radius: 5px; display: flex; justify-content: center; align-items: center; cursor: pointer; flex-grow: 0; flex-basis: 40px; transition: all 0.2s; font-size: 18px; color: white; }
         #fs-box { border-color: #00eaff; background: rgba(0, 234, 255, 0.1); }
         #fs-box:hover, #fs-box:active { background: rgba(0, 234, 255, 0.3); box-shadow: inset 0 0 10px rgba(0, 234, 255, 0.5); }
@@ -575,19 +575,45 @@
 
         function drawSoftware() {
             softwareBlocks.forEach(s => {
-                ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.angle);
-                // Always draw the colored circle first (visible on both host and client)
-                ctx.fillStyle = s.color; ctx.shadowBlur = 10; ctx.shadowColor = s.color;
-                ctx.beginPath(); ctx.arc(0, 0, s.width/2, 0, Math.PI * 2); ctx.fill();
-                ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(0, 0, s.width/2 - 4, 0, Math.PI * 2); ctx.fill();
-                // Then draw the image if it loaded, otherwise draw the name text
+                ctx.save();
+                ctx.translate(s.x, s.y);
+                ctx.rotate(s.angle);
+
+                // 1. Draw colored outer circle
+                ctx.shadowBlur = 0;  // reset shadow for crisp circle
+                ctx.globalAlpha = 1.0;
+                ctx.fillStyle = s.color;
+                ctx.beginPath();
+                ctx.arc(0, 0, s.width/2, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 2. Draw white inner circle
+                ctx.fillStyle = "#ffffff";
+                ctx.beginPath();
+                ctx.arc(0, 0, s.width/2 - 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 3. Draw logo image or fallback text — no shadow, no alpha
                 if (s.imageLoaded && s.image && s.image.complete && s.image.naturalWidth > 0) {
                     const imgSize = s.width - 14;
-                    try { ctx.drawImage(s.image, -imgSize/2, -imgSize/2, imgSize, imgSize); }
-                    catch(e) { /* fallback to text */ }
+                    ctx.shadowBlur = 0;
+                    ctx.globalAlpha = 1.0;
+                    try {
+                        ctx.drawImage(s.image, -imgSize/2, -imgSize/2, imgSize, imgSize);
+                    } catch (e) {
+                        // fallback to text if drawing fails
+                        ctx.fillStyle = "#000000";
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "middle";
+                        ctx.font = "bold 10px Arial";
+                        ctx.fillText(s.name, 0, 0);
+                    }
                 } else {
-                    ctx.fillStyle = "#000000"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-                    ctx.font = `bold 10px Arial`; ctx.fillText(s.name, 0, 0);
+                    ctx.fillStyle = "#000000";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.font = "bold 10px Arial";
+                    ctx.fillText(s.name, 0, 0);
                 }
                 ctx.restore();
             });
@@ -628,12 +654,12 @@
             killCount1 = state.killCount1; killCount2 = state.killCount2;
             bullets = state.bullets; particles = state.particles; screenFlash = state.screenFlash;
 
-            // Rebuild software blocks with image references
+            // Rebuild softwareBlocks with image references — double-check image load state on client
             softwareBlocks = state.softwareBlocks.map(s => {
                 const sw = softwareList.find(sw => sw.name === s.name);
                 const img = sw ? sw.image : null;
-                // If the image loaded successfully at any point, treat it as loaded
-                const loaded = sw && (sw.imageLoaded || (img && img.complete && img.naturalWidth > 0));
+                // Use both the server-sent flag and the actual client image state
+                const loaded = (s.imageLoaded || (sw && sw.imageLoaded)) && img && img.complete && img.naturalWidth > 0;
                 return {
                     ...s,
                     image: img,
@@ -770,7 +796,6 @@
         }
 
         function updateUI() {
-            // Local player is P1 on host/solo, P2 on client
             const localIsP1 = !isMultiplayer || isHost;
             const localScore = localIsP1 ? score1 : score2;
             const localLives = localIsP1 ? lives1 : lives2;
@@ -779,19 +804,16 @@
             const localLabel = localIsP1 ? "P1" : "P2";
             const remoteLabel = localIsP1 ? "P2" : "P1";
 
-            // Update labels
             localScoreLabel.innerText = localLabel + " SCORE";
             localLivesLabel.innerText = localLabel + " LIVES";
             remoteScoreLabel.innerText = remoteLabel + " SCORE";
             remoteLivesLabel.innerText = remoteLabel + " LIVES";
 
-            // Update values
             localScoreEl.innerText = localScore;
             let hL = ""; for(let i=0; i<localLives; i++) hL += "❤";
             localLivesEl.innerText = hL;
             localLivesEl.style.fontSize = localLives > 5 ? "12px" : "16px";
 
-            // Hide remote row in single-player
             if (!isMultiplayer || !player2Connected) {
                 remoteRow.style.display = "none";
             } else {
