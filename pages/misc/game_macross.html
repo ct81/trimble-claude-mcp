@@ -10,11 +10,15 @@
         body { margin: 0; padding: 0; background-color: #111; display: flex; justify-content: center; align-items: center; height: 100dvh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: white; touch-action: none; user-select: none; -webkit-user-select: none; overflow: hidden; }
         #game-container { position: relative; width: 100%; max-width: 450px; height: 100dvh; max-height: 900px; background: var(--bg-dark); border-left: 2px solid var(--neon-border); border-right: 2px solid var(--neon-border); box-shadow: 0 0 20px rgba(0, 234, 255, 0.2); overflow: hidden; display: flex; flex-direction: column; transition: all 0.3s ease; }
         #game-container:fullscreen, #game-container:-webkit-full-screen { max-width: 100%; max-height: 100%; width: 100vw; height: 100vh; border: none; }
-        #top-ui { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid var(--neon-border); background: #0a1525; z-index: 10; flex-shrink: 0; gap: 5px; }
+        #top-ui { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid var(--neon-border); background: #0a1525; z-index: 10; flex-shrink: 0; gap: 5px; flex-wrap: wrap; }
         .stat-box { border: 1px solid var(--neon-border); border-radius: 5px; padding: 5px 8px; text-align: center; background: rgba(0, 234, 255, 0.05); box-shadow: inset 0 0 10px rgba(0, 234, 255, 0.1); flex-grow: 1; min-width: 50px; }
         .stat-label { font-size: 10px; color: var(--neon-blue); letter-spacing: 1px; }
         .stat-value { font-size: 18px; font-weight: bold; }
-        #lives-display { color: #ff2a2a; font-size: 18px; transition: font-size 0.2s; }
+        .player-row { display: flex; gap: 5px; flex-grow: 2; }
+        .player-stat { flex: 1; }
+        .p1-color { color: #00eaff; }
+        .p2-color { color: #ff2a2a; }
+        #lives1-display, #lives2-display { font-size: 16px; }
         .util-box { border: 1px solid var(--neon-border); border-radius: 5px; display: flex; justify-content: center; align-items: center; cursor: pointer; flex-grow: 0; flex-basis: 40px; transition: all 0.2s; font-size: 18px; color: white; }
         #fs-box { border-color: #00eaff; background: rgba(0, 234, 255, 0.1); }
         #fs-box:hover, #fs-box:active { background: rgba(0, 234, 255, 0.3); box-shadow: inset 0 0 10px rgba(0, 234, 255, 0.5); }
@@ -54,9 +58,30 @@
 
     <div id="game-container">
         <div id="top-ui">
-            <div class="stat-box"><div class="stat-label">SCORE</div><div class="stat-value" id="score">0</div></div>
-            <div class="stat-box"><div class="stat-label">LIVES</div><div class="stat-value" id="lives-display">❤❤❤❤❤</div></div>
-            <div class="stat-box"><div class="stat-label">LEVEL</div><div class="stat-value" id="level">1</div></div>
+            <div class="player-row">
+                <div class="stat-box player-stat">
+                    <div class="stat-label p1-color">P1 SCORE</div>
+                    <div class="stat-value" id="score1">0</div>
+                </div>
+                <div class="stat-box player-stat">
+                    <div class="stat-label p1-color">P1 LIVES</div>
+                    <div class="stat-value" id="lives1-display">❤❤❤❤❤</div>
+                </div>
+            </div>
+            <div class="player-row">
+                <div class="stat-box player-stat">
+                    <div class="stat-label p2-color">P2 SCORE</div>
+                    <div class="stat-value" id="score2">0</div>
+                </div>
+                <div class="stat-box player-stat">
+                    <div class="stat-label p2-color">P2 LIVES</div>
+                    <div class="stat-value" id="lives2-display">❤❤❤❤❤</div>
+                </div>
+            </div>
+            <div class="stat-box" style="flex-grow: 0; min-width: 45px;">
+                <div class="stat-label">LVL</div>
+                <div class="stat-value" id="level">1</div>
+            </div>
             <div class="util-box" id="fs-box" onclick="toggleFullscreen()" title="Toggle Fullscreen">⛶</div>
             <div class="util-box" id="quit-box" onclick="quitToMenu()" title="Quit to Menu">✖</div>
         </div>
@@ -108,7 +133,7 @@
 
         <div id="game-over" class="overlay">
             <h2>GAME OVER</h2>
-            <p>Final Score: <span id="final-score">0</span></p>
+            <p>P1 Score: <span id="final-score1">0</span> | P2 Score: <span id="final-score2">0</span></p>
             <button onclick="returnToLobby()">MAIN MENU</button>
         </div>
     </div>
@@ -116,8 +141,10 @@
     <script>
         const canvas = document.getElementById("game");
         const ctx = canvas.getContext("2d");
-        const scoreEl = document.getElementById("score");
-        const livesEl = document.getElementById("lives-display");
+        const score1El = document.getElementById("score1");
+        const score2El = document.getElementById("score2");
+        const lives1El = document.getElementById("lives1-display");
+        const lives2El = document.getElementById("lives2-display");
         const levelEl = document.getElementById("level");
         const bombStatusEl = document.getElementById("bomb-status");
         const modeStatusEl = document.getElementById("mode-status");
@@ -158,15 +185,15 @@
         let softwareBlocks = [];
         let bullets = [];
         let particles = [];
-        let score = 0;
-        let lives = 5;
+        let score1 = 0, score2 = 0;
+        let lives1 = 5, lives2 = 5;
         let level = 1;
         let gameActive = false;
         let keys = {};
         let shootCooldown1 = 0;
         let shootCooldown2 = 0;
         let frames = 0;
-        let killCount = 0;
+        let killCount1 = 0, killCount2 = 0;
         let killsForBomb = 10;
         let screenFlash = 0;
 
@@ -468,21 +495,23 @@
             });
         }
 
+        // shootWeapon now takes player number and tags bullet with owner
         function shootWeapon(playerNum) {
             const p = playerNum === 1 ? p1 : p2;
             let cd = playerNum === 1 ? shootCooldown1 : shootCooldown2;
             if (cd <= 0) {
                 const bSpeed = 10;
                 const col = modeStats[p.mode].color;
+                const owner = playerNum;
                 if (p.mode === "FIGHTER") {
-                    bullets.push({ x: p.x, y: p.y - 20, vx: 0, vy: -bSpeed, width: 4, height: 15, color: col });
+                    bullets.push({ x: p.x, y: p.y - 20, vx: 0, vy: -bSpeed, width: 4, height: 15, color: col, owner });
                 } else if (p.mode === "GERWALK") {
-                    bullets.push({ x: p.x - 12, y: p.y - 10, vx: 0, vy: -bSpeed, width: 4, height: 15, color: col });
-                    bullets.push({ x: p.x + 12, y: p.y - 10, vx: 0, vy: -bSpeed, width: 4, height: 15, color: col });
+                    bullets.push({ x: p.x - 12, y: p.y - 10, vx: 0, vy: -bSpeed, width: 4, height: 15, color: col, owner });
+                    bullets.push({ x: p.x + 12, y: p.y - 10, vx: 0, vy: -bSpeed, width: 4, height: 15, color: col, owner });
                 } else {
-                    bullets.push({ x: p.x, y: p.y - 20, vx: 0, vy: -bSpeed, width: 5, height: 20, color: col });
-                    bullets.push({ x: p.x - 10, y: p.y - 10, vx: -3, vy: -bSpeed, width: 4, height: 15, color: col });
-                    bullets.push({ x: p.x + 10, y: p.y - 10, vx: 3, vy: -bSpeed, width: 4, height: 15, color: col });
+                    bullets.push({ x: p.x, y: p.y - 20, vx: 0, vy: -bSpeed, width: 5, height: 20, color: col, owner });
+                    bullets.push({ x: p.x - 10, y: p.y - 10, vx: -3, vy: -bSpeed, width: 4, height: 15, color: col, owner });
+                    bullets.push({ x: p.x + 10, y: p.y - 10, vx: 3, vy: -bSpeed, width: 4, height: 15, color: col, owner });
                 }
                 if (playerNum === 1) shootCooldown1 = modeStats[p.mode].fireRate;
                 else shootCooldown2 = modeStats[p.mode].fireRate;
@@ -495,11 +524,12 @@
             }
         }
 
-        function triggerBomb() {
+        // Bomb only clears blocks (no score change) - each player's kills counted separately
+        function triggerBomb(playerNum) {
             screenFlash = 1.0;
-            softwareBlocks.forEach(s => { createExplosion(s.x, s.y, s.color); score += 50; });
+            softwareBlocks.forEach(s => { createExplosion(s.x, s.y, s.color); });
             softwareBlocks = [];
-            killCount = 0;
+            if (playerNum === 1) killCount1 = 0; else killCount2 = 0;
             updateUI();
         }
 
@@ -574,7 +604,9 @@
 
         function getGameState() {
             return {
-                p1: { ...p1 }, p2: { ...p2 }, score, lives, level, killCount,
+                p1: { ...p1 }, p2: { ...p2 },
+                score1, score2, lives1, lives2, level,
+                killCount1, killCount2,
                 softwareBlocks: softwareBlocks.map(s => ({x: s.x, y: s.y, angle: s.angle, color: s.color, name: s.name, imageLoaded: s.imageLoaded})),
                 bullets: bullets.map(b => ({...b})),
                 particles: particles.map(p => ({...p})),
@@ -584,7 +616,10 @@
 
         function applyState(state) {
             p1 = state.p1; p2 = state.p2;
-            score = state.score; lives = state.lives; level = state.level; killCount = state.killCount;
+            score1 = state.score1; score2 = state.score2;
+            lives1 = state.lives1; lives2 = state.lives2;
+            level = state.level;
+            killCount1 = state.killCount1; killCount2 = state.killCount2;
             bullets = state.bullets; particles = state.particles; screenFlash = state.screenFlash;
             softwareBlocks = state.softwareBlocks.map(s => {
                 const sw = softwareList.find(sw => sw.name === s.name);
@@ -615,14 +650,12 @@
                 return;
             }
 
-            // FIXED: On host/solo, both WASD and arrow keys control P1.
-            // On-screen buttons send arrow keys, so they must work too.
             let p1Speed = modeStats[p1.mode].speed;
             if (keys["KeyA"] || keys["ArrowLeft"]) p1.x -= p1Speed;
             if (keys["KeyD"] || keys["ArrowRight"]) p1.x += p1Speed;
             if (keys["KeyW"] || keys["ArrowUp"]) p1.y -= p1Speed;
             if (keys["KeyS"] || keys["ArrowDown"]) p1.y += p1Speed;
-            if (keys["Space"]) shootWeapon(1);  // FIXED: shooting works in multiplayer too
+            if (keys["Space"]) shootWeapon(1);
             p1.x = Math.max(20, Math.min(canvas.width - 20, p1.x));
             p1.y = Math.max(40, Math.min(canvas.height - 20, p1.y));
 
@@ -642,38 +675,51 @@
             softwareBlocks.forEach((s, sIndex) => {
                 s.y += s.speed; s.angle += s.rotSpeed;
                 if (s.y > canvas.height + s.radius) { softwareBlocks.splice(sIndex, 1); return; }
-                let hitbox1 = p1.mode === "BATTROID" ? 20 : (p1.mode === "GERWALK" ? 16 : 12);
-                let dist1 = Math.hypot(s.x - p1.x, s.y - p1.y);
-                if (dist1 < s.radius + hitbox1 && gameActive) {
-                    softwareBlocks.splice(sIndex, 1);
-                    createExplosion(p1.x, p1.y, "#00eaff");
-                    lives--; updateUI();
-                    if (lives <= 0) gameOver();
-                    else { p1.x = 100; p1.y = 400; }
-                    return;
+
+                // P1 collision
+                if (lives1 > 0) {
+                    let hitbox1 = p1.mode === "BATTROID" ? 20 : (p1.mode === "GERWALK" ? 16 : 12);
+                    let dist1 = Math.hypot(s.x - p1.x, s.y - p1.y);
+                    if (dist1 < s.radius + hitbox1) {
+                        softwareBlocks.splice(sIndex, 1);
+                        createExplosion(p1.x, p1.y, "#00eaff");
+                        lives1--; updateUI();
+                        if (lives1 <= 0) { p1.x = 100; p1.y = 400; }
+                        else { p1.x = 100; p1.y = 400; }
+                        checkGameOver();
+                        return;
+                    }
                 }
-                if (isMultiplayer && player2Connected && gameActive) {
+
+                // P2 collision
+                if (isMultiplayer && player2Connected && lives2 > 0) {
                     let hitbox2 = p2.mode === "BATTROID" ? 20 : (p2.mode === "GERWALK" ? 16 : 12);
                     let dist2 = Math.hypot(s.x - p2.x, s.y - p2.y);
                     if (dist2 < s.radius + hitbox2) {
                         softwareBlocks.splice(sIndex, 1);
                         createExplosion(p2.x, p2.y, "#00eaff");
-                        lives--; updateUI();
-                        if (lives <= 0) gameOver();
-                        else { p2.x = 300; p2.y = 400; }
+                        lives2--; updateUI();
+                        p2.x = 300; p2.y = 400;
+                        checkGameOver();
                     }
                 }
             });
 
+            // Bullet hits: score goes to bullet owner only
             bullets.forEach((b, bIndex) => {
                 softwareBlocks.forEach((s, sIndex) => {
                     if (Math.hypot(s.x - b.x, s.y - b.y) < s.radius) {
                         softwareBlocks.splice(sIndex, 1); bullets.splice(bIndex, 1);
                         createExplosion(b.x, b.y, s.color);
-                        score += 10; killCount++;
-                        while (score >= level * 200) { level++; lives = Math.min(9, Math.max(lives, 5) + 3); }
-                        if (killCount >= killsForBomb) triggerBomb();
-                        else updateUI();
+                        if (b.owner === 1) { score1 += 10; killCount1++; if (killCount1 >= killsForBomb) triggerBomb(1); }
+                        else { score2 += 10; killCount2++; if (killCount2 >= killsForBomb) triggerBomb(2); }
+                        // Level up based on combined score
+                        if (score1 + score2 >= level * 200) {
+                            level++;
+                            lives1 = Math.min(9, Math.max(lives1, 1) + 3);
+                            lives2 = Math.min(9, Math.max(lives2, 1) + 3);
+                        }
+                        updateUI();
                     }
                 });
             });
@@ -688,6 +734,12 @@
             }
         }
 
+        function checkGameOver() {
+            if (lives1 <= 0 && (!isMultiplayer || !player2Connected || lives2 <= 0)) {
+                gameOver();
+            }
+        }
+
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = "#ffffff";
@@ -695,8 +747,8 @@
                 ctx.fillRect((i * 73) % canvas.width, (i * 37 + frames * 0.5) % canvas.height, 1.5, 1.5);
             }
             if (gameActive) {
-                drawShip(p1, false);
-                if (isMultiplayer && player2Connected) drawShip(p2, true);
+                if (lives1 > 0) drawShip(p1, false);
+                if (isMultiplayer && player2Connected && lives2 > 0) drawShip(p2, true);
             }
             drawSoftware(); drawBullets(); drawParticles();
             if (screenFlash > 0) {
@@ -708,17 +760,27 @@
         }
 
         function updateUI() {
-            scoreEl.innerText = score; levelEl.innerText = level;
-            let hearts = ""; for(let i=0; i<lives; i++) hearts += "❤";
-            livesEl.innerText = hearts; livesEl.style.fontSize = lives > 5 ? "13px" : "18px";
-            if (killCount >= killsForBomb) {
+            score1El.innerText = score1;
+            score2El.innerText = score2;
+            let h1 = "", h2 = "";
+            for(let i=0; i<lives1; i++) h1 += "❤";
+            for(let i=0; i<lives2; i++) h2 += "❤";
+            lives1El.innerText = h1;
+            lives2El.innerText = h2;
+            lives1El.style.fontSize = lives1 > 5 ? "12px" : "16px";
+            lives2El.style.fontSize = lives2 > 5 ? "12px" : "16px";
+            levelEl.innerText = level;
+
+            // Bomb status shows the local player's progress
+            const localKillCount = isHost || !isMultiplayer ? killCount1 : killCount2;
+            if (localKillCount >= killsForBomb) {
                 bombStatusEl.innerText = "BOMB READY!";
                 bombStatusEl.style.color = "#00ff00"; bombStatusEl.style.textShadow = "0 0 10px #00ff00";
             } else {
-                bombStatusEl.innerText = `BOMB IN: ${killsForBomb - killCount}`;
+                bombStatusEl.innerText = `BOMB IN: ${killsForBomb - localKillCount}`;
                 bombStatusEl.style.color = "#ff9900"; bombStatusEl.style.textShadow = "0 0 5px #ff9900";
             }
-            const currentMode = isHost ? p1.mode : p2.mode;
+            const currentMode = isHost || !isMultiplayer ? p1.mode : p2.mode;
             modeStatusEl.innerText = `MODE: ${currentMode}`;
             modeStatusEl.style.color = modeStats[currentMode].color;
             modeStatusEl.style.textShadow = `0 0 5px ${modeStats[currentMode].color}`;
@@ -726,7 +788,8 @@
 
         function gameOver() {
             gameActive = false;
-            document.getElementById("final-score").innerText = score;
+            document.getElementById("final-score1").innerText = score1;
+            document.getElementById("final-score2").innerText = score2;
             gameOverEl.style.display = "flex";
             keys = {};
             document.querySelectorAll('.key-btn').forEach(btn => btn.classList.remove('pressed'));
@@ -736,7 +799,9 @@
             p1 = { x: 100, y: 400, mode: "FIGHTER" };
             p2 = { x: 300, y: 400, mode: "FIGHTER" };
             softwareBlocks = []; bullets = []; particles = [];
-            score = 0; lives = 5; level = 1; killCount = 0; screenFlash = 0;
+            score1 = 0; score2 = 0;
+            lives1 = 5; lives2 = 5;
+            level = 1; killCount1 = 0; killCount2 = 0; screenFlash = 0;
             gameActive = true; gameOverEl.style.display = "none";
             updateUI();
             if (!gameLoopStarted) { gameLoopStarted = true; requestAnimationFrame(draw); }
