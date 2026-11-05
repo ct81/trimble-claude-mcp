@@ -6,132 +6,46 @@
     <title>Space Shooter - Robotech Co-op</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        :root {
-            --neon-blue: #00eaff;
-            --neon-border: #1f3b5c;
-            --bg-dark: #030b17;
-        }
-        body {
-            margin: 0; padding: 0; background-color: #111;
-            display: flex; justify-content: center; align-items: center;
-            height: 100dvh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: white; touch-action: none;
-            user-select: none; -webkit-user-select: none; overflow: hidden;
-        }
-        #game-container {
-            position: relative; width: 100%; max-width: 450px; height: 100dvh;
-            max-height: 900px; background: var(--bg-dark);
-            border-left: 2px solid var(--neon-border);
-            border-right: 2px solid var(--neon-border);
-            box-shadow: 0 0 20px rgba(0, 234, 255, 0.2);
-            overflow: hidden; display: flex; flex-direction: column;
-            transition: all 0.3s ease;
-        }
-        #game-container:fullscreen, #game-container:-webkit-full-screen {
-            max-width: 100%; max-height: 100%; width: 100vw; height: 100vh; border: none;
-        }
-        #top-ui {
-            display: flex; justify-content: space-between; padding: 10px;
-            border-bottom: 1px solid var(--neon-border);
-            background: #0a1525; z-index: 10; flex-shrink: 0; gap: 5px;
-        }
-        .stat-box {
-            border: 1px solid var(--neon-border); border-radius: 5px;
-            padding: 5px 8px; text-align: center;
-            background: rgba(0, 234, 255, 0.05);
-            box-shadow: inset 0 0 10px rgba(0, 234, 255, 0.1);
-            flex-grow: 1; min-width: 50px;
-        }
+        :root { --neon-blue: #00eaff; --neon-border: #1f3b5c; --bg-dark: #030b17; }
+        body { margin: 0; padding: 0; background-color: #111; display: flex; justify-content: center; align-items: center; height: 100dvh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: white; touch-action: none; user-select: none; -webkit-user-select: none; overflow: hidden; }
+        #game-container { position: relative; width: 100%; max-width: 450px; height: 100dvh; max-height: 900px; background: var(--bg-dark); border-left: 2px solid var(--neon-border); border-right: 2px solid var(--neon-border); box-shadow: 0 0 20px rgba(0, 234, 255, 0.2); overflow: hidden; display: flex; flex-direction: column; transition: all 0.3s ease; }
+        #game-container:fullscreen, #game-container:-webkit-full-screen { max-width: 100%; max-height: 100%; width: 100vw; height: 100vh; border: none; }
+        #top-ui { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid var(--neon-border); background: #0a1525; z-index: 10; flex-shrink: 0; gap: 5px; }
+        .stat-box { border: 1px solid var(--neon-border); border-radius: 5px; padding: 5px 8px; text-align: center; background: rgba(0, 234, 255, 0.05); box-shadow: inset 0 0 10px rgba(0, 234, 255, 0.1); flex-grow: 1; min-width: 50px; }
         .stat-label { font-size: 10px; color: var(--neon-blue); letter-spacing: 1px; }
         .stat-value { font-size: 18px; font-weight: bold; }
         #lives-display { color: #ff2a2a; font-size: 18px; transition: font-size 0.2s; }
-        .util-box {
-            border: 1px solid var(--neon-border); border-radius: 5px;
-            display: flex; justify-content: center; align-items: center;
-            cursor: pointer; flex-grow: 0; flex-basis: 40px;
-            transition: all 0.2s; font-size: 18px; color: white;
-        }
+        .util-box { border: 1px solid var(--neon-border); border-radius: 5px; display: flex; justify-content: center; align-items: center; cursor: pointer; flex-grow: 0; flex-basis: 40px; transition: all 0.2s; font-size: 18px; color: white; }
         #fs-box { border-color: #00eaff; background: rgba(0, 234, 255, 0.1); }
         #fs-box:hover, #fs-box:active { background: rgba(0, 234, 255, 0.3); box-shadow: inset 0 0 10px rgba(0, 234, 255, 0.5); }
         #quit-box { border-color: #ff2a2a; background: rgba(255, 42, 42, 0.1); }
         #quit-box:hover, #quit-box:active { background: rgba(255, 42, 42, 0.3); box-shadow: inset 0 0 10px rgba(255, 42, 42, 0.5); }
-        #canvas-wrapper {
-            flex-grow: 1; display: flex; justify-content: center; align-items: center;
-            overflow: hidden; background: radial-gradient(circle at center, #0a1b3a 0%, #030b17 100%);
-        }
-        canvas {
-            display: block; width: 100%; height: auto; max-height: 100%;
-            aspect-ratio: 4 / 5; object-fit: contain;
-        }
-        #bottom-ui {
-            padding: 10px; padding-bottom: max(15px, env(safe-area-inset-bottom));
-            background: #0a1525; border-top: 1px solid var(--neon-border);
-            display: flex; flex-direction: column; align-items: center;
-            z-index: 10; flex-shrink: 0;
-        }
-        #status-bar {
-            display: flex; justify-content: space-between;
-            width: 100%; max-width: 350px; margin-bottom: 10px;
-            font-size: 12px; font-weight: bold;
-        }
+        #canvas-wrapper { flex-grow: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; background: radial-gradient(circle at center, #0a1b3a 0%, #030b17 100%); }
+        canvas { display: block; width: 100%; height: auto; max-height: 100%; aspect-ratio: 4 / 5; object-fit: contain; }
+        #bottom-ui { padding: 10px; padding-bottom: max(15px, env(safe-area-inset-bottom)); background: #0a1525; border-top: 1px solid var(--neon-border); display: flex; flex-direction: column; align-items: center; z-index: 10; flex-shrink: 0; }
+        #status-bar { display: flex; justify-content: space-between; width: 100%; max-width: 350px; margin-bottom: 10px; font-size: 12px; font-weight: bold; }
         #bomb-status { color: #ff9900; text-shadow: 0 0 5px #ff9900; transition: all 0.2s; }
         #mode-status { color: #00eaff; text-shadow: 0 0 5px #00eaff; transition: all 0.2s; }
-        #controls-layout {
-            display: flex; justify-content: space-between;
-            width: 100%; max-width: 350px; align-items: center;
-        }
-        .d-pad {
-            display: grid; grid-template-columns: 45px 45px 45px;
-            grid-template-rows: 45px 45px; gap: 5px;
-            align-items: center; justify-items: center;
-        }
+        #controls-layout { display: flex; justify-content: space-between; width: 100%; max-width: 350px; align-items: center; }
+        .d-pad { display: grid; grid-template-columns: 45px 45px 45px; grid-template-rows: 45px 45px; gap: 5px; align-items: center; justify-items: center; }
         .d-pad .up { grid-column: 2; grid-row: 1; }
         .d-pad .left { grid-column: 1; grid-row: 2; }
         .d-pad .down { grid-column: 2; grid-row: 2; }
         .d-pad .right { grid-column: 3; grid-row: 2; }
         .action-buttons { display: flex; flex-direction: column; gap: 10px; }
-        .key-btn {
-            background: #1a2c47; border: 1px solid var(--neon-border); color: white;
-            width: 45px; height: 45px; display: flex; justify-content: center; align-items: center;
-            border-radius: 6px; font-family: monospace; font-size: 20px;
-            box-shadow: 0 4px 0 #0b1423; cursor: pointer; touch-action: none; transition: all 0.1s;
-        }
+        .key-btn { background: #1a2c47; border: 1px solid var(--neon-border); color: white; width: 45px; height: 45px; display: flex; justify-content: center; align-items: center; border-radius: 6px; font-family: monospace; font-size: 20px; box-shadow: 0 4px 0 #0b1423; cursor: pointer; touch-action: none; transition: all 0.1s; }
         .shoot-btn { width: 90px; height: 45px; font-size: 16px; font-weight: bold; border-radius: 8px; background: #2a1525; border-color: #ff2a2a; color: #ff2a2a; }
         .transform-btn { width: 90px; height: 35px; font-size: 12px; font-weight: bold; border-radius: 6px; background: #152a2a; border-color: #00eaff; color: #00eaff; }
         .key-btn:active, .key-btn.pressed { background: #2a456d; box-shadow: 0 1px 0 #0b1423; transform: translateY(3px); border-color: var(--neon-blue); }
         .shoot-btn:active, .shoot-btn.pressed { background: #4d1a1a; border-color: #ff5555; }
         .transform-btn:active, .transform-btn.pressed { background: #1a4d4d; border-color: #ffffff; }
-        .overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(3, 11, 23, 0.95); display: flex; flex-direction: column;
-            justify-content: center; align-items: center; z-index: 50;
-            text-align: center; padding: 20px; box-sizing: border-box;
-        }
-        .menu-btn {
-            background: #1a2c47; border: 2px solid var(--neon-blue); color: white;
-            padding: 15px 30px; margin: 10px; border-radius: 8px;
-            font-size: 18px; font-weight: bold; cursor: pointer;
-            width: 80%; max-width: 250px; text-shadow: 0 0 5px var(--neon-blue);
-            box-shadow: 0 0 10px rgba(0, 234, 255, 0.2);
-        }
+        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(3, 11, 23, 0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 50; text-align: center; padding: 20px; box-sizing: border-box; }
+        .menu-btn { background: #1a2c47; border: 2px solid var(--neon-blue); color: white; padding: 15px 30px; margin: 10px; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; width: 80%; max-width: 250px; text-shadow: 0 0 5px var(--neon-blue); box-shadow: 0 0 10px rgba(0, 234, 255, 0.2); }
         .menu-btn:hover { background: #2a456d; }
         .menu-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .room-code-display {
-            font-size: 36px; color: #00ff00; letter-spacing: 5px;
-            font-weight: bold; margin: 20px 0; text-shadow: 0 0 10px #00ff00;
-        }
-        input[type="text"] {
-            padding: 15px; font-size: 24px; width: 200px; text-align: center;
-            text-transform: uppercase; border: 2px solid var(--neon-blue);
-            border-radius: 8px; background: #0a1525; color: white;
-            outline: none; margin-bottom: 20px;
-        }
-        #game-over {
-            display: none; background: rgba(0, 0, 0, 0.9);
-            border: 1px solid #ff2a2a; box-shadow: 0 0 20px rgba(255, 42, 42, 0.3);
-            border-radius: 10px;
-        }
+        .room-code-display { font-size: 36px; color: #00ff00; letter-spacing: 5px; font-weight: bold; margin: 20px 0; text-shadow: 0 0 10px #00ff00; }
+        input[type="text"] { padding: 15px; font-size: 24px; width: 200px; text-align: center; text-transform: uppercase; border: 2px solid var(--neon-blue); border-radius: 8px; background: #0a1525; color: white; outline: none; margin-bottom: 20px; }
+        #game-over { display: none; background: rgba(0, 0, 0, 0.9); border: 1px solid #ff2a2a; box-shadow: 0 0 20px rgba(255, 42, 42, 0.3); border-radius: 10px; }
         #game-over h2 { color: #ff2a2a; margin-top: 0; }
         button { background: var(--neon-blue); border: none; padding: 12px 24px; font-weight: bold; cursor: pointer; border-radius: 5px; margin-top: 15px; font-size: 16px; width: 100%; }
     </style>
@@ -173,7 +87,7 @@
             <button class="menu-btn" onclick="startSolo()">SINGLE PLAYER</button>
             <button class="menu-btn" onclick="showHostMenu()">HOST GAME</button>
             <button class="menu-btn" onclick="showJoinMenu()">JOIN GAME</button>
-            <p style="font-size: 12px; color: #888; margin-top: 20px;">Note: P1 (Host) uses WASD. P2 (Client) uses Arrow Keys.<br>On-screen controls work for both.</p>
+            <p style="font-size: 12px; color: #888; margin-top: 20px;">Note: P1 (Host) uses WASD or on-screen controls. P2 (Client) uses Arrow Keys or on-screen controls.<br>On-screen controls work for both.</p>
         </div>
 
         <div id="host-screen" class="overlay" style="display: none;">
@@ -277,23 +191,9 @@
         document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) fsBox.innerText = "⛶"; });
         document.addEventListener('webkitfullscreenchange', () => { if (!document.webkitFullscreenElement) fsBox.innerText = "⛶"; });
 
-        // ============================================================
-        // TURN CONFIGURATION
-        // ============================================================
-        // ⚠️ IMPORTANT: You MUST get your own TURN credentials from
-        // https://www.metered.ca/tools/openrelay/ (free tier, no card)
-        // and replace the placeholders below.
-        //
-        // The public "openrelayproject" credentials are no longer reliable.
-        // Without working TURN, cross-network play will FAIL.
-        //
-        // Same-WiFi play may work with STUN only, but cross-network needs TURN.
-        // ============================================================
+        const TURN_USERNAME = "ad68a0fe77751b60ee4d9ea1";
+        const TURN_CREDENTIAL = "dc7mPwbhbKTi9HYV";
 
-        const TURN_USERNAME = "ad68a0fe77751b60ee4d9ea1";   // <-- REPLACE
-        const TURN_CREDENTIAL = "dc7mPwbhbKTi9HYV"; // <-- REPLACE
-
-        // Build ICE servers dynamically: STUN always, TURN only if credentials set
         function buildIceServers() {
             const servers = [
                 { urls: 'stun:stun.l.google.com:19302' },
@@ -301,26 +201,12 @@
                 { urls: 'stun:stun2.l.google.com:19302' },
                 { urls: 'stun:global.stun.twilio.com:3478' }
             ];
-
             if (TURN_USERNAME && TURN_USERNAME !== "YOUR_USERNAME" &&
                 TURN_CREDENTIAL && TURN_CREDENTIAL !== "YOUR_CREDENTIAL") {
-                // Metered.ca's recommended TURN endpoints
                 servers.push(
-                    {
-                        urls: 'turn:standard.relay.metered.ca:80',
-                        username: TURN_USERNAME,
-                        credential: TURN_CREDENTIAL
-                    },
-                    {
-                        urls: 'turn:standard.relay.metered.ca:443',
-                        username: TURN_USERNAME,
-                        credential: TURN_CREDENTIAL
-                    },
-                    {
-                        urls: 'turns:standard.relay.metered.ca:443?transport=tcp',
-                        username: TURN_USERNAME,
-                        credential: TURN_CREDENTIAL
-                    }
+                    { urls: 'turn:standard.relay.metered.ca:80', username: TURN_USERNAME, credential: TURN_CREDENTIAL },
+                    { urls: 'turn:standard.relay.metered.ca:443', username: TURN_USERNAME, credential: TURN_CREDENTIAL },
+                    { urls: 'turns:standard.relay.metered.ca:443?transport=tcp', username: TURN_USERNAME, credential: TURN_CREDENTIAL }
                 );
                 console.log("TURN servers configured (Metered.ca)");
             } else {
@@ -332,11 +218,7 @@
         function createPeer(id = null) {
             const options = {
                 debug: 2,
-                config: {
-                    'iceServers': buildIceServers(),
-                    'iceTransportPolicy': 'all',
-                    'sdpSemantics': 'unified-plan'
-                }
+                config: { 'iceServers': buildIceServers(), 'iceTransportPolicy': 'all', 'sdpSemantics': 'unified-plan' }
             };
             return id ? new Peer(id, options) : new Peer(options);
         }
@@ -435,7 +317,6 @@
                 statusEl.innerText = "Negotiating connection (5-15s)...";
                 conn = peer.connect('ROBO-' + codeInput, { reliable: true, metadata: { role: 'client' } });
 
-                // Diagnose ICE state
                 const pcCheck = setInterval(() => {
                     if (conn && conn._pc) {
                         clearInterval(pcCheck);
@@ -734,12 +615,14 @@
                 return;
             }
 
+            // FIXED: On host/solo, both WASD and arrow keys control P1.
+            // On-screen buttons send arrow keys, so they must work too.
             let p1Speed = modeStats[p1.mode].speed;
-            if (keys["KeyA"] || (keys["ArrowLeft"] && !isMultiplayer)) p1.x -= p1Speed;
-            if (keys["KeyD"] || (keys["ArrowRight"] && !isMultiplayer)) p1.x += p1Speed;
-            if (keys["KeyW"] || (keys["ArrowUp"] && !isMultiplayer)) p1.y -= p1Speed;
-            if (keys["KeyS"] || (keys["ArrowDown"] && !isMultiplayer)) p1.y += p1Speed;
-            if (keys["Space"] && !isMultiplayer) shootWeapon(1);
+            if (keys["KeyA"] || keys["ArrowLeft"]) p1.x -= p1Speed;
+            if (keys["KeyD"] || keys["ArrowRight"]) p1.x += p1Speed;
+            if (keys["KeyW"] || keys["ArrowUp"]) p1.y -= p1Speed;
+            if (keys["KeyS"] || keys["ArrowDown"]) p1.y += p1Speed;
+            if (keys["Space"]) shootWeapon(1);  // FIXED: shooting works in multiplayer too
             p1.x = Math.max(20, Math.min(canvas.width - 20, p1.x));
             p1.y = Math.max(40, Math.min(canvas.height - 20, p1.y));
 
