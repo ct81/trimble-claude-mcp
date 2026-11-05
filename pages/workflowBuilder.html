@@ -207,6 +207,13 @@
   .toolbar button:disabled { opacity: .5; cursor: not-allowed; }
   .toolbar .icon-btn { padding: 7px 10px; font-size: 15px; line-height: 1; }
   .toolbar .spacer { flex: 1; min-width: 0; }
+  .privacy-link { color: #38bdf8; font-size: 12px; white-space: nowrap; text-underline-offset: 3px; }
+  .privacy-notice { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: #111827; border-bottom: 1px solid #334155; font-size: 12px; }
+  .privacy-notice[hidden] { display: none; }
+  .privacy-notice p { flex: 1; min-width: 0; margin: 0; overflow-wrap: anywhere; }
+  .privacy-notice button { flex: none; border: 1px solid #475569; border-radius: 6px; padding: 6px 8px; background: transparent; color: inherit; cursor: pointer; }
+  html[data-theme="light"] .privacy-notice { background: #fff; border-color: #cbd5e1; }
+  html[data-theme="light"] .privacy-link { color: #006b60; }
   #status {
     font-size: 12.5px; color: #94a3b8;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 45%;
@@ -689,8 +696,14 @@
       <button id="btnClear">Clear</button>
       <button id="btnSettings" class="icon-btn" title="Settings">⚙</button>
       <button id="btnTheme" class="icon-btn" title="Day 7am–7pm, night otherwise (local time). Click to override until the next switch." aria-label="Toggle day / night">🌙</button>
+      <a class="privacy-link" href="/privacy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
       <div class="spacer"></div>
       <span id="status">Ready</span>
+    </div>
+
+    <div class="privacy-notice" id="privacyNotice" role="status" hidden>
+      <p><strong id="privacyNoticeTitle">Google data &amp; privacy.</strong> <span id="privacyNoticeSummary"></span> <a class="privacy-link" href="/privacy.html" target="_blank" rel="noopener noreferrer">Read Privacy Policy</a></p>
+      <button id="privacyNoticeDismiss" type="button" aria-label="Dismiss Google data-use notice">Dismiss</button>
     </div>
 
     <div class="canvas" id="canvas">
@@ -831,6 +844,39 @@
     z-index: 9999;
   }
 </style>
+
+<script>
+(() => {
+  const notice = document.getElementById("privacyNotice");
+  const noticeKey = "roachharbor-google-data-use-notice";
+  let version = "";
+  document.getElementById("privacyNoticeDismiss").addEventListener("click", () => {
+    if (version) {
+      try { localStorage.setItem(noticeKey, version); } catch {}
+    }
+    notice.hidden = true;
+  });
+  fetch("/privacy.html", { cache: "no-store" })
+    .then((response) => {
+      if (!response.ok) throw new Error("Could not load privacy policy");
+      return response.text();
+    })
+    .then((html) => {
+      const policy = new DOMParser().parseFromString(html, "text/html");
+      version = policy.querySelector('meta[name="google-data-use-version"]')?.content || "";
+      if (!version) return;
+      let previous = null;
+      try { previous = localStorage.getItem(noticeKey); } catch {}
+      if (previous === version) return;
+      document.getElementById("privacyNoticeTitle").textContent = previous
+        ? "Google data use updated." : "Google data & privacy.";
+      document.getElementById("privacyNoticeSummary").textContent =
+        policy.querySelector('meta[name="google-data-use-summary"]')?.content || "Review the current policy.";
+      notice.hidden = false;
+    })
+    .catch(() => {});
+})();
+</script>
 
 <script>
 /* =========================================================================

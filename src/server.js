@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp & Telegram ChatBots, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #24"
+// #25"
 // git push origin main
 
 // git add .
@@ -732,6 +732,10 @@ const openCors = cors({ origin: true, exposedHeaders: ['WWW-Authenticate', 'Mcp-
 const openCorsPaths = /^\/(mcp|\.well-known|oauth\/(register|token))(\/|$|\?)/;
 const restrictedCors = cors({origin: config.extensionOrigin === '*' ? true : config.extensionOrigin, credentials:true, exposedHeaders:['WWW-Authenticate','Mcp-Session-Id']});
 app.use((req, res, next) => (openCorsPaths.test(req.url) ? openCors : restrictedCors)(req, res, next));
+app.get('/home.html', (req, res) => res.sendFile(path.join(process.cwd(), 'home.html')));
+app.get('/privacy.html', (req, res) => res.sendFile(path.join(process.cwd(), 'privacy.html')));
+app.get('/images/svg/roachharbor-logo-dark.svg', (req, res) =>
+  res.sendFile(path.join(process.cwd(), 'images', 'svg', 'roachharbor-logo-dark.svg')));
 app.use(express.static(path.join(process.cwd(), 'public')));
 app.use('/pages', (req, res, next) => {
   if (req.path === '/datastorage' || req.path.startsWith('/datastorage/')) return next();
