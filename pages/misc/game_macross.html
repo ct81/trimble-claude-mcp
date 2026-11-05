@@ -493,7 +493,8 @@
             const speedMultiplier = Math.pow(1.05, level - 1);
             softwareBlocks.push({
                 x: Math.random() * (canvas.width - size) + size/2,
-                y: -size, width: size, height: size, radius: size / 2,
+                y: -size,
+                width: size, height: size, radius: size / 2,
                 speed: baseSpeed * speedMultiplier + (level * 0.1),
                 angle: (Math.random() - 0.5) * 0.5, rotSpeed: (Math.random() - 0.5) * 0.03,
                 name: sw.name, color: sw.color, image: sw.image, imageLoaded: sw.imageLoaded
@@ -579,29 +580,26 @@
                 ctx.translate(s.x, s.y);
                 ctx.rotate(s.angle);
 
-                // 1. Draw colored outer circle
-                ctx.shadowBlur = 0;  // reset shadow for crisp circle
+                // 1. Colored outer circle
+                ctx.shadowBlur = 0;
                 ctx.globalAlpha = 1.0;
                 ctx.fillStyle = s.color;
                 ctx.beginPath();
-                ctx.arc(0, 0, s.width/2, 0, Math.PI * 2);
+                ctx.arc(0, 0, s.radius, 0, Math.PI * 2);
                 ctx.fill();
 
-                // 2. Draw white inner circle
+                // 2. White inner circle
                 ctx.fillStyle = "#ffffff";
                 ctx.beginPath();
-                ctx.arc(0, 0, s.width/2 - 4, 0, Math.PI * 2);
+                ctx.arc(0, 0, s.radius - 4, 0, Math.PI * 2);
                 ctx.fill();
 
-                // 3. Draw logo image or fallback text — no shadow, no alpha
+                // 3. Logo image or text fallback
                 if (s.imageLoaded && s.image && s.image.complete && s.image.naturalWidth > 0) {
-                    const imgSize = s.width - 14;
-                    ctx.shadowBlur = 0;
-                    ctx.globalAlpha = 1.0;
+                    const imgSize = (s.radius * 2) - 14;
                     try {
                         ctx.drawImage(s.image, -imgSize/2, -imgSize/2, imgSize, imgSize);
                     } catch (e) {
-                        // fallback to text if drawing fails
                         ctx.fillStyle = "#000000";
                         ctx.textAlign = "center";
                         ctx.textBaseline = "middle";
@@ -639,7 +637,15 @@
                 p1: { ...p1 }, p2: { ...p2 },
                 score1, score2, lives1, lives2, level,
                 killCount1, killCount2,
-                softwareBlocks: softwareBlocks.map(s => ({x: s.x, y: s.y, angle: s.angle, color: s.color, name: s.name, imageLoaded: s.imageLoaded})),
+                softwareBlocks: softwareBlocks.map(s => ({
+                    x: s.x, y: s.y,
+                    radius: s.radius,
+                    angle: s.angle,
+                    rotSpeed: s.rotSpeed,
+                    color: s.color,
+                    name: s.name,
+                    imageLoaded: s.imageLoaded
+                })),
                 bullets: bullets.map(b => ({...b})),
                 particles: particles.map(p => ({...p})),
                 screenFlash
@@ -654,16 +660,19 @@
             killCount1 = state.killCount1; killCount2 = state.killCount2;
             bullets = state.bullets; particles = state.particles; screenFlash = state.screenFlash;
 
-            // Rebuild softwareBlocks with image references — double-check image load state on client
             softwareBlocks = state.softwareBlocks.map(s => {
                 const sw = softwareList.find(sw => sw.name === s.name);
                 const img = sw ? sw.image : null;
-                // Use both the server-sent flag and the actual client image state
-                const loaded = (s.imageLoaded || (sw && sw.imageLoaded)) && img && img.complete && img.naturalWidth > 0;
+                const imgReady = img && img.complete && img.naturalWidth > 0;
                 return {
-                    ...s,
+                    x: s.x, y: s.y,
+                    radius: s.radius,
+                    angle: s.angle,
+                    rotSpeed: s.rotSpeed,
+                    color: s.color,
+                    name: s.name,
                     image: img,
-                    imageLoaded: loaded
+                    imageLoaded: imgReady
                 };
             });
             updateUI();
@@ -908,7 +917,7 @@
         bindButtonControls("btn-transform", null, true);
 
         window.addEventListener("touchend", () => {
-            keys = {}; document.querySelectorAll('.key-btn').forEach(btn => btn.classList.remove('pressed'));
+            keys = {}; document.querySelectorAll('.key-btn').forEach(el => el.classList.remove('pressed'));
         });
     </script>
 </body>
