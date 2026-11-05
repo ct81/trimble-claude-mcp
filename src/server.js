@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp & Telegram ChatBots, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #30"
+// #31"
 // git push origin main
 
 // git add .
@@ -11,7 +11,9 @@
 
 //Traditional crest vs modern simplified logo
 
+//https://search.google.com/search-console?resource_id=https%3A%2F%2Fct81.github.io%2Ftrimble-claude-mcp%2F&after_verification_success=
 //https://console.cloud.google.com/auth/clients?utm_source=chatgpt.com&project=my-test-212801
+//https://dashboard.metered.ca/v2/turn/credentials
 
 // git add src/mcp/http.js src/mcp/tools.js
 // git commit -m "Fix MCP PDF input handling and diagnostics"
