@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', async (event) => {
         });
 
         API_Ext.ui.setMenu({
-            title: "PDF Schedule Extractor"
+            title: "Intelligence Tools"
             , icon: "https://api.iconify.design/tabler/file-type-pdf.svg?color=%23FFFFFF"
             , command: "main_nav_menu_clicked"
             , subMenus: [

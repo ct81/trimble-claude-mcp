@@ -872,7 +872,7 @@
         ? "Google data use updated." : "Google data & privacy.";
       document.getElementById("privacyNoticeSummary").textContent =
         policy.querySelector('meta[name="google-data-use-summary"]')?.content || "Review the current policy.";
-      notice.hidden = false;
+      notice.hidden = true;
     })
     .catch(() => {});
 })();
