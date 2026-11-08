@@ -1054,6 +1054,44 @@
         }
 
         // --- 3. PERFORMANT MODEL PROCESSING ---
+
+        // Sanitizer: converts any array-like or comma-separated string into a valid Uint32Array
+        function sanitizeIndexArray(raw) {
+            if (!raw) return new Uint32Array(0);
+            if (raw instanceof Uint32Array) return raw;
+            if (raw instanceof Uint16Array) return new Uint32Array(raw);
+            if (Array.isArray(raw)) return new Uint32Array(raw.map(Number));
+            // Handle string input like "1,2,3,4,1"
+            if (typeof raw === 'string') {
+                const parts = raw.split(/[,\s]+/).filter(Boolean).map(Number).filter(Number.isFinite);
+                return new Uint32Array(parts);
+            }
+            // Handle typed array-like objects with length
+            if (typeof raw === 'object' && typeof raw.length === 'number') {
+                const out = new Uint32Array(raw.length);
+                for (let i = 0; i < raw.length; i++) out[i] = Number(raw[i]) || 0;
+                return out;
+            }
+            return new Uint32Array(0);
+        }
+
+        // Sanitizer: converts any array-like or comma-separated string into a valid Float32Array
+        function sanitizeVertexArray(raw) {
+            if (!raw) return new Float32Array(0);
+            if (raw instanceof Float32Array) return raw;
+            if (Array.isArray(raw)) return new Float32Array(raw.map(Number));
+            if (typeof raw === 'string') {
+                const parts = raw.split(/[,\s]+/).filter(Boolean).map(Number).filter(Number.isFinite);
+                return new Float32Array(parts);
+            }
+            if (typeof raw === 'object' && typeof raw.length === 'number') {
+                const out = new Float32Array(raw.length);
+                for (let i = 0; i < raw.length; i++) out[i] = Number(raw[i]) || 0;
+                return out;
+            }
+            return new Float32Array(0);
+        }
+
         async function processAndAddModel(arrayBuffer) {
             try {
                 if (currentModelID !== -1) ifcAPI.CloseModel(currentModelID);
@@ -1077,9 +1115,22 @@
                         const geometry = ifcAPI.GetGeometry(currentModelID, placedGeometryData.geometryExpressID);
                         if (!geometry) continue;
                         
-                        const verts = ifcAPI.GetVertexArray(geometry.GetVertexData(), geometry.GetVertexDataSize());
-                        const indices = ifcAPI.GetIndexArray(geometry.GetIndexData(), geometry.GetIndexDataSize());
-                        
+                        // Sanitize raw data from WASM to prevent "Cannot convert ... to unsigned int"
+                        let verts, indices;
+                        try {
+                            verts = sanitizeVertexArray(ifcAPI.GetVertexArray(geometry.GetVertexData(), geometry.GetVertexDataSize()));
+                            indices = sanitizeIndexArray(ifcAPI.GetIndexArray(geometry.GetIndexData(), geometry.GetIndexDataSize()));
+                        } catch(e) {
+                            console.warn(`Skipping geometry ${placedGeometryData.geometryExpressID}: ${e.message}`);
+                            continue;
+                        }
+
+                        if (!verts || verts.length === 0 || !indices || indices.length === 0) continue;
+                        if (verts.length % 6 !== 0) {  // x,y,z,nx,ny,nz interleaved
+                            console.warn(`Skipping geometry with malformed vertex buffer (${verts.length} floats)`);
+                            continue;
+                        }
+
                         rawGeometries.push({
                             verts, indices,
                             expressID: mesh.expressID,
@@ -1102,27 +1153,31 @@
                     const chunk = rawGeometries.slice(i, i + CHUNK_SIZE);
                     
                     chunk.forEach(data => {
-                        const bufferGeometry = new THREE.BufferGeometry();
-                        const posArray = new Float32Array(data.verts.length / 2); 
-                        const normalArray = new Float32Array(data.verts.length / 2);
-                        
-                        for (let j = 0; j < data.verts.length; j += 6) {
-                            posArray[j / 2] = data.verts[j]; posArray[j / 2 + 1] = data.verts[j + 1]; posArray[j / 2 + 2] = data.verts[j + 2];
-                            normalArray[j / 2] = data.verts[j + 3]; normalArray[j / 2 + 1] = data.verts[j + 4]; normalArray[j / 2 + 2] = data.verts[j + 5];
-                        }
-                        
-                        bufferGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-                        bufferGeometry.setAttribute('normal', new THREE.BufferAttribute(normalArray, 3));
-                        bufferGeometry.setIndex(new THREE.BufferAttribute(data.indices, 1));
-                        
-                        const mesh3D = new THREE.Mesh(bufferGeometry, sharedDefaultMaterial);
-                        mesh3D.userData.expressID = data.expressID;
-                        if (data.matrix) mesh3D.applyMatrix4(data.matrix);
-                        group.add(mesh3D);
+                        try {
+                            const bufferGeometry = new THREE.BufferGeometry();
+                            const posArray = new Float32Array(data.verts.length / 2); 
+                            const normalArray = new Float32Array(data.verts.length / 2);
+                            
+                            for (let j = 0; j < data.verts.length; j += 6) {
+                                posArray[j / 2] = data.verts[j]; posArray[j / 2 + 1] = data.verts[j + 1]; posArray[j / 2 + 2] = data.verts[j + 2];
+                                normalArray[j / 2] = data.verts[j + 3]; normalArray[j / 2 + 1] = data.verts[j + 4]; normalArray[j / 2 + 2] = data.verts[j + 5];
+                            }
+                            
+                            bufferGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+                            bufferGeometry.setAttribute('normal', new THREE.BufferAttribute(normalArray, 3));
+                            bufferGeometry.setIndex(new THREE.BufferAttribute(data.indices, 1));
+                            
+                            const mesh3D = new THREE.Mesh(bufferGeometry, sharedDefaultMaterial);
+                            mesh3D.userData.expressID = data.expressID;
+                            if (data.matrix) mesh3D.applyMatrix4(data.matrix);
+                            group.add(mesh3D);
 
-                        const line = ifcAPI.GetLine(currentModelID, data.expressID, true);
-                        if (line && line.GlobalId && line.GlobalId.value) {
-                            guidToMeshMap.set(line.GlobalId.value, mesh3D);
+                            const line = ifcAPI.GetLine(currentModelID, data.expressID, true);
+                            if (line && line.GlobalId && line.GlobalId.value) {
+                                guidToMeshMap.set(line.GlobalId.value, mesh3D);
+                            }
+                        } catch(meshErr) {
+                            console.warn(`Failed to build mesh for expressID ${data.expressID}: ${meshErr.message}`);
                         }
                     });
 
@@ -1137,7 +1192,7 @@
                 clearSelection();
 
                 const box = new THREE.Box3().setFromObject(group); const center = box.getCenter(new THREE.Vector3()); const size = box.getSize(new THREE.Vector3());
-                controls.target.copy(center); const maxDim = Math.max(size.x, size.y, size.z);
+                controls.target.copy(center); const maxDim = Math.max(size.x, size.y, size.z) || 10;
                 camera.position.set(center.x + maxDim, center.y + maxDim/2, center.z + maxDim); controls.update(); 
                 
                 document.getElementById('color-by-select').value = 'default';
