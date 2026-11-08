@@ -26,9 +26,9 @@
 
             --panel-top: calc(var(--header-height) + var(--toolbar-height) + var(--dashboard-padding));
 
-            /* Heights used only to compute the stack — the gap is always --dashboard-gap */
+            /* Heights: always bigger than the real rendered height so the gap below stays intact */
             --controls-h: 160px;
-            --crane-h: 240px;
+            --crane-h: 270px;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -136,10 +136,20 @@
         .control-group select, .control-group button, .control-group input[type="file"], .control-group input[type="number"] { background: rgba(255,255,255,0.1); color: var(--text-main); border: 1px solid var(--border-color); padding: 5px 8px; border-radius: 4px; cursor: pointer; width: 100%; outline: none; font-size: 0.75rem; }
         .control-group button:hover { background: rgba(0, 240, 255, 0.2); border-color: var(--neon-blue); }
         
-        /* --- RIGHT-SIDE FLOATING PANELS STACK (consistent padding) --- */
-        #floating-controls-panel { top: 90px; right: 380px; }
-        #crane-panel { top: 270px; right: 380px; }
-        #data-color-panel { top: 550px; right: 380px; }
+        /* --- RIGHT-SIDE FLOATING PANEL STACK ---
+           Controls aligns with left/right panel top edge.
+           Crane sits below Controls with --dashboard-gap.
+           Data & Color sits below Crane with the SAME --dashboard-gap. */
+        #floating-controls-panel { top: var(--panel-top); right: 380px; }
+        #crane-panel { 
+            top: calc(var(--panel-top) + var(--controls-h) + var(--dashboard-gap)); 
+            right: 380px; 
+        }
+        #data-color-panel { 
+            top: calc(var(--panel-top) + var(--controls-h) + var(--dashboard-gap)
+                                       + var(--crane-h)    + var(--dashboard-gap)); 
+            right: 380px; 
+        }
 
         /* Compact styling for Crane panel */
         #crane-panel .content { padding: 10px; gap: 7px; }
@@ -252,11 +262,11 @@
         .settings-row button { background: rgba(157, 78, 221, 0.1); border: 1px solid var(--neon-purple); color: var(--neon-purple); border-radius: 4px; padding: 4px 10px; font-size: 0.7rem; cursor: pointer; }
         .settings-row button:hover { background: rgba(157, 78, 221, 0.25); }
 
-        /* Responsive — keep the same spacing logic; only the sizes shrink */
+        /* Responsive — heights shrink with the gap so the padding always shows */
         @media (max-width: 1200px) { 
             .dashboard { grid-template-columns: 280px 1fr 300px; gap: 15px; padding: 15px; }
             .panel { padding: 15px; }
-            :root { --dashboard-padding: 15px; --dashboard-gap: 15px; --controls-h: 150px; --crane-h: 230px; }
+            :root { --dashboard-padding: 15px; --dashboard-gap: 15px; --controls-h: 150px; --crane-h: 250px; }
             #floating-controls-panel { right: 320px; }
             #crane-panel { right: 320px; }
             #data-color-panel { right: 320px; }
@@ -265,7 +275,7 @@
             .breadcrumbs { display: none; } 
             .dashboard { grid-template-columns: 250px 1fr 260px; gap: 10px; padding: 10px; }
             .panel { padding: 12px; }
-            :root { --dashboard-padding: 10px; --dashboard-gap: 10px; --controls-h: 150px; --crane-h: 220px; }
+            :root { --dashboard-padding: 10px; --dashboard-gap: 10px; --controls-h: 150px; --crane-h: 240px; }
             #floating-controls-panel { right: 280px; }
             #crane-panel { right: 280px; }
             #data-color-panel { right: 280px; }
@@ -278,7 +288,7 @@
             #left-panel, #right-panel { position: absolute; top: 10px; bottom: 10px; width: 240px; opacity: 0.95; background: rgba(13, 17, 28, 0.9); z-index: 15; overflow-y: auto; }
             #left-panel { left: 10px; } #right-panel { right: 10px; }
             .prop-row { grid-template-columns: 120px 1fr; }
-            :root { --panel-top: calc(var(--header-height) + var(--toolbar-height) + 10px); --dashboard-gap: 10px; --controls-h: 140px; --crane-h: 220px; }
+            :root { --panel-top: calc(var(--header-height) + var(--toolbar-height) + 10px); --dashboard-gap: 10px; --controls-h: 140px; --crane-h: 240px; }
             #floating-controls-panel { right: 10px; width: 150px; }
             #crane-panel { right: 10px; width: 150px; }
             #data-color-panel { right: 10px; width: 150px; }
