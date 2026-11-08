@@ -136,18 +136,10 @@
         .control-group select, .control-group button, .control-group input[type="file"], .control-group input[type="number"] { background: rgba(255,255,255,0.1); color: var(--text-main); border: 1px solid var(--border-color); padding: 5px 8px; border-radius: 4px; cursor: pointer; width: 100%; outline: none; font-size: 0.75rem; }
         .control-group button:hover { background: rgba(0, 240, 255, 0.2); border-color: var(--neon-blue); }
         
-        /* --- RIGHT-SIDE FLOATING PANEL STACK ---
-           The vertical gap is ALWAYS --dashboard-gap between every pair. */
-        #floating-controls-panel { top: var(--panel-top); right: 380px; }
-        #crane-panel { 
-            top: calc(var(--panel-top) + var(--controls-h) + var(--dashboard-gap)); 
-            right: 380px; 
-        }
-        #data-color-panel { 
-            top: calc(var(--panel-top) + var(--controls-h) + var(--dashboard-gap)
-                                       + var(--crane-h)    + var(--dashboard-gap)); 
-            right: 380px; 
-        }
+        /* --- RIGHT-SIDE FLOATING PANELS STACK (consistent padding) --- */
+        #floating-controls-panel { top: 90px; right: 380px; }
+        #crane-panel { top: 270px; right: 380px; }
+        #data-color-panel { top: 550px; right: 380px; }
 
         /* Compact styling for Crane panel */
         #crane-panel .content { padding: 10px; gap: 7px; }
