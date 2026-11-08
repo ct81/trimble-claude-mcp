@@ -20,6 +20,16 @@
             --neon-green: #00ff88;
             --neon-orange: #ff9900;
             --header-height: 70px;
+            --toolbar-height: 44px;
+            --dashboard-padding: 20px;
+            --dashboard-gap: 20px;
+
+            /* Top edge shared by left, right, and the Controls floating panel */
+            --panel-top: calc(var(--header-height) + var(--toolbar-height) + var(--dashboard-padding));
+
+            /* Known natural heights (approx) used for stacking the right-side floating panels */
+            --controls-h: 160px;
+            --crane-h: 240px;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -33,7 +43,7 @@
         .ui-layer { position: absolute; top: 0; left: 0; width: 100vw; height: 100dvh; z-index: 10; pointer-events: none; display: flex; flex-direction: column; }
 
         /* --- HEADER --- */
-        header { pointer-events: auto; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; height: var(--header-height); background: rgba(10, 14, 25, 0.85); border-bottom: 1px solid var(--border-color); backdrop-filter: blur(10px); z-index: 20; }
+        header { pointer-events: auto; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; height: var(--header-height); background: rgba(10, 14, 25, 0.85); border-bottom: 1px solid var(--border-color); backdrop-filter: blur(10px); z-index: 20; flex-shrink: 0; }
         .logo-area { display: flex; align-items: center; gap: 15px; font-weight: bold; letter-spacing: 1px; }
         .logo-icon { color: var(--neon-blue); font-size: 1.2rem; }
         .breadcrumbs { color: var(--text-muted); font-size: 0.85rem; font-weight: normal; }
@@ -49,13 +59,26 @@
         .user-profile { display: flex; align-items: center; gap: 10px; background: rgba(255, 255, 255, 0.05); padding: 5px 15px; border-radius: 20px; border: 1px solid var(--border-color); white-space: nowrap; }
         .user-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--neon-purple); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; }
 
+        /* --- TOOLBAR --- */
+        .toolbar { pointer-events: auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 20px; height: var(--toolbar-height); background: rgba(10, 14, 25, 0.85); border-bottom: 1px solid var(--border-color); backdrop-filter: blur(10px); z-index: 19; flex-shrink: 0; }
+        .toolbar-group { display: flex; align-items: center; gap: 8px; }
+        .toolbar-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-muted); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; gap: 6px; transition: all 0.2s; white-space: nowrap; }
+        .toolbar-btn:hover { background: rgba(255,255,255,0.1); color: var(--text-main); }
+        .toolbar-btn.active { background: rgba(0, 240, 255, 0.15); border-color: var(--neon-blue); color: var(--neon-blue); box-shadow: 0 0 8px rgba(0, 240, 255, 0.25); }
+        .toolbar-btn .tb-icon { font-size: 0.95rem; line-height: 1; }
+        .toolbar-btn.settings { border-color: rgba(157, 78, 221, 0.5); color: var(--neon-purple); }
+        .toolbar-btn.settings:hover { background: rgba(157, 78, 221, 0.15); color: #c9a4ff; }
+        .toolbar-btn.fullscreen { border-color: rgba(0, 255, 136, 0.5); color: var(--neon-green); }
+        .toolbar-btn.fullscreen:hover { background: rgba(0, 255, 136, 0.15); color: var(--neon-green); }
+
+        .toolbar-hint { font-size: 0.72rem; color: var(--text-muted); margin-left: 8px; font-style: italic; }
+
         /* --- DASHBOARD GRID --- */
-        .dashboard { display: grid; grid-template-columns: 340px 1fr 360px; gap: 20px; padding: 20px; flex: 1; height: calc(100dvh - var(--header-height)); position: relative; z-index: 5; pointer-events: none; transition: grid-template-columns 0.3s ease; }
+        .dashboard { display: grid; grid-template-columns: 340px 1fr 360px; gap: var(--dashboard-gap); padding: var(--dashboard-padding); flex: 1; height: calc(100dvh - var(--header-height) - var(--toolbar-height)); position: relative; z-index: 5; pointer-events: none; transition: grid-template-columns 0.3s ease; }
 
         /* --- PANELS --- */
         .panel { pointer-events: auto; background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; backdrop-filter: blur(15px); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); display: flex; flex-direction: column; overflow-y: auto; position: relative; }
         
-        /* Draggable Headers */
         .panel-header, .inspector-header, .val-header, .chart-modal-header { 
             display: flex; justify-content: space-between; align-items: center; 
             margin-bottom: 15px; font-size: 0.9rem; font-weight: 600; letter-spacing: 0.5px; color: var(--text-muted); text-transform: uppercase; 
@@ -80,7 +103,6 @@
         .chart-area { fill: url(#blueGradient); opacity: 0.3; }
         .chart-line-alt { fill: none; stroke: var(--neon-purple); stroke-width: 2; stroke-dasharray: 4; }
 
-        /* Tooltip Hover Areas */
         .hover-target { pointer-events: all; cursor: crosshair; }
         .hover-target:hover { opacity: 0.8; }
 
@@ -124,10 +146,19 @@
         .control-group select, .control-group button, .control-group input[type="file"], .control-group input[type="number"] { background: rgba(255,255,255,0.1); color: var(--text-main); border: 1px solid var(--border-color); padding: 5px 8px; border-radius: 4px; cursor: pointer; width: 100%; outline: none; font-size: 0.75rem; }
         .control-group button:hover { background: rgba(0, 240, 255, 0.2); border-color: var(--neon-blue); }
         
-        /* --- RIGHT-SIDE FLOATING PANELS STACK (consistent padding) --- */
-        #floating-controls-panel { top: 90px; right: 380px; }
-        #crane-panel { top: 270px; right: 380px; }
-        #data-color-panel { top: 550px; right: 380px; }
+        /* --- RIGHT-SIDE FLOATING PANEL STACK ---
+           Controls sits flush with the top of the left/right panels.
+           Crane sits below with exactly --dashboard-gap of space.
+           Data & Color sits below Crane with the same --dashboard-gap. */
+        #floating-controls-panel { top: var(--panel-top); right: 380px; }
+        #crane-panel { 
+            top: calc(var(--panel-top) + var(--controls-h) + var(--dashboard-gap)); 
+            right: 380px; 
+        }
+        #data-color-panel { 
+            top: calc(var(--panel-top) + var(--controls-h) + var(--dashboard-gap) + var(--crane-h) + var(--dashboard-gap)); 
+            right: 380px; 
+        }
 
         /* Compact styling for Crane panel */
         #crane-panel .content { padding: 10px; gap: 7px; }
@@ -194,16 +225,13 @@
         .tt-desc { color: var(--text-muted); font-size: 0.65rem; margin-top: 2px;}
         .tt-divider { height: 1px; background: rgba(255,255,255,0.1); margin: 2px 0; }
 
-        /* Maximize Class */
         .maximized { top: 0 !important; left: 0 !important; width: 100vw !important; max-width: 100vw !important; height: 100dvh !important; max-height: 100dvh !important; transform: none !important; border-radius: 0 !important; border: none !important; z-index: 9999 !important; margin: 0 !important; }
         .detached { transform: none !important; }
 
-        /* Minimized Dock */
         #minimized-dock { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 1000; pointer-events: auto; }
         .dock-item { background: rgba(10, 14, 25, 0.95); border: 1px solid var(--neon-blue); color: white; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-size: 0.8rem; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); backdrop-filter: blur(10px); transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
         .dock-item:hover { background: rgba(0, 240, 255, 0.2); box-shadow: 0 0 10px var(--neon-blue); }
 
-        /* Search & Tabs */
         .search-container { margin-bottom: 15px; }
         .search-input { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: white; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; outline: none; }
         .search-input:focus { border-color: var(--neon-blue); box-shadow: 0 0 10px rgba(0, 240, 255, 0.2); }
@@ -220,30 +248,25 @@
         .prop-key { color: var(--text-muted); word-break: break-word; }
         .prop-val { color: #fff; word-break: break-word; }
 
-        /* Loading Spinner */
         .spinner-container { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; color: var(--neon-blue); }
         .spinner { border: 3px solid rgba(0, 240, 255, 0.1); border-top: 3px solid var(--neon-blue); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px; }
 
-        /* Validation Results Styling */
         .val-success { color: var(--neon-green); font-weight: bold; text-align: center; margin: 20px 0; font-size: 1.1rem; }
         .val-error-item { background: rgba(255, 0, 127, 0.1); border-left: 3px solid var(--neon-pink); padding: 8px 12px; margin-bottom: 8px; border-radius: 4px; font-size: 0.8rem; }
         .val-error-item strong { color: var(--neon-pink); display: block; margin-bottom: 2px; }
         .val-error-item span { color: var(--text-muted); font-size: 0.75rem; }
         .val-part-header { color: var(--neon-blue); font-size: 0.8rem; margin: 15px 0 5px 0; font-weight: bold; text-transform: uppercase; border-bottom: 1px dashed var(--border-color); padding-bottom: 4px; }
 
-        /* Toast */
         #toast-container { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
         .toast { background: rgba(10, 14, 25, 0.95); border: 1px solid var(--neon-orange); color: var(--text-main); padding: 10px 20px; border-radius: 8px; font-size: 0.8rem; box-shadow: 0 4px 15px rgba(0,0,0,0.5); animation: fadeInOut 3s forwards; backdrop-filter: blur(10px); }
         .toast.success { border-color: var(--neon-green); }
         .toast.error { border-color: var(--neon-pink); }
         @keyframes fadeInOut { 0% { opacity: 0; transform: translateY(20px); } 10% { opacity: 1; transform: translateY(0); } 90% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(20px); } }
 
-        /* Loading Overlay */
         #loading-overlay { position: absolute; top: 0; left: 0; width: 100vw; height: 100dvh; background: rgba(5, 7, 10, 0.95); z-index: 10000; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.5s ease; color: var(--neon-blue); }
         .loader { border: 4px solid rgba(0, 240, 255, 0.1); border-top: 4px solid var(--neon-blue); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 20px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* Progress Bar */
         .progress-container { width: 300px; margin-top: 15px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; height: 6px; }
         .progress-bar { height: 100%; background: var(--neon-blue); width: 0%; transition: width 0.1s; }
 
@@ -251,30 +274,9 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
 
-        /* --- RESIZE HANDLE (Universal) --- */
-        .resize-handle {
-            position: absolute;
-            width: 14px;
-            height: 14px;
-            right: 2px;
-            bottom: 2px;
-            cursor: nwse-resize;
-            z-index: 50;
-            background: transparent;
-            touch-action: none;
-        }
-        .resize-handle::after {
-            content: '';
-            position: absolute;
-            right: 3px;
-            bottom: 3px;
-            width: 8px;
-            height: 8px;
-            border-right: 2px solid var(--neon-blue);
-            border-bottom: 2px solid var(--neon-blue);
-            opacity: 0.4;
-            transition: opacity 0.2s;
-        }
+        /* --- RESIZE HANDLE --- */
+        .resize-handle { position: absolute; width: 14px; height: 14px; right: 2px; bottom: 2px; cursor: nwse-resize; z-index: 50; background: transparent; touch-action: none; }
+        .resize-handle::after { content: ''; position: absolute; right: 3px; bottom: 3px; width: 8px; height: 8px; border-right: 2px solid var(--neon-blue); border-bottom: 2px solid var(--neon-blue); opacity: 0.4; transition: opacity 0.2s; }
         .panel:hover > .resize-handle::after,
         .floating-controls:hover > .resize-handle::after,
         #inspector-panel:hover > .resize-handle::after,
@@ -283,34 +285,51 @@
         .resizing { opacity: 0.85; }
         #left-panel.resizing, #right-panel.resizing { transition: none !important; }
 
-        /* Responsive Adjustments */
+        #area-select-box { position: fixed; border: 1.5px dashed var(--neon-blue); background: rgba(0, 240, 255, 0.08); pointer-events: none; z-index: 50; display: none; }
+
+        #settings-popup { position: absolute; top: calc(var(--header-height) + var(--toolbar-height) + 8px); right: 20px; z-index: 999; background: rgba(10, 14, 25, 0.98); border: 1px solid var(--neon-purple); border-radius: 10px; box-shadow: 0 0 25px rgba(157, 78, 221, 0.3); backdrop-filter: blur(20px); width: 260px; padding: 14px; display: none; flex-direction: column; gap: 10px; pointer-events: auto; }
+        #settings-popup.open { display: flex; }
+        #settings-popup h4 { color: var(--neon-purple); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+        .settings-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem; padding: 4px 0; }
+        .settings-row label { color: var(--text-muted); }
+        .settings-row input[type="checkbox"] { accent-color: var(--neon-purple); width: 16px; height: 16px; cursor: pointer; }
+        .settings-row button { background: rgba(157, 78, 221, 0.1); border: 1px solid var(--neon-purple); color: var(--neon-purple); border-radius: 4px; padding: 4px 10px; font-size: 0.7rem; cursor: pointer; }
+        .settings-row button:hover { background: rgba(157, 78, 221, 0.25); }
+
+        /* Responsive — keep the same spacing logic; only the sizes shrink */
         @media (max-width: 1200px) { 
-            .dashboard { grid-template-columns: 280px 1fr 300px; gap: 15px; padding: 15px; } 
-            .panel { padding: 15px; } 
-            #floating-controls-panel { right: 320px; } 
-            #crane-panel { right: 320px; top: 260px; }
-            #data-color-panel { right: 320px; top: 540px; }
+            .dashboard { grid-template-columns: 280px 1fr 300px; gap: 15px; padding: 15px; }
+            .panel { padding: 15px; }
+            :root { --dashboard-padding: 15px; --dashboard-gap: 15px; --controls-h: 150px; --crane-h: 230px; }
+            #floating-controls-panel { right: 320px; }
+            #crane-panel { right: 320px; }
+            #data-color-panel { right: 320px; }
         }
         @media (max-width: 992px) { 
             .breadcrumbs { display: none; } 
-            .dashboard { grid-template-columns: 250px 1fr 260px; gap: 10px; padding: 10px; } 
-            .panel { padding: 12px; } 
-            #floating-controls-panel { right: 280px; top: 80px; } 
-            #crane-panel { right: 280px; top: 250px; }
-            #data-color-panel { right: 280px; top: 530px; }
+            .dashboard { grid-template-columns: 250px 1fr 260px; gap: 10px; padding: 10px; }
+            .panel { padding: 12px; }
+            :root { --dashboard-padding: 10px; --dashboard-gap: 10px; --controls-h: 150px; --crane-h: 220px; }
+            #floating-controls-panel { right: 280px; }
+            #crane-panel { right: 280px; }
+            #data-color-panel { right: 280px; }
         }
         @media (max-width: 768px) {
             header { padding: 0 10px; } .logo-area span:not(.logo-icon) { font-size: 0.85rem; }
             .upload-btn span:not(.icon), .header-validate-btn span:not(.icon) { display: none; } 
             .upload-btn, .header-validate-btn { padding: 8px 10px; } .user-profile { padding: 5px 8px; }
-            .dashboard { display: block; padding: 0; height: calc(100dvh - var(--header-height)); }
+            .dashboard { display: block; padding: 0; height: calc(100dvh - var(--header-height) - var(--toolbar-height)); }
             #left-panel, #right-panel { position: absolute; top: 10px; bottom: 10px; width: 240px; opacity: 0.95; background: rgba(13, 17, 28, 0.9); z-index: 15; overflow-y: auto; }
             #left-panel { left: 10px; } #right-panel { right: 10px; }
             .prop-row { grid-template-columns: 120px 1fr; }
-            #floating-controls-panel { right: 10px; top: 80px; width: 150px; }
-            #crane-panel { right: 10px; top: 250px; width: 150px; }
-            #data-color-panel { right: 10px; top: 530px; width: 150px; }
+            :root { --panel-top: calc(var(--header-height) + var(--toolbar-height) + 10px); --dashboard-gap: 10px; --controls-h: 140px; --crane-h: 220px; }
+            #floating-controls-panel { right: 10px; width: 150px; }
+            #crane-panel { right: 10px; width: 150px; }
+            #data-color-panel { right: 10px; width: 150px; }
             .chart-container:nth-of-type(2) { display: none; }
+            .toolbar-hint { display: none; }
+            .toolbar-btn span.label { display: none; }
+            .toolbar-btn { padding: 6px 8px; }
         }
     </style>
 
@@ -328,8 +347,16 @@
 
     <div id="canvas-container"></div>
     <div id="toast-container"></div>
+    <div id="area-select-box"></div>
+
+    <div id="settings-popup">
+        <h4>⚙️ Settings</h4>
+        <div class="settings-row"><label>Show Grid</label><input type="checkbox" id="set-grid" checked></div>
+        <div class="settings-row"><label>Show Fog</label><input type="checkbox" id="set-fog" checked></div>
+        <div class="settings-row"><label>Selection Box</label><input type="checkbox" id="set-selbox" checked></div>
+        <div class="settings-row"><button id="btn-reset-camera">Reset Camera</button></div>
+    </div>
     
-    <!-- Custom Tooltip Element -->
     <div id="chart-tooltip">
         <div class="tt-title" id="tt-title">Title</div>
         <div class="tt-value" id="tt-value">Value</div>
@@ -350,7 +377,7 @@
         <header>
             <div class="logo-area">
                 <span class="logo-icon">⧉</span> <span>CONSTRUCTIO</span>
-                <div class="breadcrumbs">DIGITAL TWIN | Project: AURORA TOWER | SITE STATUS: <span>ON TRACK</span> | <span id="clock">18:24 PM</span></div>
+                <div class="breadcrumbs">DIGITAL TWIN | Project: TPS42NH_VC_PC_CM_L7_R24.ifc | SITE STATUS: <span>ON TRACK</span> | <span id="clock">18:24 PM</span></div>
             </div>
             <div class="header-actions">
                 <button id="header-validate-btn" class="header-validate-btn" title="Validate all selected elements against BCA IFC-SG standards">
@@ -361,8 +388,30 @@
             </div>
         </header>
 
+        <div class="toolbar">
+            <div class="toolbar-group">
+                <button class="toolbar-btn active" id="mode-single" title="Single Selection">
+                    <span class="tb-icon">👆</span><span class="label">Single</span>
+                </button>
+                <button class="toolbar-btn" id="mode-area" title="Area Selection">
+                    <span class="tb-icon">▭</span><span class="label">Area</span>
+                </button>
+                <button class="toolbar-btn" id="mode-assembly" title="Assembly Selection">
+                    <span class="tb-icon">🧱</span><span class="label">Assembly</span>
+                </button>
+                <span class="toolbar-hint" id="toolbar-hint">Single selection — click any element</span>
+            </div>
+            <div class="toolbar-group">
+                <button class="toolbar-btn settings" id="btn-settings" title="Settings">
+                    <span class="tb-icon">⚙️</span><span class="label">Settings</span>
+                </button>
+                <button class="toolbar-btn fullscreen" id="btn-fullscreen" title="Enter Fullscreen">
+                    <span class="tb-icon">⛶</span><span class="label">Fullscreen</span>
+                </button>
+            </div>
+        </div>
+
         <div class="dashboard" id="main-dashboard">
-            <!-- LEFT PANEL -->
             <div class="panel" id="left-panel">
                 <div class="panel-header">
                     <span>PROJECT TIMELINES</span>
@@ -383,19 +432,15 @@
                     <div class="chart-title"><span>Schedule Variance</span><span style="display:flex; gap:10px; align-items:center;"><span>Q3 2024</span> <span class="expand-icon">⛶</span></span></div>
                     <svg class="svg-chart" viewBox="0 0 280 110">
                         <line x1="60" y1="0" x2="60" y2="110" class="grid-line" /><line x1="120" y1="0" x2="120" y2="110" class="grid-line" /><line x1="180" y1="0" x2="180" y2="110" class="grid-line" /><line x1="240" y1="0" x2="240" y2="110" class="grid-line" />
-                        
                         <text x="0" y="15" fill="#7a8ba3" font-size="9">Foundation</text>
                         <rect x="60" y="7" width="100" height="8" fill="rgba(0, 240, 255, 0.2)" rx="4" />
                         <rect class="hover-target" data-tt-title="Foundation" data-tt-val="80%" data-tt-desc="Planned: 100% | Status: On Track" x="60" y="7" width="80" height="8" fill="var(--neon-blue)" rx="4" />
-                        
                         <text x="0" y="40" fill="#7a8ba3" font-size="9">Steel</text>
                         <rect x="100" y="32" width="120" height="8" fill="rgba(157, 78, 221, 0.2)" rx="4" />
                         <rect class="hover-target" data-tt-title="Steel Erection" data-tt-val="60%" data-tt-desc="Planned: 90% | Status: Delayed" x="100" y="32" width="60" height="8" fill="var(--neon-purple)" rx="4" />
-                        
                         <text x="0" y="65" fill="#7a8ba3" font-size="9">Cladding</text>
                         <rect x="150" y="57" width="90" height="8" fill="rgba(255, 0, 127, 0.2)" rx="4" />
                         <rect class="hover-target" data-tt-title="Cladding" data-tt-val="40%" data-tt-desc="Planned: 60% | Status: Delayed" x="150" y="57" width="40" height="8" fill="var(--neon-pink)" rx="4" />
-                        
                         <text x="0" y="90" fill="#7a8ba3" font-size="9">MEP</text>
                         <rect x="180" y="82" width="80" height="8" fill="rgba(0, 255, 136, 0.2)" rx="4" />
                         <rect class="hover-target" data-tt-title="MEP Rough-in" data-tt-val="10%" data-tt-desc="Planned: 20% | Status: Critical" x="180" y="82" width="10" height="8" fill="var(--neon-green)" rx="4" />
@@ -412,15 +457,12 @@
                         <line x1="100" y1="80" x2="147" y2="150" stroke="rgba(255,255,255,0.1)" />
                         <line x1="100" y1="80" x2="53" y2="150" stroke="rgba(255,255,255,0.1)" />
                         <line x1="100" y1="80" x2="24" y2="65" stroke="rgba(255,255,255,0.1)" />
-                        
                         <polygon points="100,50 150,65 120,120 70,130 50,70" fill="rgba(255, 0, 127, 0.2)" stroke="var(--neon-pink)" stroke-width="2" />
-                        
                         <circle class="hover-target" data-tt-title="Weather Risk" data-tt-val="High" data-tt-desc="Score: 8/10. Delays expected due to monsoon." cx="100" cy="50" r="6" fill="transparent" />
                         <circle class="hover-target" data-tt-title="Supply Chain" data-tt-val="Medium" data-tt-desc="Score: 5/10. Steel deliveries slightly behind." cx="150" cy="65" r="6" fill="transparent" />
                         <circle class="hover-target" data-tt-title="Labor" data-tt-val="Very High" data-tt-desc="Score: 9/10. Shortage of MEP technicians." cx="120" cy="120" r="6" fill="transparent" />
                         <circle class="hover-target" data-tt-title="Design" data-tt-val="Low" data-tt-desc="Score: 3/10. Minor RFIs pending." cx="70" cy="130" r="6" fill="transparent" />
                         <circle class="hover-target" data-tt-title="Safety" data-tt-val="Medium" data-tt-desc="Score: 6/10. Need better edge protection." cx="50" cy="70" r="6" fill="transparent" />
-
                         <text x="100" y="10" fill="#7a8ba3" font-size="8" text-anchor="middle">Weather</text>
                         <text x="185" y="65" fill="#7a8ba3" font-size="8" text-anchor="start">Supply</text>
                         <text x="155" y="160" fill="#7a8ba3" font-size="8" text-anchor="middle">Labor</text>
@@ -436,9 +478,8 @@
                 <div class="resize-handle" data-resize="left-panel"></div>
             </div>
 
-            <div></div> <!-- CENTER -->
+            <div></div>
 
-            <!-- RIGHT PANEL -->
             <div class="panel" id="right-panel">
                 <div class="panel-header">
                     <span>RESOURCE ALLOCATION</span>
@@ -462,7 +503,6 @@
                         <path d="M0,80 L30,70 L80,50 L130,30 L180,20 L230,15 L280,10" fill="none" stroke="var(--neon-purple)" stroke-width="2" stroke-dasharray="3" />
                         <path d="M0,80 L30,75 L80,60 L130,45 L180,35 L230,30 L280,25 L280,80 Z" fill="url(#costGradient)" opacity="0.4" />
                         <path d="M0,80 L30,75 L80,60 L130,45 L180,35 L230,30 L280,25" fill="none" stroke="var(--neon-blue)" stroke-width="2" />
-                        
                         <rect class="hover-target" data-tt-title="Q1 2024" data-tt-val="$150k" data-tt-desc="Budget: $120k | Variance: -$30k" x="0" y="0" width="70" height="80" fill="transparent" />
                         <rect class="hover-target" data-tt-title="Q2 2024" data-tt-val="$280k" data-tt-desc="Budget: $250k | Variance: -$30k" x="70" y="0" width="70" height="80" fill="transparent" />
                         <rect class="hover-target" data-tt-title="Q3 2024" data-tt-val="$420k" data-tt-desc="Budget: $400k | Variance: -$20k" x="140" y="0" width="70" height="80" fill="transparent" />
@@ -488,7 +528,6 @@
             </div>
         </div>
 
-        <!-- FLOATING CONTROLS -->
         <div class="floating-controls" id="floating-controls-panel">
             <div class="panel-header">
                 <span>Controls</span>
@@ -513,7 +552,6 @@
             <div class="resize-handle" data-resize="floating-controls-panel"></div>
         </div>
 
-        <!-- CRANE MANAGER PANEL -->
         <div class="floating-controls" id="crane-panel">
             <div class="panel-header">
                 <span>Crane Manager</span>
@@ -543,7 +581,6 @@
             <div class="resize-handle" data-resize="crane-panel"></div>
         </div>
 
-        <!-- DATA & COLOR MANAGER PANEL -->
         <div class="floating-controls" id="data-color-panel">
             <div class="panel-header">
                 <span>Data & Color</span>
@@ -557,10 +594,8 @@
                     <label>Import Data (Excel/CSV/JSON)</label>
                     <input type="file" id="data-import-input" accept=".xlsx, .xls, .csv, .json" style="font-size: 0.65rem; padding: 3px;">
                     <div id="import-status" style="font-size: 0.65rem; color: var(--text-muted); margin-top: 5px;">No data loaded.</div>
-                    
                     <button id="btn-load-sample" style="border-color: var(--neon-purple); color: var(--neon-purple); margin-top: 8px; font-size: 0.65rem;">📄 Load Sample Data</button>
                 </div>
-
                 <div class="control-group">
                     <label>Custom Color</label>
                     <div class="color-picker-wrapper">
@@ -568,7 +603,6 @@
                         <button id="btn-apply-color" style="flex: 1;">Apply to Selected</button>
                     </div>
                 </div>
-
                 <div class="control-group">
                     <button id="btn-apply-status" style="border-color: var(--neon-orange); color: var(--neon-orange);">Color by Status Data</button>
                     <button id="btn-reset-colors" style="border-color: var(--neon-pink); color: var(--neon-pink); margin-top: 5px;">Reset All Colors</button>
@@ -578,7 +612,6 @@
         </div>
     </div>
 
-    <!-- INSPECTOR MODAL -->
     <div id="inspector-panel">
         <div class="inspector-header">
             <span class="inspector-title">
@@ -595,7 +628,6 @@
                 <div class="win-btn close" data-target="inspector-panel">×</div>
             </div>
         </div>
-        
         <div class="inspector-body">
             <div class="search-container">
                 <input type="text" id="prop-search" class="search-input" placeholder="Search properties (e.g. Fire Rating)...">
@@ -606,7 +638,6 @@
         <div class="resize-handle" data-resize="inspector-panel"></div>
     </div>
 
-    <!-- VALIDATION RESULTS MODAL -->
     <div id="validation-results">
         <div class="val-header">
             <span class="val-title">IFC-SG Validation Report</span>
@@ -620,7 +651,6 @@
         <div class="resize-handle" data-resize="validation-results"></div>
     </div>
 
-    <!-- CHART DETAIL MODAL -->
     <div id="chart-modal">
         <div class="chart-modal-header">
             <span class="chart-modal-title" id="chart-modal-title">Chart Detail</span>
@@ -634,7 +664,6 @@
         <div class="resize-handle" data-resize="chart-modal"></div>
     </div>
 
-    <!-- Minimized Dock -->
     <div id="minimized-dock"></div>
 
     <script type="module">
@@ -642,7 +671,6 @@
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { IfcAPI } from 'web-ifc';
 
-        // --- 1. SETUP THREE.JS SCENE ---
         const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
         scene.fog = new THREE.FogExp2(0x05070a, 0.001);
@@ -658,7 +686,20 @@
         const purpleLight = new THREE.PointLight(0x9d4edd, 100, 100); purpleLight.position.set(-20, 10, -20); scene.add(purpleLight);
 
         const controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true; controls.dampingFactor = 0.05; controls.maxPolarAngle = Math.PI / 2 - 0.05; controls.target.set(0, 10, 0);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
+        controls.enablePan = true;
+        controls.screenSpacePanning = true;
+        controls.minPolarAngle = 0;
+        controls.maxPolarAngle = Math.PI;
+        controls.minDistance = 0.5;
+        controls.maxDistance = 10000;
+        controls.rotateSpeed = 0.9;
+        controls.zoomSpeed = 1.0;
+        controls.panSpeed = 1.0;
+        controls.target.set(0, 10, 0);
+        controls.update();
+
         const gridHelper = new THREE.GridHelper(500, 250, 0x00f0ff, 0x1a2a44); gridHelper.position.y = -0.1; gridHelper.material.opacity = 0.2; gridHelper.material.transparent = true; scene.add(gridHelper);
 
         const selectionBoxes = new THREE.Group();
@@ -668,7 +709,6 @@
         const craneGroup = new THREE.Group();
         scene.add(craneGroup);
 
-        // --- 2. SETUP WEB-IFC API ---
         const ifcAPI = new IfcAPI();
         ifcAPI.SetWasmPath('https://unpkg.com/web-ifc@0.0.78/', true);
 
@@ -689,8 +729,8 @@
         const minimizedDock = document.getElementById('minimized-dock');
         const mainDashboard = document.getElementById('main-dashboard');
         const importStatus = document.getElementById('import-status');
+        const areaSelectBox = document.getElementById('area-select-box');
 
-        // Tooltip Elements
         const tooltip = document.getElementById('chart-tooltip');
         const ttTitle = document.getElementById('tt-title');
         const ttValue = document.getElementById('tt-value');
@@ -707,136 +747,125 @@
             setTimeout(() => toast.remove(), 3000);
         }
 
-        // --- TOOLTIP LOGIC ---
         document.addEventListener('mouseover', (e) => {
             const target = e.target.closest('.hover-target');
             if (target) {
                 const title = target.getAttribute('data-tt-title');
                 const val = target.getAttribute('data-tt-val');
                 const desc = target.getAttribute('data-tt-desc');
-                
                 if (title) {
-                    ttTitle.innerText = title;
-                    ttValue.innerText = val || '';
-                    ttDesc.innerText = desc || '';
+                    ttTitle.innerText = title; ttValue.innerText = val || ''; ttDesc.innerText = desc || '';
                     tooltip.classList.add('visible');
                 }
             }
         });
-
         document.addEventListener('mousemove', (e) => {
             if (tooltip.classList.contains('visible')) {
-                let x = e.clientX;
-                let y = e.clientY;
+                let x = e.clientX; let y = e.clientY;
                 if (y < 80) y = 80; 
-                tooltip.style.left = x + 'px';
-                tooltip.style.top = y + 'px';
+                tooltip.style.left = x + 'px'; tooltip.style.top = y + 'px';
             }
         });
-
-        document.addEventListener('mouseout', (e) => {
-            if (e.target.closest('.hover-target')) {
-                tooltip.classList.remove('visible');
-            }
-        });
-
+        document.addEventListener('mouseout', (e) => { if (e.target.closest('.hover-target')) tooltip.classList.remove('visible'); });
         document.addEventListener('mousedown', () => tooltip.classList.remove('visible'));
 
+        let selectionMode = 'single';
+        const hintEl = document.getElementById('toolbar-hint');
+        const btnSingle = document.getElementById('mode-single');
+        const btnArea = document.getElementById('mode-area');
+        const btnAssembly = document.getElementById('mode-assembly');
 
-        // --- CRANE LOGIC ---
+        function setSelectionMode(mode) {
+            selectionMode = mode;
+            [btnSingle, btnArea, btnAssembly].forEach(b => b.classList.remove('active'));
+            if (mode === 'single') { btnSingle.classList.add('active'); hintEl.innerText = 'Single selection — click any element'; }
+            else if (mode === 'area') { btnArea.classList.add('active'); hintEl.innerText = 'Area selection — drag a rectangle across the canvas'; }
+            else if (mode === 'assembly') { btnAssembly.classList.add('active'); hintEl.innerText = 'Assembly selection — click to select parent + all parts'; }
+            controls.enabled = (mode !== 'area');
+            areaSelectBox.style.display = 'none';
+        }
+        btnSingle.addEventListener('click', () => setSelectionMode('single'));
+        btnArea.addEventListener('click', () => setSelectionMode('area'));
+        btnAssembly.addEventListener('click', () => setSelectionMode('assembly'));
+
+        const settingsPopup = document.getElementById('settings-popup');
+        document.getElementById('btn-settings').addEventListener('click', (e) => {
+            e.stopPropagation();
+            settingsPopup.classList.toggle('open');
+        });
+        document.addEventListener('click', (e) => {
+            if (!settingsPopup.contains(e.target) && !e.target.closest('#btn-settings')) settingsPopup.classList.remove('open');
+        });
+        document.getElementById('set-grid').addEventListener('change', (e) => { gridHelper.visible = e.target.checked; });
+        document.getElementById('set-fog').addEventListener('change', (e) => { scene.fog = e.target.checked ? new THREE.FogExp2(0x05070a, 0.001) : null; });
+        document.getElementById('set-selbox').addEventListener('change', (e) => { selectionBoxes.visible = e.target.checked; });
+        document.getElementById('btn-reset-camera').addEventListener('click', () => {
+            if (currentIfcModel) {
+                const box = new THREE.Box3().setFromObject(currentIfcModel);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+                const maxDim = Math.max(size.x, size.y, size.z) || 10;
+                controls.target.copy(center);
+                camera.position.set(center.x + maxDim, center.y + maxDim / 2, center.z + maxDim);
+                controls.update();
+            }
+        });
+
+        const btnFullscreen = document.getElementById('btn-fullscreen');
+        btnFullscreen.addEventListener('click', () => {
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(err => showToast('Fullscreen failed: ' + err.message, 'error'));
+            else document.exitFullscreen();
+        });
+        document.addEventListener('fullscreenchange', () => {
+            const isFs = !!document.fullscreenElement;
+            btnFullscreen.innerHTML = isFs
+                ? `<span class="tb-icon">⛶</span><span class="label">Exit Fullscreen</span>`
+                : `<span class="tb-icon">⛶</span><span class="label">Fullscreen</span>`;
+        });
+
         function createCrane(x, z, rotationDeg) {
             const crane = new THREE.Group();
-            
             const matOrange = new THREE.MeshStandardMaterial({ color: 0xff9900, emissive: 0x331a00, metalness: 0.5, roughness: 0.5 });
             const matDark = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8, roughness: 0.2 });
             const matCable = new THREE.LineBasicMaterial({ color: 0xaaaaaa });
 
-            const mastGeo = new THREE.BoxGeometry(2, 40, 2);
-            const mast = new THREE.Mesh(mastGeo, matOrange);
-            mast.position.y = 20;
-            crane.add(mast);
+            const mast = new THREE.Mesh(new THREE.BoxGeometry(2, 40, 2), matOrange); mast.position.y = 20; crane.add(mast);
+            const jib = new THREE.Mesh(new THREE.BoxGeometry(30, 1.5, 1.5), matOrange); jib.position.set(15, 40, 0); crane.add(jib);
+            const counterJib = new THREE.Mesh(new THREE.BoxGeometry(10, 1.5, 1.5), matOrange); counterJib.position.set(-5, 40, 0); crane.add(counterJib);
+            const counterWeight = new THREE.Mesh(new THREE.BoxGeometry(3, 4, 3), matDark); counterWeight.position.set(-9, 38, 0); crane.add(counterWeight);
+            const cab = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), matDark); cab.position.set(2, 39, 0); crane.add(cab);
+            const peak = new THREE.Mesh(new THREE.ConeGeometry(1.5, 6, 4), matOrange); peak.position.set(0, 43, 0); peak.rotation.y = Math.PI / 4; crane.add(peak);
 
-            const jibGeo = new THREE.BoxGeometry(30, 1.5, 1.5);
-            const jib = new THREE.Mesh(jibGeo, matOrange);
-            jib.position.set(15, 40, 0);
-            crane.add(jib);
+            const cableGeo = new THREE.BufferGeometry().setFromPoints([ new THREE.Vector3(0, 46, 0), new THREE.Vector3(25, 40, 0), new THREE.Vector3(0, 46, 0), new THREE.Vector3(-9, 40, 0) ]);
+            crane.add(new THREE.LineSegments(cableGeo, matCable));
 
-            const counterJibGeo = new THREE.BoxGeometry(10, 1.5, 1.5);
-            const counterJib = new THREE.Mesh(counterJibGeo, matOrange);
-            counterJib.position.set(-5, 40, 0);
-            crane.add(counterJib);
-
-            const counterWeightGeo = new THREE.BoxGeometry(3, 4, 3);
-            const counterWeight = new THREE.Mesh(counterWeightGeo, matDark);
-            counterWeight.position.set(-9, 38, 0);
-            crane.add(counterWeight);
-
-            const cabGeo = new THREE.BoxGeometry(2, 2, 2);
-            const cab = new THREE.Mesh(cabGeo, matDark);
-            cab.position.set(2, 39, 0);
-            crane.add(cab);
-
-            const peakGeo = new THREE.ConeGeometry(1.5, 6, 4);
-            const peak = new THREE.Mesh(peakGeo, matOrange);
-            peak.position.set(0, 43, 0);
-            peak.rotation.y = Math.PI / 4;
-            crane.add(peak);
-
-            const cablePoints = [
-                new THREE.Vector3(0, 46, 0), new THREE.Vector3(25, 40, 0),
-                new THREE.Vector3(0, 46, 0), new THREE.Vector3(-9, 40, 0)
-            ];
-            const cableGeo = new THREE.BufferGeometry().setFromPoints(cablePoints);
-            const cable = new THREE.LineSegments(cableGeo, matCable);
-            crane.add(cable);
-
-            const hookCableGeo = new THREE.BufferGeometry().setFromPoints([
-                new THREE.Vector3(20, 40, 0), new THREE.Vector3(20, 15, 0)
-            ]);
-            const hookCable = new THREE.Line(hookCableGeo, matCable);
-            crane.add(hookCable);
+            const hookCableGeo = new THREE.BufferGeometry().setFromPoints([ new THREE.Vector3(20, 40, 0), new THREE.Vector3(20, 15, 0) ]);
+            crane.add(new THREE.Line(hookCableGeo, matCable));
             
-            const hookGeo = new THREE.BoxGeometry(1, 1, 1);
-            const hook = new THREE.Mesh(hookGeo, matDark);
-            hook.position.set(20, 14.5, 0);
-            crane.add(hook);
+            const hook = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), matDark); hook.position.set(20, 14.5, 0); crane.add(hook);
 
-            crane.position.set(x, 0, z);
-            crane.rotation.y = THREE.MathUtils.degToRad(rotationDeg);
-            
-            crane.traverse(child => {
-                if (child.isMesh) {
-                    child.castShadow = true;
-                    child.receiveShadow = true;
-                }
-            });
+            crane.position.set(x, 0, z); crane.rotation.y = THREE.MathUtils.degToRad(rotationDeg);
+            crane.traverse(child => { if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; } });
 
             craneGroup.add(crane);
             showToast(`Crane added at X:${x}, Z:${z}`, 'success');
         }
-
         document.getElementById('btn-add-crane').addEventListener('click', () => {
             const x = parseFloat(document.getElementById('crane-x').value) || 0;
             const z = parseFloat(document.getElementById('crane-z').value) || 0;
             const rot = parseFloat(document.getElementById('crane-rot').value) || 0;
             createCrane(x, z, rot);
         });
-
         document.getElementById('btn-clear-cranes').addEventListener('click', () => {
-            craneGroup.clear();
-            showToast('All cranes removed.', 'success');
+            craneGroup.clear(); showToast('All cranes removed.', 'success');
         });
 
-
-        // --- WINDOW MANAGER LOGIC (DRAG & DROP) ---
         function updateDashboardGrid() {
             if (window.innerWidth <= 768) return; 
             const leftPanel = document.getElementById('left-panel');
             const rightPanel = document.getElementById('right-panel');
-            
             const leftVisible = leftPanel.style.display !== 'none' && !leftPanel.classList.contains('maximized') && !leftPanel.classList.contains('detached');
             const rightVisible = rightPanel.style.display !== 'none' && !rightPanel.classList.contains('maximized') && !rightPanel.classList.contains('detached');
-            
             let cols = [];
             if (leftVisible) cols.push('340px'); else cols.push('0px');
             cols.push('1fr');
@@ -847,17 +876,11 @@
         function makePanelDraggable(panel) {
             const handle = panel.querySelector('.panel-header, .inspector-header, .val-header, .chart-modal-header');
             if (!handle) return;
-
-            let isDragging = false;
-            let startX, startY;
-            let initialLeft, initialTop;
-
+            let isDragging = false, startX, startY, initialLeft, initialTop;
             handle.addEventListener('pointerdown', (e) => {
                 if (e.target.closest('.win-btn') || e.target.closest('button') || e.target.closest('input') || e.target.closest('select') || e.target.closest('a')) return;
                 if (panel.classList.contains('maximized')) return;
-
                 const rect = panel.getBoundingClientRect();
-
                 if (panel.style.position !== 'fixed') {
                     panel.classList.add('detached');
                     panel.style.position = 'fixed';
@@ -867,61 +890,41 @@
                     panel.style.height = rect.height + 'px';
                     panel.style.margin = '0';
                     panel.style.transform = 'none';
-                    
-                    if (panel.id === 'left-panel' || panel.id === 'right-panel') {
-                        updateDashboardGrid();
-                    }
+                    if (panel.id === 'left-panel' || panel.id === 'right-panel') updateDashboardGrid();
                 }
-
                 document.querySelectorAll('.panel, .floating-controls, .inspector-panel, .val-panel, .chart-modal').forEach(p => p.style.zIndex = '');
                 panel.style.zIndex = '9999';
                 panel.classList.add('dragging');
-
                 isDragging = true;
-                startX = e.clientX;
-                startY = e.clientY;
-                initialLeft = rect.left;
-                initialTop = rect.top;
-
+                startX = e.clientX; startY = e.clientY;
+                initialLeft = rect.left; initialTop = rect.top;
                 handle.setPointerCapture(e.pointerId);
                 e.preventDefault();
             });
-
             handle.addEventListener('pointermove', (e) => {
                 if (!isDragging) return;
-                const dx = e.clientX - startX;
-                const dy = e.clientY - startY;
+                const dx = e.clientX - startX; const dy = e.clientY - startY;
                 panel.style.left = (initialLeft + dx) + 'px';
                 panel.style.top = (initialTop + dy) + 'px';
             });
-
             const stopDrag = (e) => {
                 if (!isDragging) return;
                 isDragging = false;
                 panel.classList.remove('dragging');
                 try { handle.releasePointerCapture(e.pointerId); } catch(err) {}
             };
-
             handle.addEventListener('pointerup', stopDrag);
             handle.addEventListener('pointercancel', stopDrag);
         }
 
-        // --- UNIVERSAL RESIZER ---
         function makePanelResizable(panel) {
             const handle = panel.querySelector('.resize-handle');
             if (!handle) return;
-
-            let isResizing = false;
-            let startX, startY;
-            let startWidth, startHeight;
-            const MIN_WIDTH = 160;
-            const MIN_HEIGHT = 120;
-
+            let isResizing = false, startX, startY, startWidth, startHeight;
+            const MIN_WIDTH = 160, MIN_HEIGHT = 120;
             handle.addEventListener('pointerdown', (e) => {
-                e.stopPropagation();
-                e.preventDefault();
+                e.stopPropagation(); e.preventDefault();
                 if (panel.classList.contains('maximized')) return;
-
                 const rect = panel.getBoundingClientRect();
                 if (panel.style.position !== 'fixed') {
                     panel.classList.add('detached');
@@ -932,25 +935,17 @@
                     panel.style.height = rect.height + 'px';
                     panel.style.margin = '0';
                     panel.style.transform = 'none';
-                    if (panel.id === 'left-panel' || panel.id === 'right-panel') {
-                        updateDashboardGrid();
-                    }
+                    if (panel.id === 'left-panel' || panel.id === 'right-panel') updateDashboardGrid();
                 }
-
                 isResizing = true;
                 panel.classList.add('resizing');
-                startX = e.clientX;
-                startY = e.clientY;
-                startWidth = rect.width;
-                startHeight = rect.height;
-
+                startX = e.clientX; startY = e.clientY;
+                startWidth = rect.width; startHeight = rect.height;
                 handle.setPointerCapture(e.pointerId);
             });
-
             handle.addEventListener('pointermove', (e) => {
                 if (!isResizing) return;
-                const dx = e.clientX - startX;
-                const dy = e.clientY - startY;
+                const dx = e.clientX - startX; const dy = e.clientY - startY;
                 const newWidth = Math.max(MIN_WIDTH, Math.min(window.innerWidth - 20, startWidth + dx));
                 const newHeight = Math.max(MIN_HEIGHT, Math.min(window.innerHeight - 20, startHeight + dy));
                 panel.style.width = newWidth + 'px';
@@ -958,14 +953,12 @@
                 panel.style.maxWidth = newWidth + 'px';
                 panel.style.maxHeight = newHeight + 'px';
             });
-
             const stopResize = (e) => {
                 if (!isResizing) return;
                 isResizing = false;
                 panel.classList.remove('resizing');
                 try { handle.releasePointerCapture(e.pointerId); } catch(err) {}
             };
-
             handle.addEventListener('pointerup', stopResize);
             handle.addEventListener('pointercancel', stopResize);
         }
@@ -973,22 +966,17 @@
         function setupWindow(panelId) {
             const panel = document.getElementById(panelId);
             if (!panel) return;
-
             const minBtn = panel.querySelector('.min-btn');
             const maxBtn = panel.querySelector('.max-btn');
             const closeBtns = panel.querySelectorAll('.close');
-
             const hidePanel = () => {
                 panel.style.display = 'none';
                 panel.classList.remove('open', 'maximized');
                 updateDashboardGrid();
-                
                 let titleEl = panel.querySelector('.inspector-title, .val-title, .panel-header span, .chart-modal-title');
                 let titleText = titleEl ? titleEl.innerText.split('\n')[0].replace(/[^a-zA-Z ]/g, '').trim() : panelId;
-                
                 const existingDock = Array.from(minimizedDock.children).find(item => item.dataset.target === panelId);
                 if (existingDock) existingDock.remove();
-
                 const dockItem = document.createElement('div');
                 dockItem.className = 'dock-item';
                 dockItem.dataset.target = panelId;
@@ -1002,7 +990,6 @@
                 };
                 minimizedDock.appendChild(dockItem);
             };
-
             if (minBtn) minBtn.addEventListener('click', (e) => { e.stopPropagation(); hidePanel(); });
             if (maxBtn) {
                 maxBtn.addEventListener('click', (e) => {
@@ -1029,38 +1016,28 @@
         
         ['left-panel','right-panel','floating-controls-panel','data-color-panel','crane-panel','inspector-panel','validation-results','chart-modal'].forEach(id => {
             const el = document.getElementById(id);
-            if (el) {
-                makePanelDraggable(el);
-                makePanelResizable(el);
-            }
+            if (el) { makePanelDraggable(el); makePanelResizable(el); }
         });
 
         window.addEventListener('resize', updateDashboardGrid);
 
-        // --- CHART DETAIL LOGIC ---
         document.querySelectorAll('.chart-container').forEach(container => {
             container.addEventListener('click', () => {
                 const titleEl = container.querySelector('.chart-title');
                 const titleText = titleEl && titleEl.firstElementChild ? titleEl.firstElementChild.innerText : 'Chart Detail';
-                
                 const clone = container.cloneNode(true);
                 const clonedTitle = clone.querySelector('.chart-title');
                 if (clonedTitle) clonedTitle.remove();
-
                 document.getElementById('chart-modal-title').innerText = titleText + ' - Detailed View';
-                
                 const modalBody = document.getElementById('chart-modal-body');
                 modalBody.innerHTML = '';
                 modalBody.appendChild(clone);
-
                 const modal = document.getElementById('chart-modal');
                 modal.style.display = 'flex';
                 modal.classList.add('open');
             });
         });
 
-        // --- SAFE ID UTILITIES ---
-        // Coerce anything into a single unsigned int expressID (or -1 if impossible).
         function safeExpressID(x) {
             if (x === null || x === undefined) return -1;
             if (typeof x === 'number') return Number.isFinite(x) ? (x >>> 0) : -1;
@@ -1083,18 +1060,13 @@
             if (Array.isArray(list)) return list.map(safeExpressID).filter(id => id >= 0);
             if (typeof list === 'object' && typeof list.size === 'function') {
                 const out = [];
-                for (let i = 0; i < list.size(); i++) {
-                    const id = safeExpressID(list.get(i));
-                    if (id >= 0) out.push(id);
-                }
+                for (let i = 0; i < list.size(); i++) { const id = safeExpressID(list.get(i)); if (id >= 0) out.push(id); }
                 return out;
             }
             return [];
         }
 
-        function getExpressID(handle) {
-            return safeExpressID(handle);
-        }
+        function getExpressID(handle) { return safeExpressID(handle); }
 
         function iterateCollection(collection, callback) {
             if (!collection) return;
@@ -1113,14 +1085,11 @@
             else if (prop.CountValue && prop.CountValue.value !== undefined) val = prop.CountValue.value;
             else if (prop.WeightValue && prop.WeightValue.value !== undefined) val = prop.WeightValue.value;
             else if (prop.value !== undefined) val = prop.value;
-            
             if (prop.HasProperties) {
                 let nested = [];
                 iterateCollection(prop.HasProperties, nestedPropHandle => {
-                    const nid = safeExpressID(nestedPropHandle);
-                    if (nid < 0) return;
-                    let np = null;
-                    try { np = ifcAPI.GetLine(currentModelID, nid, false); } catch(e) { return; }
+                    const nid = safeExpressID(nestedPropHandle); if (nid < 0) return;
+                    let np = null; try { np = ifcAPI.GetLine(currentModelID, nid, false); } catch(e) { return; }
                     if (np && np.Name) {
                         const nVal = extractValue(np, depth + 1);
                         if (nVal !== null && nVal !== "") nested.push(`${np.Name.value}: ${nVal}`);
@@ -1133,60 +1102,39 @@
 
         function getPsetsAsMap(modelID, expressID) {
             const psetMap = new Map();
-            const safeId = safeExpressID(expressID);
-            if (safeId < 0) return psetMap;
-
-            let rawElement = null;
-            try { rawElement = ifcAPI.GetLine(modelID, safeId, false); } catch(e) { console.warn("GetLine failed for", safeId, e); return psetMap; }
-
+            const safeId = safeExpressID(expressID); if (safeId < 0) return psetMap;
+            let rawElement = null; try { rawElement = ifcAPI.GetLine(modelID, safeId, false); } catch(e) { return psetMap; }
             const processPsetHandle = (psetHandle) => {
-                const psetID = safeExpressID(psetHandle);
-                if (psetID < 0) return;
-                let pset = null;
-                try { pset = ifcAPI.GetLine(modelID, psetID, false); } catch(e) { return; }
+                const psetID = safeExpressID(psetHandle); if (psetID < 0) return;
+                let pset = null; try { pset = ifcAPI.GetLine(modelID, psetID, false); } catch(e) { return; }
                 if (!pset || !pset.Name) return;
-
                 const psetName = pset.Name.value;
                 if (!psetMap.has(psetName)) psetMap.set(psetName, new Map());
                 const propMap = psetMap.get(psetName);
-
                 if (pset.HasProperties) {
                     iterateCollection(pset.HasProperties, propHandle => {
-                        const propID = safeExpressID(propHandle);
-                        if (propID < 0) return;
-                        let prop = null;
-                        try { prop = ifcAPI.GetLine(modelID, propID, false); } catch(e) { return; }
-                        if (prop && prop.Name) {
-                            try { propMap.set(prop.Name.value, extractValue(prop)); } catch(e) { /* skip */ }
-                        }
+                        const propID = safeExpressID(propHandle); if (propID < 0) return;
+                        let prop = null; try { prop = ifcAPI.GetLine(modelID, propID, false); } catch(e) { return; }
+                        if (prop && prop.Name) { try { propMap.set(prop.Name.value, extractValue(prop)); } catch(e) {} }
                     });
                 }
             };
-
             if (rawElement) {
                 if (rawElement.IsDefinedBy) {
                     iterateCollection(rawElement.IsDefinedBy, relHandle => {
-                        const relId = safeExpressID(relHandle);
-                        if (relId < 0) return;
-                        let rel = null;
-                        try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; }
+                        const relId = safeExpressID(relHandle); if (relId < 0) return;
+                        let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; }
                         if (rel && rel.RelatingPropertyDefinition) processPsetHandle(rel.RelatingPropertyDefinition);
                     });
                 }
                 if (rawElement.IsTypedBy) {
                     iterateCollection(rawElement.IsTypedBy, relHandle => {
-                        const relId = safeExpressID(relHandle);
-                        if (relId < 0) return;
-                        let rel = null;
-                        try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; }
+                        const relId = safeExpressID(relHandle); if (relId < 0) return;
+                        let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; }
                         if (rel && rel.RelatingType) {
-                            const typeId = safeExpressID(rel.RelatingType);
-                            if (typeId < 0) return;
-                            let typeObj = null;
-                            try { typeObj = ifcAPI.GetLine(modelID, typeId, false); } catch(e) { return; }
-                            if (typeObj && typeObj.HasPropertySets) {
-                                iterateCollection(typeObj.HasPropertySets, processPsetHandle);
-                            }
+                            const typeId = safeExpressID(rel.RelatingType); if (typeId < 0) return;
+                            let typeObj = null; try { typeObj = ifcAPI.GetLine(modelID, typeId, false); } catch(e) { return; }
+                            if (typeObj && typeObj.HasPropertySets) iterateCollection(typeObj.HasPropertySets, processPsetHandle);
                         }
                     });
                 }
@@ -1196,22 +1144,16 @@
 
         function getParts(modelID, expressID) {
             const parts = [];
-            const safeId = safeExpressID(expressID);
-            if (safeId < 0) return parts;
-            let rawElement = null;
-            try { rawElement = ifcAPI.GetLine(modelID, safeId, false); } catch(e) { return parts; }
+            const safeId = safeExpressID(expressID); if (safeId < 0) return parts;
+            let rawElement = null; try { rawElement = ifcAPI.GetLine(modelID, safeId, false); } catch(e) { return parts; }
             if (rawElement && rawElement.IsDecomposedBy) {
                 iterateCollection(rawElement.IsDecomposedBy, relHandle => {
-                    const relId = safeExpressID(relHandle);
-                    if (relId < 0) return;
-                    let rel = null;
-                    try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; }
+                    const relId = safeExpressID(relHandle); if (relId < 0) return;
+                    let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; }
                     if (rel && rel.RelatedObjects) {
                         iterateCollection(rel.RelatedObjects, objHandle => {
-                            const id = safeExpressID(objHandle);
-                            if (id < 0) return;
-                            let obj = null;
-                            try { obj = ifcAPI.GetLine(modelID, id, true); } catch(e) { return; }
+                            const id = safeExpressID(objHandle); if (id < 0) return;
+                            let obj = null; try { obj = ifcAPI.GetLine(modelID, id, true); } catch(e) { return; }
                             if (obj && obj.type === 'IFCBUILDINGELEMENTPART') parts.push(id);
                         });
                     }
@@ -1220,84 +1162,29 @@
             return parts;
         }
 
-        // --- 3. HARDENED GEOMETRY SANITIZERS ---
         function sanitizeIndexArray(raw) {
             if (!raw) return new Uint32Array(0);
             if (raw instanceof Uint32Array) return raw;
             if (raw instanceof Uint16Array) return new Uint32Array(raw);
-            if (Array.isArray(raw)) {
-                const out = new Uint32Array(raw.length);
-                for (let i = 0; i < raw.length; i++) {
-                    const n = Number(raw[i]);
-                    out[i] = Number.isFinite(n) && n >= 0 ? (n >>> 0) : 0;
-                }
-                return out;
-            }
-            if (typeof raw === 'string') {
-                const parts = raw.split(/[,\s]+/).filter(Boolean);
-                const out = new Uint32Array(parts.length);
-                for (let i = 0; i < parts.length; i++) {
-                    const n = Number(parts[i]);
-                    out[i] = Number.isFinite(n) && n >= 0 ? (n >>> 0) : 0;
-                }
-                return out;
-            }
-            if (typeof raw === 'object' && typeof raw.length === 'number') {
-                const out = new Uint32Array(raw.length);
-                for (let i = 0; i < raw.length; i++) {
-                    const n = Number(raw[i]);
-                    out[i] = Number.isFinite(n) && n >= 0 ? (n >>> 0) : 0;
-                }
-                return out;
-            }
+            if (Array.isArray(raw)) { const out = new Uint32Array(raw.length); for (let i = 0; i < raw.length; i++) { const n = Number(raw[i]); out[i] = Number.isFinite(n) && n >= 0 ? (n >>> 0) : 0; } return out; }
+            if (typeof raw === 'string') { const parts = raw.split(/[,\s]+/).filter(Boolean); const out = new Uint32Array(parts.length); for (let i = 0; i < parts.length; i++) { const n = Number(parts[i]); out[i] = Number.isFinite(n) && n >= 0 ? (n >>> 0) : 0; } return out; }
+            if (typeof raw === 'object' && typeof raw.length === 'number') { const out = new Uint32Array(raw.length); for (let i = 0; i < raw.length; i++) { const n = Number(raw[i]); out[i] = Number.isFinite(n) && n >= 0 ? (n >>> 0) : 0; } return out; }
             return new Uint32Array(0);
         }
 
         function sanitizeVertexArray(raw) {
             if (!raw) return new Float32Array(0);
             if (raw instanceof Float32Array) return raw;
-            if (Array.isArray(raw)) {
-                const out = new Float32Array(raw.length);
-                for (let i = 0; i < raw.length; i++) {
-                    const n = Number(raw[i]);
-                    out[i] = Number.isFinite(n) ? n : 0;
-                }
-                return out;
-            }
-            if (typeof raw === 'string') {
-                const parts = raw.split(/[,\s]+/).filter(Boolean);
-                const out = new Float32Array(parts.length);
-                for (let i = 0; i < parts.length; i++) {
-                    const n = Number(parts[i]);
-                    out[i] = Number.isFinite(n) ? n : 0;
-                }
-                return out;
-            }
-            if (typeof raw === 'object' && typeof raw.length === 'number') {
-                const out = new Float32Array(raw.length);
-                for (let i = 0; i < raw.length; i++) {
-                    const n = Number(raw[i]);
-                    out[i] = Number.isFinite(n) ? n : 0;
-                }
-                return out;
-            }
+            if (Array.isArray(raw)) { const out = new Float32Array(raw.length); for (let i = 0; i < raw.length; i++) { const n = Number(raw[i]); out[i] = Number.isFinite(n) ? n : 0; } return out; }
+            if (typeof raw === 'string') { const parts = raw.split(/[,\s]+/).filter(Boolean); const out = new Float32Array(parts.length); for (let i = 0; i < parts.length; i++) { const n = Number(parts[i]); out[i] = Number.isFinite(n) ? n : 0; } return out; }
+            if (typeof raw === 'object' && typeof raw.length === 'number') { const out = new Float32Array(raw.length); for (let i = 0; i < raw.length; i++) { const n = Number(raw[i]); out[i] = Number.isFinite(n) ? n : 0; } return out; }
             return new Float32Array(0);
         }
 
         async function processAndAddModel(arrayBuffer) {
             try {
-                if (currentModelID !== -1) {
-                    try { ifcAPI.CloseModel(currentModelID); } catch(e) { console.warn("CloseModel failed", e); }
-                    currentModelID = -1;
-                }
-                if (currentIfcModel) {
-                    scene.remove(currentIfcModel);
-                    currentIfcModel.traverse((child) => {
-                        if (child.isMesh) child.geometry.dispose();
-                    });
-                    currentIfcModel = null;
-                }
-
+                if (currentModelID !== -1) { try { ifcAPI.CloseModel(currentModelID); } catch(e) {} currentModelID = -1; }
+                if (currentIfcModel) { scene.remove(currentIfcModel); currentIfcModel.traverse((child) => { if (child.isMesh) child.geometry.dispose(); }); currentIfcModel = null; }
                 await new Promise(r => setTimeout(r, 100));
                 if (window.gc) { try { window.gc(); } catch(e) {} }
 
@@ -1306,20 +1193,13 @@
 
                 let opened = -1;
                 const openBytes = new Uint8Array(arrayBuffer);
-                try {
-                    opened = ifcAPI.OpenModel(openBytes, { optimizeGeometry: true, COORDINATE_TO_ORIGIN: true });
-                } catch (err) {
-                    console.warn("OpenModel first attempt failed, retrying after GC:", err);
+                try { opened = ifcAPI.OpenModel(openBytes, { optimizeGeometry: true, COORDINATE_TO_ORIGIN: true }); }
+                catch (err) {
                     try { ifcAPI.CloseAllModels(); } catch(e) {}
                     await new Promise(r => setTimeout(r, 500));
                     if (window.gc) { try { window.gc(); } catch(e) {} }
-                    try {
-                        opened = ifcAPI.OpenModel(openBytes, { optimizeGeometry: true, COORDINATE_TO_ORIGIN: true });
-                    } catch (err2) {
-                        console.error("OpenModel second attempt failed too:", err2);
-                        showToast("Model is too large for browser memory. Try a smaller IFC or a desktop viewer.", 'error');
-                        throw err2;
-                    }
+                    try { opened = ifcAPI.OpenModel(openBytes, { optimizeGeometry: true, COORDINATE_TO_ORIGIN: true }); }
+                    catch (err2) { showToast("Model is too large for browser memory. Try a smaller IFC or a desktop viewer.", 'error'); throw err2; }
                 }
                 if (opened === -1) throw new Error("OpenModel failed (heap exhausted).");
                 currentModelID = opened;
@@ -1339,36 +1219,23 @@
                                     const placedGeometryData = placedGeometry.get(i);
                                     const geometry = ifcAPI.GetGeometry(currentModelID, placedGeometryData.geometryExpressID);
                                     if (!geometry) continue;
-                                    
                                     let verts, indices;
                                     try {
                                         verts = sanitizeVertexArray(ifcAPI.GetVertexArray(geometry.GetVertexData(), geometry.GetVertexDataSize()));
                                         indices = sanitizeIndexArray(ifcAPI.GetIndexArray(geometry.GetIndexData(), geometry.GetIndexDataSize()));
-                                    } catch(e) {
-                                        console.warn(`Skipping geometry ${placedGeometryData.geometryExpressID}:`, e.message);
-                                        continue;
-                                    }
-
+                                    } catch(e) { continue; }
                                     if (!verts || verts.length === 0 || !indices || indices.length === 0) continue;
                                     if (verts.length % 6 !== 0) continue;
-
                                     rawGeometries.push({
                                         verts, indices,
                                         expressID: mesh.expressID,
-                                        matrix: placedGeometryData.flatTransformation
-                                            ? new THREE.Matrix4().fromArray(placedGeometryData.flatTransformation)
-                                            : null
+                                        matrix: placedGeometryData.flatTransformation ? new THREE.Matrix4().fromArray(placedGeometryData.flatTransformation) : null
                                     });
-                                } catch(placeErr) {
-                                    console.warn("Skipping placement:", placeErr.message);
-                                }
+                                } catch(placeErr) {}
                             }
-                        } catch(meshErr) {
-                            console.warn("Skipping mesh:", meshErr.message);
-                        }
+                        } catch(meshErr) {}
                     });
                 } catch (streamErr) {
-                    console.error("StreamAllMeshes failed:", streamErr);
                     if (rawGeometries.length === 0) throw streamErr;
                     showToast(`Streaming stopped early at ${rawGeometries.length} meshes.`, 'error');
                 }
@@ -1377,8 +1244,7 @@
                 const modelID = currentModelID;
 
                 showLoading("Building 3D Scene...", `Generating ${rawGeometries.length} meshes...`);
-                progressContainer.style.display = 'block';
-                progressBar.style.width = '0%';
+                progressContainer.style.display = 'block'; progressBar.style.width = '0%';
                 await new Promise(r => setTimeout(r, 50));
 
                 const group = new THREE.Group();
@@ -1386,35 +1252,20 @@
 
                 for (let i = 0; i < rawGeometries.length; i += CHUNK_SIZE) {
                     const chunk = rawGeometries.slice(i, i + CHUNK_SIZE);
-                    
                     chunk.forEach(data => {
                         try {
-                            // Re-sanitize at build time to guard against strings that slipped through
                             const safeVerts = data.verts instanceof Float32Array ? data.verts : sanitizeVertexArray(data.verts);
                             const safeIndices = data.indices instanceof Uint32Array ? data.indices : sanitizeIndexArray(data.indices);
-
-                            if (!safeVerts || safeVerts.length === 0 || safeVerts.length % 6 !== 0) {
-                                console.warn(`Skipping mesh ${data.expressID}: bad vertex buffer (len=${safeVerts ? safeVerts.length : 0})`);
-                                return;
-                            }
-                            if (!safeIndices || safeIndices.length === 0) {
-                                console.warn(`Skipping mesh ${data.expressID}: empty index buffer`);
-                                return;
-                            }
+                            if (!safeVerts || safeVerts.length === 0 || safeVerts.length % 6 !== 0) return;
+                            if (!safeIndices || safeIndices.length === 0) return;
 
                             const bufferGeometry = new THREE.BufferGeometry();
                             const posArray = new Float32Array(safeVerts.length / 2);
                             const normalArray = new Float32Array(safeVerts.length / 2);
-
                             for (let j = 0; j < safeVerts.length; j += 6) {
-                                posArray[j / 2]     = safeVerts[j];
-                                posArray[j / 2 + 1] = safeVerts[j + 1];
-                                posArray[j / 2 + 2] = safeVerts[j + 2];
-                                normalArray[j / 2]     = safeVerts[j + 3];
-                                normalArray[j / 2 + 1] = safeVerts[j + 4];
-                                normalArray[j / 2 + 2] = safeVerts[j + 5];
+                                posArray[j / 2] = safeVerts[j]; posArray[j / 2 + 1] = safeVerts[j + 1]; posArray[j / 2 + 2] = safeVerts[j + 2];
+                                normalArray[j / 2] = safeVerts[j + 3]; normalArray[j / 2 + 1] = safeVerts[j + 4]; normalArray[j / 2 + 2] = safeVerts[j + 5];
                             }
-
                             bufferGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
                             bufferGeometry.setAttribute('normal', new THREE.BufferAttribute(normalArray, 3));
                             bufferGeometry.setIndex(new THREE.BufferAttribute(safeIndices, 1));
@@ -1428,14 +1279,10 @@
                             if (eid >= 0) {
                                 try {
                                     const line = ifcAPI.GetLine(modelID, eid, true);
-                                    if (line && line.GlobalId && line.GlobalId.value) {
-                                        guidToMeshMap.set(line.GlobalId.value, mesh3D);
-                                    }
-                                } catch(e) { /* ignore per-mesh line lookup failures */ }
+                                    if (line && line.GlobalId && line.GlobalId.value) guidToMeshMap.set(line.GlobalId.value, mesh3D);
+                                } catch(e) {}
                             }
-                        } catch(meshErr) {
-                            console.warn(`Failed to build mesh for expressID ${data.expressID}:`, meshErr.message);
-                        }
+                        } catch(meshErr) {}
                     });
 
                     const percent = Math.min(100, Math.round(((i + CHUNK_SIZE) / rawGeometries.length) * 100));
@@ -1445,7 +1292,6 @@
                 }
 
                 rawGeometries.length = 0;
-
                 scene.add(group);
                 currentIfcModel = group;
                 clearSelection();
@@ -1467,81 +1313,152 @@
                 const msg = String(error && error.message || error);
                 if (msg.includes("bad_alloc") || msg.includes("memory")) {
                     showToast("Out of memory — the IFC is too large for the browser. Try a smaller file.", 'error');
-                    loadTitle.innerText = "Out of Memory";
-                    loadStatus.innerText = "The model exceeded the browser's WASM heap. Try loading a smaller IFC file.";
+                    loadTitle.innerText = "Out of Memory"; loadStatus.innerText = "The model exceeded the browser's WASM heap. Try loading a smaller IFC file.";
                 } else {
                     showToast("Error loading model: " + msg, 'error');
-                    loadTitle.innerText = "Error";
-                    loadStatus.innerText = msg;
+                    loadTitle.innerText = "Error"; loadStatus.innerText = msg;
                 }
                 setTimeout(hideLoading, 5000);
                 currentModelID = -1;
             }
         }
 
-        // --- 4. RAYCASTING & MULTI-SELECT ---
         function clearSelection() {
-            selectedMeshes.forEach((mesh) => {
-                mesh.material = sharedDefaultMaterial; 
-            });
+            selectedMeshes.forEach((mesh) => { mesh.material = sharedDefaultMaterial; });
             selectedMeshes.clear();
-            while(selectionBoxes.children.length > 0){ 
-                selectionBoxes.remove(selectionBoxes.children[0]); 
-            }
+            while(selectionBoxes.children.length > 0){ selectionBoxes.remove(selectionBoxes.children[0]); }
             inspectorPanel.classList.remove('open');
             inspectorPanel.style.display = 'none';
         }
 
-        const raycaster = new THREE.Raycaster(); const pointer = new THREE.Vector2(); let pointerDownPos = { x: 0, y: 0 };
-        window.addEventListener('pointerdown', (e) => { pointerDownPos = { x: e.clientX, y: e.clientY }; });
+        function addMeshToSelection(mesh) {
+            const eid = mesh.userData.expressID;
+            if (eid === undefined) return;
+            if (selectedMeshes.has(eid)) return;
+            selectedMeshes.set(eid, mesh);
+            mesh.material = selectedMaterial.clone();
+            if (selectionBoxes.visible) {
+                const box = new THREE.BoxHelper(mesh, 0xff007f);
+                selectionBoxes.add(box);
+            }
+        }
+
+        const raycaster = new THREE.Raycaster(); const pointer = new THREE.Vector2();
+        let pointerDownPos = { x: 0, y: 0 };
+        let isAreaSelecting = false;
+        let areaStart = { x: 0, y: 0 };
+
+        window.addEventListener('pointerdown', (e) => {
+            pointerDownPos = { x: e.clientX, y: e.clientY };
+            if (selectionMode === 'area' && currentIfcModel) {
+                if (e.button !== 0) return;
+                if (e.target.closest('.panel') || e.target.closest('#inspector-panel') || e.target.closest('header') || e.target.closest('.floating-controls') || e.target.closest('#validation-results') || e.target.closest('#chart-modal') || e.target.closest('#minimized-dock') || e.target.closest('.resize-handle') || e.target.closest('.toolbar') || e.target.closest('#settings-popup')) return;
+                isAreaSelecting = true;
+                areaStart = { x: e.clientX, y: e.clientY };
+                areaSelectBox.style.left = e.clientX + 'px';
+                areaSelectBox.style.top = e.clientY + 'px';
+                areaSelectBox.style.width = '0px';
+                areaSelectBox.style.height = '0px';
+                areaSelectBox.style.display = 'block';
+                e.preventDefault();
+            }
+        });
+
+        window.addEventListener('pointermove', (e) => {
+            if (!isAreaSelecting) return;
+            const x = Math.min(e.clientX, areaStart.x);
+            const y = Math.min(e.clientY, areaStart.y);
+            const w = Math.abs(e.clientX - areaStart.x);
+            const h = Math.abs(e.clientY - areaStart.y);
+            areaSelectBox.style.left = x + 'px';
+            areaSelectBox.style.top = y + 'px';
+            areaSelectBox.style.width = w + 'px';
+            areaSelectBox.style.height = h + 'px';
+        });
+
         window.addEventListener('pointerup', (event) => {
+            if (isAreaSelecting) {
+                isAreaSelecting = false;
+                const x1 = Math.min(event.clientX, areaStart.x);
+                const y1 = Math.min(event.clientY, areaStart.y);
+                const x2 = Math.max(event.clientX, areaStart.x);
+                const y2 = Math.max(event.clientY, areaStart.y);
+                areaSelectBox.style.display = 'none';
+                if (Math.abs(x2 - x1) > 3 && Math.abs(y2 - y1) > 3) doAreaSelect(x1, y1, x2, y2, event.shiftKey || event.ctrlKey);
+                return;
+            }
+
             if (Math.hypot(event.clientX - pointerDownPos.x, event.clientY - pointerDownPos.y) > 5) return;
-            if (event.target.closest('.panel') || event.target.closest('#inspector-panel') || event.target.closest('header') || event.target.closest('.floating-controls') || event.target.closest('#validation-results') || event.target.closest('#chart-modal') || event.target.closest('#minimized-dock') || event.target.closest('.resize-handle')) return;
+            if (event.target.closest('.panel') || event.target.closest('#inspector-panel') || event.target.closest('header') || event.target.closest('.floating-controls') || event.target.closest('#validation-results') || event.target.closest('#chart-modal') || event.target.closest('#minimized-dock') || event.target.closest('.resize-handle') || event.target.closest('.toolbar') || event.target.closest('#settings-popup')) return;
             
-            pointer.x = (event.clientX / window.innerWidth) * 2 - 1; pointer.y = -(event.clientY / window.innerHeight) * 2 + 1; raycaster.setFromCamera(pointer, camera);
+            pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+            pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(pointer, camera);
             if (!currentIfcModel || currentModelID === -1) return;
             
             const intersects = raycaster.intersectObjects(currentIfcModel.children.filter(c => c.visible));
             if (intersects.length > 0) {
                 const hitMesh = intersects[0].object;
-                const expressID = hitMesh.userData.expressID;
-
                 if (!event.shiftKey && !event.ctrlKey) clearSelection();
+                addMeshToSelection(hitMesh);
 
-                if (!selectedMeshes.has(expressID)) {
-                    selectedMeshes.set(expressID, hitMesh);
-                    hitMesh.material = selectedMaterial.clone(); 
-                    const box = new THREE.BoxHelper(hitMesh, 0xff007f);
-                    selectionBoxes.add(box);
+                if (selectionMode === 'assembly') {
+                    const parentEid = safeExpressID(hitMesh.userData.expressID);
+                    if (parentEid >= 0) {
+                        const parts = getParts(currentModelID, parentEid);
+                        if (parts.length > 0) {
+                            currentIfcModel.children.forEach(child => {
+                                if (!child.isMesh) return;
+                                const cid = safeExpressID(child.userData.expressID);
+                                if (parts.includes(cid)) addMeshToSelection(child);
+                            });
+                            showToast(`Assembly selected: ${selectedMeshes.size} parts.`, 'success');
+                        } else {
+                            showToast('Selected element has no decomposed parts.', '');
+                        }
+                    }
                 }
 
-                if (expressID !== undefined) showElementProperties(currentModelID, expressID);
-            } else { 
+                const firstEid = selectedMeshes.keys().next().value;
+                if (firstEid !== undefined) showElementProperties(currentModelID, firstEid);
+            } else {
                 if (!event.shiftKey && !event.ctrlKey) clearSelection();
             }
         });
 
-        // --- 5. DATA IMPORT & COLORING ---
+        function doAreaSelect(x1, y1, x2, y2, additive) {
+            if (!currentIfcModel) return;
+            if (!additive) clearSelection();
+            const minX = Math.min(x1, x2), maxX = Math.max(x1, x2);
+            const minY = Math.min(y1, y2), maxY = Math.max(y1, y2);
+            let added = 0;
+            currentIfcModel.children.forEach(child => {
+                if (!child.isMesh || !child.visible) return;
+                if (selectedMeshes.has(child.userData.expressID)) return;
+                const box = new THREE.Box3().setFromObject(child);
+                const center = box.getCenter(new THREE.Vector3());
+                const projected = center.clone().project(camera);
+                const screenX = (projected.x + 1) / 2 * window.innerWidth;
+                const screenY = (-projected.y + 1) / 2 * window.innerHeight;
+                if (screenX >= minX && screenX <= maxX && screenY >= minY && screenY <= maxY && projected.z >= -1 && projected.z <= 1) {
+                    addMeshToSelection(child);
+                    added++;
+                }
+            });
+            if (added === 0) showToast('No elements in area.', '');
+            else showToast(`Selected ${added} element(s) via area.`, 'success');
+        }
+
         document.getElementById('data-import-input').addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            
+            const file = e.target.files[0]; if (!file) return;
             const reader = new FileReader();
             reader.onload = (evt) => {
                 let rows = [];
                 try {
-                    if (file.name.endsWith('.json')) {
-                        rows = JSON.parse(evt.target.result);
-                    } else {
-                        const workbook = XLSX.read(evt.target.result, { type: 'binary' });
-                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                        rows = XLSX.utils.sheet_to_json(firstSheet);
-                    }
+                    if (file.name.endsWith('.json')) rows = JSON.parse(evt.target.result);
+                    else { const workbook = XLSX.read(evt.target.result, { type: 'binary' }); const firstSheet = workbook.Sheets[workbook.SheetNames[0]]; rows = XLSX.utils.sheet_to_json(firstSheet); }
                     processImportedData(rows);
-                } catch (err) {
-                    console.error(err);
-                    showToast("Error parsing file. Check format.", 'error');
-                }
+                } catch (err) { showToast("Error parsing file. Check format.", 'error'); }
             };
             if (file.name.endsWith('.json')) reader.readAsText(file);
             else reader.readAsBinaryString(file);
@@ -1550,19 +1467,13 @@
         function processImportedData(rows) {
             importedDataMap.clear();
             let validCount = 0;
-            
             rows.forEach(row => {
                 const guid = row['IFC Guide'] || row['IFC GUID'] || row['guid'] || row['Guid'] || row['GlobalId'];
                 const status = row['status'] || row['Status'] || row['STATUS'];
                 const marking = row['Marking'] || row['marking'] || row['MARKING'];
                 const updatedOn = row['updated on'] || row['Updated On'] || row['updated_on'];
-                
-                if (guid) {
-                    importedDataMap.set(guid.trim(), { status, marking, updatedOn });
-                    validCount++;
-                }
+                if (guid) { importedDataMap.set(guid.trim(), { status, marking, updatedOn }); validCount++; }
             });
-
             importStatus.innerText = `Loaded ${validCount} records.`;
             showToast(`Imported ${validCount} records successfully.`, 'success');
         }
@@ -1574,34 +1485,22 @@
                 const workbook = XLSX.read(csvString, { type: 'string' });
                 const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
                 let rows = XLSX.utils.sheet_to_json(firstSheet);
-
                 if (guidToMeshMap.size > 0) {
                     const realGuids = Array.from(guidToMeshMap.keys()).slice(0, 5);
-                    rows = rows.map((row, index) => {
-                        if (index < realGuids.length) row['IFC Guide'] = realGuids[index];
-                        return row;
-                    });
+                    rows = rows.map((row, index) => { if (index < realGuids.length) row['IFC Guide'] = realGuids[index]; return row; });
                     showToast("Loaded sample data with REAL GUIDs from model.", 'success');
-                } else {
-                    showToast("Loaded sample data (Dummy GUIDs - load a model for real mapping).", 'success');
-                }
+                } else { showToast("Loaded sample data (Dummy GUIDs - load a model for real mapping).", 'success'); }
                 processImportedData(rows);
-            } catch (err) {
-                console.error("Sample Load Error:", err);
-                showToast("Failed to load sample data.", 'error');
-            }
+            } catch (err) { showToast("Failed to load sample data.", 'error'); }
         });
 
         document.getElementById('btn-apply-color').addEventListener('click', () => {
             if (selectedMeshes.size === 0) return showToast("Select elements first.", 'error');
             const hex = document.getElementById('custom-color-picker').value;
             const color = new THREE.Color(hex);
-            
             selectedMeshes.forEach(mesh => {
                 const newMat = sharedDefaultMaterial.clone();
-                newMat.color = color;
-                newMat.emissive = color.clone().multiplyScalar(0.5);
-                newMat.opacity = 1.0;
+                newMat.color = color; newMat.emissive = color.clone().multiplyScalar(0.5); newMat.opacity = 1.0;
                 mesh.material = newMat;
             });
             showToast(`Applied color to ${selectedMeshes.size} elements.`, 'success');
@@ -1609,25 +1508,19 @@
 
         document.getElementById('btn-apply-status').addEventListener('click', () => {
             if (importedDataMap.size === 0) return showToast("Import data first.", 'error');
-            
             let count = 0;
             importedDataMap.forEach((data, guid) => {
                 const mesh = guidToMeshMap.get(guid);
                 if (mesh) {
                     let colorHex = '#ff9900';
                     const s = (data.status || "").toLowerCase();
-                    
                     if (s.includes('complete') || s.includes('done')) colorHex = '#00ff88';
                     else if (s.includes('delay') || s.includes('issue') || s.includes('fail')) colorHex = '#ff007f';
                     else if (s.includes('pending') || s.includes('not started') || s.includes('open')) colorHex = '#7a8ba3';
-
                     const color = new THREE.Color(colorHex);
                     const newMat = sharedDefaultMaterial.clone();
-                    newMat.color = color;
-                    newMat.emissive = color.clone().multiplyScalar(0.3);
-                    newMat.opacity = 1.0;
-                    mesh.material = newMat;
-                    count++;
+                    newMat.color = color; newMat.emissive = color.clone().multiplyScalar(0.3); newMat.opacity = 1.0;
+                    mesh.material = newMat; count++;
                 }
             });
             showToast(`Applied status colors to ${count} elements.`, 'success');
@@ -1635,13 +1528,10 @@
 
         document.getElementById('btn-reset-colors').addEventListener('click', () => {
             if (!currentIfcModel) return;
-            currentIfcModel.traverse(child => {
-                if (child.isMesh) child.material = sharedDefaultMaterial;
-            });
+            currentIfcModel.traverse(child => { if (child.isMesh) child.material = sharedDefaultMaterial; });
             showToast("Colors reset to default.", 'success');
         });
 
-        // --- 6. RESILIENT PROPERTY EXTRACTION ---
         async function showElementProperties(modelID, expressID) {
             const safeId = safeExpressID(expressID);
             if (modelID === -1 || safeId < 0) return;
@@ -1655,21 +1545,11 @@
             await new Promise(r => setTimeout(r, 50));
             tabContentContainer.innerHTML = '';
 
-            // Attributes tab (always shown)
-            const attrBtn = document.createElement('div');
-            attrBtn.className = 'tab-btn active';
-            attrBtn.innerText = 'Attributes';
-            attrBtn.dataset.tab = 'tab-attributes';
-            tabNav.appendChild(attrBtn);
-
-            const attrContent = document.createElement('div');
-            attrContent.className = 'tab-content active';
-            attrContent.id = 'tab-attributes';
-            tabContentContainer.appendChild(attrContent);
+            const attrBtn = document.createElement('div'); attrBtn.className = 'tab-btn active'; attrBtn.innerText = 'Attributes'; attrBtn.dataset.tab = 'tab-attributes'; tabNav.appendChild(attrBtn);
+            const attrContent = document.createElement('div'); attrContent.className = 'tab-content active'; attrContent.id = 'tab-attributes'; tabContentContainer.appendChild(attrContent);
 
             let ifcLine = null;
-            try { ifcLine = ifcAPI.GetLine(modelID, safeId, true); }
-            catch(e) { console.warn("GetLine failed for", safeId, e); }
+            try { ifcLine = ifcAPI.GetLine(modelID, safeId, true); } catch(e) {}
 
             const addAttributeRow = (key, value) => {
                 if (!value || value === "" || value === null) return;
@@ -1678,13 +1558,11 @@
                 row.innerHTML = `<div class="prop-key">${key}</div><div class="prop-val">${value}</div>`;
                 attrContent.appendChild(row);
             };
-
             addAttributeRow("Express ID", safeId);
             if (ifcLine) {
                 addAttributeRow("Global ID", ifcLine.GlobalId ? ifcLine.GlobalId.value : "N/A");
                 addAttributeRow("Type", ifcLine.type || ifcLine.constructor.name);
                 addAttributeRow("Name", ifcLine.Name ? ifcLine.Name.value : "Unnamed");
-
                 if (ifcLine.GlobalId && importedDataMap.has(ifcLine.GlobalId.value)) {
                     const data = importedDataMap.get(ifcLine.GlobalId.value);
                     attrContent.innerHTML += '<div style="margin-top: 10px; margin-bottom: 5px; border-bottom: 1px solid var(--neon-purple); padding-bottom: 2px; color: var(--neon-purple); font-weight: bold; font-size: 0.75rem; text-transform: uppercase;">Imported Data</div>';
@@ -1696,56 +1574,19 @@
                 attrContent.innerHTML += '<div style="color:var(--text-muted); font-size:0.8rem; margin-top:10px;">Could not read attributes for this element.</div>';
             }
 
-            // Property Sets (fully guarded)
             try {
                 const uniquePsets = new Map();
-                const rawElement = ifcLine || (() => {
-                    try { return ifcAPI.GetLine(modelID, safeId, false); } catch(e) { return null; }
-                })();
-
+                const rawElement = ifcLine || (() => { try { return ifcAPI.GetLine(modelID, safeId, false); } catch(e) { return null; } })();
                 const addPset = (handle) => {
-                    const psetID = safeExpressID(handle);
-                    if (psetID < 0) return;
-                    let pset = null;
-                    try { pset = ifcAPI.GetLine(modelID, psetID, false); } catch(e) { return; }
+                    const psetID = safeExpressID(handle); if (psetID < 0) return;
+                    let pset = null; try { pset = ifcAPI.GetLine(modelID, psetID, false); } catch(e) { return; }
                     if (!pset || !pset.Name) return;
                     if (!uniquePsets.has(pset.expressID)) uniquePsets.set(pset.expressID, pset);
                 };
-
                 if (rawElement) {
-                    try {
-                        const apiPsets = ifcAPI.properties.getPropertySets(modelID, safeId, true);
-                        const awaited = apiPsets instanceof Promise ? await apiPsets : apiPsets;
-                        if (awaited) iterateCollection(awaited, pset => addPset(pset));
-                    } catch(e) { console.warn("getPropertySets failed:", e); }
-
-                    try {
-                        iterateCollection(rawElement.IsDefinedBy, relHandle => {
-                            const relId = safeExpressID(relHandle);
-                            if (relId < 0) return;
-                            let rel = null;
-                            try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; }
-                            if (rel && rel.RelatingPropertyDefinition) addPset(rel.RelatingPropertyDefinition);
-                        });
-                    } catch(e) { console.warn("IsDefinedBy traversal failed:", e); }
-
-                    try {
-                        iterateCollection(rawElement.IsTypedBy, relHandle => {
-                            const relId = safeExpressID(relHandle);
-                            if (relId < 0) return;
-                            let rel = null;
-                            try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; }
-                            if (rel && rel.RelatingType) {
-                                const typeId = safeExpressID(rel.RelatingType);
-                                if (typeId < 0) return;
-                                let typeObj = null;
-                                try { typeObj = ifcAPI.GetLine(modelID, typeId, false); } catch(e) { return; }
-                                if (typeObj && typeObj.HasPropertySets) {
-                                    iterateCollection(typeObj.HasPropertySets, psetHandle => addPset(psetHandle));
-                                }
-                            }
-                        });
-                    } catch(e) { console.warn("IsTypedBy traversal failed:", e); }
+                    try { const apiPsets = ifcAPI.properties.getPropertySets(modelID, safeId, true); const awaited = apiPsets instanceof Promise ? await apiPsets : apiPsets; if (awaited) iterateCollection(awaited, pset => addPset(pset)); } catch(e) {}
+                    try { iterateCollection(rawElement.IsDefinedBy, relHandle => { const relId = safeExpressID(relHandle); if (relId < 0) return; let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; } if (rel && rel.RelatingPropertyDefinition) addPset(rel.RelatingPropertyDefinition); }); } catch(e) {}
+                    try { iterateCollection(rawElement.IsTypedBy, relHandle => { const relId = safeExpressID(relHandle); if (relId < 0) return; let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; } if (rel && rel.RelatingType) { const typeId = safeExpressID(rel.RelatingType); if (typeId < 0) return; let typeObj = null; try { typeObj = ifcAPI.GetLine(modelID, typeId, false); } catch(e) { return; } if (typeObj && typeObj.HasPropertySets) iterateCollection(typeObj.HasPropertySets, psetHandle => addPset(psetHandle)); } }); } catch(e) {}
                 }
 
                 let psetIndex = 0;
@@ -1753,31 +1594,17 @@
                     const isQto = pset.type === "IFCELEMENTQUANTITY";
                     const tabId = `tab-pset-${psetIndex++}`;
                     const tabTitle = isQto ? `[Qto] ${pset.Name?.value || 'Unnamed'}` : (pset.Name?.value || 'Unnamed');
-
-                    const btn = document.createElement('div');
-                    btn.className = 'tab-btn';
-                    btn.innerText = tabTitle;
-                    btn.dataset.tab = tabId;
-                    tabNav.appendChild(btn);
-
-                    const content = document.createElement('div');
-                    content.className = 'tab-content';
-                    content.id = tabId;
-                    tabContentContainer.appendChild(content);
-
+                    const btn = document.createElement('div'); btn.className = 'tab-btn'; btn.innerText = tabTitle; btn.dataset.tab = tabId; tabNav.appendChild(btn);
+                    const content = document.createElement('div'); content.className = 'tab-content'; content.id = tabId; tabContentContainer.appendChild(content);
                     let hasProps = false;
                     if (pset.HasProperties) {
                         iterateCollection(pset.HasProperties, propHandle => {
-                            const propID = safeExpressID(propHandle);
-                            if (propID < 0) return;
-                            let prop = null;
-                            try { prop = ifcAPI.GetLine(modelID, propID, false); } catch(e) { return; }
+                            const propID = safeExpressID(propHandle); if (propID < 0) return;
+                            let prop = null; try { prop = ifcAPI.GetLine(modelID, propID, false); } catch(e) { return; }
                             if (prop && prop.Name) {
                                 hasProps = true;
-                                let val = 'N/A';
-                                try { val = extractValue(prop) || 'N/A'; } catch(e) { val = 'N/A'; }
-                                const row = document.createElement('div');
-                                row.className = 'prop-row';
+                                let val = 'N/A'; try { val = extractValue(prop) || 'N/A'; } catch(e) { val = 'N/A'; }
+                                const row = document.createElement('div'); row.className = 'prop-row';
                                 row.innerHTML = `<div class="prop-key">${prop.Name.value}</div><div class="prop-val">${val}</div>`;
                                 content.appendChild(row);
                             }
@@ -1785,9 +1612,7 @@
                     }
                     if (!hasProps) content.innerHTML = '<div style="color:var(--text-muted); font-size:0.8rem; margin-top:10px;">No properties in this set.</div>';
                 });
-            } catch (psetErr) {
-                console.warn("Property set extraction failed:", psetErr);
-            }
+            } catch (psetErr) {}
 
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
@@ -1800,7 +1625,6 @@
             });
         }
 
-        // --- 7. RESILIENT BATCH BCA IFC-SG VALIDATION ---
         function runSGValidation(expressIDs) {
             if (!expressIDs || expressIDs.length === 0) { showToast("Select element(s) first.", 'error'); return; }
             const requiredSchema = {
@@ -1810,54 +1634,35 @@
                 'IFCCOLUMN': { 'SGPset_Column': ['Reference', 'Status'], 'Pset_ColumnCommon': ['IsExternal', 'LoadBearing'] },
                 'IFCBEAM': { 'SGPset_Beam': ['Reference', 'Status'], 'Pset_BeamCommon': ['IsExternal', 'LoadBearing'] }
             };
-            let allErrors = [];
-            let processedCount = 0;
+            let allErrors = []; let processedCount = 0;
             const validateElementById = (id, schema, isPart = false) => {
-                const safeId = safeExpressID(id);
-                if (safeId < 0) return;
+                const safeId = safeExpressID(id); if (safeId < 0) return;
                 const psetMap = getPsetsAsMap(currentModelID, safeId);
                 const elementName = isPart ? `Part (ID: ${safeId})` : `Element (ID: ${safeId})`;
                 Object.keys(schema).forEach(requiredPsetName => {
                     const requiredProps = schema[requiredPsetName];
-                    if (!psetMap.has(requiredPsetName)) {
-                        allErrors.push({ element: elementName, type: 'Missing Pset', detail: `Missing entire Pset: ${requiredPsetName}` });
-                        return;
-                    }
+                    if (!psetMap.has(requiredPsetName)) { allErrors.push({ element: elementName, type: 'Missing Pset', detail: `Missing entire Pset: ${requiredPsetName}` }); return; }
                     const propsMap = psetMap.get(requiredPsetName);
                     requiredProps.forEach(propName => {
-                        if (!propsMap.has(propName)) {
-                            allErrors.push({ element: elementName, type: 'Missing Attribute', detail: `Missing attribute: ${requiredPsetName}.${propName}` });
-                        } else {
+                        if (!propsMap.has(propName)) { allErrors.push({ element: elementName, type: 'Missing Attribute', detail: `Missing attribute: ${requiredPsetName}.${propName}` }); }
+                        else {
                             const val = propsMap.get(propName);
-                            if (val === null || val === undefined || val === "" || val === "N/A") {
-                                allErrors.push({ element: elementName, type: 'Empty Attribute', detail: `Empty attribute: ${requiredPsetName}.${propName}` });
-                            }
+                            if (val === null || val === undefined || val === "" || val === "N/A") allErrors.push({ element: elementName, type: 'Empty Attribute', detail: `Empty attribute: ${requiredPsetName}.${propName}` });
                         }
                     });
                 });
             };
             expressIDs.forEach(expressID => {
                 const safeId = safeExpressID(expressID);
-                if (safeId < 0) {
-                    allErrors.push({ element: `ID: ${expressID}`, type: 'Invalid ID', detail: 'Express ID could not be parsed.' });
-                    return;
-                }
+                if (safeId < 0) { allErrors.push({ element: `ID: ${expressID}`, type: 'Invalid ID', detail: 'Express ID could not be parsed.' }); return; }
                 try {
                     let ifcLine = null;
-                    try { ifcLine = ifcAPI.GetLine(currentModelID, safeId, true); } catch(e) { /* ignore */ }
+                    try { ifcLine = ifcAPI.GetLine(currentModelID, safeId, true); } catch(e) {}
                     const elementType = ifcLine && (ifcLine.type || ifcLine.constructor.name);
                     const schema = requiredSchema[elementType];
-                    if (schema) {
-                        processedCount++;
-                        validateElementById(safeId, schema, false);
-                        const parts = getParts(currentModelID, safeId);
-                        parts.forEach(partId => validateElementById(partId, schema, true));
-                    } else {
-                        allErrors.push({ element: `ID: ${safeId}`, type: 'Unsupported Type', detail: `No SGPsets mapped for type: ${elementType}` });
-                    }
-                } catch (elemErr) {
-                    allErrors.push({ element: `ID: ${safeId}`, type: 'Extraction Error', detail: String(elemErr.message || elemErr) });
-                }
+                    if (schema) { processedCount++; validateElementById(safeId, schema, false); const parts = getParts(currentModelID, safeId); parts.forEach(partId => validateElementById(partId, schema, true)); }
+                    else { allErrors.push({ element: `ID: ${safeId}`, type: 'Unsupported Type', detail: `No SGPsets mapped for type: ${elementType}` }); }
+                } catch (elemErr) { allErrors.push({ element: `ID: ${safeId}`, type: 'Extraction Error', detail: String(elemErr.message || elemErr) }); }
             });
             valContent.innerHTML = '';
             if (allErrors.length === 0) {
@@ -1865,18 +1670,11 @@
             } else {
                 valContent.innerHTML = `<div style="color:var(--neon-pink); margin-bottom: 10px; font-weight: bold;">❌ FAILED - ${allErrors.length} issue(s) found across ${processedCount} element(s):</div>`;
                 const groupedErrors = {};
-                allErrors.forEach(err => {
-                    if (!groupedErrors[err.element]) groupedErrors[err.element] = [];
-                    groupedErrors[err.element].push(err);
-                });
+                allErrors.forEach(err => { if (!groupedErrors[err.element]) groupedErrors[err.element] = []; groupedErrors[err.element].push(err); });
                 Object.keys(groupedErrors).forEach(elementName => {
-                    const header = document.createElement('div');
-                    header.className = 'val-part-header';
-                    header.innerText = elementName;
-                    valContent.appendChild(header);
+                    const header = document.createElement('div'); header.className = 'val-part-header'; header.innerText = elementName; valContent.appendChild(header);
                     groupedErrors[elementName].forEach(err => {
-                        const item = document.createElement('div');
-                        item.className = 'val-error-item';
+                        const item = document.createElement('div'); item.className = 'val-error-item';
                         item.innerHTML = `<strong>[${err.type}]</strong> <span>${err.detail}</span>`;
                         valContent.appendChild(item);
                     });
@@ -1888,7 +1686,6 @@
         document.getElementById('header-validate-btn').addEventListener('click', () => runSGValidation(Array.from(selectedMeshes.keys())));
         document.getElementById('btn-validate-sg').addEventListener('click', () => runSGValidation(Array.from(selectedMeshes.keys())));
 
-        // --- SEARCH FILTERING ---
         searchInput.addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase();
             const activeTab = document.querySelector('.tab-content.active');
@@ -1898,7 +1695,6 @@
             });
         });
 
-        // --- ACTION BUTTONS ---
         document.getElementById('btn-zoom').addEventListener('click', () => {
             if (selectedMeshes.size === 0) return;
             const combinedBox = new THREE.Box3();
@@ -1929,9 +1725,7 @@
             if (selectedMeshes.size === 0 || !currentIfcModel) return;
             isIsolated = !isIsolated;
             e.target.classList.toggle('active');
-            currentIfcModel.children.forEach(child => {
-                if (child.isMesh) child.visible = isIsolated ? selectedMeshes.has(child.userData.expressID) : true;
-            });
+            currentIfcModel.children.forEach(child => { if (child.isMesh) child.visible = isIsolated ? selectedMeshes.has(child.userData.expressID) : true; });
         });
 
         document.getElementById('btn-show-all').addEventListener('click', () => {
@@ -1946,9 +1740,7 @@
             const mode = e.target.value;
             if (!currentIfcModel || currentModelID === -1) return;
             if (mode === 'default') {
-                currentIfcModel.traverse(child => { 
-                    if (child.isMesh && !selectedMeshes.has(child.userData.expressID)) child.material = sharedDefaultMaterial; 
-                });
+                currentIfcModel.traverse(child => { if (child.isMesh && !selectedMeshes.has(child.userData.expressID)) child.material = sharedDefaultMaterial; });
                 return;
             }
             const typeColors = {};
@@ -1957,12 +1749,7 @@
                     let key = "Unknown";
                     if (mode === 'type') {
                         const eid = safeExpressID(child.userData.expressID);
-                        if (eid >= 0) {
-                            try {
-                                const line = ifcAPI.GetLine(currentModelID, eid, true);
-                                if (line && line.type) key = line.type;
-                            } catch(e) { /* ignore */ }
-                        }
+                        if (eid >= 0) { try { const line = ifcAPI.GetLine(currentModelID, eid, true); if (line && line.type) key = line.type; } catch(e) {} }
                     } else if (mode === 'material') {
                         const eid = safeExpressID(child.userData.expressID);
                         if (eid >= 0) {
@@ -1970,24 +1757,21 @@
                                 const line = ifcAPI.GetLine(currentModelID, eid, false);
                                 if (line && line.HasAssociations) {
                                     iterateCollection(line.HasAssociations, relID => {
-                                        const rid = safeExpressID(relID);
-                                        if (rid < 0) return;
+                                        const rid = safeExpressID(relID); if (rid < 0) return;
                                         try {
                                             const rel = ifcAPI.GetLine(currentModelID, rid, false);
                                             if (rel && rel.RelatingMaterial) {
-                                                const mid = safeExpressID(rel.RelatingMaterial);
-                                                if (mid < 0) return;
+                                                const mid = safeExpressID(rel.RelatingMaterial); if (mid < 0) return;
                                                 const mat = ifcAPI.GetLine(currentModelID, mid, false);
                                                 if (mat && mat.Name) key = mat.Name.value;
                                             }
-                                        } catch(e) { /* ignore */ }
+                                        } catch(e) {}
                                     });
                                 }
-                            } catch(e) { /* ignore */ }
+                            } catch(e) {}
                         }
                     }
                     if (!typeColors[key]) typeColors[key] = new THREE.Color().setHSL(Math.random(), 0.8, 0.5);
-                    
                     if (!selectedMeshes.has(child.userData.expressID)) {
                         const newMat = sharedDefaultMaterial.clone();
                         newMat.color = typeColors[key];
@@ -1999,22 +1783,16 @@
             });
         });
 
-        // --- BOOT SEQUENCE ---
         async function startApp() {
             try {
                 ifcAPI.SetWasmPath('https://unpkg.com/web-ifc@0.0.78/', true);
                 try { if (typeof ifcAPI.SetLogLevel === 'function') ifcAPI.SetLogLevel(0); } catch(e) {}
                 await ifcAPI.Init();
-
                 const defaultIfcURL = 'https://thatopen.github.io/engine_fragment/resources/example.ifc';
                 showLoading("Initializing...", "Downloading default IFC...");
                 const response = await fetch(defaultIfcURL);
                 await processAndAddModel(await response.arrayBuffer());
-            } catch (error) { 
-                console.error(error); 
-                showToast("Failed to boot Web-IFC engine.", 'error');
-                loadTitle.innerText = "Init Error"; loadStatus.innerText = "Failed to boot."; 
-            }
+            } catch (error) { showToast("Failed to boot Web-IFC engine.", 'error'); loadTitle.innerText = "Init Error"; loadStatus.innerText = "Failed to boot."; }
         }
         startApp();
 
@@ -2022,8 +1800,7 @@
         fileInput.addEventListener('change', (event) => {
             const file = event.target.files[0]; if (!file) return;
             showLoading("Reading Local File...", `0%`);
-            progressContainer.style.display = 'block';
-            progressBar.style.width = '0%';
+            progressContainer.style.display = 'block'; progressBar.style.width = '0%';
 
             const reader = new FileReader();
             reader.onprogress = (e) => {
