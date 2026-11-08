@@ -1090,107 +1090,91 @@
             return parts;
         }
 
-        // ---------- HELPER: find a Global ID even if this element is not IfcRoot ----------
-        function findGlobalIdForNonRoot(modelID, expressID) {
-            const safeId = safeExpressID(expressID);
+        // ============================================================================
+        // EXHAUSTIVE GLOBAL ID RESOLVER
+        // Walks direct GlobalId first, then every known relationship, then recurses
+        // up to MAX_DEPTH through the graph in both directions.
+        // ============================================================================
+        function _safeGetLine(modelID, id, isType = false) {
+            const safeId = safeExpressID(id);
             if (safeId < 0) return null;
-            const ifcLine = (() => { try { return ifcAPI.GetLine(modelID, safeId, true); } catch(e) { return null; } })();
-            if (!ifcLine) return null;
+            try { return ifcAPI.GetLine(modelID, safeId, isType); } catch(e) { return null; }
+        }
+        function _collectHandles(collection, out) {
+            if (!collection) return;
+            try {
+                if (Array.isArray(collection)) { collection.forEach(h => { const id = safeExpressID(h); if (id >= 0) out.push(id); }); }
+                else if (typeof collection.size === 'function') {
+                    for (let i = 0; i < collection.size(); i++) { const id = safeExpressID(collection.get(i)); if (id >= 0) out.push(id); }
+                } else if (typeof collection === 'object') {
+                    try { for (const item of collection) { const id = safeExpressID(item); if (id >= 0) out.push(id); } } catch(e) {}
+                }
+            } catch(e) {}
+        }
 
-            if (ifcLine.GlobalId && ifcLine.GlobalId.value) {
-                return { id: ifcLine.GlobalId.value, source: 'direct' };
+        function findGlobalIdForNonRoot(modelID, expressID) {
+            const rootId = safeExpressID(expressID);
+            if (rootId < 0) return null;
+
+            const direct = _safeGetLine(modelID, rootId, true);
+            if (!direct) return null;
+            if (direct.GlobalId && direct.GlobalId.value) {
+                return { id: direct.GlobalId.value, source: 'direct' };
             }
-            const getGid = (obj) => (obj && obj.GlobalId && obj.GlobalId.value) ? obj.GlobalId.value : null;
 
-            try {
-                if (ifcLine.IsDefinedBy) {
-                    let found = null;
-                    iterateCollection(ifcLine.IsDefinedBy, relHandle => {
-                        if (found) return;
-                        const relId = safeExpressID(relHandle); if (relId < 0) return;
-                        let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; }
-                        if (rel && rel.RelatingPropertyDefinition) {
-                            const pdId = safeExpressID(rel.RelatingPropertyDefinition); if (pdId < 0) return;
-                            let pd = null; try { pd = ifcAPI.GetLine(modelID, pdId, true); } catch(e) { return; }
-                            const gid = getGid(pd);
-                            if (gid) found = { id: gid, source: 'IsDefinedBy' };
-                        }
-                    });
-                    if (found) return found;
+            const MAX_DEPTH = 6;
+            const visited = new Set();
+            const queue = [{ id: rootId, depth: 0, path: 'self' }];
+            const relAttrsUp = ['Decomposes', 'ContainedInStructure', 'HasAssignments', 'HasAssociations',
+                                'IsDefinedBy', 'IsTypedBy', 'IsGroupedBy', 'ReferencedBy', 'HasContext',
+                                'VoidsElements', 'FillsVoids', 'HasOpenings', 'ContainsElements', 'HasPorts'];
+            const pushRelatedHandles = (obj, out) => {
+                if (!obj) return;
+                ['RelatingObject', 'RelatingStructure', 'RelatingGroup', 'RelatingType',
+                 'RelatingPropertyDefinition', 'RelatingMaterial', 'RelatingProduct',
+                 'RelatingBuildingElement', 'RelatingOpeningElement', 'RelatingContext'].forEach(k => {
+                    const v = obj[k]; if (v !== undefined) { const id = safeExpressID(v); if (id >= 0) out.push(id); }
+                });
+                ['RelatedObjects', 'RelatedElements', 'RelatedProducts', 'HasProperties',
+                 'HasPropertySets', 'HasAssociations', 'HasAssignments', 'HasOpenings',
+                 'ContainsElements', 'IsDecomposedBy', 'IsDefinedBy', 'IsTypedBy',
+                 'IsGroupedBy', 'ReferencedBy', 'HasContext', 'HasPorts'].forEach(k => {
+                    if (obj[k] !== undefined) _collectHandles(obj[k], out);
+                });
+            };
+
+            while (queue.length > 0) {
+                const { id, depth, path } = queue.shift();
+                if (depth > MAX_DEPTH) continue;
+                if (visited.has(id)) continue;
+                visited.add(id);
+
+                const obj = _safeGetLine(modelID, id, true);
+                if (!obj) continue;
+                if (obj.GlobalId && obj.GlobalId.value) {
+                    return { id: obj.GlobalId.value, source: `${path} (depth ${depth})` };
                 }
-            } catch(e) {}
 
-            try {
-                if (ifcLine.Decomposes) {
-                    let found = null;
-                    iterateCollection(ifcLine.Decomposes, relHandle => {
-                        if (found) return;
-                        const relId = safeExpressID(relHandle); if (relId < 0) return;
-                        let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; }
-                        if (rel && rel.RelatingObject) {
-                            const pid = safeExpressID(rel.RelatingObject); if (pid < 0) return;
-                            let parent = null; try { parent = ifcAPI.GetLine(modelID, pid, true); } catch(e) { return; }
-                            const gid = getGid(parent);
-                            if (gid) found = { id: gid, source: 'Decomposes (parent)' };
-                        }
-                    });
-                    if (found) return found;
-                }
-            } catch(e) {}
+                const nextIds = [];
+                relAttrsUp.forEach(attr => {
+                    const coll = obj[attr];
+                    if (!coll) return;
+                    try {
+                        if (Array.isArray(coll)) { coll.forEach(h => { const rid = safeExpressID(h); if (rid >= 0) nextIds.push(rid); }); }
+                        else if (typeof coll.size === 'function') { for (let i = 0; i < coll.size(); i++) { const rid = safeExpressID(coll.get(i)); if (rid >= 0) nextIds.push(rid); } }
+                        else if (typeof coll === 'object') { try { for (const item of coll) { const rid = safeExpressID(item); if (rid >= 0) nextIds.push(rid); } } catch(e) {} }
+                    } catch(e) {}
+                });
+                try { pushRelatedHandles(obj, nextIds); } catch(e) {}
 
-            try {
-                if (ifcLine.ContainedInStructure) {
-                    let found = null;
-                    iterateCollection(ifcLine.ContainedInStructure, relHandle => {
-                        if (found) return;
-                        const relId = safeExpressID(relHandle); if (relId < 0) return;
-                        let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; }
-                        if (rel && rel.RelatingStructure) {
-                            const sid = safeExpressID(rel.RelatingStructure); if (sid < 0) return;
-                            let s = null; try { s = ifcAPI.GetLine(modelID, sid, true); } catch(e) { return; }
-                            const gid = getGid(s);
-                            if (gid) found = { id: gid, source: 'ContainedInStructure' };
-                        }
-                    });
-                    if (found) return found;
-                }
-            } catch(e) {}
+                nextIds.forEach(nid => {
+                    if (!visited.has(nid)) queue.push({ id: nid, depth: depth + 1, path: `${path} → ${obj.type || '?'}` });
+                });
+            }
 
-            try {
-                if (ifcLine.HasAssignments) {
-                    let found = null;
-                    iterateCollection(ifcLine.HasAssignments, relHandle => {
-                        if (found) return;
-                        const relId = safeExpressID(relHandle); if (relId < 0) return;
-                        let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; }
-                        if (rel && rel.RelatingGroup) {
-                            const gid2 = safeExpressID(rel.RelatingGroup); if (gid2 < 0) return;
-                            let group = null; try { group = ifcAPI.GetLine(modelID, gid2, true); } catch(e) { return; }
-                            const gid = getGid(group);
-                            if (gid) found = { id: gid, source: 'HasAssignments (group)' };
-                        }
-                    });
-                    if (found) return found;
-                }
-            } catch(e) {}
-
-            try {
-                if (ifcLine.ReferencedBy) {
-                    let found = null;
-                    iterateCollection(ifcLine.ReferencedBy, relHandle => {
-                        if (found) return;
-                        const relId = safeExpressID(relHandle); if (relId < 0) return;
-                        let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, true); } catch(e) { return; }
-                        const gid = getGid(rel);
-                        if (gid) found = { id: gid, source: `ReferencedBy ${rel.type || 'rel'}` };
-                    });
-                    if (found) return found;
-                }
-            } catch(e) {}
-
-            if (ifcLine.Tag && ifcLine.Tag.value) return { id: `(Tag) ${ifcLine.Tag.value}`, source: 'Tag (no GlobalId)' };
-            if (ifcLine.Name && ifcLine.Name.value) return { id: `(Name) ${ifcLine.Name.value}`, source: 'Name (no GlobalId)' };
-            if (ifcLine.ObjectType && ifcLine.ObjectType.value) return { id: `(ObjectType) ${ifcLine.ObjectType.value}`, source: 'ObjectType (no GlobalId)' };
+            if (direct.Tag && direct.Tag.value) return { id: `(Tag) ${direct.Tag.value}`, source: 'Tag (no GlobalId)' };
+            if (direct.Name && direct.Name.value) return { id: `(Name) ${direct.Name.value}`, source: 'Name (no GlobalId)' };
+            if (direct.ObjectType && direct.ObjectType.value) return { id: `(ObjectType) ${direct.ObjectType.value}`, source: 'ObjectType (no GlobalId)' };
             return null;
         }
 
