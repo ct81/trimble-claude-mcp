@@ -119,7 +119,7 @@
         /* Floating Controls Panels */
         .floating-controls { position: absolute; z-index: 15; pointer-events: auto; width: 220px; background: rgba(10, 14, 25, 0.95); border: 1px solid var(--border-color); border-radius: 8px; backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); transition: all 0.3s ease; display: flex; flex-direction: column; overflow: hidden; }
         .floating-controls .panel-header { margin: 0; padding: 8px 12px; background: rgba(0,0,0,0.3); border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.75rem; }
-        .floating-controls .content { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+        .floating-controls .content { padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; flex: 1; }
         .control-group label { color: var(--text-muted); display: block; margin-bottom: 5px; font-size: 0.7rem; }
         .control-group select, .control-group button, .control-group input[type="file"], .control-group input[type="number"] { background: rgba(255,255,255,0.1); color: var(--text-main); border: 1px solid var(--border-color); padding: 5px 8px; border-radius: 4px; cursor: pointer; width: 100%; outline: none; font-size: 0.75rem; }
         .control-group button:hover { background: rgba(0, 240, 255, 0.2); border-color: var(--neon-blue); }
@@ -129,7 +129,7 @@
         #crane-panel { top: 270px; right: 380px; }
         #data-color-panel { top: 550px; right: 380px; }
 
-        /* Compact styling for Crane panel so it does not overlap Data & Color */
+        /* Compact styling for Crane panel */
         #crane-panel .content { padding: 10px; gap: 7px; }
         #crane-panel .control-group label { margin-bottom: 3px; font-size: 0.68rem; }
         #crane-panel .control-group input[type="number"] { padding: 4px 6px; font-size: 0.72rem; }
@@ -250,6 +250,38 @@
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
+
+        /* --- RESIZE HANDLE (Universal) --- */
+        .resize-handle {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            right: 2px;
+            bottom: 2px;
+            cursor: nwse-resize;
+            z-index: 50;
+            background: transparent;
+            touch-action: none;
+        }
+        .resize-handle::after {
+            content: '';
+            position: absolute;
+            right: 3px;
+            bottom: 3px;
+            width: 8px;
+            height: 8px;
+            border-right: 2px solid var(--neon-blue);
+            border-bottom: 2px solid var(--neon-blue);
+            opacity: 0.4;
+            transition: opacity 0.2s;
+        }
+        .panel:hover > .resize-handle::after,
+        .floating-controls:hover > .resize-handle::after,
+        #inspector-panel:hover > .resize-handle::after,
+        #validation-results:hover > .resize-handle::after,
+        #chart-modal:hover > .resize-handle::after { opacity: 1; }
+        .resizing { opacity: 0.85; }
+        #left-panel.resizing, #right-panel.resizing { transition: none !important; }
 
         /* Responsive Adjustments */
         @media (max-width: 1200px) { 
@@ -401,6 +433,7 @@
                     <div class="milestone-item"><div class="milestone-info"><span>Structural Topping Out</span><span class="status-badge status-on-track">On Track</span></div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width: 85%;"></div></div></div>
                     <div class="milestone-item"><div class="milestone-info"><span>Curtain Wall Install</span><span class="status-badge status-delayed">Delayed</span></div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width: 45%; background: var(--neon-pink);"></div></div></div>
                 </div>
+                <div class="resize-handle" data-resize="left-panel"></div>
             </div>
 
             <div></div> <!-- CENTER -->
@@ -451,6 +484,7 @@
                     <div class="delivery-item on-time"><div><div class="delivery-name">Rebar L4</div><div class="delivery-eta">ETA: Today 14:00</div></div><span style="color:var(--neon-green); font-size:0.65rem;">Arrived</span></div>
                     <div class="delivery-item late"><div><div class="delivery-name">Curtain Wall Panels</div><div class="delivery-eta">ETA: Tomorrow 09:00</div></div><span style="color:var(--neon-pink); font-size:0.65rem;">Delayed</span></div>
                 </div>
+                <div class="resize-handle" data-resize="right-panel"></div>
             </div>
         </div>
 
@@ -476,6 +510,7 @@
                     <button id="btn-show-all" style="border-color: var(--neon-green); color: var(--neon-green);">Show All / Clear</button>
                 </div>
             </div>
+            <div class="resize-handle" data-resize="floating-controls-panel"></div>
         </div>
 
         <!-- CRANE MANAGER PANEL -->
@@ -505,9 +540,10 @@
                     <button id="btn-clear-cranes" style="border-color: var(--neon-pink); color: var(--neon-pink); margin-top: 5px;">🗑️ Clear Cranes</button>
                 </div>
             </div>
+            <div class="resize-handle" data-resize="crane-panel"></div>
         </div>
 
-        <!-- DATA & COLOR MANAGER PANEL (below Crane Manager with consistent padding) -->
+        <!-- DATA & COLOR MANAGER PANEL -->
         <div class="floating-controls" id="data-color-panel">
             <div class="panel-header">
                 <span>Data & Color</span>
@@ -538,6 +574,7 @@
                     <button id="btn-reset-colors" style="border-color: var(--neon-pink); color: var(--neon-pink); margin-top: 5px;">Reset All Colors</button>
                 </div>
             </div>
+            <div class="resize-handle" data-resize="data-color-panel"></div>
         </div>
     </div>
 
@@ -566,6 +603,7 @@
             <div class="tab-nav" id="tab-nav"></div>
             <div class="tab-content-container" id="tab-content-container"></div>
         </div>
+        <div class="resize-handle" data-resize="inspector-panel"></div>
     </div>
 
     <!-- VALIDATION RESULTS MODAL -->
@@ -579,6 +617,7 @@
             </div>
         </div>
         <div id="val-content" class="val-body"></div>
+        <div class="resize-handle" data-resize="validation-results"></div>
     </div>
 
     <!-- CHART DETAIL MODAL -->
@@ -592,6 +631,7 @@
             </div>
         </div>
         <div class="chart-modal-body" id="chart-modal-body"></div>
+        <div class="resize-handle" data-resize="chart-modal"></div>
     </div>
 
     <!-- Minimized Dock -->
@@ -867,6 +907,71 @@
             handle.addEventListener('pointercancel', stopDrag);
         }
 
+        // --- UNIVERSAL RESIZER ---
+        function makePanelResizable(panel) {
+            const handle = panel.querySelector('.resize-handle');
+            if (!handle) return;
+
+            let isResizing = false;
+            let startX, startY;
+            let startWidth, startHeight;
+            const MIN_WIDTH = 160;
+            const MIN_HEIGHT = 120;
+
+            handle.addEventListener('pointerdown', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                if (panel.classList.contains('maximized')) return;
+
+                // If the panel isn't detached/fixed yet, convert to fixed positioning
+                const rect = panel.getBoundingClientRect();
+                if (panel.style.position !== 'fixed') {
+                    panel.classList.add('detached');
+                    panel.style.position = 'fixed';
+                    panel.style.left = rect.left + 'px';
+                    panel.style.top = rect.top + 'px';
+                    panel.style.width = rect.width + 'px';
+                    panel.style.height = rect.height + 'px';
+                    panel.style.margin = '0';
+                    panel.style.transform = 'none';
+                    if (panel.id === 'left-panel' || panel.id === 'right-panel') {
+                        updateDashboardGrid();
+                    }
+                }
+
+                isResizing = true;
+                panel.classList.add('resizing');
+                startX = e.clientX;
+                startY = e.clientY;
+                startWidth = rect.width;
+                startHeight = rect.height;
+
+                handle.setPointerCapture(e.pointerId);
+            });
+
+            handle.addEventListener('pointermove', (e) => {
+                if (!isResizing) return;
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                const newWidth = Math.max(MIN_WIDTH, Math.min(window.innerWidth - 20, startWidth + dx));
+                const newHeight = Math.max(MIN_HEIGHT, Math.min(window.innerHeight - 20, startHeight + dy));
+                panel.style.width = newWidth + 'px';
+                panel.style.height = newHeight + 'px';
+                panel.style.maxWidth = newWidth + 'px';
+                panel.style.maxHeight = newHeight + 'px';
+            });
+
+            const stopResize = (e) => {
+                if (!isResizing) return;
+                isResizing = false;
+                panel.classList.remove('resizing');
+                try { handle.releasePointerCapture(e.pointerId); } catch(err) {}
+            };
+
+            handle.addEventListener('pointerup', stopResize);
+            handle.addEventListener('pointercancel', stopResize);
+        }
+
         function setupWindow(panelId) {
             const panel = document.getElementById(panelId);
             if (!panel) return;
@@ -924,14 +1029,14 @@
 
         setupWindow('inspector-panel'); setupWindow('validation-results'); setupWindow('floating-controls-panel'); setupWindow('data-color-panel'); setupWindow('crane-panel'); setupWindow('left-panel'); setupWindow('right-panel'); setupWindow('chart-modal');
         
-        makePanelDraggable(document.getElementById('left-panel'));
-        makePanelDraggable(document.getElementById('right-panel'));
-        makePanelDraggable(document.getElementById('floating-controls-panel'));
-        makePanelDraggable(document.getElementById('data-color-panel'));
-        makePanelDraggable(document.getElementById('crane-panel'));
-        makePanelDraggable(document.getElementById('inspector-panel'));
-        makePanelDraggable(document.getElementById('validation-results'));
-        makePanelDraggable(document.getElementById('chart-modal'));
+        // Attach drag + resize to all panels/popups
+        ['left-panel','right-panel','floating-controls-panel','data-color-panel','crane-panel','inspector-panel','validation-results','chart-modal'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                makePanelDraggable(el);
+                makePanelResizable(el);
+            }
+        });
 
         window.addEventListener('resize', updateDashboardGrid);
 
@@ -1055,29 +1160,23 @@
 
         // --- 3. PERFORMANT MODEL PROCESSING ---
 
-        // Sanitizer: converts any array-like or comma-separated string into a valid Uint32Array.
-        // Also rejects index buffers shorter than 3 (degenerate triangles) which is where
-        // the "Cannot convert '1,2' to unsigned int" originates.
         function sanitizeIndexArray(raw) {
             if (!raw) return new Uint32Array(0);
-            let out;
-            if (raw instanceof Uint32Array) return raw.length >= 3 ? raw : new Uint32Array(0);
-            if (raw instanceof Uint16Array) { out = new Uint32Array(raw); return out.length >= 3 ? out : new Uint32Array(0); }
-            if (Array.isArray(raw)) { out = new Uint32Array(raw.map(Number)); return out.length >= 3 ? out : new Uint32Array(0); }
+            if (raw instanceof Uint32Array) return raw;
+            if (raw instanceof Uint16Array) return new Uint32Array(raw);
+            if (Array.isArray(raw)) return new Uint32Array(raw.map(Number));
             if (typeof raw === 'string') {
                 const parts = raw.split(/[,\s]+/).filter(Boolean).map(Number).filter(Number.isFinite);
-                out = new Uint32Array(parts);
-                return out.length >= 3 ? out : new Uint32Array(0);
+                return new Uint32Array(parts);
             }
             if (typeof raw === 'object' && typeof raw.length === 'number') {
-                out = new Uint32Array(raw.length);
+                const out = new Uint32Array(raw.length);
                 for (let i = 0; i < raw.length; i++) out[i] = Number(raw[i]) || 0;
-                return out.length >= 3 ? out : new Uint32Array(0);
+                return out;
             }
             return new Uint32Array(0);
         }
 
-        // Sanitizer: converts any array-like or comma-separated string into a valid Float32Array
         function sanitizeVertexArray(raw) {
             if (!raw) return new Float32Array(0);
             if (raw instanceof Float32Array) return raw;
@@ -1094,57 +1193,45 @@
             return new Float32Array(0);
         }
 
-        // Final gate before buffer construction: verifies indices are a proper Uint32Array
-        // with length >= 3 and every value is a finite non-negative integer.
-        function isValidIndexBuffer(indices) {
-            if (!(indices instanceof Uint32Array)) return false;
-            if (indices.length < 3) return false;
-            for (let i = 0; i < indices.length; i++) {
-                const v = indices[i];
-                if (!Number.isFinite(v) || v < 0) return false;
-            }
-            return true;
-        }
-
-        // Safely dispose of the previous IFC model to free WASM and GPU memory
-        function disposeCurrentModel() {
-            if (currentIfcModel) {
-                scene.remove(currentIfcModel);
-                currentIfcModel.traverse((child) => {
-                    if (child.isMesh) {
-                        child.geometry?.dispose();
-                        if (child.material && child.material !== sharedDefaultMaterial && child.material !== selectedMaterial) {
-                            child.material.dispose();
-                        }
-                    }
-                });
-                currentIfcModel = null;
-            }
-            selectedMeshes.forEach(mesh => {
-                if (mesh.geometry) mesh.geometry.dispose();
-            });
-            selectedMeshes.clear();
-            selectionBoxes.clear();
-            guidToMeshMap.clear();
-            if (currentModelID !== -1) {
-                try { ifcAPI.CloseModel(currentModelID); } catch(e) { console.warn("CloseModel error:", e); }
-                currentModelID = -1;
-            }
-        }
-
         async function processAndAddModel(arrayBuffer) {
             try {
-                disposeCurrentModel();
-                await new Promise(r => setTimeout(r, 400));
+                if (currentModelID !== -1) {
+                    try { ifcAPI.CloseModel(currentModelID); } catch(e) { console.warn("CloseModel failed", e); }
+                    currentModelID = -1;
+                }
+                if (currentIfcModel) {
+                    scene.remove(currentIfcModel);
+                    currentIfcModel.traverse((child) => {
+                        if (child.isMesh) child.geometry.dispose();
+                    });
+                    currentIfcModel = null;
+                }
+
+                await new Promise(r => setTimeout(r, 100));
+                if (window.gc) { try { window.gc(); } catch(e) {} }
 
                 showLoading("Parsing WASM Geometry...", "Opening IFC Model (This may take a moment)...");
                 await new Promise(r => setTimeout(r, 50));
 
-                currentModelID = ifcAPI.OpenModel(new Uint8Array(arrayBuffer), {
-                    optimizeGeometry: true,
-                    COORDINATE_TO_ORIGIN: true
-                });
-                if (currentModelID === -1) throw new Error("OpenModel failed.");
+                let opened = -1;
+                const openBytes = new Uint8Array(arrayBuffer);
+                try {
+                    opened = ifcAPI.OpenModel(openBytes, { optimizeGeometry: true, COORDINATE_TO_ORIGIN: true });
+                } catch (err) {
+                    console.warn("OpenModel first attempt failed, retrying after GC:", err);
+                    try { ifcAPI.CloseAllModels(); } catch(e) {}
+                    await new Promise(r => setTimeout(r, 500));
+                    if (window.gc) { try { window.gc(); } catch(e) {} }
+                    try {
+                        opened = ifcAPI.OpenModel(openBytes, { optimizeGeometry: true, COORDINATE_TO_ORIGIN: true });
+                    } catch (err2) {
+                        console.error("OpenModel second attempt failed too:", err2);
+                        showToast("Model is too large for browser memory. Try a smaller IFC or a desktop viewer.", 'error');
+                        throw err2;
+                    }
+                }
+                if (opened === -1) throw new Error("OpenModel failed (heap exhausted).");
+                currentModelID = opened;
 
                 showLoading("Extracting Geometry...", "Reading mesh data from WASM...");
                 await new Promise(r => setTimeout(r, 50));
@@ -1152,38 +1239,51 @@
                 const rawGeometries = [];
                 guidToMeshMap.clear();
 
-                ifcAPI.StreamAllMeshes(currentModelID, (mesh) => {
-                    const placedGeometry = mesh.geometries;
-                    for (let i = 0; i < placedGeometry.size(); i++) {
-                        const placedGeometryData = placedGeometry.get(i);
-                        const geometry = ifcAPI.GetGeometry(currentModelID, placedGeometryData.geometryExpressID);
-                        if (!geometry) continue;
-                        
-                        let verts, indices;
+                try {
+                    ifcAPI.StreamAllMeshes(currentModelID, (mesh) => {
                         try {
-                            verts = sanitizeVertexArray(ifcAPI.GetVertexArray(geometry.GetVertexData(), geometry.GetVertexDataSize()));
-                            indices = sanitizeIndexArray(ifcAPI.GetIndexArray(geometry.GetIndexData(), geometry.GetIndexDataSize()));
-                        } catch(e) {
-                            console.warn(`Skipping geometry ${placedGeometryData.geometryExpressID}: ${e.message}`);
-                            continue;
+                            const placedGeometry = mesh.geometries;
+                            for (let i = 0; i < placedGeometry.size(); i++) {
+                                try {
+                                    const placedGeometryData = placedGeometry.get(i);
+                                    const geometry = ifcAPI.GetGeometry(currentModelID, placedGeometryData.geometryExpressID);
+                                    if (!geometry) continue;
+                                    
+                                    let verts, indices;
+                                    try {
+                                        verts = sanitizeVertexArray(ifcAPI.GetVertexArray(geometry.GetVertexData(), geometry.GetVertexDataSize()));
+                                        indices = sanitizeIndexArray(ifcAPI.GetIndexArray(geometry.GetIndexData(), geometry.GetIndexDataSize()));
+                                    } catch(e) {
+                                        console.warn(`Skipping geometry ${placedGeometryData.geometryExpressID}:`, e.message);
+                                        continue;
+                                    }
+
+                                    if (!verts || verts.length === 0 || !indices || indices.length === 0) continue;
+                                    if (verts.length % 6 !== 0) continue;
+
+                                    rawGeometries.push({
+                                        verts, indices,
+                                        expressID: mesh.expressID,
+                                        matrix: placedGeometryData.flatTransformation
+                                            ? new THREE.Matrix4().fromArray(placedGeometryData.flatTransformation)
+                                            : null
+                                    });
+                                } catch(placeErr) {
+                                    console.warn("Skipping placement:", placeErr.message);
+                                }
+                            }
+                        } catch(meshErr) {
+                            console.warn("Skipping mesh:", meshErr.message);
                         }
+                    });
+                } catch (streamErr) {
+                    console.error("StreamAllMeshes failed:", streamErr);
+                    if (rawGeometries.length === 0) throw streamErr;
+                    showToast(`Streaming stopped early at ${rawGeometries.length} meshes.`, 'error');
+                }
 
-                        if (!verts || verts.length === 0) continue;
-                        if (!indices || indices.length < 3) continue;
-                        if (verts.length % 6 !== 0) {
-                            console.warn(`Skipping geometry with malformed vertex buffer (${verts.length} floats)`);
-                            continue;
-                        }
-
-                        rawGeometries.push({
-                            verts, indices,
-                            expressID: mesh.expressID,
-                            matrix: placedGeometryData.flatTransformation ? new THREE.Matrix4().fromArray(placedGeometryData.flatTransformation) : null
-                        });
-                    }
-                });
-
-                arrayBuffer = null; 
+                arrayBuffer = null;
+                const modelID = currentModelID;
 
                 showLoading("Building 3D Scene...", `Generating ${rawGeometries.length} meshes...`);
                 progressContainer.style.display = 'block';
@@ -1191,83 +1291,82 @@
                 await new Promise(r => setTimeout(r, 50));
 
                 const group = new THREE.Group();
-                const CHUNK_SIZE = 1000;
-                let skipped = 0;
+                const CHUNK_SIZE = 500;
 
                 for (let i = 0; i < rawGeometries.length; i += CHUNK_SIZE) {
                     const chunk = rawGeometries.slice(i, i + CHUNK_SIZE);
                     
                     chunk.forEach(data => {
-                        // FINAL GUARD: re-sanitize immediately before buffer construction.
-                        const safeIndices = sanitizeIndexArray(data.indices);
-                        if (!isValidIndexBuffer(safeIndices)) {
-                            console.warn(`Skipping mesh ${data.expressID}: invalid index buffer (len=${safeIndices.length})`);
-                            skipped++;
-                            return;
-                        }
-
-                        const verts = data.verts;
-                        if (verts.length % 6 !== 0) {
-                            console.warn(`Skipping mesh ${data.expressID}: malformed vertex buffer (${verts.length} floats)`);
-                            skipped++;
-                            return;
-                        }
-
                         try {
                             const bufferGeometry = new THREE.BufferGeometry();
-                            const posArray = new Float32Array(verts.length / 2); 
-                            const normalArray = new Float32Array(verts.length / 2);
-                            
-                            for (let j = 0; j < verts.length; j += 6) {
-                                posArray[j / 2] = verts[j]; posArray[j / 2 + 1] = verts[j + 1]; posArray[j / 2 + 2] = verts[j + 2];
-                                normalArray[j / 2] = verts[j + 3]; normalArray[j / 2 + 1] = verts[j + 4]; normalArray[j / 2 + 2] = verts[j + 5];
+                            const posArray = new Float32Array(data.verts.length / 2);
+                            const normalArray = new Float32Array(data.verts.length / 2);
+
+                            for (let j = 0; j < data.verts.length; j += 6) {
+                                posArray[j / 2]     = data.verts[j];
+                                posArray[j / 2 + 1] = data.verts[j + 1];
+                                posArray[j / 2 + 2] = data.verts[j + 2];
+                                normalArray[j / 2]     = data.verts[j + 3];
+                                normalArray[j / 2 + 1] = data.verts[j + 4];
+                                normalArray[j / 2 + 2] = data.verts[j + 5];
                             }
-                            
+
                             bufferGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
                             bufferGeometry.setAttribute('normal', new THREE.BufferAttribute(normalArray, 3));
-                            bufferGeometry.setIndex(new THREE.BufferAttribute(safeIndices, 1));
-                            
+                            bufferGeometry.setIndex(new THREE.BufferAttribute(data.indices, 1));
+
                             const mesh3D = new THREE.Mesh(bufferGeometry, sharedDefaultMaterial);
                             mesh3D.userData.expressID = data.expressID;
                             if (data.matrix) mesh3D.applyMatrix4(data.matrix);
                             group.add(mesh3D);
 
-                            const line = ifcAPI.GetLine(currentModelID, data.expressID, true);
+                            const line = ifcAPI.GetLine(modelID, data.expressID, true);
                             if (line && line.GlobalId && line.GlobalId.value) {
                                 guidToMeshMap.set(line.GlobalId.value, mesh3D);
                             }
                         } catch(meshErr) {
-                            console.warn(`Failed to build mesh for expressID ${data.expressID}: ${meshErr.message}`);
-                            skipped++;
+                            console.warn(`Failed to build mesh for expressID ${data.expressID}:`, meshErr.message);
                         }
                     });
 
                     const percent = Math.min(100, Math.round(((i + CHUNK_SIZE) / rawGeometries.length) * 100));
                     progressBar.style.width = `${percent}%`;
                     loadStatus.innerText = `Building 3D Scene: ${percent}% (${Math.min(i + CHUNK_SIZE, rawGeometries.length)} / ${rawGeometries.length})`;
-                    await new Promise(r => setTimeout(r, 0)); 
+                    await new Promise(r => setTimeout(r, 0));
                 }
 
-                scene.add(group); currentIfcModel = group;
+                rawGeometries.length = 0;
+
+                scene.add(group);
+                currentIfcModel = group;
                 clearSelection();
 
-                const box = new THREE.Box3().setFromObject(group); const center = box.getCenter(new THREE.Vector3()); const size = box.getSize(new THREE.Vector3());
-                controls.target.copy(center); const maxDim = Math.max(size.x, size.y, size.z) || 10;
-                camera.position.set(center.x + maxDim, center.y + maxDim/2, center.z + maxDim); controls.update(); 
-                
+                const box = new THREE.Box3().setFromObject(group);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+                controls.target.copy(center);
+                const maxDim = Math.max(size.x, size.y, size.z) || 10;
+                camera.position.set(center.x + maxDim, center.y + maxDim / 2, center.z + maxDim);
+                controls.update();
+
                 document.getElementById('color-by-select').value = 'default';
                 hideLoading();
-                showToast(`Loaded ${rawGeometries.length - skipped} meshes.${skipped ? ' Skipped ' + skipped + ' malformed.' : ''}`, 'success');
+                showToast(`Loaded ${guidToMeshMap.size} meshes.`, 'success');
 
-            } catch (error) { 
-                console.error("Error:", error); 
-                let msg = error.message || "Unknown error";
-                if (msg.includes('bad_alloc') || msg.includes('memory')) {
-                    msg = "Out of WASM memory. Try a smaller IFC or reduce browser tabs.";
+            } catch (error) {
+                console.error("Error:", error);
+                const msg = String(error && error.message || error);
+                if (msg.includes("bad_alloc") || msg.includes("memory")) {
+                    showToast("Out of memory — the IFC is too large for the browser. Try a smaller file.", 'error');
+                    loadTitle.innerText = "Out of Memory";
+                    loadStatus.innerText = "The model exceeded the browser's WASM heap. Try loading a smaller IFC file.";
+                } else {
+                    showToast("Error loading model: " + msg, 'error');
+                    loadTitle.innerText = "Error";
+                    loadStatus.innerText = msg;
                 }
-                showToast("Error loading model: " + msg, 'error');
-                loadTitle.innerText = "Error"; loadStatus.innerText = msg; setTimeout(hideLoading, 5000);
-                disposeCurrentModel();
+                setTimeout(hideLoading, 5000);
+                currentModelID = -1;
             }
         }
 
@@ -1288,7 +1387,7 @@
         window.addEventListener('pointerdown', (e) => { pointerDownPos = { x: e.clientX, y: e.clientY }; });
         window.addEventListener('pointerup', (event) => {
             if (Math.hypot(event.clientX - pointerDownPos.x, event.clientY - pointerDownPos.y) > 5) return;
-            if (event.target.closest('.panel') || event.target.closest('#inspector-panel') || event.target.closest('header') || event.target.closest('.floating-controls') || event.target.closest('#validation-results') || event.target.closest('#chart-modal') || event.target.closest('#minimized-dock')) return;
+            if (event.target.closest('.panel') || event.target.closest('#inspector-panel') || event.target.closest('header') || event.target.closest('.floating-controls') || event.target.closest('#validation-results') || event.target.closest('#chart-modal') || event.target.closest('#minimized-dock') || event.target.closest('.resize-handle')) return;
             
             pointer.x = (event.clientX / window.innerWidth) * 2 - 1; pointer.y = -(event.clientY / window.innerHeight) * 2 + 1; raycaster.setFromCamera(pointer, camera);
             if (!currentIfcModel || currentModelID === -1) return;
@@ -1684,7 +1783,10 @@
         // --- BOOT SEQUENCE ---
         async function startApp() {
             try {
+                ifcAPI.SetWasmPath('https://unpkg.com/web-ifc@0.0.78/', true);
+                try { if (typeof ifcAPI.SetLogLevel === 'function') ifcAPI.SetLogLevel(0); } catch(e) {}
                 await ifcAPI.Init();
+
                 const defaultIfcURL = 'https://thatopen.github.io/engine_fragment/resources/example.ifc';
                 showLoading("Initializing...", "Downloading default IFC...");
                 const response = await fetch(defaultIfcURL);
