@@ -23,10 +23,7 @@
             --toolbar-height: 44px;
             --dashboard-padding: 20px;
             --dashboard-gap: 20px;
-
             --panel-top: calc(var(--header-height) + var(--toolbar-height) + var(--dashboard-padding));
-
-            /* Heights: always bigger than the real rendered height so the gap below stays intact */
             --controls-h: 160px;
             --crane-h: 270px;
         }
@@ -65,36 +62,26 @@
         .toolbar-btn.settings:hover { background: rgba(157, 78, 221, 0.15); color: #c9a4ff; }
         .toolbar-btn.fullscreen { border-color: rgba(0, 255, 136, 0.5); color: var(--neon-green); }
         .toolbar-btn.fullscreen:hover { background: rgba(0, 255, 136, 0.15); color: var(--neon-green); }
-
         .toolbar-hint { font-size: 0.72rem; color: var(--text-muted); margin-left: 8px; font-style: italic; }
 
         .dashboard { display: grid; grid-template-columns: 340px 1fr 360px; gap: var(--dashboard-gap); padding: var(--dashboard-padding); flex: 1; height: calc(100dvh - var(--header-height) - var(--toolbar-height)); position: relative; z-index: 5; pointer-events: none; transition: grid-template-columns 0.3s ease; }
 
         .panel { pointer-events: auto; background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; backdrop-filter: blur(15px); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); display: flex; flex-direction: column; overflow-y: auto; position: relative; }
         
-        .panel-header, .inspector-header, .val-header, .chart-modal-header { 
-            display: flex; justify-content: space-between; align-items: center; 
-            margin-bottom: 15px; font-size: 0.9rem; font-weight: 600; letter-spacing: 0.5px; color: var(--text-muted); text-transform: uppercase; 
-            border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; 
-            cursor: grab; user-select: none; touch-action: none; 
-        }
+        .panel-header, .inspector-header, .val-header, .chart-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-size: 0.9rem; font-weight: 600; letter-spacing: 0.5px; color: var(--text-muted); text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; cursor: grab; user-select: none; touch-action: none; }
         .inspector-header, .val-header, .chart-modal-header { border-bottom: 1px solid var(--border-color); padding: 15px 20px; margin-bottom: 0; }
-        
         .dragging { cursor: grabbing !important; opacity: 0.9; }
 
         .chart-container { margin-bottom: 20px; padding: 5px; border-radius: 8px; transition: background 0.2s; cursor: pointer; }
         .chart-container:hover { background: rgba(255, 255, 255, 0.05); }
-        
         .chart-title { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
         .chart-title .expand-icon { opacity: 0.5; transition: opacity 0.2s; font-size: 0.9rem; }
         .chart-container:hover .expand-icon { opacity: 1; color: var(--neon-blue); }
-
         .svg-chart { width: 100%; height: auto; overflow: visible; pointer-events: none; }
         .grid-line { stroke: rgba(255,255,255,0.05); stroke-width: 1; }
         .chart-line { fill: none; stroke: var(--neon-blue); stroke-width: 2; filter: drop-shadow(0 0 5px var(--neon-blue)); }
         .chart-area { fill: url(#blueGradient); opacity: 0.3; }
         .chart-line-alt { fill: none; stroke: var(--neon-purple); stroke-width: 2; stroke-dasharray: 4; }
-
         .hover-target { pointer-events: all; cursor: crosshair; }
         .hover-target:hover { opacity: 0.8; }
 
@@ -136,22 +123,10 @@
         .control-group select, .control-group button, .control-group input[type="file"], .control-group input[type="number"] { background: rgba(255,255,255,0.1); color: var(--text-main); border: 1px solid var(--border-color); padding: 5px 8px; border-radius: 4px; cursor: pointer; width: 100%; outline: none; font-size: 0.75rem; }
         .control-group button:hover { background: rgba(0, 240, 255, 0.2); border-color: var(--neon-blue); }
         
-        /* --- RIGHT-SIDE FLOATING PANEL STACK ---
-           Controls aligns with left/right panel top edge.
-           Crane sits below Controls with --dashboard-gap.
-           Data & Color sits below Crane with the SAME --dashboard-gap. */
         #floating-controls-panel { top: var(--panel-top); right: 380px; }
-        #crane-panel { 
-            top: calc(var(--panel-top) + var(--controls-h) + var(--dashboard-gap)); 
-            right: 380px; 
-        }
-        #data-color-panel { 
-            top: calc(var(--panel-top) + var(--controls-h) + var(--dashboard-gap)
-                                       + var(--crane-h)    + var(--dashboard-gap)); 
-            right: 380px; 
-        }
+        #crane-panel { top: calc(var(--panel-top) + var(--controls-h) + var(--dashboard-gap)); right: 380px; }
+        #data-color-panel { top: calc(var(--panel-top) + var(--controls-h) + var(--dashboard-gap) + var(--crane-h) + var(--dashboard-gap)); right: 380px; }
 
-        /* Compact styling for Crane panel */
         #crane-panel .content { padding: 10px; gap: 7px; }
         #crane-panel .control-group label { margin-bottom: 3px; font-size: 0.68rem; }
         #crane-panel .control-group input[type="number"] { padding: 4px 6px; font-size: 0.72rem; }
@@ -233,7 +208,6 @@
         #loading-overlay { position: absolute; top: 0; left: 0; width: 100vw; height: 100dvh; background: rgba(5, 7, 10, 0.95); z-index: 10000; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.5s ease; color: var(--neon-blue); }
         .loader { border: 4px solid rgba(0, 240, 255, 0.1); border-top: 4px solid var(--neon-blue); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 20px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
         .progress-container { width: 300px; margin-top: 15px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; height: 6px; }
         .progress-bar { height: 100%; background: var(--neon-blue); width: 0%; transition: width 0.1s; }
 
@@ -262,7 +236,6 @@
         .settings-row button { background: rgba(157, 78, 221, 0.1); border: 1px solid var(--neon-purple); color: var(--neon-purple); border-radius: 4px; padding: 4px 10px; font-size: 0.7rem; cursor: pointer; }
         .settings-row button:hover { background: rgba(157, 78, 221, 0.25); }
 
-        /* Responsive — heights shrink with the gap so the padding always shows */
         @media (max-width: 1200px) { 
             .dashboard { grid-template-columns: 280px 1fr 300px; gap: 15px; padding: 15px; }
             .panel { padding: 15px; }
@@ -356,24 +329,14 @@
 
         <div class="toolbar">
             <div class="toolbar-group">
-                <button class="toolbar-btn active" id="mode-single" title="Single Selection">
-                    <span class="tb-icon">👆</span><span class="label">Single</span>
-                </button>
-                <button class="toolbar-btn" id="mode-area" title="Area Selection">
-                    <span class="tb-icon">▭</span><span class="label">Area</span>
-                </button>
-                <button class="toolbar-btn" id="mode-assembly" title="Assembly Selection">
-                    <span class="tb-icon">🧱</span><span class="label">Assembly</span>
-                </button>
+                <button class="toolbar-btn active" id="mode-single" title="Single Selection"><span class="tb-icon">👆</span><span class="label">Single</span></button>
+                <button class="toolbar-btn" id="mode-area" title="Area Selection"><span class="tb-icon">▭</span><span class="label">Area</span></button>
+                <button class="toolbar-btn" id="mode-assembly" title="Assembly Selection"><span class="tb-icon">🧱</span><span class="label">Assembly</span></button>
                 <span class="toolbar-hint" id="toolbar-hint">Single selection — click any element</span>
             </div>
             <div class="toolbar-group">
-                <button class="toolbar-btn settings" id="btn-settings" title="Settings">
-                    <span class="tb-icon">⚙️</span><span class="label">Settings</span>
-                </button>
-                <button class="toolbar-btn fullscreen" id="btn-fullscreen" title="Enter Fullscreen">
-                    <span class="tb-icon">⛶</span><span class="label">Fullscreen</span>
-                </button>
+                <button class="toolbar-btn settings" id="btn-settings" title="Settings"><span class="tb-icon">⚙️</span><span class="label">Settings</span></button>
+                <button class="toolbar-btn fullscreen" id="btn-fullscreen" title="Enter Fullscreen"><span class="tb-icon">⛶</span><span class="label">Fullscreen</span></button>
             </div>
         </div>
 
@@ -704,7 +667,6 @@
 
         function showLoading(title, text) { loadTitle.innerText = title; loadStatus.innerText = text; loadingOverlay.style.opacity = '1'; loadingOverlay.style.display = 'flex'; progressContainer.style.display = 'none'; }
         function hideLoading() { loadingOverlay.style.opacity = '0'; setTimeout(() => loadingOverlay.style.display = 'none', 500); }
-
         function showToast(msg, type = '') {
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
@@ -1128,6 +1090,110 @@
             return parts;
         }
 
+        // ---------- HELPER: find a Global ID even if this element is not IfcRoot ----------
+        function findGlobalIdForNonRoot(modelID, expressID) {
+            const safeId = safeExpressID(expressID);
+            if (safeId < 0) return null;
+            const ifcLine = (() => { try { return ifcAPI.GetLine(modelID, safeId, true); } catch(e) { return null; } })();
+            if (!ifcLine) return null;
+
+            if (ifcLine.GlobalId && ifcLine.GlobalId.value) {
+                return { id: ifcLine.GlobalId.value, source: 'direct' };
+            }
+            const getGid = (obj) => (obj && obj.GlobalId && obj.GlobalId.value) ? obj.GlobalId.value : null;
+
+            try {
+                if (ifcLine.IsDefinedBy) {
+                    let found = null;
+                    iterateCollection(ifcLine.IsDefinedBy, relHandle => {
+                        if (found) return;
+                        const relId = safeExpressID(relHandle); if (relId < 0) return;
+                        let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; }
+                        if (rel && rel.RelatingPropertyDefinition) {
+                            const pdId = safeExpressID(rel.RelatingPropertyDefinition); if (pdId < 0) return;
+                            let pd = null; try { pd = ifcAPI.GetLine(modelID, pdId, true); } catch(e) { return; }
+                            const gid = getGid(pd);
+                            if (gid) found = { id: gid, source: 'IsDefinedBy' };
+                        }
+                    });
+                    if (found) return found;
+                }
+            } catch(e) {}
+
+            try {
+                if (ifcLine.Decomposes) {
+                    let found = null;
+                    iterateCollection(ifcLine.Decomposes, relHandle => {
+                        if (found) return;
+                        const relId = safeExpressID(relHandle); if (relId < 0) return;
+                        let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; }
+                        if (rel && rel.RelatingObject) {
+                            const pid = safeExpressID(rel.RelatingObject); if (pid < 0) return;
+                            let parent = null; try { parent = ifcAPI.GetLine(modelID, pid, true); } catch(e) { return; }
+                            const gid = getGid(parent);
+                            if (gid) found = { id: gid, source: 'Decomposes (parent)' };
+                        }
+                    });
+                    if (found) return found;
+                }
+            } catch(e) {}
+
+            try {
+                if (ifcLine.ContainedInStructure) {
+                    let found = null;
+                    iterateCollection(ifcLine.ContainedInStructure, relHandle => {
+                        if (found) return;
+                        const relId = safeExpressID(relHandle); if (relId < 0) return;
+                        let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; }
+                        if (rel && rel.RelatingStructure) {
+                            const sid = safeExpressID(rel.RelatingStructure); if (sid < 0) return;
+                            let s = null; try { s = ifcAPI.GetLine(modelID, sid, true); } catch(e) { return; }
+                            const gid = getGid(s);
+                            if (gid) found = { id: gid, source: 'ContainedInStructure' };
+                        }
+                    });
+                    if (found) return found;
+                }
+            } catch(e) {}
+
+            try {
+                if (ifcLine.HasAssignments) {
+                    let found = null;
+                    iterateCollection(ifcLine.HasAssignments, relHandle => {
+                        if (found) return;
+                        const relId = safeExpressID(relHandle); if (relId < 0) return;
+                        let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; }
+                        if (rel && rel.RelatingGroup) {
+                            const gid2 = safeExpressID(rel.RelatingGroup); if (gid2 < 0) return;
+                            let group = null; try { group = ifcAPI.GetLine(modelID, gid2, true); } catch(e) { return; }
+                            const gid = getGid(group);
+                            if (gid) found = { id: gid, source: 'HasAssignments (group)' };
+                        }
+                    });
+                    if (found) return found;
+                }
+            } catch(e) {}
+
+            try {
+                if (ifcLine.ReferencedBy) {
+                    let found = null;
+                    iterateCollection(ifcLine.ReferencedBy, relHandle => {
+                        if (found) return;
+                        const relId = safeExpressID(relHandle); if (relId < 0) return;
+                        let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, true); } catch(e) { return; }
+                        const gid = getGid(rel);
+                        if (gid) found = { id: gid, source: `ReferencedBy ${rel.type || 'rel'}` };
+                    });
+                    if (found) return found;
+                }
+            } catch(e) {}
+
+            if (ifcLine.Tag && ifcLine.Tag.value) return { id: `(Tag) ${ifcLine.Tag.value}`, source: 'Tag (no GlobalId)' };
+            if (ifcLine.Name && ifcLine.Name.value) return { id: `(Name) ${ifcLine.Name.value}`, source: 'Name (no GlobalId)' };
+            if (ifcLine.ObjectType && ifcLine.ObjectType.value) return { id: `(ObjectType) ${ifcLine.ObjectType.value}`, source: 'ObjectType (no GlobalId)' };
+            return null;
+        }
+
         function sanitizeIndexArray(raw) {
             if (!raw) return new Uint32Array(0);
             if (raw instanceof Uint32Array) return raw;
@@ -1518,17 +1584,32 @@
             try { ifcLine = ifcAPI.GetLine(modelID, safeId, true); } catch(e) {}
 
             const addAttributeRow = (key, value) => {
-                if (!value || value === "" || value === null) return;
+                if (value === undefined || value === null || value === "") return;
                 const row = document.createElement('div');
                 row.className = 'prop-row';
                 row.innerHTML = `<div class="prop-key">${key}</div><div class="prop-val">${value}</div>`;
                 attrContent.appendChild(row);
             };
+
             addAttributeRow("Express ID", safeId);
             if (ifcLine) {
-                addAttributeRow("Global ID", ifcLine.GlobalId ? ifcLine.GlobalId.value : "N/A");
+                if (ifcLine.GlobalId && ifcLine.GlobalId.value) {
+                    addAttributeRow("Global ID", ifcLine.GlobalId.value);
+                } else {
+                    const fallback = findGlobalIdForNonRoot(modelID, safeId);
+                    if (fallback) {
+                        addAttributeRow("Global ID (fallback)", fallback.id);
+                        addAttributeRow("Global ID source", fallback.source);
+                    } else {
+                        addAttributeRow("Global ID", "— (no GlobalId, no root ancestor found)");
+                    }
+                }
+
                 addAttributeRow("Type", ifcLine.type || ifcLine.constructor.name);
                 addAttributeRow("Name", ifcLine.Name ? ifcLine.Name.value : "Unnamed");
+                if (ifcLine.Tag && ifcLine.Tag.value) addAttributeRow("Tag", ifcLine.Tag.value);
+                if (ifcLine.ObjectType && ifcLine.ObjectType.value) addAttributeRow("ObjectType", ifcLine.ObjectType.value);
+
                 if (ifcLine.GlobalId && importedDataMap.has(ifcLine.GlobalId.value)) {
                     const data = importedDataMap.get(ifcLine.GlobalId.value);
                     attrContent.innerHTML += '<div style="margin-top: 10px; margin-bottom: 5px; border-bottom: 1px solid var(--neon-purple); padding-bottom: 2px; color: var(--neon-purple); font-weight: bold; font-size: 0.75rem; text-transform: uppercase;">Imported Data</div>';
