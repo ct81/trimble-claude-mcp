@@ -665,7 +665,6 @@
         scene.add(selectionBoxes);
         let selectedMeshes = new Map(); 
 
-        // Crane Container
         const craneGroup = new THREE.Group();
         scene.add(craneGroup);
 
@@ -923,7 +922,6 @@
                 e.preventDefault();
                 if (panel.classList.contains('maximized')) return;
 
-                // If the panel isn't detached/fixed yet, convert to fixed positioning
                 const rect = panel.getBoundingClientRect();
                 if (panel.style.position !== 'fixed') {
                     panel.classList.add('detached');
@@ -1029,7 +1027,6 @@
 
         setupWindow('inspector-panel'); setupWindow('validation-results'); setupWindow('floating-controls-panel'); setupWindow('data-color-panel'); setupWindow('crane-panel'); setupWindow('left-panel'); setupWindow('right-panel'); setupWindow('chart-modal');
         
-        // Attach drag + resize to all panels/popups
         ['left-panel','right-panel','floating-controls-panel','data-color-panel','crane-panel','inspector-panel','validation-results','chart-modal'].forEach(id => {
             const el = document.getElementById(id);
             if (el) {
@@ -1062,8 +1059,43 @@
             });
         });
 
-        // --- UTILS ---
-        function getExpressID(handle) { if (typeof handle === 'number') return handle; if (handle && typeof handle.value === 'number') return handle.value; if (handle && typeof handle.expressID === 'number') return handle.expressID; return null; }
+        // --- SAFE ID UTILITIES ---
+        // Coerce anything into a single unsigned int expressID (or -1 if impossible).
+        function safeExpressID(x) {
+            if (x === null || x === undefined) return -1;
+            if (typeof x === 'number') return Number.isFinite(x) ? (x >>> 0) : -1;
+            if (typeof x === 'string') {
+                const first = x.split(/[,\s]+/).find(Boolean);
+                const n = Number(first);
+                return Number.isFinite(n) ? (n >>> 0) : -1;
+            }
+            if (typeof x === 'object') {
+                if (typeof x.value === 'number') return x.value >>> 0;
+                if (typeof x.expressID === 'number') return x.expressID >>> 0;
+                if (typeof x.length === 'number' && x.length > 0) return safeExpressID(x[0]);
+            }
+            const n = Number(x);
+            return Number.isFinite(n) ? (n >>> 0) : -1;
+        }
+
+        function toIdArray(list) {
+            if (!list) return [];
+            if (Array.isArray(list)) return list.map(safeExpressID).filter(id => id >= 0);
+            if (typeof list === 'object' && typeof list.size === 'function') {
+                const out = [];
+                for (let i = 0; i < list.size(); i++) {
+                    const id = safeExpressID(list.get(i));
+                    if (id >= 0) out.push(id);
+                }
+                return out;
+            }
+            return [];
+        }
+
+        function getExpressID(handle) {
+            return safeExpressID(handle);
+        }
+
         function iterateCollection(collection, callback) {
             if (!collection) return;
             if (Array.isArray(collection)) { collection.forEach(callback); }
@@ -1085,7 +1117,10 @@
             if (prop.HasProperties) {
                 let nested = [];
                 iterateCollection(prop.HasProperties, nestedPropHandle => {
-                    const np = ifcAPI.GetLine(currentModelID, getExpressID(nestedPropHandle), false);
+                    const nid = safeExpressID(nestedPropHandle);
+                    if (nid < 0) return;
+                    let np = null;
+                    try { np = ifcAPI.GetLine(currentModelID, nid, false); } catch(e) { return; }
                     if (np && np.Name) {
                         const nVal = extractValue(np, depth + 1);
                         if (nVal !== null && nVal !== "") nested.push(`${np.Name.value}: ${nVal}`);
@@ -1098,21 +1133,31 @@
 
         function getPsetsAsMap(modelID, expressID) {
             const psetMap = new Map();
-            const rawElement = ifcAPI.GetLine(modelID, expressID, false);
-            
+            const safeId = safeExpressID(expressID);
+            if (safeId < 0) return psetMap;
+
+            let rawElement = null;
+            try { rawElement = ifcAPI.GetLine(modelID, safeId, false); } catch(e) { console.warn("GetLine failed for", safeId, e); return psetMap; }
+
             const processPsetHandle = (psetHandle) => {
-                const pset = ifcAPI.GetLine(modelID, getExpressID(psetHandle), false);
+                const psetID = safeExpressID(psetHandle);
+                if (psetID < 0) return;
+                let pset = null;
+                try { pset = ifcAPI.GetLine(modelID, psetID, false); } catch(e) { return; }
                 if (!pset || !pset.Name) return;
-                
+
                 const psetName = pset.Name.value;
                 if (!psetMap.has(psetName)) psetMap.set(psetName, new Map());
                 const propMap = psetMap.get(psetName);
 
                 if (pset.HasProperties) {
                     iterateCollection(pset.HasProperties, propHandle => {
-                        const prop = ifcAPI.GetLine(modelID, getExpressID(propHandle), false);
+                        const propID = safeExpressID(propHandle);
+                        if (propID < 0) return;
+                        let prop = null;
+                        try { prop = ifcAPI.GetLine(modelID, propID, false); } catch(e) { return; }
                         if (prop && prop.Name) {
-                            propMap.set(prop.Name.value, extractValue(prop));
+                            try { propMap.set(prop.Name.value, extractValue(prop)); } catch(e) { /* skip */ }
                         }
                     });
                 }
@@ -1121,15 +1166,24 @@
             if (rawElement) {
                 if (rawElement.IsDefinedBy) {
                     iterateCollection(rawElement.IsDefinedBy, relHandle => {
-                        const rel = ifcAPI.GetLine(modelID, getExpressID(relHandle), false);
+                        const relId = safeExpressID(relHandle);
+                        if (relId < 0) return;
+                        let rel = null;
+                        try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; }
                         if (rel && rel.RelatingPropertyDefinition) processPsetHandle(rel.RelatingPropertyDefinition);
                     });
                 }
                 if (rawElement.IsTypedBy) {
                     iterateCollection(rawElement.IsTypedBy, relHandle => {
-                        const rel = ifcAPI.GetLine(modelID, getExpressID(relHandle), false);
+                        const relId = safeExpressID(relHandle);
+                        if (relId < 0) return;
+                        let rel = null;
+                        try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; }
                         if (rel && rel.RelatingType) {
-                            const typeObj = ifcAPI.GetLine(modelID, getExpressID(rel.RelatingType), false);
+                            const typeId = safeExpressID(rel.RelatingType);
+                            if (typeId < 0) return;
+                            let typeObj = null;
+                            try { typeObj = ifcAPI.GetLine(modelID, typeId, false); } catch(e) { return; }
                             if (typeObj && typeObj.HasPropertySets) {
                                 iterateCollection(typeObj.HasPropertySets, processPsetHandle);
                             }
@@ -1142,14 +1196,22 @@
 
         function getParts(modelID, expressID) {
             const parts = [];
-            const rawElement = ifcAPI.GetLine(modelID, expressID, false);
+            const safeId = safeExpressID(expressID);
+            if (safeId < 0) return parts;
+            let rawElement = null;
+            try { rawElement = ifcAPI.GetLine(modelID, safeId, false); } catch(e) { return parts; }
             if (rawElement && rawElement.IsDecomposedBy) {
                 iterateCollection(rawElement.IsDecomposedBy, relHandle => {
-                    const rel = ifcAPI.GetLine(modelID, getExpressID(relHandle), false);
+                    const relId = safeExpressID(relHandle);
+                    if (relId < 0) return;
+                    let rel = null;
+                    try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; }
                     if (rel && rel.RelatedObjects) {
                         iterateCollection(rel.RelatedObjects, objHandle => {
-                            const id = getExpressID(objHandle);
-                            const obj = ifcAPI.GetLine(modelID, id, true);
+                            const id = safeExpressID(objHandle);
+                            if (id < 0) return;
+                            let obj = null;
+                            try { obj = ifcAPI.GetLine(modelID, id, true); } catch(e) { return; }
                             if (obj && obj.type === 'IFCBUILDINGELEMENTPART') parts.push(id);
                         });
                     }
@@ -1158,20 +1220,34 @@
             return parts;
         }
 
-        // --- 3. PERFORMANT MODEL PROCESSING ---
-
+        // --- 3. HARDENED GEOMETRY SANITIZERS ---
         function sanitizeIndexArray(raw) {
             if (!raw) return new Uint32Array(0);
             if (raw instanceof Uint32Array) return raw;
             if (raw instanceof Uint16Array) return new Uint32Array(raw);
-            if (Array.isArray(raw)) return new Uint32Array(raw.map(Number));
+            if (Array.isArray(raw)) {
+                const out = new Uint32Array(raw.length);
+                for (let i = 0; i < raw.length; i++) {
+                    const n = Number(raw[i]);
+                    out[i] = Number.isFinite(n) && n >= 0 ? (n >>> 0) : 0;
+                }
+                return out;
+            }
             if (typeof raw === 'string') {
-                const parts = raw.split(/[,\s]+/).filter(Boolean).map(Number).filter(Number.isFinite);
-                return new Uint32Array(parts);
+                const parts = raw.split(/[,\s]+/).filter(Boolean);
+                const out = new Uint32Array(parts.length);
+                for (let i = 0; i < parts.length; i++) {
+                    const n = Number(parts[i]);
+                    out[i] = Number.isFinite(n) && n >= 0 ? (n >>> 0) : 0;
+                }
+                return out;
             }
             if (typeof raw === 'object' && typeof raw.length === 'number') {
                 const out = new Uint32Array(raw.length);
-                for (let i = 0; i < raw.length; i++) out[i] = Number(raw[i]) || 0;
+                for (let i = 0; i < raw.length; i++) {
+                    const n = Number(raw[i]);
+                    out[i] = Number.isFinite(n) && n >= 0 ? (n >>> 0) : 0;
+                }
                 return out;
             }
             return new Uint32Array(0);
@@ -1180,14 +1256,29 @@
         function sanitizeVertexArray(raw) {
             if (!raw) return new Float32Array(0);
             if (raw instanceof Float32Array) return raw;
-            if (Array.isArray(raw)) return new Float32Array(raw.map(Number));
+            if (Array.isArray(raw)) {
+                const out = new Float32Array(raw.length);
+                for (let i = 0; i < raw.length; i++) {
+                    const n = Number(raw[i]);
+                    out[i] = Number.isFinite(n) ? n : 0;
+                }
+                return out;
+            }
             if (typeof raw === 'string') {
-                const parts = raw.split(/[,\s]+/).filter(Boolean).map(Number).filter(Number.isFinite);
-                return new Float32Array(parts);
+                const parts = raw.split(/[,\s]+/).filter(Boolean);
+                const out = new Float32Array(parts.length);
+                for (let i = 0; i < parts.length; i++) {
+                    const n = Number(parts[i]);
+                    out[i] = Number.isFinite(n) ? n : 0;
+                }
+                return out;
             }
             if (typeof raw === 'object' && typeof raw.length === 'number') {
                 const out = new Float32Array(raw.length);
-                for (let i = 0; i < raw.length; i++) out[i] = Number(raw[i]) || 0;
+                for (let i = 0; i < raw.length; i++) {
+                    const n = Number(raw[i]);
+                    out[i] = Number.isFinite(n) ? n : 0;
+                }
                 return out;
             }
             return new Float32Array(0);
@@ -1298,31 +1389,49 @@
                     
                     chunk.forEach(data => {
                         try {
-                            const bufferGeometry = new THREE.BufferGeometry();
-                            const posArray = new Float32Array(data.verts.length / 2);
-                            const normalArray = new Float32Array(data.verts.length / 2);
+                            // Re-sanitize at build time to guard against strings that slipped through
+                            const safeVerts = data.verts instanceof Float32Array ? data.verts : sanitizeVertexArray(data.verts);
+                            const safeIndices = data.indices instanceof Uint32Array ? data.indices : sanitizeIndexArray(data.indices);
 
-                            for (let j = 0; j < data.verts.length; j += 6) {
-                                posArray[j / 2]     = data.verts[j];
-                                posArray[j / 2 + 1] = data.verts[j + 1];
-                                posArray[j / 2 + 2] = data.verts[j + 2];
-                                normalArray[j / 2]     = data.verts[j + 3];
-                                normalArray[j / 2 + 1] = data.verts[j + 4];
-                                normalArray[j / 2 + 2] = data.verts[j + 5];
+                            if (!safeVerts || safeVerts.length === 0 || safeVerts.length % 6 !== 0) {
+                                console.warn(`Skipping mesh ${data.expressID}: bad vertex buffer (len=${safeVerts ? safeVerts.length : 0})`);
+                                return;
+                            }
+                            if (!safeIndices || safeIndices.length === 0) {
+                                console.warn(`Skipping mesh ${data.expressID}: empty index buffer`);
+                                return;
+                            }
+
+                            const bufferGeometry = new THREE.BufferGeometry();
+                            const posArray = new Float32Array(safeVerts.length / 2);
+                            const normalArray = new Float32Array(safeVerts.length / 2);
+
+                            for (let j = 0; j < safeVerts.length; j += 6) {
+                                posArray[j / 2]     = safeVerts[j];
+                                posArray[j / 2 + 1] = safeVerts[j + 1];
+                                posArray[j / 2 + 2] = safeVerts[j + 2];
+                                normalArray[j / 2]     = safeVerts[j + 3];
+                                normalArray[j / 2 + 1] = safeVerts[j + 4];
+                                normalArray[j / 2 + 2] = safeVerts[j + 5];
                             }
 
                             bufferGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
                             bufferGeometry.setAttribute('normal', new THREE.BufferAttribute(normalArray, 3));
-                            bufferGeometry.setIndex(new THREE.BufferAttribute(data.indices, 1));
+                            bufferGeometry.setIndex(new THREE.BufferAttribute(safeIndices, 1));
 
                             const mesh3D = new THREE.Mesh(bufferGeometry, sharedDefaultMaterial);
                             mesh3D.userData.expressID = data.expressID;
                             if (data.matrix) mesh3D.applyMatrix4(data.matrix);
                             group.add(mesh3D);
 
-                            const line = ifcAPI.GetLine(modelID, data.expressID, true);
-                            if (line && line.GlobalId && line.GlobalId.value) {
-                                guidToMeshMap.set(line.GlobalId.value, mesh3D);
+                            const eid = safeExpressID(data.expressID);
+                            if (eid >= 0) {
+                                try {
+                                    const line = ifcAPI.GetLine(modelID, eid, true);
+                                    if (line && line.GlobalId && line.GlobalId.value) {
+                                        guidToMeshMap.set(line.GlobalId.value, mesh3D);
+                                    }
+                                } catch(e) { /* ignore per-mesh line lookup failures */ }
                             }
                         } catch(meshErr) {
                             console.warn(`Failed to build mesh for expressID ${data.expressID}:`, meshErr.message);
@@ -1532,25 +1641,49 @@
             showToast("Colors reset to default.", 'success');
         });
 
-        // --- 6. PROPERTY EXTRACTION ---
+        // --- 6. RESILIENT PROPERTY EXTRACTION ---
         async function showElementProperties(modelID, expressID) {
-            try {
-                if (modelID === -1) return;
-                
-                inspectorPanel.style.display = 'flex'; 
-                inspectorPanel.classList.add('open');
-                tabNav.innerHTML = '';
-                tabContentContainer.innerHTML = '<div class="spinner-container"><div class="spinner"></div><span>Extracting Data...</span></div>';
-                searchInput.value = '';
+            const safeId = safeExpressID(expressID);
+            if (modelID === -1 || safeId < 0) return;
 
-                await new Promise(r => setTimeout(r, 50));
-                tabContentContainer.innerHTML = '';
+            inspectorPanel.style.display = 'flex';
+            inspectorPanel.classList.add('open');
+            tabNav.innerHTML = '';
+            tabContentContainer.innerHTML = '<div class="spinner-container"><div class="spinner"></div><span>Extracting Data...</span></div>';
+            searchInput.value = '';
 
-                const attrBtn = document.createElement('div'); attrBtn.className = 'tab-btn active'; attrBtn.innerText = 'Attributes'; attrBtn.dataset.tab = 'tab-attributes'; tabNav.appendChild(attrBtn);
-                const attrContent = document.createElement('div'); attrContent.className = 'tab-content active'; attrContent.id = 'tab-attributes'; tabContentContainer.appendChild(attrContent);
-                const ifcLine = ifcAPI.GetLine(modelID, expressID, true);
-                const addAttributeRow = (key, value) => { if (!value || value === "" || value === null) return; const row = document.createElement('div'); row.className = 'prop-row'; row.innerHTML = `<div class="prop-key">${key}</div><div class="prop-val">${value}</div>`; attrContent.appendChild(row); };
-                addAttributeRow("Express ID", expressID); addAttributeRow("Global ID", ifcLine.GlobalId ? ifcLine.GlobalId.value : "N/A"); addAttributeRow("Type", ifcLine.type || ifcLine.constructor.name); addAttributeRow("Name", ifcLine.Name ? ifcLine.Name.value : "Unnamed");
+            await new Promise(r => setTimeout(r, 50));
+            tabContentContainer.innerHTML = '';
+
+            // Attributes tab (always shown)
+            const attrBtn = document.createElement('div');
+            attrBtn.className = 'tab-btn active';
+            attrBtn.innerText = 'Attributes';
+            attrBtn.dataset.tab = 'tab-attributes';
+            tabNav.appendChild(attrBtn);
+
+            const attrContent = document.createElement('div');
+            attrContent.className = 'tab-content active';
+            attrContent.id = 'tab-attributes';
+            tabContentContainer.appendChild(attrContent);
+
+            let ifcLine = null;
+            try { ifcLine = ifcAPI.GetLine(modelID, safeId, true); }
+            catch(e) { console.warn("GetLine failed for", safeId, e); }
+
+            const addAttributeRow = (key, value) => {
+                if (!value || value === "" || value === null) return;
+                const row = document.createElement('div');
+                row.className = 'prop-row';
+                row.innerHTML = `<div class="prop-key">${key}</div><div class="prop-val">${value}</div>`;
+                attrContent.appendChild(row);
+            };
+
+            addAttributeRow("Express ID", safeId);
+            if (ifcLine) {
+                addAttributeRow("Global ID", ifcLine.GlobalId ? ifcLine.GlobalId.value : "N/A");
+                addAttributeRow("Type", ifcLine.type || ifcLine.constructor.name);
+                addAttributeRow("Name", ifcLine.Name ? ifcLine.Name.value : "Unnamed");
 
                 if (ifcLine.GlobalId && importedDataMap.has(ifcLine.GlobalId.value)) {
                     const data = importedDataMap.get(ifcLine.GlobalId.value);
@@ -1559,19 +1692,60 @@
                     if (data.status) addAttributeRow("Status", data.status);
                     if (data.updatedOn) addAttributeRow("Updated On", data.updatedOn);
                 }
+            } else {
+                attrContent.innerHTML += '<div style="color:var(--text-muted); font-size:0.8rem; margin-top:10px;">Could not read attributes for this element.</div>';
+            }
 
+            // Property Sets (fully guarded)
+            try {
                 const uniquePsets = new Map();
-                const rawElement = ifcAPI.GetLine(modelID, expressID, false);
+                const rawElement = ifcLine || (() => {
+                    try { return ifcAPI.GetLine(modelID, safeId, false); } catch(e) { return null; }
+                })();
+
                 const addPset = (handle) => {
-                    const psetID = getExpressID(handle); if (psetID === null) return;
-                    const pset = ifcAPI.GetLine(modelID, psetID, false); if (!pset || !pset.Name) return;
+                    const psetID = safeExpressID(handle);
+                    if (psetID < 0) return;
+                    let pset = null;
+                    try { pset = ifcAPI.GetLine(modelID, psetID, false); } catch(e) { return; }
+                    if (!pset || !pset.Name) return;
                     if (!uniquePsets.has(pset.expressID)) uniquePsets.set(pset.expressID, pset);
                 };
 
                 if (rawElement) {
-                    try { const apiPsets = ifcAPI.properties.getPropertySets(modelID, expressID, true); const awaited = apiPsets instanceof Promise ? await apiPsets : apiPsets; if (awaited) iterateCollection(awaited, pset => addPset(pset)); } catch(e) {}
-                    try { iterateCollection(rawElement.IsDefinedBy, relHandle => { const rel = ifcAPI.GetLine(modelID, getExpressID(relHandle), false); if (rel && rel.RelatingPropertyDefinition) addPset(rel.RelatingPropertyDefinition); }); } catch(e) {}
-                    try { iterateCollection(rawElement.IsTypedBy, relHandle => { const rel = ifcAPI.GetLine(modelID, getExpressID(relHandle), false); if (rel && rel.RelatingType) { const typeObj = ifcAPI.GetLine(modelID, getExpressID(rel.RelatingType), false); if (typeObj && typeObj.HasPropertySets) iterateCollection(typeObj.HasPropertySets, psetHandle => addPset(psetHandle)); } }); } catch(e) {}
+                    try {
+                        const apiPsets = ifcAPI.properties.getPropertySets(modelID, safeId, true);
+                        const awaited = apiPsets instanceof Promise ? await apiPsets : apiPsets;
+                        if (awaited) iterateCollection(awaited, pset => addPset(pset));
+                    } catch(e) { console.warn("getPropertySets failed:", e); }
+
+                    try {
+                        iterateCollection(rawElement.IsDefinedBy, relHandle => {
+                            const relId = safeExpressID(relHandle);
+                            if (relId < 0) return;
+                            let rel = null;
+                            try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; }
+                            if (rel && rel.RelatingPropertyDefinition) addPset(rel.RelatingPropertyDefinition);
+                        });
+                    } catch(e) { console.warn("IsDefinedBy traversal failed:", e); }
+
+                    try {
+                        iterateCollection(rawElement.IsTypedBy, relHandle => {
+                            const relId = safeExpressID(relHandle);
+                            if (relId < 0) return;
+                            let rel = null;
+                            try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; }
+                            if (rel && rel.RelatingType) {
+                                const typeId = safeExpressID(rel.RelatingType);
+                                if (typeId < 0) return;
+                                let typeObj = null;
+                                try { typeObj = ifcAPI.GetLine(modelID, typeId, false); } catch(e) { return; }
+                                if (typeObj && typeObj.HasPropertySets) {
+                                    iterateCollection(typeObj.HasPropertySets, psetHandle => addPset(psetHandle));
+                                }
+                            }
+                        });
+                    } catch(e) { console.warn("IsTypedBy traversal failed:", e); }
                 }
 
                 let psetIndex = 0;
@@ -1580,36 +1754,53 @@
                     const tabId = `tab-pset-${psetIndex++}`;
                     const tabTitle = isQto ? `[Qto] ${pset.Name?.value || 'Unnamed'}` : (pset.Name?.value || 'Unnamed');
 
-                    const btn = document.createElement('div'); btn.className = 'tab-btn'; btn.innerText = tabTitle; btn.dataset.tab = tabId; tabNav.appendChild(btn);
-                    const content = document.createElement('div'); content.className = 'tab-content'; content.id = tabId; tabContentContainer.appendChild(content);
+                    const btn = document.createElement('div');
+                    btn.className = 'tab-btn';
+                    btn.innerText = tabTitle;
+                    btn.dataset.tab = tabId;
+                    tabNav.appendChild(btn);
+
+                    const content = document.createElement('div');
+                    content.className = 'tab-content';
+                    content.id = tabId;
+                    tabContentContainer.appendChild(content);
 
                     let hasProps = false;
                     if (pset.HasProperties) {
                         iterateCollection(pset.HasProperties, propHandle => {
-                            const propID = getExpressID(propHandle); const prop = ifcAPI.GetLine(modelID, propID, false);
-                            if (prop && prop.Name) { hasProps = true; const val = extractValue(prop); const row = document.createElement('div'); row.className = 'prop-row'; row.innerHTML = `<div class="prop-key">${prop.Name.value}</div><div class="prop-val">${val || 'N/A'}</div>`; content.appendChild(row); }
+                            const propID = safeExpressID(propHandle);
+                            if (propID < 0) return;
+                            let prop = null;
+                            try { prop = ifcAPI.GetLine(modelID, propID, false); } catch(e) { return; }
+                            if (prop && prop.Name) {
+                                hasProps = true;
+                                let val = 'N/A';
+                                try { val = extractValue(prop) || 'N/A'; } catch(e) { val = 'N/A'; }
+                                const row = document.createElement('div');
+                                row.className = 'prop-row';
+                                row.innerHTML = `<div class="prop-key">${prop.Name.value}</div><div class="prop-val">${val}</div>`;
+                                content.appendChild(row);
+                            }
                         });
                     }
                     if (!hasProps) content.innerHTML = '<div style="color:var(--text-muted); font-size:0.8rem; margin-top:10px;">No properties in this set.</div>';
                 });
-
-                document.querySelectorAll('.tab-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                        e.target.classList.add('active'); document.getElementById(e.target.dataset.tab)?.classList.add('active');
-                        searchInput.dispatchEvent(new Event('input'));
-                    });
-                });
-
-            } catch (err) { 
-                console.error("Error fetching properties:", err); 
-                showToast("Failed to extract properties.", 'error');
-                tabContentContainer.innerHTML = '<div style="color:var(--neon-pink); text-align:center; margin-top:20px;">Failed to load properties.</div>';
+            } catch (psetErr) {
+                console.warn("Property set extraction failed:", psetErr);
             }
+
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    e.target.classList.add('active');
+                    document.getElementById(e.target.dataset.tab)?.classList.add('active');
+                    searchInput.dispatchEvent(new Event('input'));
+                });
+            });
         }
 
-        // --- 7. BATCH BCA IFC-SG VALIDATION ---
+        // --- 7. RESILIENT BATCH BCA IFC-SG VALIDATION ---
         function runSGValidation(expressIDs) {
             if (!expressIDs || expressIDs.length === 0) { showToast("Select element(s) first.", 'error'); return; }
             const requiredSchema = {
@@ -1622,8 +1813,10 @@
             let allErrors = [];
             let processedCount = 0;
             const validateElementById = (id, schema, isPart = false) => {
-                const psetMap = getPsetsAsMap(currentModelID, id);
-                const elementName = isPart ? `Part (ID: ${id})` : `Element (ID: ${id})`;
+                const safeId = safeExpressID(id);
+                if (safeId < 0) return;
+                const psetMap = getPsetsAsMap(currentModelID, safeId);
+                const elementName = isPart ? `Part (ID: ${safeId})` : `Element (ID: ${safeId})`;
                 Object.keys(schema).forEach(requiredPsetName => {
                     const requiredProps = schema[requiredPsetName];
                     if (!psetMap.has(requiredPsetName)) {
@@ -1644,16 +1837,26 @@
                 });
             };
             expressIDs.forEach(expressID => {
-                const ifcLine = ifcAPI.GetLine(currentModelID, expressID, true);
-                const elementType = ifcLine.type || ifcLine.constructor.name;
-                const schema = requiredSchema[elementType];
-                if (schema) {
-                    processedCount++;
-                    validateElementById(expressID, schema, false);
-                    const parts = getParts(currentModelID, expressID);
-                    parts.forEach(partId => validateElementById(partId, schema, true));
-                } else {
-                    allErrors.push({ element: `ID: ${expressID}`, type: 'Unsupported Type', detail: `No SGPsets mapped for type: ${elementType}` });
+                const safeId = safeExpressID(expressID);
+                if (safeId < 0) {
+                    allErrors.push({ element: `ID: ${expressID}`, type: 'Invalid ID', detail: 'Express ID could not be parsed.' });
+                    return;
+                }
+                try {
+                    let ifcLine = null;
+                    try { ifcLine = ifcAPI.GetLine(currentModelID, safeId, true); } catch(e) { /* ignore */ }
+                    const elementType = ifcLine && (ifcLine.type || ifcLine.constructor.name);
+                    const schema = requiredSchema[elementType];
+                    if (schema) {
+                        processedCount++;
+                        validateElementById(safeId, schema, false);
+                        const parts = getParts(currentModelID, safeId);
+                        parts.forEach(partId => validateElementById(partId, schema, true));
+                    } else {
+                        allErrors.push({ element: `ID: ${safeId}`, type: 'Unsupported Type', detail: `No SGPsets mapped for type: ${elementType}` });
+                    }
+                } catch (elemErr) {
+                    allErrors.push({ element: `ID: ${safeId}`, type: 'Extraction Error', detail: String(elemErr.message || elemErr) });
                 }
             });
             valContent.innerHTML = '';
@@ -1753,18 +1956,34 @@
                 if (child.isMesh) {
                     let key = "Unknown";
                     if (mode === 'type') {
-                        const line = ifcAPI.GetLine(currentModelID, child.userData.expressID, true);
-                        if (line && line.type) key = line.type;
+                        const eid = safeExpressID(child.userData.expressID);
+                        if (eid >= 0) {
+                            try {
+                                const line = ifcAPI.GetLine(currentModelID, eid, true);
+                                if (line && line.type) key = line.type;
+                            } catch(e) { /* ignore */ }
+                        }
                     } else if (mode === 'material') {
-                        const line = ifcAPI.GetLine(currentModelID, child.userData.expressID, false);
-                        if (line && line.HasAssociations) {
-                            iterateCollection(line.HasAssociations, relID => {
-                                const rel = ifcAPI.GetLine(currentModelID, getExpressID(relID), false);
-                                if (rel && rel.RelatingMaterial) {
-                                    const mat = ifcAPI.GetLine(currentModelID, getExpressID(rel.RelatingMaterial), false);
-                                    if (mat && mat.Name) key = mat.Name.value;
+                        const eid = safeExpressID(child.userData.expressID);
+                        if (eid >= 0) {
+                            try {
+                                const line = ifcAPI.GetLine(currentModelID, eid, false);
+                                if (line && line.HasAssociations) {
+                                    iterateCollection(line.HasAssociations, relID => {
+                                        const rid = safeExpressID(relID);
+                                        if (rid < 0) return;
+                                        try {
+                                            const rel = ifcAPI.GetLine(currentModelID, rid, false);
+                                            if (rel && rel.RelatingMaterial) {
+                                                const mid = safeExpressID(rel.RelatingMaterial);
+                                                if (mid < 0) return;
+                                                const mat = ifcAPI.GetLine(currentModelID, mid, false);
+                                                if (mat && mat.Name) key = mat.Name.value;
+                                            }
+                                        } catch(e) { /* ignore */ }
+                                    });
                                 }
-                            });
+                            } catch(e) { /* ignore */ }
                         }
                     }
                     if (!typeColors[key]) typeColors[key] = new THREE.Color().setHSL(Math.random(), 0.8, 0.5);
