@@ -1055,22 +1055,24 @@
 
         // --- 3. PERFORMANT MODEL PROCESSING ---
 
-        // Sanitizer: converts any array-like or comma-separated string into a valid Uint32Array
+        // Sanitizer: converts any array-like or comma-separated string into a valid Uint32Array.
+        // Also rejects index buffers shorter than 3 (degenerate triangles) which is where
+        // the "Cannot convert '1,2' to unsigned int" originates.
         function sanitizeIndexArray(raw) {
             if (!raw) return new Uint32Array(0);
-            if (raw instanceof Uint32Array) return raw;
-            if (raw instanceof Uint16Array) return new Uint32Array(raw);
-            if (Array.isArray(raw)) return new Uint32Array(raw.map(Number));
-            // Handle string input like "1,2,3,4,1"
+            let out;
+            if (raw instanceof Uint32Array) return raw.length >= 3 ? raw : new Uint32Array(0);
+            if (raw instanceof Uint16Array) { out = new Uint32Array(raw); return out.length >= 3 ? out : new Uint32Array(0); }
+            if (Array.isArray(raw)) { out = new Uint32Array(raw.map(Number)); return out.length >= 3 ? out : new Uint32Array(0); }
             if (typeof raw === 'string') {
                 const parts = raw.split(/[,\s]+/).filter(Boolean).map(Number).filter(Number.isFinite);
-                return new Uint32Array(parts);
+                out = new Uint32Array(parts);
+                return out.length >= 3 ? out : new Uint32Array(0);
             }
-            // Handle typed array-like objects with length
             if (typeof raw === 'object' && typeof raw.length === 'number') {
-                const out = new Uint32Array(raw.length);
+                out = new Uint32Array(raw.length);
                 for (let i = 0; i < raw.length; i++) out[i] = Number(raw[i]) || 0;
-                return out;
+                return out.length >= 3 ? out : new Uint32Array(0);
             }
             return new Uint32Array(0);
         }
@@ -1092,14 +1094,56 @@
             return new Float32Array(0);
         }
 
+        // Final gate before buffer construction: verifies indices are a proper Uint32Array
+        // with length >= 3 and every value is a finite non-negative integer.
+        function isValidIndexBuffer(indices) {
+            if (!(indices instanceof Uint32Array)) return false;
+            if (indices.length < 3) return false;
+            for (let i = 0; i < indices.length; i++) {
+                const v = indices[i];
+                if (!Number.isFinite(v) || v < 0) return false;
+            }
+            return true;
+        }
+
+        // Safely dispose of the previous IFC model to free WASM and GPU memory
+        function disposeCurrentModel() {
+            if (currentIfcModel) {
+                scene.remove(currentIfcModel);
+                currentIfcModel.traverse((child) => {
+                    if (child.isMesh) {
+                        child.geometry?.dispose();
+                        if (child.material && child.material !== sharedDefaultMaterial && child.material !== selectedMaterial) {
+                            child.material.dispose();
+                        }
+                    }
+                });
+                currentIfcModel = null;
+            }
+            selectedMeshes.forEach(mesh => {
+                if (mesh.geometry) mesh.geometry.dispose();
+            });
+            selectedMeshes.clear();
+            selectionBoxes.clear();
+            guidToMeshMap.clear();
+            if (currentModelID !== -1) {
+                try { ifcAPI.CloseModel(currentModelID); } catch(e) { console.warn("CloseModel error:", e); }
+                currentModelID = -1;
+            }
+        }
+
         async function processAndAddModel(arrayBuffer) {
             try {
-                if (currentModelID !== -1) ifcAPI.CloseModel(currentModelID);
-                
+                disposeCurrentModel();
+                await new Promise(r => setTimeout(r, 400));
+
                 showLoading("Parsing WASM Geometry...", "Opening IFC Model (This may take a moment)...");
                 await new Promise(r => setTimeout(r, 50));
 
-                currentModelID = ifcAPI.OpenModel(new Uint8Array(arrayBuffer), { optimizeGeometry: true });
+                currentModelID = ifcAPI.OpenModel(new Uint8Array(arrayBuffer), {
+                    optimizeGeometry: true,
+                    COORDINATE_TO_ORIGIN: true
+                });
                 if (currentModelID === -1) throw new Error("OpenModel failed.");
 
                 showLoading("Extracting Geometry...", "Reading mesh data from WASM...");
@@ -1115,7 +1159,6 @@
                         const geometry = ifcAPI.GetGeometry(currentModelID, placedGeometryData.geometryExpressID);
                         if (!geometry) continue;
                         
-                        // Sanitize raw data from WASM to prevent "Cannot convert ... to unsigned int"
                         let verts, indices;
                         try {
                             verts = sanitizeVertexArray(ifcAPI.GetVertexArray(geometry.GetVertexData(), geometry.GetVertexDataSize()));
@@ -1125,8 +1168,9 @@
                             continue;
                         }
 
-                        if (!verts || verts.length === 0 || !indices || indices.length === 0) continue;
-                        if (verts.length % 6 !== 0) {  // x,y,z,nx,ny,nz interleaved
+                        if (!verts || verts.length === 0) continue;
+                        if (!indices || indices.length < 3) continue;
+                        if (verts.length % 6 !== 0) {
                             console.warn(`Skipping geometry with malformed vertex buffer (${verts.length} floats)`);
                             continue;
                         }
@@ -1148,24 +1192,40 @@
 
                 const group = new THREE.Group();
                 const CHUNK_SIZE = 1000;
+                let skipped = 0;
 
                 for (let i = 0; i < rawGeometries.length; i += CHUNK_SIZE) {
                     const chunk = rawGeometries.slice(i, i + CHUNK_SIZE);
                     
                     chunk.forEach(data => {
+                        // FINAL GUARD: re-sanitize immediately before buffer construction.
+                        const safeIndices = sanitizeIndexArray(data.indices);
+                        if (!isValidIndexBuffer(safeIndices)) {
+                            console.warn(`Skipping mesh ${data.expressID}: invalid index buffer (len=${safeIndices.length})`);
+                            skipped++;
+                            return;
+                        }
+
+                        const verts = data.verts;
+                        if (verts.length % 6 !== 0) {
+                            console.warn(`Skipping mesh ${data.expressID}: malformed vertex buffer (${verts.length} floats)`);
+                            skipped++;
+                            return;
+                        }
+
                         try {
                             const bufferGeometry = new THREE.BufferGeometry();
-                            const posArray = new Float32Array(data.verts.length / 2); 
-                            const normalArray = new Float32Array(data.verts.length / 2);
+                            const posArray = new Float32Array(verts.length / 2); 
+                            const normalArray = new Float32Array(verts.length / 2);
                             
-                            for (let j = 0; j < data.verts.length; j += 6) {
-                                posArray[j / 2] = data.verts[j]; posArray[j / 2 + 1] = data.verts[j + 1]; posArray[j / 2 + 2] = data.verts[j + 2];
-                                normalArray[j / 2] = data.verts[j + 3]; normalArray[j / 2 + 1] = data.verts[j + 4]; normalArray[j / 2 + 2] = data.verts[j + 5];
+                            for (let j = 0; j < verts.length; j += 6) {
+                                posArray[j / 2] = verts[j]; posArray[j / 2 + 1] = verts[j + 1]; posArray[j / 2 + 2] = verts[j + 2];
+                                normalArray[j / 2] = verts[j + 3]; normalArray[j / 2 + 1] = verts[j + 4]; normalArray[j / 2 + 2] = verts[j + 5];
                             }
                             
                             bufferGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
                             bufferGeometry.setAttribute('normal', new THREE.BufferAttribute(normalArray, 3));
-                            bufferGeometry.setIndex(new THREE.BufferAttribute(data.indices, 1));
+                            bufferGeometry.setIndex(new THREE.BufferAttribute(safeIndices, 1));
                             
                             const mesh3D = new THREE.Mesh(bufferGeometry, sharedDefaultMaterial);
                             mesh3D.userData.expressID = data.expressID;
@@ -1178,6 +1238,7 @@
                             }
                         } catch(meshErr) {
                             console.warn(`Failed to build mesh for expressID ${data.expressID}: ${meshErr.message}`);
+                            skipped++;
                         }
                     });
 
@@ -1187,7 +1248,6 @@
                     await new Promise(r => setTimeout(r, 0)); 
                 }
 
-                if (currentIfcModel) { scene.remove(currentIfcModel); currentIfcModel.traverse((child) => { if (child.isMesh) child.geometry.dispose(); }); }
                 scene.add(group); currentIfcModel = group;
                 clearSelection();
 
@@ -1197,12 +1257,17 @@
                 
                 document.getElementById('color-by-select').value = 'default';
                 hideLoading();
-                showToast(`Loaded ${rawGeometries.length} meshes.`, 'success');
+                showToast(`Loaded ${rawGeometries.length - skipped} meshes.${skipped ? ' Skipped ' + skipped + ' malformed.' : ''}`, 'success');
 
             } catch (error) { 
                 console.error("Error:", error); 
-                showToast("Error loading model: " + error.message, 'error');
-                loadTitle.innerText = "Error"; loadStatus.innerText = error.message; setTimeout(hideLoading, 5000); currentModelID = -1; 
+                let msg = error.message || "Unknown error";
+                if (msg.includes('bad_alloc') || msg.includes('memory')) {
+                    msg = "Out of WASM memory. Try a smaller IFC or reduce browser tabs.";
+                }
+                showToast("Error loading model: " + msg, 'error');
+                loadTitle.innerText = "Error"; loadStatus.innerText = msg; setTimeout(hideLoading, 5000);
+                disposeCurrentModel();
             }
         }
 
