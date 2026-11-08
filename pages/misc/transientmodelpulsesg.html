@@ -124,10 +124,16 @@
         .control-group select, .control-group button, .control-group input[type="file"], .control-group input[type="number"] { background: rgba(255,255,255,0.1); color: var(--text-main); border: 1px solid var(--border-color); padding: 5px 8px; border-radius: 4px; cursor: pointer; width: 100%; outline: none; font-size: 0.75rem; }
         .control-group button:hover { background: rgba(0, 240, 255, 0.2); border-color: var(--neon-blue); }
         
-        /* Position Adjustments for Floating Panels */
+        /* --- RIGHT-SIDE FLOATING PANELS STACK (consistent padding) --- */
         #floating-controls-panel { top: 90px; right: 380px; }
-        #crane-panel { top: 280px; right: 380px; }
-        #data-color-panel { top: 470px; right: 380px; } /* Moved below Crane Manager */
+        #crane-panel { top: 270px; right: 380px; }
+        #data-color-panel { top: 550px; right: 380px; }
+
+        /* Compact styling for Crane panel so it does not overlap Data & Color */
+        #crane-panel .content { padding: 10px; gap: 7px; }
+        #crane-panel .control-group label { margin-bottom: 3px; font-size: 0.68rem; }
+        #crane-panel .control-group input[type="number"] { padding: 4px 6px; font-size: 0.72rem; }
+        #crane-panel .control-group button { padding: 4px 6px; font-size: 0.72rem; }
 
         .color-picker-wrapper { display: flex; gap: 5px; align-items: center; }
         .color-picker-wrapper input[type="color"] { width: 30px; height: 30px; padding: 0; border: none; background: none; cursor: pointer; }
@@ -250,16 +256,16 @@
             .dashboard { grid-template-columns: 280px 1fr 300px; gap: 15px; padding: 15px; } 
             .panel { padding: 15px; } 
             #floating-controls-panel { right: 320px; } 
-            #crane-panel { right: 320px; top: 280px; }
-            #data-color-panel { right: 320px; top: 470px; }
+            #crane-panel { right: 320px; top: 260px; }
+            #data-color-panel { right: 320px; top: 540px; }
         }
         @media (max-width: 992px) { 
             .breadcrumbs { display: none; } 
             .dashboard { grid-template-columns: 250px 1fr 260px; gap: 10px; padding: 10px; } 
             .panel { padding: 12px; } 
             #floating-controls-panel { right: 280px; top: 80px; } 
-            #crane-panel { right: 280px; top: 270px; }
-            #data-color-panel { right: 280px; top: 460px; }
+            #crane-panel { right: 280px; top: 250px; }
+            #data-color-panel { right: 280px; top: 530px; }
         }
         @media (max-width: 768px) {
             header { padding: 0 10px; } .logo-area span:not(.logo-icon) { font-size: 0.85rem; }
@@ -270,8 +276,8 @@
             #left-panel { left: 10px; } #right-panel { right: 10px; }
             .prop-row { grid-template-columns: 120px 1fr; }
             #floating-controls-panel { right: 10px; top: 80px; width: 150px; }
-            #crane-panel { right: 10px; top: 270px; width: 150px; }
-            #data-color-panel { right: 10px; top: 460px; width: 150px; }
+            #crane-panel { right: 10px; top: 250px; width: 150px; }
+            #data-color-panel { right: 10px; top: 530px; width: 150px; }
             .chart-container:nth-of-type(2) { display: none; }
         }
     </style>
@@ -501,7 +507,7 @@
             </div>
         </div>
 
-        <!-- DATA & COLOR MANAGER PANEL (Below Crane Manager) -->
+        <!-- DATA & COLOR MANAGER PANEL (below Crane Manager with consistent padding) -->
         <div class="floating-controls" id="data-color-panel">
             <div class="panel-header">
                 <span>Data & Color</span>
