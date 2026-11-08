@@ -24,10 +24,9 @@
             --dashboard-padding: 20px;
             --dashboard-gap: 20px;
 
-            /* Top edge shared by left, right, and the Controls floating panel */
             --panel-top: calc(var(--header-height) + var(--toolbar-height) + var(--dashboard-padding));
 
-            /* Known natural heights (approx) used for stacking the right-side floating panels */
+            /* Heights used only to compute the stack — the gap is always --dashboard-gap */
             --controls-h: 160px;
             --crane-h: 240px;
         }
@@ -36,13 +35,10 @@
 
         body { background-color: var(--bg-color); color: var(--text-main); height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
 
-        /* --- 3D CANVAS --- */
         #canvas-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100dvh; z-index: 1; background-image: radial-gradient(circle at 50% 50%, #101626 0%, #05070a 100%); }
 
-        /* --- UI LAYER --- */
         .ui-layer { position: absolute; top: 0; left: 0; width: 100vw; height: 100dvh; z-index: 10; pointer-events: none; display: flex; flex-direction: column; }
 
-        /* --- HEADER --- */
         header { pointer-events: auto; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; height: var(--header-height); background: rgba(10, 14, 25, 0.85); border-bottom: 1px solid var(--border-color); backdrop-filter: blur(10px); z-index: 20; flex-shrink: 0; }
         .logo-area { display: flex; align-items: center; gap: 15px; font-weight: bold; letter-spacing: 1px; }
         .logo-icon { color: var(--neon-blue); font-size: 1.2rem; }
@@ -59,7 +55,6 @@
         .user-profile { display: flex; align-items: center; gap: 10px; background: rgba(255, 255, 255, 0.05); padding: 5px 15px; border-radius: 20px; border: 1px solid var(--border-color); white-space: nowrap; }
         .user-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--neon-purple); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; }
 
-        /* --- TOOLBAR --- */
         .toolbar { pointer-events: auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 20px; height: var(--toolbar-height); background: rgba(10, 14, 25, 0.85); border-bottom: 1px solid var(--border-color); backdrop-filter: blur(10px); z-index: 19; flex-shrink: 0; }
         .toolbar-group { display: flex; align-items: center; gap: 8px; }
         .toolbar-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-muted); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; gap: 6px; transition: all 0.2s; white-space: nowrap; }
@@ -73,10 +68,8 @@
 
         .toolbar-hint { font-size: 0.72rem; color: var(--text-muted); margin-left: 8px; font-style: italic; }
 
-        /* --- DASHBOARD GRID --- */
         .dashboard { display: grid; grid-template-columns: 340px 1fr 360px; gap: var(--dashboard-gap); padding: var(--dashboard-padding); flex: 1; height: calc(100dvh - var(--header-height) - var(--toolbar-height)); position: relative; z-index: 5; pointer-events: none; transition: grid-template-columns 0.3s ease; }
 
-        /* --- PANELS --- */
         .panel { pointer-events: auto; background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; backdrop-filter: blur(15px); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); display: flex; flex-direction: column; overflow-y: auto; position: relative; }
         
         .panel-header, .inspector-header, .val-header, .chart-modal-header { 
@@ -89,7 +82,6 @@
         
         .dragging { cursor: grabbing !important; opacity: 0.9; }
 
-        /* --- CHARTS & DATA --- */
         .chart-container { margin-bottom: 20px; padding: 5px; border-radius: 8px; transition: background 0.2s; cursor: pointer; }
         .chart-container:hover { background: rgba(255, 255, 255, 0.05); }
         
@@ -132,13 +124,11 @@
         .delivery-name { font-weight: 600; }
         .delivery-eta { color: var(--text-muted); font-size: 0.7rem; }
 
-        /* --- WINDOW CONTROLS & FLOATING PANELS --- */
         .window-controls { display: flex; gap: 5px; margin-left: auto; }
         .win-btn { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px; background: rgba(255,255,255,0.1); color: var(--text-main); font-size: 14px; transition: all 0.2s; }
         .win-btn:hover { background: rgba(255,255,255,0.2); }
         .win-btn.close:hover { background: #ff4757; color: white; }
         
-        /* Floating Controls Panels */
         .floating-controls { position: absolute; z-index: 15; pointer-events: auto; width: 220px; background: rgba(10, 14, 25, 0.95); border: 1px solid var(--border-color); border-radius: 8px; backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); transition: all 0.3s ease; display: flex; flex-direction: column; overflow: hidden; }
         .floating-controls .panel-header { margin: 0; padding: 8px 12px; background: rgba(0,0,0,0.3); border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.75rem; }
         .floating-controls .content { padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; flex: 1; }
@@ -147,16 +137,15 @@
         .control-group button:hover { background: rgba(0, 240, 255, 0.2); border-color: var(--neon-blue); }
         
         /* --- RIGHT-SIDE FLOATING PANEL STACK ---
-           Controls sits flush with the top of the left/right panels.
-           Crane sits below with exactly --dashboard-gap of space.
-           Data & Color sits below Crane with the same --dashboard-gap. */
+           The vertical gap is ALWAYS --dashboard-gap between every pair. */
         #floating-controls-panel { top: var(--panel-top); right: 380px; }
         #crane-panel { 
             top: calc(var(--panel-top) + var(--controls-h) + var(--dashboard-gap)); 
             right: 380px; 
         }
         #data-color-panel { 
-            top: calc(var(--panel-top) + var(--controls-h) + var(--dashboard-gap) + var(--crane-h) + var(--dashboard-gap)); 
+            top: calc(var(--panel-top) + var(--controls-h) + var(--dashboard-gap)
+                                       + var(--crane-h)    + var(--dashboard-gap)); 
             right: 380px; 
         }
 
@@ -169,7 +158,6 @@
         .color-picker-wrapper { display: flex; gap: 5px; align-items: center; }
         .color-picker-wrapper input[type="color"] { width: 30px; height: 30px; padding: 0; border: none; background: none; cursor: pointer; }
 
-        /* Inspector Modal */
         #inspector-panel { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9); opacity: 0; pointer-events: none; width: 650px; max-width: 95vw; max-height: 85dvh; background: rgba(10, 14, 25, 0.98); border: 1px solid var(--neon-pink); border-radius: 12px; backdrop-filter: blur(20px); box-shadow: 0 0 50px rgba(255, 0, 127, 0.3); display: flex; flex-direction: column; z-index: 100; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease; }
         #inspector-panel.open { transform: translate(-50%, -50%) scale(1); opacity: 1; pointer-events: auto; }
         .inspector-title { color: var(--neon-pink); font-size: 0.9rem; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; display: flex; align-items: center; gap: 10px; }
@@ -182,13 +170,11 @@
         .action-btn.validate-btn { border-color: var(--neon-green); color: var(--neon-green); }
         .action-btn.validate-btn:hover { background: var(--neon-green); color: black; }
 
-        /* Validation Modal */
         #validation-results { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9); opacity: 0; pointer-events: none; width: 550px; max-width: 90vw; max-height: 75vh; background: rgba(10, 14, 25, 0.98); border: 1px solid var(--neon-orange); border-radius: 12px; backdrop-filter: blur(20px); box-shadow: 0 0 40px rgba(255, 153, 0, 0.3); display: flex; flex-direction: column; z-index: 200; transition: all 0.3s ease; }
         #validation-results.open { transform: translate(-50%, -50%) scale(1); opacity: 1; pointer-events: auto; }
         .val-title { color: var(--neon-orange); font-weight: bold; text-transform: uppercase; letter-spacing: 1px; font-size: 0.9rem; }
         .val-body { padding: 20px; overflow-y: auto; flex: 1; }
 
-        /* Chart Detail Modal */
         #chart-modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9); opacity: 0; pointer-events: none; width: 800px; max-width: 95vw; height: 600px; max-height: 90vh; background: rgba(10, 14, 25, 0.98); border: 1px solid var(--neon-blue); border-radius: 12px; backdrop-filter: blur(20px); box-shadow: 0 0 50px rgba(0, 240, 255, 0.2); display: flex; flex-direction: column; z-index: 300; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease; }
         #chart-modal.open { transform: translate(-50%, -50%) scale(1); opacity: 1; pointer-events: auto; }
         .chart-modal-title { color: var(--neon-blue); font-weight: bold; text-transform: uppercase; letter-spacing: 1px; font-size: 0.9rem; }
@@ -197,28 +183,7 @@
         .chart-modal-body svg text { font-size: 12px !important; }
         .chart-modal-body .chart-title { display: none; }
 
-        /* Custom Tooltip */
-        #chart-tooltip {
-            position: fixed;
-            background: rgba(10, 14, 25, 0.95);
-            border: 1px solid var(--neon-blue);
-            border-radius: 6px;
-            padding: 8px 12px;
-            color: white;
-            font-size: 0.75rem;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.15s ease;
-            z-index: 99999;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
-            backdrop-filter: blur(10px);
-            display: flex;
-            flex-direction: column;
-            gap: 3px;
-            min-width: 120px;
-            transform: translate(-50%, -100%);
-            margin-top: -10px;
-        }
+        #chart-tooltip { position: fixed; background: rgba(10, 14, 25, 0.95); border: 1px solid var(--neon-blue); border-radius: 6px; padding: 8px 12px; color: white; font-size: 0.75rem; pointer-events: none; opacity: 0; transition: opacity 0.15s ease; z-index: 99999; box-shadow: 0 4px 15px rgba(0,0,0,0.6); backdrop-filter: blur(10px); display: flex; flex-direction: column; gap: 3px; min-width: 120px; transform: translate(-50%, -100%); margin-top: -10px; }
         #chart-tooltip.visible { opacity: 1; }
         .tt-title { font-weight: 700; color: var(--neon-blue); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;}
         .tt-value { font-size: 1.1rem; font-weight: 800; color: #fff; }
@@ -274,7 +239,6 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
 
-        /* --- RESIZE HANDLE --- */
         .resize-handle { position: absolute; width: 14px; height: 14px; right: 2px; bottom: 2px; cursor: nwse-resize; z-index: 50; background: transparent; touch-action: none; }
         .resize-handle::after { content: ''; position: absolute; right: 3px; bottom: 3px; width: 8px; height: 8px; border-right: 2px solid var(--neon-blue); border-bottom: 2px solid var(--neon-blue); opacity: 0.4; transition: opacity 0.2s; }
         .panel:hover > .resize-handle::after,
