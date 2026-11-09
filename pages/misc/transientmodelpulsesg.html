@@ -675,6 +675,59 @@
             setTimeout(() => toast.remove(), 3000);
         }
 
+        // ----- Drag-model to pan -----
+        let isDraggingModel = false;
+        let dragStartX = 0, dragStartY = 0;
+        let lastPanX = 0, lastPanY = 0;
+
+        container.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0) return; // only left button
+            if (selectionMode === 'area') return; // area select uses its own logic
+            const target = e.target;
+            if (target.closest('.panel') || target.closest('#inspector-panel') || target.closest('header') ||
+                target.closest('.floating-controls') || target.closest('#validation-results') ||
+                target.closest('#chart-modal') || target.closest('#minimized-dock') || target.closest('.resize-handle') ||
+                target.closest('.toolbar') || target.closest('#settings-popup')) return;
+
+            isDraggingModel = true;
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+            lastPanX = e.clientX;
+            lastPanY = e.clientY;
+        });
+
+        window.addEventListener('pointermove', (e) => {
+            if (!isDraggingModel) return;
+            const dx = e.clientX - lastPanX;
+            const dy = e.clientY - lastPanY;
+            lastPanX = e.clientX;
+            lastPanY = e.clientY;
+
+            // Pan model in screen space
+            const panSpeed = (camera.position.distanceTo(controls.target) * 0.002);
+            const right = new THREE.Vector3();
+            const up = new THREE.Vector3();
+            camera.getWorldDirection(new THREE.Vector3()); // fill matrixWorldInverse via camera.updateMatrixWorld
+            camera.updateMatrixWorld();
+            right.setFromMatrixColumn(camera.matrixWorld, 0); // local X
+            up.setFromMatrixColumn(camera.matrixWorld, 1);    // local Y
+            const offset = right.multiplyScalar(-dx * panSpeed).add(up.multiplyScalar(dy * panSpeed));
+            camera.position.add(offset);
+            controls.target.add(offset);
+            controls.update();
+        });
+
+        window.addEventListener('pointerup', (e) => {
+            if (!isDraggingModel) return;
+            const moved = Math.hypot(e.clientX - dragStartX, e.clientY - dragStartY) > 5;
+            isDraggingModel = false;
+            if (!moved) {
+                // treat as a click — allow the normal raycast/selection logic below
+            }
+        });
+
+        // ---- end drag-model ----
+
         document.addEventListener('mouseover', (e) => {
             const target = e.target.closest('.hover-target');
             if (target) {
@@ -1092,8 +1145,6 @@
 
         // ============================================================================
         // EXHAUSTIVE GLOBAL ID RESOLVER
-        // Walks direct GlobalId first, then every known relationship, then recurses
-        // up to MAX_DEPTH through the graph in both directions.
         // ============================================================================
         function _safeGetLine(modelID, id, isType = false) {
             const safeId = safeExpressID(id);
@@ -1404,7 +1455,9 @@
                 return;
             }
 
+            // Only treat as click if the pointer didn't move (drag-model handled separately)
             if (Math.hypot(event.clientX - pointerDownPos.x, event.clientY - pointerDownPos.y) > 5) return;
+            if (isDraggingModel) { isDraggingModel = false; return; }
             if (event.target.closest('.panel') || event.target.closest('#inspector-panel') || event.target.closest('header') || event.target.closest('.floating-controls') || event.target.closest('#validation-results') || event.target.closest('#chart-modal') || event.target.closest('#minimized-dock') || event.target.closest('.resize-handle') || event.target.closest('.toolbar') || event.target.closest('#settings-popup')) return;
             
             pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
