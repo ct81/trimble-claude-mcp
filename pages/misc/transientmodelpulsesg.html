@@ -26,6 +26,9 @@
             --panel-top: calc(var(--header-height) + var(--toolbar-height) + var(--dashboard-padding));
             --controls-h: 160px;
             --crane-h: 270px;
+            /* Horizontal padding between the right dashboard panel and the floating panels */
+            --floating-gap: 20px;
+            --right-col-w: 360px;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -64,7 +67,7 @@
         .toolbar-btn.fullscreen:hover { background: rgba(0, 255, 136, 0.15); color: var(--neon-green); }
         .toolbar-hint { font-size: 0.72rem; color: var(--text-muted); margin-left: 8px; font-style: italic; }
 
-        .dashboard { display: grid; grid-template-columns: 340px 1fr 360px; gap: var(--dashboard-gap); padding: var(--dashboard-padding); flex: 1; height: calc(100dvh - var(--header-height) - var(--toolbar-height)); position: relative; z-index: 5; pointer-events: none; transition: grid-template-columns 0.3s ease; }
+        .dashboard { display: grid; grid-template-columns: 340px 1fr var(--right-col-w); gap: var(--dashboard-gap); padding: var(--dashboard-padding); flex: 1; height: calc(100dvh - var(--header-height) - var(--toolbar-height)); position: relative; z-index: 5; pointer-events: none; transition: grid-template-columns 0.3s ease; }
 
         .panel { pointer-events: auto; background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; backdrop-filter: blur(15px); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); display: flex; flex-direction: column; overflow-y: auto; position: relative; }
         
@@ -123,9 +126,20 @@
         .control-group select, .control-group button, .control-group input[type="file"], .control-group input[type="number"] { background: rgba(255,255,255,0.1); color: var(--text-main); border: 1px solid var(--border-color); padding: 5px 8px; border-radius: 4px; cursor: pointer; width: 100%; outline: none; font-size: 0.75rem; }
         .control-group button:hover { background: rgba(0, 240, 255, 0.2); border-color: var(--neon-blue); }
         
-        #floating-controls-panel { top: var(--panel-top); right: 380px; }
-        #crane-panel { top: calc(var(--panel-top) + var(--controls-h) + var(--dashboard-gap)); right: 380px; }
-        #data-color-panel { top: calc(var(--panel-top) + var(--controls-h) + var(--dashboard-gap) + var(--crane-h) + var(--dashboard-gap)); right: 380px; }
+        /* RIGHT-SIDE FLOATING PANELS — stacked vertically with equal gaps,
+           and horizontally offset from the Resource Allocation panel by --floating-gap */
+        #floating-controls-panel {
+            top: var(--panel-top);
+            right: calc(var(--right-col-w) + var(--dashboard-gap) + var(--floating-gap));
+        }
+        #crane-panel {
+            top: calc(var(--panel-top) + var(--controls-h) + var(--dashboard-gap));
+            right: calc(var(--right-col-w) + var(--dashboard-gap) + var(--floating-gap));
+        }
+        #data-color-panel {
+            top: calc(var(--panel-top) + var(--controls-h) + var(--dashboard-gap) + var(--crane-h) + var(--dashboard-gap));
+            right: calc(var(--right-col-w) + var(--dashboard-gap) + var(--floating-gap));
+        }
 
         #crane-panel .content { padding: 10px; gap: 7px; }
         #crane-panel .control-group label { margin-bottom: 3px; font-size: 0.68rem; }
@@ -239,19 +253,13 @@
         @media (max-width: 1200px) { 
             .dashboard { grid-template-columns: 280px 1fr 300px; gap: 15px; padding: 15px; }
             .panel { padding: 15px; }
-            :root { --dashboard-padding: 15px; --dashboard-gap: 15px; --controls-h: 150px; --crane-h: 250px; }
-            #floating-controls-panel { right: 320px; }
-            #crane-panel { right: 320px; }
-            #data-color-panel { right: 320px; }
+            :root { --dashboard-padding: 15px; --dashboard-gap: 15px; --floating-gap: 15px; --controls-h: 150px; --crane-h: 250px; --right-col-w: 300px; }
         }
         @media (max-width: 992px) { 
             .breadcrumbs { display: none; } 
             .dashboard { grid-template-columns: 250px 1fr 260px; gap: 10px; padding: 10px; }
             .panel { padding: 12px; }
-            :root { --dashboard-padding: 10px; --dashboard-gap: 10px; --controls-h: 150px; --crane-h: 240px; }
-            #floating-controls-panel { right: 280px; }
-            #crane-panel { right: 280px; }
-            #data-color-panel { right: 280px; }
+            :root { --dashboard-padding: 10px; --dashboard-gap: 10px; --floating-gap: 10px; --controls-h: 150px; --crane-h: 240px; --right-col-w: 260px; }
         }
         @media (max-width: 768px) {
             header { padding: 0 10px; } .logo-area span:not(.logo-icon) { font-size: 0.85rem; }
@@ -261,10 +269,8 @@
             #left-panel, #right-panel { position: absolute; top: 10px; bottom: 10px; width: 240px; opacity: 0.95; background: rgba(13, 17, 28, 0.9); z-index: 15; overflow-y: auto; }
             #left-panel { left: 10px; } #right-panel { right: 10px; }
             .prop-row { grid-template-columns: 120px 1fr; }
-            :root { --panel-top: calc(var(--header-height) + var(--toolbar-height) + 10px); --dashboard-gap: 10px; --controls-h: 140px; --crane-h: 240px; }
-            #floating-controls-panel { right: 10px; width: 150px; }
-            #crane-panel { right: 10px; width: 150px; }
-            #data-color-panel { right: 10px; width: 150px; }
+            :root { --panel-top: calc(var(--header-height) + var(--toolbar-height) + 10px); --dashboard-gap: 10px; --floating-gap: 10px; --controls-h: 140px; --crane-h: 240px; --right-col-w: 240px; }
+            #floating-controls-panel, #crane-panel, #data-color-panel { width: 150px; right: calc(var(--right-col-w) + var(--dashboard-gap) + var(--floating-gap)); }
             .chart-container:nth-of-type(2) { display: none; }
             .toolbar-hint { display: none; }
             .toolbar-btn span.label { display: none; }
@@ -675,14 +681,14 @@
             setTimeout(() => toast.remove(), 3000);
         }
 
-        // ----- Drag-model to pan -----
+        // ---- Drag-model-to-pan ----
         let isDraggingModel = false;
         let dragStartX = 0, dragStartY = 0;
         let lastPanX = 0, lastPanY = 0;
 
         container.addEventListener('pointerdown', (e) => {
-            if (e.button !== 0) return; // only left button
-            if (selectionMode === 'area') return; // area select uses its own logic
+            if (e.button !== 0) return;
+            if (selectionMode === 'area') return;
             const target = e.target;
             if (target.closest('.panel') || target.closest('#inspector-panel') || target.closest('header') ||
                 target.closest('.floating-controls') || target.closest('#validation-results') ||
@@ -703,14 +709,12 @@
             lastPanX = e.clientX;
             lastPanY = e.clientY;
 
-            // Pan model in screen space
             const panSpeed = (camera.position.distanceTo(controls.target) * 0.002);
             const right = new THREE.Vector3();
             const up = new THREE.Vector3();
-            camera.getWorldDirection(new THREE.Vector3()); // fill matrixWorldInverse via camera.updateMatrixWorld
             camera.updateMatrixWorld();
-            right.setFromMatrixColumn(camera.matrixWorld, 0); // local X
-            up.setFromMatrixColumn(camera.matrixWorld, 1);    // local Y
+            right.setFromMatrixColumn(camera.matrixWorld, 0);
+            up.setFromMatrixColumn(camera.matrixWorld, 1);
             const offset = right.multiplyScalar(-dx * panSpeed).add(up.multiplyScalar(dy * panSpeed));
             camera.position.add(offset);
             controls.target.add(offset);
@@ -721,11 +725,8 @@
             if (!isDraggingModel) return;
             const moved = Math.hypot(e.clientX - dragStartX, e.clientY - dragStartY) > 5;
             isDraggingModel = false;
-            if (!moved) {
-                // treat as a click — allow the normal raycast/selection logic below
-            }
+            if (!moved) { /* treat as click in normal logic */ }
         });
-
         // ---- end drag-model ----
 
         document.addEventListener('mouseover', (e) => {
@@ -850,7 +851,7 @@
             let cols = [];
             if (leftVisible) cols.push('340px'); else cols.push('0px');
             cols.push('1fr');
-            if (rightVisible) cols.push('360px'); else cols.push('0px');
+            if (rightVisible) cols.push('var(--right-col-w)'); else cols.push('0px');
             mainDashboard.style.gridTemplateColumns = cols.join(' ');
         }
 
@@ -1455,7 +1456,6 @@
                 return;
             }
 
-            // Only treat as click if the pointer didn't move (drag-model handled separately)
             if (Math.hypot(event.clientX - pointerDownPos.x, event.clientY - pointerDownPos.y) > 5) return;
             if (isDraggingModel) { isDraggingModel = false; return; }
             if (event.target.closest('.panel') || event.target.closest('#inspector-panel') || event.target.closest('header') || event.target.closest('.floating-controls') || event.target.closest('#validation-results') || event.target.closest('#chart-modal') || event.target.closest('#minimized-dock') || event.target.closest('.resize-handle') || event.target.closest('.toolbar') || event.target.closest('#settings-popup')) return;
