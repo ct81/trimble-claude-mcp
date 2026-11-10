@@ -1789,7 +1789,7 @@
         function runSGValidation(expressIDs) {
             if (!expressIDs || expressIDs.length === 0) { showToast("Select element(s) first.", 'error'); return; }
             const requiredSchema = {
-                'IFCWALL': { 'SGPset_Wall': ['Reference', 'Status'], 'Pset_WallCommon': ['IsExternal', 'LoadBearing', 'FireRating'] },
+                'IFCWALL': { 'SGPset_Wall': ['ConstructionMethod', 'ReferTo2DDetail', 'ReinforcementSteelGrade'], 'Pset_WallCommon': ['IsExternal', 'LoadBearing', 'FireRating'] },
                 'IFCSLAB': { 'SGPset_Slab': ['Reference', 'Status'], 'Pset_SlabCommon': ['IsExternal', 'LoadBearing', 'FireRating'] },
                 'IFCDOOR': { 'SGPset_Door': ['Reference', 'Status'], 'Pset_DoorCommon': ['IsExternal', 'FireRating', 'SecurityRating'] },
                 'IFCCOLUMN': { 'SGPset_Column': ['Reference', 'Status'], 'Pset_ColumnCommon': ['IsExternal', 'LoadBearing'] },
