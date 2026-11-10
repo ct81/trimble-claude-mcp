@@ -67,7 +67,6 @@
         .toolbar-btn.fullscreen:hover { background: rgba(0, 255, 136, 0.15); color: var(--neon-green); }
         .toolbar-hint { font-size: 0.72rem; color: var(--text-muted); margin-left: 8px; font-style: italic; }
 
-        /* Reopen buttons */
         .toolbar-sep { width: 1px; height: 22px; background: rgba(255,255,255,0.1); margin: 0 6px; flex-shrink: 0; }
         .toolbar-btn.reopen { padding: 6px 10px; font-size: 0.72rem; gap: 5px; }
         .toolbar-btn.reopen[data-panel="left-panel"]        { border-color: rgba(0, 255, 136, 0.45); color: var(--neon-green); }
@@ -333,7 +332,6 @@
             <div class="logo-area">
                 <span class="logo-icon">⧉</span> <span>Transient Model Pulse SG</span>
                 <div class="breadcrumbs"><span></span><span id="clock"></span></div>
-                <!--div class="breadcrumbs">DIGITAL TWIN | Project: TPS42NH_VC_PC_CM_L7_R24.ifc | SITE STATUS: <span>ON TRACK</span> | <span id="clock">18:24 PM</span></div-->
             </div>
             <div class="header-actions">
                 <button id="header-validate-btn" class="header-validate-btn" title="Validate all selected elements against BCA IFC-SG standards">
@@ -1224,6 +1222,52 @@
             return parts;
         }
 
+        // ============================================================================
+        // ROBUST IFC TYPE RESOLVER
+        // The bug: for some entities, ifcLine.type returns the numeric express ID
+        //          as a string (e.g. "2391406946") rather than "IFCWALL".
+        // Fix:     try multiple methods until we get a real IFC type string.
+        // ============================================================================
+        function resolveIfcTypeName(modelID, expressID) {
+            const safeId = safeExpressID(expressID);
+            if (safeId < 0) return null;
+
+            // 1) Try GetLine(..., true) — the usual path
+            let line = null;
+            try { line = ifcAPI.GetLine(modelID, safeId, true); } catch(e) {}
+            if (line) {
+                const t = line.type || (line.constructor && line.constructor.name);
+                if (typeof t === 'string' && /^IFC/i.test(t)) return t;
+            }
+
+            // 2) Try GetLine(..., false)
+            try { line = ifcAPI.GetLine(modelID, safeId, false); } catch(e) {}
+            if (line) {
+                const t = line.type || (line.constructor && line.constructor.name);
+                if (typeof t === 'string' && /^IFC/i.test(t)) return t;
+            }
+
+            // 3) Try ifcAPI.GetLineType(...)
+            try {
+                const t = ifcAPI.GetLineType(modelID, safeId);
+                if (typeof t === 'string' && /^IFC/i.test(t)) return t;
+                if (typeof t === 'number' && typeof ifcAPI.GetNameFromTypeCode === 'function') {
+                    const tname = ifcAPI.GetNameFromTypeCode(t);
+                    if (tname && /^IFC/i.test(tname)) return tname;
+                }
+            } catch(e) {}
+
+            // 4) Last resort — the .type field is numeric, map via GetNameFromTypeCode
+            if (line && typeof line.type === 'number' && typeof ifcAPI.GetNameFromTypeCode === 'function') {
+                try {
+                    const tname = ifcAPI.GetNameFromTypeCode(line.type);
+                    if (tname && /^IFC/i.test(tname)) return tname;
+                } catch(e) {}
+            }
+
+            return null;
+        }
+
         function _safeGetLine(modelID, id, isType = false) {
             const safeId = safeExpressID(id);
             if (safeId < 0) return null;
@@ -1869,13 +1913,24 @@
                     let ifcLine = null;
                     try {
                         ifcLine = ifcAPI.GetLine(currentModelID, safeId, true);
-                        console.log(`[SG-VALIDATION] GetLine(${safeId}) →`, ifcLine ? (ifcLine.type || ifcLine.constructor.name) : 'null');
+                        console.log(`[SG-VALIDATION] GetLine(${safeId}) raw type field:`, ifcLine ? ifcLine.type : 'null');
                     } catch (e) {
                         console.warn(`[SG-VALIDATION] GetLine threw for id=${safeId}:`, e);
                     }
 
-                    const elementType = ifcLine && (ifcLine.type || ifcLine.constructor.name);
-                    console.log(`[SG-VALIDATION] Element type: "${elementType}"`);
+                    // ★★★ FIX: use robust type resolver instead of relying on ifcLine.type ★★★
+                    const elementType = resolveIfcTypeName(currentModelID, safeId);
+                    console.log(`[SG-VALIDATION] Resolved element type: "${elementType}"`);
+
+                    if (!elementType) {
+                        console.warn(`[SG-VALIDATION] ⚠ Could not resolve IFC type for safeId=${safeId} — skipping.`);
+                        allErrors.push({
+                            element: `ID: ${safeId}`,
+                            type: 'Unresolvable Type',
+                            detail: 'Could not resolve a valid IFC type for this element.'
+                        });
+                        return;
+                    }
 
                     const schema = requiredSchema[elementType];
                     if (schema) {
@@ -2012,7 +2067,7 @@
                     let key = "Unknown";
                     if (mode === 'type') {
                         const eid = safeExpressID(child.userData.expressID);
-                        if (eid >= 0) { try { const line = ifcAPI.GetLine(currentModelID, eid, true); if (line && line.type) key = line.type; } catch(e) {} }
+                        if (eid >= 0) { try { const t = resolveIfcTypeName(currentModelID, eid); if (t) key = t; } catch(e) {} }
                     } else if (mode === 'material') {
                         const eid = safeExpressID(child.userData.expressID);
                         if (eid >= 0) {
