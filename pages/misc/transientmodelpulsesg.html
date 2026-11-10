@@ -1706,7 +1706,6 @@
             };
 
             addAttributeRow("Express ID", safeId);
-            addAttributeRow("File Format", "IFC");
             if (ifcLine) {
                 if (ifcLine.GlobalId && ifcLine.GlobalId.value) {
                     addAttributeRow("Global ID", ifcLine.GlobalId.value);
@@ -1720,9 +1719,7 @@
                     }
                 }
 
-                const ifcType = ifcLine.type || ifcLine.constructor.name;
-                addAttributeRow("Type", ifcType);
-                addAttributeRow("Common Type", ifcType.replace(/^IFC/i, "").toUpperCase());
+                addAttributeRow("Type", ifcLine.type || ifcLine.constructor.name);
                 addAttributeRow("Name", ifcLine.Name ? ifcLine.Name.value : "Unnamed");
                 if (ifcLine.Tag && ifcLine.Tag.value) addAttributeRow("Tag", ifcLine.Tag.value);
                 if (ifcLine.ObjectType && ifcLine.ObjectType.value) addAttributeRow("ObjectType", ifcLine.ObjectType.value);
