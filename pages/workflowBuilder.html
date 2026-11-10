@@ -460,8 +460,8 @@
   .rail button:hover { color: #e2e8f0; background: #1f2937; }
   .rail button[aria-pressed="true"] { background: #1d4ed8; color: #fff; }
   #railBreak { margin-top: auto; flex-shrink: 0; }
-  #viewBreak { padding: 0; overflow: hidden; }
-  #breakFrame { width: 100%; flex: 1; min-height: 0; border: 0; }
+  #viewBreak, #viewTeenieping { padding: 0; overflow: hidden; }
+  #breakFrame, #teeniepingFrame { width: 100%; flex: 1; min-height: 0; border: 0; }
   .sidepanel {
     width: 340px; flex: none; display: flex; flex-direction: column; min-height: 0;
     background: #111827; border-left: 1px solid #1f2937;
@@ -756,12 +756,16 @@
     <div class="sp-view" id="viewBreak" hidden>
       <iframe id="breakFrame" title="Break Time - Macross" data-src="misc/game_macross.html" allow="fullscreen" allowfullscreen></iframe>
     </div>
+    <div class="sp-view" id="viewTeenieping" hidden>
+      <iframe id="teeniepingFrame" title="Break Time - Teenieping" data-src="misc/game_teenieping.html" allow="fullscreen" allowfullscreen></iframe>
+    </div>
   </section>
   <nav class="rail" aria-label="Tools">
     <button id="railChat" title="AI Chat" aria-label="AI Chat" aria-pressed="false">💬</button>
     <button id="railAgent" title="Agentic" aria-label="Agentic" aria-pressed="false">🪳</button>
     <button id="railBug" title="Bug Tracker" aria-label="Bug Tracker" aria-pressed="false">🐞</button>
     <button id="railBreak" type="button" title="Break Time" aria-label="Break Time" aria-controls="viewBreak" aria-pressed="false">&#9749;</button>
+    <button id="railTeenieping" type="button" title="Teenieping" aria-label="Teenieping" aria-controls="viewTeenieping" aria-pressed="false">🕹️</button>
   </nav>
 </div>
 
@@ -3264,10 +3268,10 @@ function autoSignIn() {
    ========================================================================= */
 (function () {
   const panel = document.getElementById("sidepanel");
-  const views = { chat: document.getElementById("viewChat"), agent: document.getElementById("viewAgent"), bug: document.getElementById("viewBug"), break: document.getElementById("viewBreak") };
-  const rails = { chat: document.getElementById("railChat"), agent: document.getElementById("railAgent"), bug: document.getElementById("railBug"), break: document.getElementById("railBreak") };
-  const titles = { chat: "AI Chat (Claude)", agent: "Agentic — scheduled workflows", bug: "Bug Tracker", break: "Break Time" };
-  const breakFrame = document.getElementById("breakFrame");
+  const views = { chat: document.getElementById("viewChat"), agent: document.getElementById("viewAgent"), bug: document.getElementById("viewBug"), break: document.getElementById("viewBreak"), teenieping: document.getElementById("viewTeenieping") };
+  const rails = { chat: document.getElementById("railChat"), agent: document.getElementById("railAgent"), bug: document.getElementById("railBug"), break: document.getElementById("railBreak"), teenieping: document.getElementById("railTeenieping") };
+  const titles = { chat: "AI Chat (Claude)", agent: "Agentic — scheduled workflows", bug: "Bug Tracker", break: "Break Time - Macross", teenieping: "Break Time - Teenieping" };
+  const gameFrames = { break: document.getElementById("breakFrame"), teenieping: document.getElementById("teeniepingFrame") };
   let current = null;
 
   function toggle(name) {
@@ -3279,14 +3283,17 @@ function autoSignIn() {
     }
     if (current) document.getElementById("spTitle").textContent = titles[current];
     if (current === "agent") { fillWorkflows(); renderJobs(); }
-    if (current === "break") breakFrame.src = breakFrame.dataset.src;
-    else breakFrame.removeAttribute("src");
+    for (const [name, frame] of Object.entries(gameFrames)) {
+      if (current === name) frame.src = frame.dataset.src;
+      else frame.removeAttribute("src");
+    }
     updateStageSize(); drawEdges();
   }
   rails.chat.addEventListener("click", () => toggle("chat"));
   rails.agent.addEventListener("click", () => toggle("agent"));
   rails.bug.addEventListener("click", () => toggle("bug"));
   rails.break.addEventListener("click", () => toggle("break"));
+  rails.teenieping.addEventListener("click", () => toggle("teenieping"));
 
   /* ---- chat ---- */
   const log = document.getElementById("chatLog");
