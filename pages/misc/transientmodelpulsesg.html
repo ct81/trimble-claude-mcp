@@ -1787,61 +1787,164 @@
         }
 
         function runSGValidation(expressIDs) {
-            if (!expressIDs || expressIDs.length === 0) { showToast("Select element(s) first.", 'error'); return; }
+            // ──────────────────────────────────────────────────────────────────────────
+            console.log('%c[SG-VALIDATION] ▶ START runSGValidation()', 'color:#00f0ff;font-weight:bold;');
+            console.log('[SG-VALIDATION] Input expressIDs:', expressIDs);
+            console.log('[SG-VALIDATION] currentModelID:', currentModelID);
+            console.log('[SG-VALIDATION] Input count:', expressIDs ? expressIDs.length : 0);
+
+            if (!expressIDs || expressIDs.length === 0) {
+                console.warn('[SG-VALIDATION] ⚠ No elements provided — aborting.');
+                showToast("Select element(s) first.", 'error');
+                return;
+            }
+
             const requiredSchema = {
-                'IFCWALL': { 'SGPset_Wall': ['ConstructionMethod', 'ReferTo2DDetail', 'ReinforcementSteelGrade'], 'SGPset_WallDimension': ['Mark', 'Thickness'] },
-                'IFCBEAM': { 'SGPset_Beam': ['Reference', 'Status'], 'Pset_BeamCommon': ['IsExternal', 'LoadBearing'] },
+                'IFCWALL':   { 'SGPset_Wall': ['ConstructionMethod', 'ReferTo2DDetail', 'ReinforcementSteelGrade'], 'SGPset_WallDimension': ['Mark', 'Thickness'] },
+                'IFCBEAM':   { 'SGPset_Beam': ['Reference', 'Status'], 'Pset_BeamCommon': ['IsExternal', 'LoadBearing'] },
                 'IFCCOLUMN': { 'SGPset_Column': ['Reference', 'Status'], 'Pset_ColumnCommon': ['IsExternal', 'LoadBearing'] },
-                'IFCSLAB': { 'SGPset_Slab': ['Reference', 'Status'], 'Pset_SlabCommon': ['IsExternal', 'LoadBearing', 'FireRating'] },
-                'IFCDOOR': { 'SGPset_Door': ['Reference', 'Status'], 'Pset_DoorCommon': ['IsExternal', 'FireRating', 'SecurityRating'] }
+                'IFCSLAB':   { 'SGPset_Slab': ['Reference', 'Status'], 'Pset_SlabCommon': ['IsExternal', 'LoadBearing', 'FireRating'] },
+                'IFCDOOR':   { 'SGPset_Door': ['Reference', 'Status'], 'Pset_DoorCommon': ['IsExternal', 'FireRating', 'SecurityRating'] }
             };
-            let allErrors = []; let processedCount = 0;
+            console.log('[SG-VALIDATION] Required schema:', JSON.parse(JSON.stringify(requiredSchema)));
+
+            let allErrors = [];
+            let processedCount = 0;
+            console.log('[SG-VALIDATION] Starting per-element iteration...');
+
             const validateElementById = (id, schema, isPart = false) => {
-                const safeId = safeExpressID(id); if (safeId < 0) return;
+                const safeId = safeExpressID(id);
+                console.log(`  [VALIDATE] → id=${id} safeId=${safeId} isPart=${isPart} type=${isPart ? 'Part' : 'Element'}`);
+                if (safeId < 0) {
+                    console.warn(`  [VALIDATE] ⚠ Skipping invalid id=${id}`);
+                    return;
+                }
+
+                console.log(`  [VALIDATE] Fetching psets for safeId=${safeId}...`);
                 const psetMap = getPsetsAsMap(currentModelID, safeId);
+                console.log(`  [VALIDATE] Pset map size=${psetMap.size}, keys=[${Array.from(psetMap.keys()).join(', ')}]`);
+
                 const elementName = isPart ? `Part (ID: ${safeId})` : `Element (ID: ${safeId})`;
+
                 Object.keys(schema).forEach(requiredPsetName => {
                     const requiredProps = schema[requiredPsetName];
-                    if (!psetMap.has(requiredPsetName)) { allErrors.push({ element: elementName, type: 'Missing Pset', detail: `Missing entire Pset: ${requiredPsetName}` }); return; }
+                    console.log(`  [VALIDATE] Checking required pset: "${requiredPsetName}" (props: ${requiredProps.join(', ')})`);
+
+                    if (!psetMap.has(requiredPsetName)) {
+                        console.warn(`  [VALIDATE] ❌ Missing entire pset: "${requiredPsetName}" on ${elementName}`);
+                        allErrors.push({ element: elementName, type: 'Missing Pset', detail: `Missing entire Pset: ${requiredPsetName}` });
+                        return;
+                    }
+
+                    console.log(`  [VALIDATE] ✔ Pset "${requiredPsetName}" present — iterating props...`);
                     const propsMap = psetMap.get(requiredPsetName);
+
                     requiredProps.forEach(propName => {
-                        if (!propsMap.has(propName)) { allErrors.push({ element: elementName, type: 'Missing Attribute', detail: `Missing attribute: ${requiredPsetName}.${propName}` }); }
-                        else {
+                        if (!propsMap.has(propName)) {
+                            console.warn(`  [VALIDATE] ❌ Missing attribute: "${requiredPsetName}.${propName}" on ${elementName}`);
+                            allErrors.push({ element: elementName, type: 'Missing Attribute', detail: `Missing attribute: ${requiredPsetName}.${propName}` });
+                        } else {
                             const val = propsMap.get(propName);
-                            if (val === null || val === undefined || val === "" || val === "N/A") allErrors.push({ element: elementName, type: 'Empty Attribute', detail: `Empty attribute: ${requiredPsetName}.${propName}` });
+                            console.log(`  [VALIDATE]   • ${requiredPsetName}.${propName} =`, val);
+                            if (val === null || val === undefined || val === "" || val === "N/A") {
+                                console.warn(`  [VALIDATE] ❌ Empty attribute: "${requiredPsetName}.${propName}" on ${elementName}`);
+                                allErrors.push({ element: elementName, type: 'Empty Attribute', detail: `Empty attribute: ${requiredPsetName}.${propName}` });
+                            }
                         }
                     });
                 });
             };
-            expressIDs.forEach(expressID => {
+
+            expressIDs.forEach((expressID, idx) => {
                 const safeId = safeExpressID(expressID);
-                if (safeId < 0) { allErrors.push({ element: `ID: ${expressID}`, type: 'Invalid ID', detail: 'Express ID could not be parsed.' }); return; }
+                console.log(`\n[SG-VALIDATION] ─── Element ${idx + 1}/${expressIDs.length}: expressID=${expressID} safeId=${safeId} ───`);
+
+                if (safeId < 0) {
+                    console.warn(`[SG-VALIDATION] ⚠ Invalid Express ID: ${expressID}`);
+                    allErrors.push({ element: `ID: ${expressID}`, type: 'Invalid ID', detail: 'Express ID could not be parsed.' });
+                    return;
+                }
+
                 try {
                     let ifcLine = null;
-                    try { ifcLine = ifcAPI.GetLine(currentModelID, safeId, true); } catch(e) {}
+                    try {
+                        ifcLine = ifcAPI.GetLine(currentModelID, safeId, true);
+                        console.log(`[SG-VALIDATION] GetLine(${safeId}) →`, ifcLine ? (ifcLine.type || ifcLine.constructor.name) : 'null');
+                    } catch (e) {
+                        console.warn(`[SG-VALIDATION] GetLine threw for id=${safeId}:`, e);
+                    }
+
                     const elementType = ifcLine && (ifcLine.type || ifcLine.constructor.name);
+                    console.log(`[SG-VALIDATION] Element type: "${elementType}"`);
+
                     const schema = requiredSchema[elementType];
-                    if (schema) { processedCount++; validateElementById(safeId, schema, false); const parts = getParts(currentModelID, safeId); parts.forEach(partId => validateElementById(partId, schema, true)); }
-                } catch (elemErr) { allErrors.push({ element: `ID: ${safeId}`, type: 'Extraction Error', detail: String(elemErr.message || elemErr) }); }
+                    if (schema) {
+                        console.log(`[SG-VALIDATION] ✔ Schema found for "${elementType}" — validating element...`);
+                        processedCount++;
+                        console.log(`[SG-VALIDATION] processedCount now: ${processedCount}`);
+
+                        validateElementById(safeId, schema, false);
+
+                        // Also validate parts
+                        console.log(`[SG-VALIDATION] Fetching decomposed parts for safeId=${safeId}...`);
+                        const parts = getParts(currentModelID, safeId);
+                        console.log(`[SG-VALIDATION] Found ${parts.length} part(s):`, parts);
+                        parts.forEach(partId => validateElementById(partId, schema, true));
+                    } else {
+                        console.warn(`[SG-VALIDATION] ⚠ No schema mapped for element type: "${elementType}"`);
+                        // NOTE: your original code did NOT push an error for unsupported types — keeping behavior identical
+                    }
+                } catch (elemErr) {
+                    console.error(`[SG-VALIDATION] ❌ Extraction error for safeId=${safeId}:`, elemErr);
+                    allErrors.push({ element: `ID: ${safeId}`, type: 'Extraction Error', detail: String(elemErr.message || elemErr) });
+                }
             });
+
+            console.log('\n[SG-VALIDATION] ─── VALIDATION SUMMARY ───');
+            console.log('[SG-VALIDATION] Total elements processed (with schema):', processedCount);
+            console.log('[SG-VALIDATION] Total errors found:', allErrors.length);
+            console.log('[SG-VALIDATION] Errors:', allErrors);
+
+            // ─── Render results ───
+            console.log('[SG-VALIDATION] Rendering results into modal...');
             valContent.innerHTML = '';
+
             if (allErrors.length === 0) {
+                console.log('[SG-VALIDATION] ✔ ALL PASSED');
                 valContent.innerHTML = `<div class="val-success">✅ ALL PASSED<br><span style="font-size:0.8rem; color:var(--text-muted); font-weight:normal;">Validated ${processedCount} element(s). All required data is present.</span></div>`;
             } else {
+                console.log(`[SG-VALIDATION] ❌ FAILED with ${allErrors.length} issue(s) — grouping by element...`);
                 valContent.innerHTML = `<div style="color:var(--neon-pink); margin-bottom: 10px; font-weight: bold;">❌ FAILED - ${allErrors.length} issue(s) found across ${processedCount} element(s):</div>`;
+
                 const groupedErrors = {};
-                allErrors.forEach(err => { if (!groupedErrors[err.element]) groupedErrors[err.element] = []; groupedErrors[err.element].push(err); });
+                allErrors.forEach(err => {
+                    if (!groupedErrors[err.element]) groupedErrors[err.element] = [];
+                    groupedErrors[err.element].push(err);
+                });
+                console.log('[SG-VALIDATION] Grouped errors:', groupedErrors);
+
                 Object.keys(groupedErrors).forEach(elementName => {
-                    const header = document.createElement('div'); header.className = 'val-part-header'; header.innerText = elementName; valContent.appendChild(header);
+                    console.log(`[SG-VALIDATION] Rendering group for "${elementName}" (${groupedErrors[elementName].length} issue(s))`);
+                    const header = document.createElement('div');
+                    header.className = 'val-part-header';
+                    header.innerText = elementName;
+                    valContent.appendChild(header);
+
                     groupedErrors[elementName].forEach(err => {
-                        const item = document.createElement('div'); item.className = 'val-error-item';
+                        console.log(`  → [${err.type}] ${err.detail}`);
+                        const item = document.createElement('div');
+                        item.className = 'val-error-item';
                         item.innerHTML = `<strong>[${err.type}]</strong> <span>${err.detail}</span>`;
                         valContent.appendChild(item);
                     });
                 });
             }
+
+            console.log('[SG-VALIDATION] Opening validation modal...');
             validationModal.style.display = 'flex';
             validationModal.classList.add('open');
+
+            console.log('%c[SG-VALIDATION] ■ END runSGValidation()', 'color:#00f0ff;font-weight:bold;');
         }
         document.getElementById('header-validate-btn').addEventListener('click', () => runSGValidation(Array.from(selectedMeshes.keys())));
         document.getElementById('btn-validate-sg').addEventListener('click', () => runSGValidation(Array.from(selectedMeshes.keys())));
