@@ -1,8 +1,9 @@
 {
 "icon": "https://ct81.github.io/trimble-claude-mcp/images/svg/roachharbor-icon-white.svg?color=%23FFFFFF",
- "title": "RoachHarbor (BETA)",
+ "title": "RoachHarbor",
  "url": "https://trimble-claude-mcp-g86i.onrender.com/pages/workflowBuilder.html",
 "description": "Built to Adapt, Connect Like Nerves & Designed to Thrive.",
 "configCommand": "do_config",
-"enabled": true
+"enabled": true,
+"beta": true
 }
