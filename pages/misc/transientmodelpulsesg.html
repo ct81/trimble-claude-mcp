@@ -1788,15 +1788,12 @@
 
         function runSGValidation(expressIDs) {
             if (!expressIDs || expressIDs.length === 0) { showToast("Select element(s) first.", 'error'); return; }
-            //const requiredSchema = {
-                //'IFCWALL': { 'SGPset_Wall': ['ConstructionMethod', 'ReferTo2DDetail', 'ReinforcementSteelGrade'], 'Pset_WallCommon': ['IsExternal', 'LoadBearing', 'FireRating'] },
-                //'IFCSLAB': { 'SGPset_Slab': ['Reference', 'Status'], 'Pset_SlabCommon': ['IsExternal', 'LoadBearing', 'FireRating'] },
-                //'IFCDOOR': { 'SGPset_Door': ['Reference', 'Status'], 'Pset_DoorCommon': ['IsExternal', 'FireRating', 'SecurityRating'] },
-                //'IFCCOLUMN': { 'SGPset_Column': ['Reference', 'Status'], 'Pset_ColumnCommon': ['IsExternal', 'LoadBearing'] },
-                //'IFCBEAM': { 'SGPset_Beam': ['Reference', 'Status'], 'Pset_BeamCommon': ['IsExternal', 'LoadBearing'] }
-            //};
             const requiredSchema = {
                 'IFCWALL': { 'SGPset_Wall': ['ConstructionMethod', 'ReferTo2DDetail', 'ReinforcementSteelGrade'], 'SGPset_WallDimension': ['Mark', 'Thickness'] },
+                'IFCBEAM': { 'SGPset_Beam': ['Reference', 'Status'], 'Pset_BeamCommon': ['IsExternal', 'LoadBearing'] },
+                'IFCCOLUMN': { 'SGPset_Column': ['Reference', 'Status'], 'Pset_ColumnCommon': ['IsExternal', 'LoadBearing'] },
+                'IFCSLAB': { 'SGPset_Slab': ['Reference', 'Status'], 'Pset_SlabCommon': ['IsExternal', 'LoadBearing', 'FireRating'] },
+                'IFCDOOR': { 'SGPset_Door': ['Reference', 'Status'], 'Pset_DoorCommon': ['IsExternal', 'FireRating', 'SecurityRating'] }
             };
             let allErrors = []; let processedCount = 0;
             const validateElementById = (id, schema, isPart = false) => {
@@ -1825,7 +1822,6 @@
                     const elementType = ifcLine && (ifcLine.type || ifcLine.constructor.name);
                     const schema = requiredSchema[elementType];
                     if (schema) { processedCount++; validateElementById(safeId, schema, false); const parts = getParts(currentModelID, safeId); parts.forEach(partId => validateElementById(partId, schema, true)); }
-                    else { allErrors.push({ element: `ID: ${safeId}`, type: 'Unsupported Type', detail: `No SGPsets mapped for type: ${elementType}` }); }
                 } catch (elemErr) { allErrors.push({ element: `ID: ${safeId}`, type: 'Extraction Error', detail: String(elemErr.message || elemErr) }); }
             });
             valContent.innerHTML = '';
