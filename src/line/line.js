@@ -1,7 +1,7 @@
 
 import express from "express";
 import crypto from "node:crypto";
-import nodemailer from "nodemailer";
+import { sendResendMail } from "../resend/resendmail.js";
 
 const router = express.Router();
 
@@ -16,24 +16,6 @@ const LINE_CHANNEL_ACCESS_TOKEN =
 
 const LINE_REPLY_API =
     "https://api.line.me/v2/bot/message/reply";
-
-// =====================================================
-// 2. EMAIL CONFIGURATION
-// =====================================================
-
-const emailTransporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || "smtp.gmail.com",
-    port: Number(process.env.SMTP_PORT || 465),
-    secure: Number(process.env.SMTP_PORT || 465) === 465,
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
-
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-    }
-});
 
 // =====================================================
 // 3. VERIFY LINE WEBHOOK SIGNATURE
@@ -117,11 +99,11 @@ async function saveIncomingMessage(event) {
 async function sendLineMessageEmail(incoming) {
 
     if (
-        !process.env.SMTP_USER ||
-        !process.env.SMTP_PASS ||
+        !process.env.RESEND_API_KEY ||
+        !process.env.RESEND_FROM_EMAIL ||
         !process.env.NOTIFICATION_EMAIL
     ) {
-        console.warn("Email notification not configured.");
+        console.warn("Email notification not configured: set RESEND_API_KEY, RESEND_FROM_EMAIL, and NOTIFICATION_EMAIL.");
         return;
     }
 
@@ -161,8 +143,6 @@ RoachHarbor LINE Notification
 
     const mailOptions = {
 
-        from: process.env.SMTP_USER,
-
         to: process.env.NOTIFICATION_EMAIL,
 
         subject: "New LINE Message - ChesBot",
@@ -170,9 +150,9 @@ RoachHarbor LINE Notification
         text: emailContent
     };
 
-    await emailTransporter.sendMail(mailOptions);
+    await sendResendMail(mailOptions);
 
-    console.log("LINE notification email sent successfully.");
+    console.log("LINE notification email accepted by Resend.");
 }
 
 // =====================================================
