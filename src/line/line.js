@@ -17,6 +17,9 @@ const LINE_CHANNEL_ACCESS_TOKEN =
 const LINE_REPLY_API =
     "https://api.line.me/v2/bot/message/reply";
 const MAX_LINE_IMAGE_BYTES = 20 * 1024 * 1024;
+const issueMenus = new Map();
+const ISSUE_MENU_TTL_MS = 10 * 60 * 1000;
+const MAX_ISSUE_MENUS = 1000;
 
 // =====================================================
 // 3. VERIFY LINE WEBHOOK SIGNATURE
@@ -219,7 +222,7 @@ RoachHarbor LINE Notification
 // 6. SEND REPLY TO LINE
 // =====================================================
 
-async function replyToLine(replyToken, message) {
+async function replyToLine(replyToken, message, quickReply) {
 
     if (!LINE_CHANNEL_ACCESS_TOKEN) {
         throw new Error("LINE access token is missing.");
@@ -244,7 +247,8 @@ async function replyToLine(replyToken, message) {
             messages: [
                 {
                     type: "text",
-                    text: String(message).slice(0, 5000)
+                    text: String(message).slice(0, 5000),
+                    ...(quickReply && { quickReply })
                 }
             ]
         })
@@ -310,6 +314,45 @@ async function processEvents(events) {
             const incoming =
                 await saveIncomingMessage(event);
 
+            const source = event.source || {};
+            const menuKey = JSON.stringify([source.type, source.groupId || source.roomId || null, source.userId || null]);
+            const text = typeof incoming.messageText === "string" ? incoming.messageText.trim().toLowerCase() : "";
+            const state = issueMenus.get(menuKey);
+            const activeState = state?.expiresAt > Date.now() ? state.stage : null;
+
+            if (text === "trimble log issue") {
+                issueMenus.delete(menuKey);
+                if (issueMenus.size >= MAX_ISSUE_MENUS) issueMenus.delete(issueMenus.keys().next().value);
+                issueMenus.set(menuKey, { stage: "menu", expiresAt: Date.now() + ISSUE_MENU_TTL_MS });
+                if (event.replyToken) {
+                    await replyToLine(event.replyToken, "Please choose an option:", {
+                        items: [
+                            { type: "action", action: { type: "message", label: "1. Log an issue", text: "Log an issue" } },
+                            { type: "action", action: { type: "message", label: "2. Maybe later", text: "Maybe later" } }
+                        ]
+                    });
+                }
+                continue;
+            }
+
+            if (text === "maybe later" || (activeState === "menu" && (text === "2" || text === "2. maybe later"))) {
+                issueMenus.delete(menuKey);
+                if (event.replyToken) await replyToLine(event.replyToken, "Okay, maybe later.");
+                continue;
+            }
+
+            if (activeState === "menu" && (text === "log an issue" || text === "1" || text === "1. log an issue")) {
+                issueMenus.set(menuKey, { stage: "issue", expiresAt: Date.now() + ISSUE_MENU_TTL_MS });
+                if (event.replyToken) await replyToLine(event.replyToken, "Please send the issue details or an image.");
+                continue;
+            }
+
+            if (activeState !== "issue") {
+                issueMenus.delete(menuKey);
+                continue;
+            }
+            issueMenus.delete(menuKey);
+
             // STEP 2: Send email notification
 
             void sendLineMessageEmail(incoming).catch(emailError => {
@@ -322,6 +365,7 @@ async function processEvents(events) {
             // STEP 3: Process text messages only
 
             if (event.message?.type !== "text") {
+                if (event.replyToken) await replyToLine(event.replyToken, "Your issue message has been received.");
                 continue;
             }
 
