@@ -16,6 +16,7 @@ const LINE_CHANNEL_ACCESS_TOKEN =
 
 const LINE_REPLY_API =
     "https://api.line.me/v2/bot/message/reply";
+const MAX_LINE_IMAGE_BYTES = 20 * 1024 * 1024;
 
 // =====================================================
 // 3. VERIFY LINE WEBHOOK SIGNATURE
@@ -96,6 +97,52 @@ async function saveIncomingMessage(event) {
 // 5. SEND EMAIL NOTIFICATION
 // =====================================================
 
+async function getLineImageAttachment(messageId) {
+    if (!LINE_CHANNEL_ACCESS_TOKEN || !messageId) {
+        throw new Error("LINE access token or message ID is missing.");
+    }
+
+    const response = await fetch(
+        `https://api-data.line.me/v2/bot/message/${encodeURIComponent(messageId)}/content`,
+        {
+            headers: { "Authorization": `Bearer ${LINE_CHANNEL_ACCESS_TOKEN}` },
+            signal: AbortSignal.timeout(15000)
+        }
+    );
+    if (!response.ok) {
+        throw new Error(`LINE image download failed (HTTP ${response.status}).`);
+    }
+    if (Number(response.headers.get("content-length")) > MAX_LINE_IMAGE_BYTES) {
+        await response.body?.cancel();
+        throw new Error("LINE image exceeds the 20 MB attachment limit.");
+    }
+    if (!response.body) {
+        throw new Error("LINE image download returned an empty body.");
+    }
+
+    const chunks = [];
+    let totalBytes = 0;
+    for await (const chunk of response.body) {
+        totalBytes += chunk.length;
+        if (totalBytes > MAX_LINE_IMAGE_BYTES) {
+            throw new Error("LINE image exceeds the 20 MB attachment limit.");
+        }
+        chunks.push(chunk);
+    }
+    if (!totalBytes) {
+        throw new Error("LINE image download returned an empty body.");
+    }
+
+    const contentType = (response.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+    const extensions = { "image/jpeg": "jpg", "image/png": "png", "image/gif": "gif", "image/webp": "webp" };
+    const extension = extensions[contentType] || "bin";
+    return {
+        filename: `line-image.${extension}`,
+        content: Buffer.concat(chunks).toString("base64"),
+        content_type: extensions[contentType] ? contentType : "application/octet-stream"
+    };
+}
+
 async function sendLineMessageEmail(incoming) {
 
     if (
@@ -141,13 +188,26 @@ ${incoming.timestamp.toLocaleString("en-SG", {
 RoachHarbor LINE Notification
 `;
 
+    let attachments;
+    let imageError;
+    if (incoming.messageType === "image") {
+        try {
+            attachments = [await getLineImageAttachment(incoming.messageId)];
+        } catch (error) {
+            imageError = error.message;
+            console.error("LINE image download failed:", imageError);
+        }
+    }
+
     const mailOptions = {
 
         to: process.env.NOTIFICATION_EMAIL,
 
         subject: "New LINE Message - ChesBot",
 
-        text: emailContent
+        text: imageError ? `${emailContent}\nImage attachment unavailable: ${imageError}` : emailContent,
+
+        attachments
     };
 
     await sendResendMail(mailOptions);

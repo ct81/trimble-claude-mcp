@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp & Telegram ChatBots, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #70"
+// #71"
 // git push origin main
 
 // git add .
@@ -15,8 +15,11 @@
 //https://console.cloud.google.com/auth/clients?utm_source=chatgpt.com&project=my-test-212801
 //https://dashboard.metered.ca/v2/turn/credentials
 
+//https://developers.line.biz/en/docs/messaging-api/pricing/#examples-of-subscription-plans
 //https://manager.line.biz/account/@270rhuio/setting/response
 //https://developers.line.biz/console/channel/2012537090/messaging-api
+
+//https://resend.com/pricing
 //https://resend.com/metrics
 
 // git add src/mcp/http.js src/mcp/tools.js
