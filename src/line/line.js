@@ -25,6 +25,9 @@ const emailTransporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || "smtp.gmail.com",
     port: Number(process.env.SMTP_PORT || 465),
     secure: Number(process.env.SMTP_PORT || 465) === 465,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
 
     auth: {
         user: process.env.SMTP_USER,
@@ -269,19 +272,12 @@ async function processEvents(events) {
 
             // STEP 2: Send email notification
 
-            try {
-
-                await sendLineMessageEmail(incoming);
-
-            } catch (emailError) {
-
+            void sendLineMessageEmail(incoming).catch(emailError => {
                 console.error(
                     "Email notification failed:",
                     emailError.message
                 );
-
-                // Continue chatbot processing
-            }
+            });
 
             // STEP 3: Process text messages only
 
