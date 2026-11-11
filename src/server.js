@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp & Telegram ChatBots, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #66"
+// #67"
 // git push origin main
 
 // git add .
@@ -46,6 +46,7 @@ import { authorizationUrl, exchangeCode, requireSession } from './oauth/oauth.js
 // import { tools } from './trimble/client.js';
 import { definitions, getDefinitions, callTool } from './mcp/tools.js';
 import { handleMcp } from './mcp/http.js';
+import lineRouter from './line/line.js';
 import {
   handleIncomingWebhook,
   consumeWhatsAppLoginToken,
@@ -754,7 +755,6 @@ app.get('/public/workspace-bridge.html', (req, res) => {
   );
 });
 
-const lineRouter = require("./line");
 app.use("/line/line", lineRouter);
 
 //app.use(express.json({limit:'2mb'}));

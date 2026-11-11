@@ -1,7 +1,7 @@
 
-const express = require("express");
-const crypto = require("crypto");
-const nodemailer = require("nodemailer");
+import express from "express";
+import crypto from "node:crypto";
+import nodemailer from "nodemailer";
 
 const router = express.Router();
 
@@ -407,4 +407,4 @@ router.post(
 // 10. EXPORT
 // =====================================================
 
-module.exports = router;
+export default router;
