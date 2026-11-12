@@ -1160,10 +1160,13 @@
             return val;
         }
 
-        function getPsetsAsMap(modelID, expressID) {
+        async function getPsetsAsMap(modelID, expressID) {
             const psetMap = new Map();
             const safeId = safeExpressID(expressID); if (safeId < 0) return psetMap;
-            let rawElement = null; try { rawElement = ifcAPI.GetLine(modelID, safeId, false); } catch(e) { return psetMap; }
+            // GetLine needs inverse=true to populate IsDefinedBy / IsTypedBy
+            let rawElement = null;
+            try { rawElement = ifcAPI.GetLine(modelID, safeId, false, true); } catch(e) {}
+            if (!rawElement) { try { rawElement = ifcAPI.GetLine(modelID, safeId, false); } catch(e) { return psetMap; } }
             const processPsetHandle = (psetHandle) => {
                 const psetID = safeExpressID(psetHandle); if (psetID < 0) return;
                 let pset = null; try { pset = ifcAPI.GetLine(modelID, psetID, false); } catch(e) { return; }
@@ -1179,6 +1182,12 @@
                     });
                 }
             };
+            // Primary source: web-ifc properties API (same as the properties panel)
+            try {
+                const apiPsets = ifcAPI.properties.getPropertySets(modelID, safeId, true);
+                const awaited = apiPsets instanceof Promise ? await apiPsets : apiPsets;
+                if (awaited) iterateCollection(awaited, pset => processPsetHandle(pset));
+            } catch(e) {}
             if (rawElement) {
                 if (rawElement.IsDefinedBy) {
                     iterateCollection(rawElement.IsDefinedBy, relHandle => {
@@ -1205,7 +1214,10 @@
         function getParts(modelID, expressID) {
             const parts = [];
             const safeId = safeExpressID(expressID); if (safeId < 0) return parts;
-            let rawElement = null; try { rawElement = ifcAPI.GetLine(modelID, safeId, false); } catch(e) { return parts; }
+            // GetLine needs inverse=true to populate IsDecomposedBy
+            let rawElement = null;
+            try { rawElement = ifcAPI.GetLine(modelID, safeId, false, true); } catch(e) {}
+            if (!rawElement) { try { rawElement = ifcAPI.GetLine(modelID, safeId, false); } catch(e) { return parts; } }
             if (rawElement && rawElement.IsDecomposedBy) {
                 iterateCollection(rawElement.IsDecomposedBy, relHandle => {
                     const relId = safeExpressID(relHandle); if (relId < 0) return;
@@ -1830,7 +1842,7 @@
             });
         }
 
-        function runSGValidation(expressIDs) {
+        async function runSGValidation(expressIDs) {
             // ──────────────────────────────────────────────────────────────────────────
             console.log('%c[SG-VALIDATION] ▶ START runSGValidation()', 'color:#00f0ff;font-weight:bold;');
             console.log('[SG-VALIDATION] Input expressIDs:', expressIDs);
@@ -1856,7 +1868,7 @@
             let processedCount = 0;
             console.log('[SG-VALIDATION] Starting per-element iteration...');
 
-            const validateElementById = (id, schema, isPart = false) => {
+            const validateElementById = async (id, schema, isPart = false) => {
                 const safeId = safeExpressID(id);
                 console.log(`  [VALIDATE] → id=${id} safeId=${safeId} isPart=${isPart} type=${isPart ? 'Part' : 'Element'}`);
                 if (safeId < 0) {
@@ -1865,7 +1877,7 @@
                 }
 
                 console.log(`  [VALIDATE] Fetching psets for safeId=${safeId}...`);
-                const psetMap = getPsetsAsMap(currentModelID, safeId);
+                const psetMap = await getPsetsAsMap(currentModelID, safeId);
                 console.log(`  [VALIDATE] Pset map size=${psetMap.size}, keys=[${Array.from(psetMap.keys()).join(', ')}]`);
 
                 const elementName = isPart ? `Part (ID: ${safeId})` : `Element (ID: ${safeId})`;
@@ -1905,13 +1917,13 @@
                 });
             };
 
-            expressIDs.forEach((expressID, idx) => {
+            for (const [idx, expressID] of expressIDs.entries()) {
                 const safeId = safeExpressID(expressID);
                 console.log(`\n[SG-VALIDATION] ─── Element ${idx + 1}/${expressIDs.length}: expressID=${expressID} safeId=${safeId} ───`);
 
                 if (safeId < 0) {
                     console.warn(`[SG-VALIDATION] ⚠ Invalid Express ID: ${expressID} — cannot resolve type, skipping.`);
-                    return;
+                    continue;
                 }
 
                 try {
@@ -1929,7 +1941,7 @@
 
                     if (!elementType) {
                         console.warn(`[SG-VALIDATION] ⚠ Could not resolve IFC type for safeId=${safeId} — not in requiredSchema scope, skipping.`);
-                        return;
+                        continue;
                     }
 
                     const schema = requiredSchema[elementType];
@@ -1938,13 +1950,13 @@
                         processedCount++;
                         console.log(`[SG-VALIDATION] processedCount now: ${processedCount}`);
 
-                        validateElementById(safeId, schema, false);
+                        await validateElementById(safeId, schema, false);
 
                         // Also validate parts
                         console.log(`[SG-VALIDATION] Fetching decomposed parts for safeId=${safeId}...`);
                         const parts = getParts(currentModelID, safeId);
                         console.log(`[SG-VALIDATION] Found ${parts.length} part(s):`, parts);
-                        parts.forEach(partId => validateElementById(partId, schema, true));
+                        for (const partId of parts) await validateElementById(partId, schema, true);
                     } else {
                         console.warn(`[SG-VALIDATION] ⚠ No schema mapped for element type: "${elementType}" — skipping (only requiredSchema types are validated).`);
                     }
@@ -1952,7 +1964,7 @@
                     console.error(`[SG-VALIDATION] ❌ Extraction error for safeId=${safeId}:`, elemErr);
                     allErrors.push({ element: `ID: ${safeId}`, type: 'Extraction Error', detail: String(elemErr.message || elemErr) });
                 }
-            });
+            }
 
             console.log('\n[SG-VALIDATION] ─── VALIDATION SUMMARY ───');
             console.log('[SG-VALIDATION] Total elements processed (with schema):', processedCount);
