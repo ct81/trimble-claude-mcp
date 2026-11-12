@@ -6,6 +6,7 @@
     <title>Transient Model Pulse SG</title>
     
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 
     <style>
         :root {
@@ -211,6 +212,7 @@
         .prop-row { display: grid; grid-template-columns: 180px 1fr; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px; align-items: start; font-size: 0.8rem; }
         .prop-key { color: var(--text-muted); word-break: break-word; }
         .prop-val { color: #fff; word-break: break-word; }
+        .qr-img { display: block; width: 120px; height: 120px; background: #fff; padding: 6px; border-radius: 4px; image-rendering: pixelated; margin-top: 4px; }
 
         .spinner-container { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; color: var(--neon-blue); }
         .spinner { border: 3px solid rgba(0, 240, 255, 0.1); border-top: 3px solid var(--neon-blue); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px; }
@@ -1761,15 +1763,32 @@
                 attrContent.appendChild(row);
             };
 
+            // Render a QR code encoding the Global ID value, shown right under the Global ID row
+            const addQrCodeRow = (text) => {
+                if (!text || typeof qrcode === 'undefined') return;
+                try {
+                    const qr = qrcode(0, 'M');
+                    qr.addData(String(text));
+                    qr.make();
+                    const dataUrl = qr.createDataURL(4, 8);
+                    const row = document.createElement('div');
+                    row.className = 'prop-row';
+                    row.innerHTML = `<div class="prop-key">QR Code</div><div class="prop-val"><img class="qr-img" src="${dataUrl}" alt="QR code for ${text}" title="${text}"></div>`;
+                    attrContent.appendChild(row);
+                } catch(e) { console.warn('[QR] Failed to generate QR code:', e); }
+            };
+
             addAttributeRow("Express ID", safeId);
             if (ifcLine) {
                 if (ifcLine.GlobalId && ifcLine.GlobalId.value) {
                     addAttributeRow("Global ID", ifcLine.GlobalId.value);
+                    addQrCodeRow(ifcLine.GlobalId.value);
                 } else {
                     const fallback = findGlobalIdForNonRoot(modelID, safeId);
                     if (fallback) {
                         addAttributeRow("Global ID (fallback)", fallback.id);
                         addAttributeRow("Global ID source", fallback.source);
+                        addQrCodeRow(fallback.id);
                     } else {
                         addAttributeRow("Global ID", "— (no GlobalId, no root ancestor found)");
                     }
