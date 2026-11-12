@@ -3072,6 +3072,44 @@
             showToast(`Imported ${validCount} records successfully.`, 'success');
         }
 
+        // Central color map — add as many statuses as you want
+        const STATUS_COLOR_MAP = {
+            'completed':   { color: '#00ff88', label: 'Completed'    },  // neon green
+            'in progress': { color: '#ffc400', label: 'In Progress'  },  // amber
+            'delayed':     { color: '#ff007f', label: 'Delayed'      },  // neon pink
+            'pending':     { color: '#9d4edd', label: 'Pending'      },  // purple
+            'not started': { color: '#7a8ba3', label: 'Not Started'  },  // grey
+            'failed':      { color: '#ff3b3b', label: 'Failed'       },  // red
+            'on hold':     { color: '#00b4ff', label: 'On Hold'      }   // blue
+        };
+
+        function getStatusColor(statusRaw) {
+            const s = String(statusRaw || '').toLowerCase().trim();
+            // exact match
+            if (STATUS_COLOR_MAP[s]) return STATUS_COLOR_MAP[s].color;
+            // fuzzy match
+            for (const key of Object.keys(STATUS_COLOR_MAP)) {
+                if (s.includes(key)) return STATUS_COLOR_MAP[key].color;
+            }
+            // default
+            return '#ff9900';
+        }
+        
+        // Apply each status's color (from STATUS_COLOR_MAP) to the matching model elements
+        function applyStatusColors() {
+            let count = 0;
+            importedDataMap.forEach((data, guid) => {
+                const mesh = guidToMeshMap.get(guid);
+                if (mesh) {
+                    const color = new THREE.Color(getStatusColor(data.status));
+                    const newMat = sharedDefaultMaterial.clone();
+                    newMat.color = color; newMat.emissive = color.clone().multiplyScalar(0.3); newMat.opacity = 1.0;
+                    mesh.material = newMat; count++;
+                }
+            });
+            return count;
+        }
+
         document.getElementById('btn-load-sample').addEventListener('click', () => {
             try {
                 // ── Build 8 sample rows driven by the currently loaded model (if any) ──
@@ -3094,8 +3132,11 @@
                 // ── Load into the app ──
                 processImportedData(sampleRows);
 
+                // ── Colorize model elements by status ──
+                const colored = applyStatusColors();
+
                 if (realGuids.length > 0) {
-                    showToast(`Loaded 8 sample rows with REAL GUIDs from model.`, 'success');
+                    showToast(`Loaded 8 sample rows with REAL GUIDs — ${colored} element(s) colored by status.`, 'success');
                 } else {
                     showToast(`Loaded 8 sample rows (Dummy GUIDs — load a model for real mapping).`, 'success');
                 }
@@ -3119,21 +3160,7 @@
 
         document.getElementById('btn-apply-status').addEventListener('click', () => {
             if (importedDataMap.size === 0) return showToast("Import data first.", 'error');
-            let count = 0;
-            importedDataMap.forEach((data, guid) => {
-                const mesh = guidToMeshMap.get(guid);
-                if (mesh) {
-                    let colorHex = '#ff9900';
-                    const s = (data.status || "").toLowerCase();
-                    if (s.includes('complete') || s.includes('done')) colorHex = '#00ff88';
-                    else if (s.includes('delay') || s.includes('issue') || s.includes('fail')) colorHex = '#ff007f';
-                    else if (s.includes('pending') || s.includes('not started') || s.includes('open')) colorHex = '#7a8ba3';
-                    const color = new THREE.Color(colorHex);
-                    const newMat = sharedDefaultMaterial.clone();
-                    newMat.color = color; newMat.emissive = color.clone().multiplyScalar(0.3); newMat.opacity = 1.0;
-                    mesh.material = newMat; count++;
-                }
-            });
+            const count = applyStatusColors();
             showToast(`Applied status colors to ${count} elements.`, 'success');
         });
 
