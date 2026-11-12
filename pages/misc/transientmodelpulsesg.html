@@ -1882,18 +1882,34 @@
 
                 const elementName = isPart ? `Part (ID: ${safeId})` : `Element (ID: ${safeId})`;
 
-                // Find a property by name: prefer the schema's named pset, otherwise search any pset on the element
+                // Empty = null/undefined, blank or whitespace-only string, or placeholder like "N/A"
+                const isEmptyVal = (v) => {
+                    if (v === null || v === undefined) return true;
+                    if (typeof v === 'string') {
+                        const t = v.trim();
+                        return t === '' || t.toUpperCase() === 'N/A' || t === '-';
+                    }
+                    return false;
+                };
+
+                // Find a property by name: prefer the schema's named pset, otherwise search any pset.
+                // If the first match is empty, keep searching other psets for a non-empty value.
                 const findProp = (preferredPsetName, propName) => {
+                    let best = null;
+                    const consider = (psetName, propsMap) => {
+                        if (!propsMap.has(propName)) return false;
+                        const val = propsMap.get(propName);
+                        if (!best) best = { found: true, val, pset: psetName };
+                        if (!isEmptyVal(val)) { best = { found: true, val, pset: psetName }; return true; }
+                        return false;
+                    };
                     const preferred = psetMap.get(preferredPsetName);
-                    if (preferred && preferred.has(propName)) {
-                        return { found: true, val: preferred.get(propName), pset: preferredPsetName };
-                    }
+                    if (preferred && consider(preferredPsetName, preferred)) return best;
                     for (const [psetName, propsMap] of psetMap) {
-                        if (propsMap.has(propName)) {
-                            return { found: true, val: propsMap.get(propName), pset: psetName };
-                        }
+                        if (psetName === preferredPsetName) continue;
+                        if (consider(psetName, propsMap)) return best;
                     }
-                    return { found: false };
+                    return best || { found: false };
                 };
 
                 Object.keys(schema).forEach(requiredPsetName => {
@@ -1908,9 +1924,9 @@
                         } else {
                             const val = result.val;
                             console.log(`  [VALIDATE]   • ${propName} found in "${result.pset}" =`, val);
-                            if (val === null || val === undefined || val === "" || val === "N/A") {
+                            if (isEmptyVal(val)) {
                                 console.warn(`  [VALIDATE] ❌ Empty attribute: "${result.pset}.${propName}" on ${elementName}`);
-                                allErrors.push({ element: elementName, type: 'Empty Attribute', detail: `Empty attribute: ${result.pset}.${propName}` });
+                                allErrors.push({ element: elementName, type: 'Empty Attribute', detail: `Empty attribute: ${result.pset}.${propName} (attribute exists but has no value)` });
                             }
                         }
                     });
