@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Scanner — QR / Barcode / Engraved OCR</title>
+  <title>Transient Scan Pulse SG</title>
 
   <!-- html5-qrcode: QR + 1D barcodes, camera & file -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -32,6 +32,30 @@
     }
     header p { margin: 0; font-size: .8rem; color: #8a8a92; }
 
+    .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .logo-icon {
+            color: var(--neon-blue);
+            font-size: 1.2rem;
+        }
+
+        .breadcrumbs {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: normal;
+        }
+
+        .breadcrumbs span {
+            color: var(--neon-green);
+            margin-left: 5px;
+        }
+        
     /* ---------- SWIPE VIEWPORT ---------- */
     .swipe-viewport {
       overflow: hidden;
@@ -163,8 +187,10 @@
 <div class="app">
 
   <header>
-    <h1>Scanner</h1>
-    <p>Swipe to switch · QR / Barcode · Engraved OCR</p>
+            <div class="logo-area">
+                <span class="logo-icon">⧉</span> <span>Transient Scan Pulse SG</span>
+                <div class="breadcrumbs">Swipe to switch · QR / Barcode · Engraved OCR<</div>
+            </div>
   </header>
 
   <div class="swipe-viewport" id="swipeViewport">
