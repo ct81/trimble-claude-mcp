@@ -1943,6 +1943,10 @@
                     <button id="btn-reset-colors"
                         style="border-color: var(--neon-pink); color: var(--neon-pink); margin-top: 5px;">Reset All
                         Colors</button>
+                    <div id="status-legend" style="display:flex;flex-direction:column;gap:4px;margin-top:8px;font-size:0.62rem;border-top:1px solid rgba(255,255,255,0.08);padding-top:8px;">
+                        <div style="color:var(--text-muted);margin-bottom:2px;">Status Legend</div>
+                        <!-- populated dynamically -->
+                    </div>
                 </div>
             </div>
             <div class="resize-handle" data-resize="data-color-panel"></div>
@@ -3094,6 +3098,19 @@
             // default
             return '#ff9900';
         }
+
+        // Populate the Status Legend in the Data & Color panel from STATUS_COLOR_MAP
+        (function buildStatusLegend() {
+            const legend = document.getElementById('status-legend');
+            if (!legend) return;
+            const entries = [...Object.values(STATUS_COLOR_MAP), { color: '#ff9900', label: 'Other / Unknown' }];
+            entries.forEach(({ color, label }) => {
+                const row = document.createElement('div');
+                row.style.cssText = 'display:flex;align-items:center;gap:6px;';
+                row.innerHTML = `<span style="width:10px;height:10px;border-radius:2px;background:${color};box-shadow:0 0 4px ${color};flex-shrink:0;"></span><span style="color:var(--text-main);">${label}</span>`;
+                legend.appendChild(row);
+            });
+        })();
         
         // Apply each status's color (from STATUS_COLOR_MAP) to the matching model elements
         function applyStatusColors() {
