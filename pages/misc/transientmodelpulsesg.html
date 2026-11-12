@@ -1844,11 +1844,11 @@
             }
 
             const requiredSchema = {
-                'IFCWALL':   { 'SGPset_Wall': ['ConstructionMethod', 'ReferTo2DDetail', 'ReinforcementSteelGrade'], 'SGPset_WallDimension': ['Mark', 'Thickness'] },
-                'IFCBEAM':   { 'SGPset_Beam': ['Reference', 'Status'], 'Pset_BeamCommon': ['IsExternal', 'LoadBearing'] },
+                'IfcWall':   { 'SGPset_Wall': ['ConstructionMethod', 'ReferTo2DDetail', 'ReinforcementSteelGrade'], 'SGPset_WallDimension': ['Mark', 'Thickness'] },
+                'IfcBeam':   { 'SGPset_Beam': ['Reference', 'Status'], 'Pset_BeamCommon': ['IsExternal', 'LoadBearing'] },
                 'IfcColumn': { 'Pset_ColumnCommon': ['IsExternal', 'LoadBearing'] },
-                'IFCSLAB':   { 'SGPset_Slab': ['Reference', 'Status'], 'Pset_SlabCommon': ['IsExternal', 'LoadBearing', 'FireRating'] },
-                'IFCDOOR':   { 'SGPset_Door': ['Reference', 'Status'], 'Pset_DoorCommon': ['IsExternal', 'FireRating', 'SecurityRating'] }
+                'IfcSlab':   { 'SGPset_Slab': ['Reference', 'Status'], 'Pset_SlabCommon': ['IsExternal', 'LoadBearing', 'FireRating'] },
+                'IfcDoor':   { 'SGPset_Door': ['Reference', 'Status'], 'Pset_DoorCommon': ['IsExternal', 'FireRating', 'SecurityRating'] }
             };
             console.log('[SG-VALIDATION] Required schema:', JSON.parse(JSON.stringify(requiredSchema)));
 
