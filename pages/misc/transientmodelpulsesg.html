@@ -1846,7 +1846,7 @@
             const requiredSchema = {
                 'IfcWall':   { 'SGPset_Wall': ['ConstructionMethod', 'ReferTo2DDetail', 'ReinforcementSteelGrade'], 'SGPset_WallDimension': ['Mark', 'Thickness'] },
                 'IfcBeam':   { 'SGPset_Beam': ['Reference', 'Status'], 'Pset_BeamCommon': ['IsExternal', 'LoadBearing'] },
-                'IfcColumn': { 'Pset_ColumnCommon': ['IsExternal', 'LoadBearing'] },
+                'IfcColumn': { 'SGPset_Column': ['IsExternal', 'LoadBearing'] },
                 'IfcSlab':   { 'SGPset_Slab': ['Reference', 'Status'], 'Pset_SlabCommon': ['IsExternal', 'LoadBearing', 'FireRating'] },
                 'IfcDoor':   { 'SGPset_Door': ['Reference', 'Status'], 'Pset_DoorCommon': ['IsExternal', 'FireRating', 'SecurityRating'] }
             };
@@ -1870,29 +1870,35 @@
 
                 const elementName = isPart ? `Part (ID: ${safeId})` : `Element (ID: ${safeId})`;
 
+                // Find a property by name: prefer the schema's named pset, otherwise search any pset on the element
+                const findProp = (preferredPsetName, propName) => {
+                    const preferred = psetMap.get(preferredPsetName);
+                    if (preferred && preferred.has(propName)) {
+                        return { found: true, val: preferred.get(propName), pset: preferredPsetName };
+                    }
+                    for (const [psetName, propsMap] of psetMap) {
+                        if (propsMap.has(propName)) {
+                            return { found: true, val: propsMap.get(propName), pset: psetName };
+                        }
+                    }
+                    return { found: false };
+                };
+
                 Object.keys(schema).forEach(requiredPsetName => {
                     const requiredProps = schema[requiredPsetName];
-                    console.log(`  [VALIDATE] Checking required pset: "${requiredPsetName}" (props: ${requiredProps.join(', ')})`);
-
-                    if (!psetMap.has(requiredPsetName)) {
-                        console.warn(`  [VALIDATE] ❌ Missing entire pset: "${requiredPsetName}" on ${elementName}`);
-                        allErrors.push({ element: elementName, type: 'Missing Pset', detail: `Missing entire Pset: ${requiredPsetName}` });
-                        return;
-                    }
-
-                    console.log(`  [VALIDATE] ✔ Pset "${requiredPsetName}" present — iterating props...`);
-                    const propsMap = psetMap.get(requiredPsetName);
+                    console.log(`  [VALIDATE] Checking required props for "${requiredPsetName}": ${requiredProps.join(', ')} (matched in any pset)`);
 
                     requiredProps.forEach(propName => {
-                        if (!propsMap.has(propName)) {
-                            console.warn(`  [VALIDATE] ❌ Missing attribute: "${requiredPsetName}.${propName}" on ${elementName}`);
-                            allErrors.push({ element: elementName, type: 'Missing Attribute', detail: `Missing attribute: ${requiredPsetName}.${propName}` });
+                        const result = findProp(requiredPsetName, propName);
+                        if (!result.found) {
+                            console.warn(`  [VALIDATE] ❌ Missing attribute: "${propName}" (expected in ${requiredPsetName}) on ${elementName}`);
+                            allErrors.push({ element: elementName, type: 'Missing Attribute', detail: `Missing attribute: ${propName} (expected in ${requiredPsetName})` });
                         } else {
-                            const val = propsMap.get(propName);
-                            console.log(`  [VALIDATE]   • ${requiredPsetName}.${propName} =`, val);
+                            const val = result.val;
+                            console.log(`  [VALIDATE]   • ${propName} found in "${result.pset}" =`, val);
                             if (val === null || val === undefined || val === "" || val === "N/A") {
-                                console.warn(`  [VALIDATE] ❌ Empty attribute: "${requiredPsetName}.${propName}" on ${elementName}`);
-                                allErrors.push({ element: elementName, type: 'Empty Attribute', detail: `Empty attribute: ${requiredPsetName}.${propName}` });
+                                console.warn(`  [VALIDATE] ❌ Empty attribute: "${result.pset}.${propName}" on ${elementName}`);
+                                allErrors.push({ element: elementName, type: 'Empty Attribute', detail: `Empty attribute: ${result.pset}.${propName}` });
                             }
                         }
                     });
