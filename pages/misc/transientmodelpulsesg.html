@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Transient Model Pulse SG</title>
-    
+
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 
@@ -31,261 +32,1528 @@
             --right-col-w: 360px;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
 
-        body { background-color: var(--bg-color); color: var(--text-main); height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            height: 100dvh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
 
-        #canvas-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100dvh; z-index: 1; background-image: radial-gradient(circle at 50% 50%, #101626 0%, #05070a 100%); }
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100dvh;
+            z-index: 1;
+            background-image: radial-gradient(circle at 50% 50%, #101626 0%, #05070a 100%);
+        }
 
-        .ui-layer { position: absolute; top: 0; left: 0; width: 100vw; height: 100dvh; z-index: 10; pointer-events: none; display: flex; flex-direction: column; }
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100dvh;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+        }
 
-        header { pointer-events: auto; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; height: var(--header-height); background: rgba(10, 14, 25, 0.85); border-bottom: 1px solid var(--border-color); backdrop-filter: blur(10px); z-index: 20; flex-shrink: 0; }
-        .logo-area { display: flex; align-items: center; gap: 15px; font-weight: bold; letter-spacing: 1px; }
-        .logo-icon { color: var(--neon-blue); font-size: 1.2rem; }
-        .breadcrumbs { color: var(--text-muted); font-size: 0.85rem; font-weight: normal; }
-        .breadcrumbs span { color: var(--neon-green); margin-left: 5px; }
-        .header-actions { display: flex; align-items: center; gap: 15px; font-size: 0.9rem; }
-        
-        .upload-btn { background: rgba(0, 240, 255, 0.1); border: 1px solid var(--neon-blue); color: var(--neon-blue); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-        .upload-btn:hover { background: rgba(0, 240, 255, 0.2); box-shadow: 0 0 10px rgba(0, 240, 255, 0.3); }
-        
-        .header-validate-btn { background: rgba(0, 255, 136, 0.1); border: 1px solid var(--neon-green); color: var(--neon-green); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-        .header-validate-btn:hover { background: var(--neon-green); color: black; box-shadow: 0 0 10px rgba(0, 255, 136, 0.3); }
+        header {
+            pointer-events: auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            height: var(--header-height);
+            background: rgba(10, 14, 25, 0.85);
+            border-bottom: 1px solid var(--border-color);
+            backdrop-filter: blur(10px);
+            z-index: 20;
+            flex-shrink: 0;
+        }
 
-        .user-profile { display: flex; align-items: center; gap: 10px; background: rgba(255, 255, 255, 0.05); padding: 5px 15px; border-radius: 20px; border: 1px solid var(--border-color); white-space: nowrap; }
-        .user-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--neon-purple); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; }
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
 
-        .toolbar { pointer-events: auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 20px; height: var(--toolbar-height); background: rgba(10, 14, 25, 0.85); border-bottom: 1px solid var(--border-color); backdrop-filter: blur(10px); z-index: 19; flex-shrink: 0; overflow-x: auto; overflow-y: hidden; }
-        .toolbar::-webkit-scrollbar { height: 0; }
-        .toolbar-group { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-        .toolbar-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-muted); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; gap: 6px; transition: all 0.2s; white-space: nowrap; }
-        .toolbar-btn:hover { background: rgba(255,255,255,0.1); color: var(--text-main); }
-        .toolbar-btn.active { background: rgba(0, 240, 255, 0.15); border-color: var(--neon-blue); color: var(--neon-blue); box-shadow: 0 0 8px rgba(0, 240, 255, 0.25); }
-        .toolbar-btn .tb-icon { font-size: 0.95rem; line-height: 1; }
-        .toolbar-btn.settings { border-color: rgba(157, 78, 221, 0.5); color: var(--neon-purple); }
-        .toolbar-btn.settings:hover { background: rgba(157, 78, 221, 0.15); color: #c9a4ff; }
-        .toolbar-btn.fullscreen { border-color: rgba(0, 255, 136, 0.5); color: var(--neon-green); }
-        .toolbar-btn.fullscreen:hover { background: rgba(0, 255, 136, 0.15); color: var(--neon-green); }
-        .toolbar-hint { font-size: 0.72rem; color: var(--text-muted); margin-left: 8px; font-style: italic; }
+        .logo-icon {
+            color: var(--neon-blue);
+            font-size: 1.2rem;
+        }
 
-        .toolbar-sep { width: 1px; height: 22px; background: rgba(255,255,255,0.1); margin: 0 6px; flex-shrink: 0; }
-        .toolbar-btn.reopen { padding: 6px 10px; font-size: 0.72rem; gap: 5px; }
-        .toolbar-btn.reopen[data-panel="left-panel"]        { border-color: rgba(0, 255, 136, 0.45); color: var(--neon-green); }
-        .toolbar-btn.reopen[data-panel="right-panel"]       { border-color: rgba(157, 78, 221, 0.45); color: var(--neon-purple); }
-        .toolbar-btn.reopen[data-panel="floating-controls-panel"] { border-color: rgba(0, 240, 255, 0.45); color: var(--neon-blue); }
-        .toolbar-btn.reopen[data-panel="crane-panel"]       { border-color: rgba(255, 153, 0, 0.45); color: var(--neon-orange); }
-        .toolbar-btn.reopen[data-panel="data-color-panel"]  { border-color: rgba(255, 0, 127, 0.45); color: var(--neon-pink); }
-        .toolbar-btn.reopen:hover { filter: brightness(1.3); }
-        .toolbar-btn.reopen[style*="display: none"] { display: none !important; }
+        .breadcrumbs {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: normal;
+        }
 
-        .dashboard { display: grid; grid-template-columns: 340px 1fr var(--right-col-w); gap: var(--dashboard-gap); padding: var(--dashboard-padding); flex: 1; height: calc(100dvh - var(--header-height) - var(--toolbar-height)); position: relative; z-index: 5; pointer-events: none; transition: grid-template-columns 0.3s ease; }
+        .breadcrumbs span {
+            color: var(--neon-green);
+            margin-left: 5px;
+        }
 
-        .panel { pointer-events: auto; background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; backdrop-filter: blur(15px); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); display: flex; flex-direction: column; overflow-y: auto; position: relative; }
-        
-        .panel-header, .inspector-header, .val-header, .chart-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-size: 0.9rem; font-weight: 600; letter-spacing: 0.5px; color: var(--text-muted); text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; cursor: grab; user-select: none; touch-action: none; }
-        .inspector-header, .val-header, .chart-modal-header { border-bottom: 1px solid var(--border-color); padding: 15px 20px; margin-bottom: 0; }
-        .dragging { cursor: grabbing !important; opacity: 0.9; }
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 0.9rem;
+        }
 
-        .chart-container { margin-bottom: 20px; padding: 5px; border-radius: 8px; transition: background 0.2s; cursor: pointer; }
-        .chart-container:hover { background: rgba(255, 255, 255, 0.05); }
-        .chart-title { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
-        .chart-title .expand-icon { opacity: 0.5; transition: opacity 0.2s; font-size: 0.9rem; }
-        .chart-container:hover .expand-icon { opacity: 1; color: var(--neon-blue); }
-        .svg-chart { width: 100%; height: auto; overflow: visible; pointer-events: none; }
-        .grid-line { stroke: rgba(255,255,255,0.05); stroke-width: 1; }
-        .chart-line { fill: none; stroke: var(--neon-blue); stroke-width: 2; filter: drop-shadow(0 0 5px var(--neon-blue)); }
-        .chart-area { fill: url(#blueGradient); opacity: 0.3; }
-        .chart-line-alt { fill: none; stroke: var(--neon-purple); stroke-width: 2; stroke-dasharray: 4; }
-        .hover-target { pointer-events: all; cursor: crosshair; }
-        .hover-target:hover { opacity: 0.8; }
+        .upload-btn {
+            background: rgba(0, 240, 255, 0.1);
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue);
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
 
-        .evm-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); }
-        .evm-item { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-        .evm-val { font-size: 1.1rem; font-weight: bold; }
-        .evm-label { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; margin-top: 2px; }
+        .upload-btn:hover {
+            background: rgba(0, 240, 255, 0.2);
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+        }
 
-        .milestone-list { display: flex; flex-direction: column; gap: 12px; }
-        .milestone-item { font-size: 0.75rem; }
-        .milestone-info { display: flex; justify-content: space-between; margin-bottom: 4px; color: var(--text-muted); }
-        .progress-bar-bg { width: 100%; height: 5px; background: rgba(255, 255, 255, 0.1); border-radius: 3px; overflow: hidden; }
-        .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--neon-purple), var(--neon-blue)); border-radius: 3px; }
-        .status-badge { padding: 1px 5px; border-radius: 4px; font-size: 0.6rem; font-weight: bold; text-transform: uppercase; }
-        .status-on-track { background: rgba(0, 255, 136, 0.1); color: var(--neon-green); border: 1px solid var(--neon-green); }
-        .status-delayed { background: rgba(255, 0, 127, 0.1); color: var(--neon-pink); border: 1px solid var(--neon-pink); }
+        .header-validate-btn {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid var(--neon-green);
+            color: var(--neon-green);
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
 
-        .resource-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-        .resource-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 8px; text-align: center; }
-        .resource-card h3 { font-size: 1.1rem; color: var(--neon-blue); margin-bottom: 2px; }
-        .resource-card p { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; }
+        .header-validate-btn:hover {
+            background: var(--neon-green);
+            color: black;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+        }
 
-        .delivery-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
-        .delivery-item { display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; background: rgba(255,255,255,0.02); padding: 8px; border-radius: 6px; border-left: 2px solid var(--neon-blue); }
-        .delivery-item.late { border-left-color: var(--neon-pink); }
-        .delivery-item.on-time { border-left-color: var(--neon-green); }
-        .delivery-name { font-weight: 600; }
-        .delivery-eta { color: var(--text-muted); font-size: 0.7rem; }
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 5px 15px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
 
-        .window-controls { display: flex; gap: 5px; margin-left: auto; }
-        .win-btn { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px; background: rgba(255,255,255,0.1); color: var(--text-main); font-size: 14px; transition: all 0.2s; }
-        .win-btn:hover { background: rgba(255,255,255,0.2); }
-        .win-btn.close:hover { background: #ff4757; color: white; }
-        
-        .floating-controls { position: absolute; z-index: 15; pointer-events: auto; width: 220px; background: rgba(10, 14, 25, 0.95); border: 1px solid var(--border-color); border-radius: 8px; backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); transition: all 0.3s ease; display: flex; flex-direction: column; overflow: hidden; }
-        .floating-controls .panel-header { margin: 0; padding: 8px 12px; background: rgba(0,0,0,0.3); border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.75rem; }
-        .floating-controls .content { padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; flex: 1; }
-        .control-group label { color: var(--text-muted); display: block; margin-bottom: 5px; font-size: 0.7rem; }
-        .control-group select, .control-group button, .control-group input[type="file"], .control-group input[type="number"] { background: rgba(255,255,255,0.1); color: var(--text-main); border: 1px solid var(--border-color); padding: 5px 8px; border-radius: 4px; cursor: pointer; width: 100%; outline: none; font-size: 0.75rem; }
-        .control-group button:hover { background: rgba(0, 240, 255, 0.2); border-color: var(--neon-blue); }
+        .user-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--neon-purple);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+        }
+
+        .toolbar {
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 0 20px;
+            height: var(--toolbar-height);
+            background: rgba(10, 14, 25, 0.85);
+            border-bottom: 1px solid var(--border-color);
+            backdrop-filter: blur(10px);
+            z-index: 19;
+            flex-shrink: 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .toolbar::-webkit-scrollbar {
+            height: 0;
+        }
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .toolbar-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .toolbar-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+        }
+
+        .toolbar-btn.active {
+            background: rgba(0, 240, 255, 0.15);
+            border-color: var(--neon-blue);
+            color: var(--neon-blue);
+            box-shadow: 0 0 8px rgba(0, 240, 255, 0.25);
+        }
+
+        .toolbar-btn .tb-icon {
+            font-size: 0.95rem;
+            line-height: 1;
+        }
+
+        .toolbar-btn.settings {
+            border-color: rgba(157, 78, 221, 0.5);
+            color: var(--neon-purple);
+        }
+
+        .toolbar-btn.settings:hover {
+            background: rgba(157, 78, 221, 0.15);
+            color: #c9a4ff;
+        }
+
+        .toolbar-btn.fullscreen {
+            border-color: rgba(0, 255, 136, 0.5);
+            color: var(--neon-green);
+        }
+
+        .toolbar-btn.fullscreen:hover {
+            background: rgba(0, 255, 136, 0.15);
+            color: var(--neon-green);
+        }
+
+        .toolbar-hint {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-left: 8px;
+            font-style: italic;
+        }
+
+        .toolbar-sep {
+            width: 1px;
+            height: 22px;
+            background: rgba(255, 255, 255, 0.1);
+            margin: 0 6px;
+            flex-shrink: 0;
+        }
+
+        .toolbar-btn.reopen {
+            padding: 6px 10px;
+            font-size: 0.72rem;
+            gap: 5px;
+        }
+
+        .toolbar-btn.reopen[data-panel="left-panel"] {
+            border-color: rgba(0, 255, 136, 0.45);
+            color: var(--neon-green);
+        }
+
+        .toolbar-btn.reopen[data-panel="right-panel"] {
+            border-color: rgba(157, 78, 221, 0.45);
+            color: var(--neon-purple);
+        }
+
+        .toolbar-btn.reopen[data-panel="floating-controls-panel"] {
+            border-color: rgba(0, 240, 255, 0.45);
+            color: var(--neon-blue);
+        }
+
+        .toolbar-btn.reopen[data-panel="crane-panel"] {
+            border-color: rgba(255, 153, 0, 0.45);
+            color: var(--neon-orange);
+        }
+
+        .toolbar-btn.reopen[data-panel="data-color-panel"] {
+            border-color: rgba(255, 0, 127, 0.45);
+            color: var(--neon-pink);
+        }
+
+        .toolbar-btn.reopen:hover {
+            filter: brightness(1.3);
+        }
+
+        .toolbar-btn.reopen[style*="display: none"] {
+            display: none !important;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 340px 1fr var(--right-col-w);
+            gap: var(--dashboard-gap);
+            padding: var(--dashboard-padding);
+            flex: 1;
+            height: calc(100dvh - var(--header-height) - var(--toolbar-height));
+            position: relative;
+            z-index: 5;
+            pointer-events: none;
+            transition: grid-template-columns 0.3s ease;
+        }
+
+        .panel {
+            pointer-events: auto;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(15px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .panel-header,
+        .inspector-header,
+        .val-header,
+        .chart-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 10px;
+            cursor: grab;
+            user-select: none;
+            touch-action: none;
+        }
+
+        .inspector-header,
+        .val-header,
+        .chart-modal-header {
+            border-bottom: 1px solid var(--border-color);
+            padding: 15px 20px;
+            margin-bottom: 0;
+        }
+
+        .dragging {
+            cursor: grabbing !important;
+            opacity: 0.9;
+        }
+
+        .chart-container {
+            margin-bottom: 20px;
+            padding: 5px;
+            border-radius: 8px;
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+
+        .chart-container:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .chart-title {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+        }
+
+        .chart-title .expand-icon {
+            opacity: 0.5;
+            transition: opacity 0.2s;
+            font-size: 0.9rem;
+        }
+
+        .chart-container:hover .expand-icon {
+            opacity: 1;
+            color: var(--neon-blue);
+        }
+
+        .svg-chart {
+            width: 100%;
+            height: auto;
+            overflow: visible;
+            pointer-events: none;
+        }
+
+        .grid-line {
+            stroke: rgba(255, 255, 255, 0.05);
+            stroke-width: 1;
+        }
+
+        .chart-line {
+            fill: none;
+            stroke: var(--neon-blue);
+            stroke-width: 2;
+            filter: drop-shadow(0 0 5px var(--neon-blue));
+        }
+
+        .chart-area {
+            fill: url(#blueGradient);
+            opacity: 0.3;
+        }
+
+        .chart-line-alt {
+            fill: none;
+            stroke: var(--neon-purple);
+            stroke-width: 2;
+            stroke-dasharray: 4;
+        }
+
+        .hover-target {
+            pointer-events: all;
+            cursor: crosshair;
+        }
+
+        .hover-target:hover {
+            opacity: 0.8;
+        }
+
+        .evm-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .evm-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .evm-val {
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+
+        .evm-label {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+
+        .milestone-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .milestone-item {
+            font-size: 0.75rem;
+        }
+
+        .milestone-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+            color: var(--text-muted);
+        }
+
+        .progress-bar-bg {
+            width: 100%;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--neon-purple), var(--neon-blue));
+            border-radius: 3px;
+        }
+
+        .status-badge {
+            padding: 1px 5px;
+            border-radius: 4px;
+            font-size: 0.6rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status-on-track {
+            background: rgba(0, 255, 136, 0.1);
+            color: var(--neon-green);
+            border: 1px solid var(--neon-green);
+        }
+
+        .status-delayed {
+            background: rgba(255, 0, 127, 0.1);
+            color: var(--neon-pink);
+            border: 1px solid var(--neon-pink);
+        }
+
+        .resource-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .resource-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .resource-card h3 {
+            font-size: 1.1rem;
+            color: var(--neon-blue);
+            margin-bottom: 2px;
+        }
+
+        .resource-card p {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .delivery-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .delivery-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 8px;
+            border-radius: 6px;
+            border-left: 2px solid var(--neon-blue);
+        }
+
+        .delivery-item.late {
+            border-left-color: var(--neon-pink);
+        }
+
+        .delivery-item.on-time {
+            border-left-color: var(--neon-green);
+        }
+
+        .delivery-name {
+            font-weight: 600;
+        }
+
+        .delivery-eta {
+            color: var(--text-muted);
+            font-size: 0.7rem;
+        }
+
+        .window-controls {
+            display: flex;
+            gap: 5px;
+            margin-left: auto;
+        }
+
+        .win-btn {
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .win-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .win-btn.close:hover {
+            background: #ff4757;
+            color: white;
+        }
+
+        .floating-controls {
+            position: absolute;
+            z-index: 15;
+            pointer-events: auto;
+            width: 220px;
+            background: rgba(10, 14, 25, 0.95);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .floating-controls .panel-header {
+            margin: 0;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.75rem;
+        }
+
+        .floating-controls .content {
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .control-group label {
+            color: var(--text-muted);
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.7rem;
+        }
+
+        .control-group select,
+        .control-group button,
+        .control-group input[type="file"],
+        .control-group input[type="number"] {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 5px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            outline: none;
+            font-size: 0.75rem;
+        }
+
+        .control-group button:hover {
+            background: rgba(0, 240, 255, 0.2);
+            border-color: var(--neon-blue);
+        }
 
         #floating-controls-panel {
             top: var(--panel-top);
             right: calc(var(--right-col-w) + var(--dashboard-gap) + var(--floating-gap));
         }
+
         #crane-panel {
             top: calc(var(--panel-top) + var(--controls-h) + var(--dashboard-gap));
             right: calc(var(--right-col-w) + var(--dashboard-gap) + var(--floating-gap));
         }
+
         #data-color-panel {
             top: calc(var(--panel-top) + var(--controls-h) + var(--dashboard-gap) + var(--crane-h) + var(--dashboard-gap));
             right: calc(var(--right-col-w) + var(--dashboard-gap) + var(--floating-gap));
         }
 
-        #crane-panel .content { padding: 10px; gap: 7px; }
-        #crane-panel .control-group label { margin-bottom: 3px; font-size: 0.68rem; }
-        #crane-panel .control-group input[type="number"] { padding: 4px 6px; font-size: 0.72rem; }
-        #crane-panel .control-group button { padding: 4px 6px; font-size: 0.72rem; }
-
-        .color-picker-wrapper { display: flex; gap: 5px; align-items: center; }
-        .color-picker-wrapper input[type="color"] { width: 30px; height: 30px; padding: 0; border: none; background: none; cursor: pointer; }
-
-        #inspector-panel { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9); opacity: 0; pointer-events: none; width: 650px; max-width: 95vw; max-height: 85dvh; background: rgba(10, 14, 25, 0.98); border: 1px solid var(--neon-pink); border-radius: 12px; backdrop-filter: blur(20px); box-shadow: 0 0 50px rgba(255, 0, 127, 0.3); display: flex; flex-direction: column; z-index: 100; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease; }
-        #inspector-panel.open { transform: translate(-50%, -50%) scale(1); opacity: 1; pointer-events: auto; }
-        .inspector-title { color: var(--neon-pink); font-size: 0.9rem; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; display: flex; align-items: center; gap: 10px; }
-        .inspector-body { padding: 20px; display: flex; flex-direction: column; flex: 1; overflow: hidden; }
-
-        .action-buttons { display: flex; gap: 8px; }
-        .action-btn { background: rgba(255,255,255,0.1); border: 1px solid var(--border-color); color: var(--text-main); padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.7rem; transition: all 0.2s; }
-        .action-btn:hover { background: var(--neon-blue); color: black; border-color: var(--neon-blue); }
-        .action-btn.active { background: var(--neon-pink); color: white; border-color: var(--neon-pink); }
-        .action-btn.validate-btn { border-color: var(--neon-green); color: var(--neon-green); }
-        .action-btn.validate-btn:hover { background: var(--neon-green); color: black; }
-
-        #validation-results { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9); opacity: 0; pointer-events: none; width: 550px; max-width: 90vw; max-height: 75vh; background: rgba(10, 14, 25, 0.98); border: 1px solid var(--neon-orange); border-radius: 12px; backdrop-filter: blur(20px); box-shadow: 0 0 40px rgba(255, 153, 0, 0.3); display: flex; flex-direction: column; z-index: 200; transition: all 0.3s ease; }
-        #validation-results.open { transform: translate(-50%, -50%) scale(1); opacity: 1; pointer-events: auto; }
-        .val-title { color: var(--neon-orange); font-weight: bold; text-transform: uppercase; letter-spacing: 1px; font-size: 0.9rem; }
-        .val-body { padding: 20px; overflow-y: auto; flex: 1; }
-
-        #chart-modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9); opacity: 0; pointer-events: none; width: 800px; max-width: 95vw; height: 600px; max-height: 90vh; background: rgba(10, 14, 25, 0.98); border: 1px solid var(--neon-blue); border-radius: 12px; backdrop-filter: blur(20px); box-shadow: 0 0 50px rgba(0, 240, 255, 0.2); display: flex; flex-direction: column; z-index: 300; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease; }
-        #chart-modal.open { transform: translate(-50%, -50%) scale(1); opacity: 1; pointer-events: auto; }
-        .chart-modal-title { color: var(--neon-blue); font-weight: bold; text-transform: uppercase; letter-spacing: 1px; font-size: 0.9rem; }
-        .chart-modal-body { padding: 20px; overflow: hidden; flex: 1; display: flex; justify-content: center; align-items: center; }
-        .chart-modal-body svg, .chart-modal-body > div, .chart-modal-body .svg-chart { width: 100%; height: 100%; max-height: 100%; object-fit: contain; }
-        .chart-modal-body svg text { font-size: 12px !important; }
-        .chart-modal-body .chart-title { display: none; }
-
-        #chart-tooltip { position: fixed; background: rgba(10, 14, 25, 0.95); border: 1px solid var(--neon-blue); border-radius: 6px; padding: 8px 12px; color: white; font-size: 0.75rem; pointer-events: none; opacity: 0; transition: opacity 0.15s ease; z-index: 99999; box-shadow: 0 4px 15px rgba(0,0,0,0.6); backdrop-filter: blur(10px); display: flex; flex-direction: column; gap: 3px; min-width: 120px; transform: translate(-50%, -100%); margin-top: -10px; }
-        #chart-tooltip.visible { opacity: 1; }
-        .tt-title { font-weight: 700; color: var(--neon-blue); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;}
-        .tt-value { font-size: 1.1rem; font-weight: 800; color: #fff; }
-        .tt-desc { color: var(--text-muted); font-size: 0.65rem; margin-top: 2px;}
-        .tt-divider { height: 1px; background: rgba(255,255,255,0.1); margin: 2px 0; }
-
-        .maximized { top: 0 !important; left: 0 !important; width: 100vw !important; max-width: 100vw !important; height: 100dvh !important; max-height: 100dvh !important; transform: none !important; border-radius: 0 !important; border: none !important; z-index: 9999 !important; margin: 0 !important; }
-        .detached { transform: none !important; }
-
-        #minimized-dock { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 1000; pointer-events: auto; }
-        .dock-item { background: rgba(10, 14, 25, 0.95); border: 1px solid var(--neon-blue); color: white; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-size: 0.8rem; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); backdrop-filter: blur(10px); transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
-        .dock-item:hover { background: rgba(0, 240, 255, 0.2); box-shadow: 0 0 10px var(--neon-blue); }
-
-        .search-container { margin-bottom: 15px; }
-        .search-input { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: white; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; outline: none; }
-        .search-input:focus { border-color: var(--neon-blue); box-shadow: 0 0 10px rgba(0, 240, 255, 0.2); }
-
-        .tab-nav { display: flex; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; }
-        .tab-nav::-webkit-scrollbar { height: 3px; }
-        .tab-btn { padding: 6px 12px; cursor: pointer; color: var(--text-muted); font-size: 0.75rem; font-weight: 600; border-radius: 4px; background: rgba(255,255,255,0.05); border: 1px solid transparent; transition: all 0.2s; white-space: nowrap; }
-        .tab-btn:hover { color: var(--text-main); background: rgba(255,255,255,0.1); }
-        .tab-btn.active { color: var(--neon-blue); background: rgba(0, 240, 255, 0.1); border-color: rgba(0, 240, 255, 0.3); }
-        .tab-content-container { display: flex; flex: 1; overflow: hidden; flex-direction: column; position: relative; }
-        .tab-content { display: none; overflow-y: auto; flex: 1; flex-direction: column; gap: 6px; padding-right: 5px; }
-        .tab-content.active { display: flex; }
-        .prop-row { display: grid; grid-template-columns: 180px 1fr; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px; align-items: start; font-size: 0.8rem; }
-        .prop-key { color: var(--text-muted); word-break: break-word; }
-        .prop-val { color: #fff; word-break: break-word; }
-        .qr-img { display: block; width: 120px; height: 120px; background: #fff; padding: 6px; border-radius: 4px; image-rendering: pixelated; margin-top: 4px; }
-
-        .spinner-container { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; color: var(--neon-blue); }
-        .spinner { border: 3px solid rgba(0, 240, 255, 0.1); border-top: 3px solid var(--neon-blue); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px; }
-
-        .val-success { color: var(--neon-green); font-weight: bold; text-align: center; margin: 20px 0; font-size: 1.1rem; }
-        .val-error-item { background: rgba(255, 0, 127, 0.1); border-left: 3px solid var(--neon-pink); padding: 8px 12px; margin-bottom: 8px; border-radius: 4px; font-size: 0.8rem; }
-        .val-error-item strong { color: var(--neon-pink); display: block; margin-bottom: 2px; }
-        .val-error-item span { color: var(--text-muted); font-size: 0.75rem; }
-        .val-part-header { color: var(--neon-blue); font-size: 0.8rem; margin: 15px 0 5px 0; font-weight: bold; text-transform: uppercase; border-bottom: 1px dashed var(--border-color); padding-bottom: 4px; }
-
-        #toast-container { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-        .toast { background: rgba(10, 14, 25, 0.95); border: 1px solid var(--neon-orange); color: var(--text-main); padding: 10px 20px; border-radius: 8px; font-size: 0.8rem; box-shadow: 0 4px 15px rgba(0,0,0,0.5); animation: fadeInOut 3s forwards; backdrop-filter: blur(10px); }
-        .toast.success { border-color: var(--neon-green); }
-        .toast.error { border-color: var(--neon-pink); }
-        @keyframes fadeInOut { 0% { opacity: 0; transform: translateY(20px); } 10% { opacity: 1; transform: translateY(0); } 90% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(20px); } }
-
-        #loading-overlay { position: absolute; top: 0; left: 0; width: 100vw; height: 100dvh; background: rgba(5, 7, 10, 0.95); z-index: 10000; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.5s ease; color: var(--neon-blue); }
-        .loader { border: 4px solid rgba(0, 240, 255, 0.1); border-top: 4px solid var(--neon-blue); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 20px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .progress-container { width: 300px; margin-top: 15px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; height: 6px; }
-        .progress-bar { height: 100%; background: var(--neon-blue); width: 0%; transition: width 0.1s; }
-
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
-
-        .resize-handle { position: absolute; width: 14px; height: 14px; right: 2px; bottom: 2px; cursor: nwse-resize; z-index: 50; background: transparent; touch-action: none; }
-        .resize-handle::after { content: ''; position: absolute; right: 3px; bottom: 3px; width: 8px; height: 8px; border-right: 2px solid var(--neon-blue); border-bottom: 2px solid var(--neon-blue); opacity: 0.4; transition: opacity 0.2s; }
-        .panel:hover > .resize-handle::after,
-        .floating-controls:hover > .resize-handle::after,
-        #inspector-panel:hover > .resize-handle::after,
-        #validation-results:hover > .resize-handle::after,
-        #chart-modal:hover > .resize-handle::after { opacity: 1; }
-        .resizing { opacity: 0.85; }
-        #left-panel.resizing, #right-panel.resizing { transition: none !important; }
-
-        #area-select-box { position: fixed; border: 1.5px dashed var(--neon-blue); background: rgba(0, 240, 255, 0.08); pointer-events: none; z-index: 50; display: none; }
-
-        #settings-popup { position: absolute; top: calc(var(--header-height) + var(--toolbar-height) + 8px); right: 20px; z-index: 999; background: rgba(10, 14, 25, 0.98); border: 1px solid var(--neon-purple); border-radius: 10px; box-shadow: 0 0 25px rgba(157, 78, 221, 0.3); backdrop-filter: blur(20px); width: 260px; padding: 14px; display: none; flex-direction: column; gap: 10px; pointer-events: auto; }
-        #settings-popup.open { display: flex; }
-        #settings-popup h4 { color: var(--neon-purple); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
-        .settings-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem; padding: 4px 0; }
-        .settings-row label { color: var(--text-muted); }
-        .settings-row input[type="checkbox"] { accent-color: var(--neon-purple); width: 16px; height: 16px; cursor: pointer; }
-        .settings-row button { background: rgba(157, 78, 221, 0.1); border: 1px solid var(--neon-purple); color: var(--neon-purple); border-radius: 4px; padding: 4px 10px; font-size: 0.7rem; cursor: pointer; }
-        .settings-row button:hover { background: rgba(157, 78, 221, 0.25); }
-
-        @media (max-width: 1200px) { 
-            .dashboard { grid-template-columns: 280px 1fr 300px; gap: 15px; padding: 15px; }
-            .panel { padding: 15px; }
-            :root { --dashboard-padding: 15px; --dashboard-gap: 15px; --floating-gap: 15px; --controls-h: 150px; --crane-h: 250px; --right-col-w: 300px; }
+        #crane-panel .content {
+            padding: 10px;
+            gap: 7px;
         }
-        @media (max-width: 992px) { 
-            .breadcrumbs { display: none; } 
-            .dashboard { grid-template-columns: 250px 1fr 260px; gap: 10px; padding: 10px; }
-            .panel { padding: 12px; }
-            :root { --dashboard-padding: 10px; --dashboard-gap: 10px; --floating-gap: 10px; --controls-h: 150px; --crane-h: 240px; --right-col-w: 260px; }
+
+        #crane-panel .control-group label {
+            margin-bottom: 3px;
+            font-size: 0.68rem;
         }
+
+        #crane-panel .control-group input[type="number"] {
+            padding: 4px 6px;
+            font-size: 0.72rem;
+        }
+
+        #crane-panel .control-group button {
+            padding: 4px 6px;
+            font-size: 0.72rem;
+        }
+
+        .color-picker-wrapper {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .color-picker-wrapper input[type="color"] {
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            border: none;
+            background: none;
+            cursor: pointer;
+        }
+
+        #inspector-panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            opacity: 0;
+            pointer-events: none;
+            width: 650px;
+            max-width: 95vw;
+            max-height: 85dvh;
+            background: rgba(10, 14, 25, 0.98);
+            border: 1px solid var(--neon-pink);
+            border-radius: 12px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 0 50px rgba(255, 0, 127, 0.3);
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+        }
+
+        #inspector-panel.open {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .inspector-title {
+            color: var(--neon-pink);
+            font-size: 0.9rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .inspector-body {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover {
+            background: var(--neon-blue);
+            color: black;
+            border-color: var(--neon-blue);
+        }
+
+        .action-btn.active {
+            background: var(--neon-pink);
+            color: white;
+            border-color: var(--neon-pink);
+        }
+
+        .action-btn.validate-btn {
+            border-color: var(--neon-green);
+            color: var(--neon-green);
+        }
+
+        .action-btn.validate-btn:hover {
+            background: var(--neon-green);
+            color: black;
+        }
+
+        #validation-results {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            opacity: 0;
+            pointer-events: none;
+            width: 550px;
+            max-width: 90vw;
+            max-height: 75vh;
+            background: rgba(10, 14, 25, 0.98);
+            border: 1px solid var(--neon-orange);
+            border-radius: 12px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 0 40px rgba(255, 153, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            z-index: 200;
+            transition: all 0.3s ease;
+        }
+
+        #validation-results.open {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .val-title {
+            color: var(--neon-orange);
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.9rem;
+        }
+
+        .val-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        #chart-modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            opacity: 0;
+            pointer-events: none;
+            width: 800px;
+            max-width: 95vw;
+            height: 600px;
+            max-height: 90vh;
+            background: rgba(10, 14, 25, 0.98);
+            border: 1px solid var(--neon-blue);
+            border-radius: 12px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 0 50px rgba(0, 240, 255, 0.2);
+            display: flex;
+            flex-direction: column;
+            z-index: 300;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+        }
+
+        #chart-modal.open {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .chart-modal-title {
+            color: var(--neon-blue);
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.9rem;
+        }
+
+        .chart-modal-body {
+            padding: 20px;
+            overflow: hidden;
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .chart-modal-body svg,
+        .chart-modal-body>div,
+        .chart-modal-body .svg-chart {
+            width: 100%;
+            height: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .chart-modal-body svg text {
+            font-size: 12px !important;
+        }
+
+        .chart-modal-body .chart-title {
+            display: none;
+        }
+
+        #chart-tooltip {
+            position: fixed;
+            background: rgba(10, 14, 25, 0.95);
+            border: 1px solid var(--neon-blue);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: white;
+            font-size: 0.75rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+            z-index: 99999;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            min-width: 120px;
+            transform: translate(-50%, -100%);
+            margin-top: -10px;
+        }
+
+        #chart-tooltip.visible {
+            opacity: 1;
+        }
+
+        .tt-title {
+            font-weight: 700;
+            color: var(--neon-blue);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .tt-value {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .tt-desc {
+            color: var(--text-muted);
+            font-size: 0.65rem;
+            margin-top: 2px;
+        }
+
+        .tt-divider {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+            margin: 2px 0;
+        }
+
+        .maximized {
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            max-width: 100vw !important;
+            height: 100dvh !important;
+            max-height: 100dvh !important;
+            transform: none !important;
+            border-radius: 0 !important;
+            border: none !important;
+            z-index: 9999 !important;
+            margin: 0 !important;
+        }
+
+        .detached {
+            transform: none !important;
+        }
+
+        #minimized-dock {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+            pointer-events: auto;
+        }
+
+        .dock-item {
+            background: rgba(10, 14, 25, 0.95);
+            border: 1px solid var(--neon-blue);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dock-item:hover {
+            background: rgba(0, 240, 255, 0.2);
+            box-shadow: 0 0 10px var(--neon-blue);
+        }
+
+        .search-container {
+            margin-bottom: 15px;
+        }
+
+        .search-input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            outline: none;
+        }
+
+        .search-input:focus {
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+        }
+
+        .tab-nav {
+            display: flex;
+            gap: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 15px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+
+        .tab-nav::-webkit-scrollbar {
+            height: 3px;
+        }
+
+        .tab-btn {
+            padding: 6px 12px;
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid transparent;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .tab-btn.active {
+            color: var(--neon-blue);
+            background: rgba(0, 240, 255, 0.1);
+            border-color: rgba(0, 240, 255, 0.3);
+        }
+
+        .tab-content-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .tab-content {
+            display: none;
+            overflow-y: auto;
+            flex: 1;
+            flex-direction: column;
+            gap: 6px;
+            padding-right: 5px;
+        }
+
+        .tab-content.active {
+            display: flex;
+        }
+
+        .prop-row {
+            display: grid;
+            grid-template-columns: 180px 1fr;
+            gap: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 6px;
+            align-items: start;
+            font-size: 0.8rem;
+        }
+
+        .prop-key {
+            color: var(--text-muted);
+            word-break: break-word;
+        }
+
+        .prop-val {
+            color: #fff;
+            word-break: break-word;
+        }
+
+        .qr-img {
+            display: block;
+            width: 120px;
+            height: 120px;
+            background: #fff;
+            padding: 6px;
+            border-radius: 4px;
+            image-rendering: pixelated;
+            margin-top: 4px;
+        }
+
+        .spinner-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            color: var(--neon-blue);
+        }
+
+        .spinner {
+            border: 3px solid rgba(0, 240, 255, 0.1);
+            border-top: 3px solid var(--neon-blue);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        .val-success {
+            color: var(--neon-green);
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+            font-size: 1.1rem;
+        }
+
+        .val-error-item {
+            background: rgba(255, 0, 127, 0.1);
+            border-left: 3px solid var(--neon-pink);
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        .val-error-item strong {
+            color: var(--neon-pink);
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .val-error-item span {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+        }
+
+        .val-part-header {
+            color: var(--neon-blue);
+            font-size: 0.8rem;
+            margin: 15px 0 5px 0;
+            font-weight: bold;
+            text-transform: uppercase;
+            border-bottom: 1px dashed var(--border-color);
+            padding-bottom: 4px;
+        }
+
+        #toast-container {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: rgba(10, 14, 25, 0.95);
+            border: 1px solid var(--neon-orange);
+            color: var(--text-main);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            animation: fadeInOut 3s forwards;
+            backdrop-filter: blur(10px);
+        }
+
+        .toast.success {
+            border-color: var(--neon-green);
+        }
+
+        .toast.error {
+            border-color: var(--neon-pink);
+        }
+
+        @keyframes fadeInOut {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            10% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+            90% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+        }
+
+        #loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100dvh;
+            background: rgba(5, 7, 10, 0.95);
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.5s ease;
+            color: var(--neon-blue);
+        }
+
+        .loader {
+            border: 4px solid rgba(0, 240, 255, 0.1);
+            border-top: 4px solid var(--neon-blue);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .progress-container {
+            width: 300px;
+            margin-top: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            height: 6px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--neon-blue);
+            width: 0%;
+            transition: width 0.1s;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 2px;
+        }
+
+        .resize-handle {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            right: 2px;
+            bottom: 2px;
+            cursor: nwse-resize;
+            z-index: 50;
+            background: transparent;
+            touch-action: none;
+        }
+
+        .resize-handle::after {
+            content: '';
+            position: absolute;
+            right: 3px;
+            bottom: 3px;
+            width: 8px;
+            height: 8px;
+            border-right: 2px solid var(--neon-blue);
+            border-bottom: 2px solid var(--neon-blue);
+            opacity: 0.4;
+            transition: opacity 0.2s;
+        }
+
+        .panel:hover>.resize-handle::after,
+        .floating-controls:hover>.resize-handle::after,
+        #inspector-panel:hover>.resize-handle::after,
+        #validation-results:hover>.resize-handle::after,
+        #chart-modal:hover>.resize-handle::after {
+            opacity: 1;
+        }
+
+        .resizing {
+            opacity: 0.85;
+        }
+
+        #left-panel.resizing,
+        #right-panel.resizing {
+            transition: none !important;
+        }
+
+        #area-select-box {
+            position: fixed;
+            border: 1.5px dashed var(--neon-blue);
+            background: rgba(0, 240, 255, 0.08);
+            pointer-events: none;
+            z-index: 50;
+            display: none;
+        }
+
+        #settings-popup {
+            position: absolute;
+            top: calc(var(--header-height) + var(--toolbar-height) + 8px);
+            right: 20px;
+            z-index: 999;
+            background: rgba(10, 14, 25, 0.98);
+            border: 1px solid var(--neon-purple);
+            border-radius: 10px;
+            box-shadow: 0 0 25px rgba(157, 78, 221, 0.3);
+            backdrop-filter: blur(20px);
+            width: 260px;
+            padding: 14px;
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        #settings-popup.open {
+            display: flex;
+        }
+
+        #settings-popup h4 {
+            color: var(--neon-purple);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .settings-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.78rem;
+            padding: 4px 0;
+        }
+
+        .settings-row label {
+            color: var(--text-muted);
+        }
+
+        .settings-row input[type="checkbox"] {
+            accent-color: var(--neon-purple);
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .settings-row button {
+            background: rgba(157, 78, 221, 0.1);
+            border: 1px solid var(--neon-purple);
+            color: var(--neon-purple);
+            border-radius: 4px;
+            padding: 4px 10px;
+            font-size: 0.7rem;
+            cursor: pointer;
+        }
+
+        .settings-row button:hover {
+            background: rgba(157, 78, 221, 0.25);
+        }
+
+        @media (max-width: 1200px) {
+            .dashboard {
+                grid-template-columns: 280px 1fr 300px;
+                gap: 15px;
+                padding: 15px;
+            }
+
+            .panel {
+                padding: 15px;
+            }
+
+            :root {
+                --dashboard-padding: 15px;
+                --dashboard-gap: 15px;
+                --floating-gap: 15px;
+                --controls-h: 150px;
+                --crane-h: 250px;
+                --right-col-w: 300px;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .breadcrumbs {
+                display: none;
+            }
+
+            .dashboard {
+                grid-template-columns: 250px 1fr 260px;
+                gap: 10px;
+                padding: 10px;
+            }
+
+            .panel {
+                padding: 12px;
+            }
+
+            :root {
+                --dashboard-padding: 10px;
+                --dashboard-gap: 10px;
+                --floating-gap: 10px;
+                --controls-h: 150px;
+                --crane-h: 240px;
+                --right-col-w: 260px;
+            }
+        }
+
         @media (max-width: 768px) {
-            header { padding: 0 10px; } .logo-area span:not(.logo-icon) { font-size: 0.85rem; }
-            .upload-btn span:not(.icon), .header-validate-btn span:not(.icon) { display: none; } 
-            .upload-btn, .header-validate-btn { padding: 8px 10px; } .user-profile { padding: 5px 8px; }
-            .dashboard { display: block; padding: 0; height: calc(100dvh - var(--header-height) - var(--toolbar-height)); }
-            #left-panel, #right-panel { position: absolute; top: 10px; bottom: 10px; width: 240px; opacity: 0.95; background: rgba(13, 17, 28, 0.9); z-index: 15; overflow-y: auto; }
-            #left-panel { left: 10px; } #right-panel { right: 10px; }
-            .prop-row { grid-template-columns: 120px 1fr; }
-            :root { --panel-top: calc(var(--header-height) + var(--toolbar-height) + 10px); --dashboard-gap: 10px; --floating-gap: 10px; --controls-h: 140px; --crane-h: 240px; --right-col-w: 240px; }
-            #floating-controls-panel, #crane-panel, #data-color-panel { width: 150px; right: calc(var(--right-col-w) + var(--dashboard-gap) + var(--floating-gap)); }
-            .chart-container:nth-of-type(2) { display: none; }
-            .toolbar-hint { display: none; }
-            .toolbar-btn span.label { display: none; }
-            .toolbar-btn { padding: 6px 8px; }
-            .toolbar-btn.reopen span.label { display: none; }
+            header {
+                padding: 0 10px;
+            }
+
+            .logo-area span:not(.logo-icon) {
+                font-size: 0.85rem;
+            }
+
+            .upload-btn span:not(.icon),
+            .header-validate-btn span:not(.icon) {
+                display: none;
+            }
+
+            .upload-btn,
+            .header-validate-btn {
+                padding: 8px 10px;
+            }
+
+            .user-profile {
+                padding: 5px 8px;
+            }
+
+            .dashboard {
+                display: block;
+                padding: 0;
+                height: calc(100dvh - var(--header-height) - var(--toolbar-height));
+            }
+
+            #left-panel,
+            #right-panel {
+                position: absolute;
+                top: 10px;
+                bottom: 10px;
+                width: 240px;
+                opacity: 0.95;
+                background: rgba(13, 17, 28, 0.9);
+                z-index: 15;
+                overflow-y: auto;
+            }
+
+            #left-panel {
+                left: 10px;
+            }
+
+            #right-panel {
+                right: 10px;
+            }
+
+            .prop-row {
+                grid-template-columns: 120px 1fr;
+            }
+
+            :root {
+                --panel-top: calc(var(--header-height) + var(--toolbar-height) + 10px);
+                --dashboard-gap: 10px;
+                --floating-gap: 10px;
+                --controls-h: 140px;
+                --crane-h: 240px;
+                --right-col-w: 240px;
+            }
+
+            #floating-controls-panel,
+            #crane-panel,
+            #data-color-panel {
+                width: 150px;
+                right: calc(var(--right-col-w) + var(--dashboard-gap) + var(--floating-gap));
+            }
+
+            .chart-container:nth-of-type(2) {
+                display: none;
+            }
+
+            .toolbar-hint {
+                display: none;
+            }
+
+            .toolbar-btn span.label {
+                display: none;
+            }
+
+            .toolbar-btn {
+                padding: 6px 8px;
+            }
+
+            .toolbar-btn.reopen span.label {
+                display: none;
+            }
         }
     </style>
 
@@ -299,6 +1567,7 @@
         }
     </script>
 </head>
+
 <body>
 
     <div id="canvas-container"></div>
@@ -312,7 +1581,7 @@
         <div class="settings-row"><label>Selection Box</label><input type="checkbox" id="set-selbox" checked></div>
         <div class="settings-row"><button id="btn-reset-camera">Reset Camera</button></div>
     </div>
-    
+
     <div id="chart-tooltip">
         <div class="tt-title" id="tt-title">Title</div>
         <div class="tt-value" id="tt-value">Value</div>
@@ -336,33 +1605,53 @@
                 <div class="breadcrumbs"><span></span><span id="clock"></span></div>
             </div>
             <div class="header-actions">
-                <button id="header-validate-btn" class="header-validate-btn" title="Validate all selected elements against BCA IFC-SG standards">
+                <button id="header-validate-btn" class="header-validate-btn"
+                    title="Validate all selected elements against BCA IFC-SG standards">
                     <span>🇸🇬</span> <span class="icon">Validate Selected SG</span>
                 </button>
-                <button id="header-export-btn" class="upload-btn" title="Export all attributes of selected elements to Excel (one tab per Pset)">
+                <button id="header-export-btn" class="upload-btn"
+                    title="Export all attributes of selected elements to Excel (one tab per Pset)">
                     <span>📊</span> <span class="icon">Export Selected Excel</span>
                 </button>
-                <div><label for="ifc-upload" class="upload-btn"><span>📂</span> <span class="icon">Load Local IFC</span></label><input type="file" id="ifc-upload" accept=".ifc" style="display: none;"></div>
-                <div class="user-profile"><div class="user-avatar">AC</div> <span>Alex Chen</span></div>
+                <div><label for="ifc-upload" class="upload-btn"><span>📂</span> <span class="icon">Load Local
+                            IFC</span></label><input type="file" id="ifc-upload" accept=".ifc" style="display: none;">
+                </div>
+                <div class="user-profile">
+                    <div class="user-avatar">AC</div> <span>Alex Chen</span>
+                </div>
             </div>
         </header>
 
         <div class="toolbar">
             <div class="toolbar-group">
-                <button class="toolbar-btn active" id="mode-single" title="Single Selection"><span class="tb-icon">👆</span><span class="label">Single</span></button>
-                <button class="toolbar-btn" id="mode-area" title="Area Selection"><span class="tb-icon">▭</span><span class="label">Area</span></button>
-                <button class="toolbar-btn" id="mode-assembly" title="Assembly Selection"><span class="tb-icon">🧱</span><span class="label">Assembly</span></button>
+                <button class="toolbar-btn active" id="mode-single" title="Single Selection"><span
+                        class="tb-icon">👆</span><span class="label">Single</span></button>
+                <button class="toolbar-btn" id="mode-area" title="Area Selection"><span class="tb-icon">▭</span><span
+                        class="label">Area</span></button>
+                <button class="toolbar-btn" id="mode-assembly" title="Assembly Selection"><span
+                        class="tb-icon">🧱</span><span class="label">Assembly</span></button>
                 <span class="toolbar-sep"></span>
-                <button class="toolbar-btn reopen" data-panel="left-panel" style="display:none;" title="Reopen Project Timelines"><span class="tb-icon">📊</span><span class="label">Timelines</span></button>
-                <button class="toolbar-btn reopen" data-panel="right-panel" style="display:none;" title="Reopen Resource Allocation"><span class="tb-icon">📈</span><span class="label">Resources</span></button>
-                <button class="toolbar-btn reopen" data-panel="floating-controls-panel" style="display:none;" title="Reopen Controls"><span class="tb-icon">⚙️</span><span class="label">Controls</span></button>
-                <button class="toolbar-btn reopen" data-panel="crane-panel" style="display:none;" title="Reopen Crane Manager"><span class="tb-icon">🏗️</span><span class="label">Crane</span></button>
-                <button class="toolbar-btn reopen" data-panel="data-color-panel" style="display:none;" title="Reopen Data &amp; Color"><span class="tb-icon">🎨</span><span class="label">Data</span></button>
+                <button class="toolbar-btn reopen" data-panel="left-panel" style="display:none;"
+                    title="Reopen Project Timelines"><span class="tb-icon">📊</span><span
+                        class="label">Timelines</span></button>
+                <button class="toolbar-btn reopen" data-panel="right-panel" style="display:none;"
+                    title="Reopen Resource Allocation"><span class="tb-icon">📈</span><span
+                        class="label">Resources</span></button>
+                <button class="toolbar-btn reopen" data-panel="floating-controls-panel" style="display:none;"
+                    title="Reopen Controls"><span class="tb-icon">⚙️</span><span class="label">Controls</span></button>
+                <button class="toolbar-btn reopen" data-panel="crane-panel" style="display:none;"
+                    title="Reopen Crane Manager"><span class="tb-icon">🏗️</span><span
+                        class="label">Crane</span></button>
+                <button class="toolbar-btn reopen" data-panel="data-color-panel" style="display:none;"
+                    title="Reopen Data &amp; Color"><span class="tb-icon">🎨</span><span
+                        class="label">Data</span></button>
                 <span class="toolbar-hint" id="toolbar-hint">Single selection — click any element</span>
             </div>
             <div class="toolbar-group">
-                <button class="toolbar-btn settings" id="btn-settings" title="Settings"><span class="tb-icon">⚙️</span><span class="label">Settings</span></button>
-                <button class="toolbar-btn fullscreen" id="btn-fullscreen" title="Enter Fullscreen"><span class="tb-icon">⛶</span><span class="label">Fullscreen</span></button>
+                <button class="toolbar-btn settings" id="btn-settings" title="Settings"><span
+                        class="tb-icon">⚙️</span><span class="label">Settings</span></button>
+                <button class="toolbar-btn fullscreen" id="btn-fullscreen" title="Enter Fullscreen"><span
+                        class="tb-icon">⛶</span><span class="label">Fullscreen</span></button>
             </div>
         </div>
 
@@ -376,48 +1665,79 @@
                         <div class="win-btn close" data-target="left-panel">×</div>
                     </div>
                 </div>
-                
+
                 <div class="evm-grid">
-                    <div class="evm-item"><span class="evm-val" style="color:var(--neon-green);">1.05</span><span class="evm-label">CPI</span></div>
-                    <div class="evm-item"><span class="evm-val" style="color:var(--neon-orange);">0.92</span><span class="evm-label">SPI</span></div>
-                    <div class="evm-item"><span class="evm-val" style="color:var(--neon-blue);">$1.2M</span><span class="evm-label">EAC</span></div>
+                    <div class="evm-item"><span class="evm-val" style="color:var(--neon-green);">1.05</span><span
+                            class="evm-label">CPI</span></div>
+                    <div class="evm-item"><span class="evm-val" style="color:var(--neon-orange);">0.92</span><span
+                            class="evm-label">SPI</span></div>
+                    <div class="evm-item"><span class="evm-val" style="color:var(--neon-blue);">$1.2M</span><span
+                            class="evm-label">EAC</span></div>
                 </div>
-                
+
                 <div class="chart-container">
-                    <div class="chart-title"><span>Schedule Variance</span><span style="display:flex; gap:10px; align-items:center;"><span>Q3 2024</span> <span class="expand-icon">⛶</span></span></div>
+                    <div class="chart-title"><span>Schedule Variance</span><span
+                            style="display:flex; gap:10px; align-items:center;"><span>Q3 2024</span> <span
+                                class="expand-icon">⛶</span></span></div>
                     <svg class="svg-chart" viewBox="0 0 280 110">
-                        <line x1="60" y1="0" x2="60" y2="110" class="grid-line" /><line x1="120" y1="0" x2="120" y2="110" class="grid-line" /><line x1="180" y1="0" x2="180" y2="110" class="grid-line" /><line x1="240" y1="0" x2="240" y2="110" class="grid-line" />
+                        <line x1="60" y1="0" x2="60" y2="110" class="grid-line" />
+                        <line x1="120" y1="0" x2="120" y2="110" class="grid-line" />
+                        <line x1="180" y1="0" x2="180" y2="110" class="grid-line" />
+                        <line x1="240" y1="0" x2="240" y2="110" class="grid-line" />
                         <text x="0" y="15" fill="#7a8ba3" font-size="9">Foundation</text>
                         <rect x="60" y="7" width="100" height="8" fill="rgba(0, 240, 255, 0.2)" rx="4" />
-                        <rect class="hover-target" data-tt-title="Foundation" data-tt-val="80%" data-tt-desc="Planned: 100% | Status: On Track" x="60" y="7" width="80" height="8" fill="var(--neon-blue)" rx="4" />
+                        <rect class="hover-target" data-tt-title="Foundation" data-tt-val="80%"
+                            data-tt-desc="Planned: 100% | Status: On Track" x="60" y="7" width="80" height="8"
+                            fill="var(--neon-blue)" rx="4" />
                         <text x="0" y="40" fill="#7a8ba3" font-size="9">Steel</text>
                         <rect x="100" y="32" width="120" height="8" fill="rgba(157, 78, 221, 0.2)" rx="4" />
-                        <rect class="hover-target" data-tt-title="Steel Erection" data-tt-val="60%" data-tt-desc="Planned: 90% | Status: Delayed" x="100" y="32" width="60" height="8" fill="var(--neon-purple)" rx="4" />
+                        <rect class="hover-target" data-tt-title="Steel Erection" data-tt-val="60%"
+                            data-tt-desc="Planned: 90% | Status: Delayed" x="100" y="32" width="60" height="8"
+                            fill="var(--neon-purple)" rx="4" />
                         <text x="0" y="65" fill="#7a8ba3" font-size="9">Cladding</text>
                         <rect x="150" y="57" width="90" height="8" fill="rgba(255, 0, 127, 0.2)" rx="4" />
-                        <rect class="hover-target" data-tt-title="Cladding" data-tt-val="40%" data-tt-desc="Planned: 60% | Status: Delayed" x="150" y="57" width="40" height="8" fill="var(--neon-pink)" rx="4" />
+                        <rect class="hover-target" data-tt-title="Cladding" data-tt-val="40%"
+                            data-tt-desc="Planned: 60% | Status: Delayed" x="150" y="57" width="40" height="8"
+                            fill="var(--neon-pink)" rx="4" />
                         <text x="0" y="90" fill="#7a8ba3" font-size="9">MEP</text>
                         <rect x="180" y="82" width="80" height="8" fill="rgba(0, 255, 136, 0.2)" rx="4" />
-                        <rect class="hover-target" data-tt-title="MEP Rough-in" data-tt-val="10%" data-tt-desc="Planned: 20% | Status: Critical" x="180" y="82" width="10" height="8" fill="var(--neon-green)" rx="4" />
+                        <rect class="hover-target" data-tt-title="MEP Rough-in" data-tt-val="10%"
+                            data-tt-desc="Planned: 20% | Status: Critical" x="180" y="82" width="10" height="8"
+                            fill="var(--neon-green)" rx="4" />
                     </svg>
                 </div>
 
                 <div class="chart-container">
-                    <div class="chart-title"><span>Risk Profile</span><span style="display:flex; gap:10px; align-items:center;"><span>Top 5</span> <span class="expand-icon">⛶</span></span></div>
-                    <svg class="svg-chart" viewBox="0 0 200 160" style="max-height: 150px; margin: 0 auto; display: block;">
-                        <polygon points="100,20 176,65 147,150 53,150 24,65" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
-                        <polygon points="100,45 140,70 125,115 75,115 60,70" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+                    <div class="chart-title"><span>Risk Profile</span><span
+                            style="display:flex; gap:10px; align-items:center;"><span>Top 5</span> <span
+                                class="expand-icon">⛶</span></span></div>
+                    <svg class="svg-chart" viewBox="0 0 200 160"
+                        style="max-height: 150px; margin: 0 auto; display: block;">
+                        <polygon points="100,20 176,65 147,150 53,150 24,65" fill="none" stroke="rgba(255,255,255,0.1)"
+                            stroke-width="1" />
+                        <polygon points="100,45 140,70 125,115 75,115 60,70" fill="none" stroke="rgba(255,255,255,0.1)"
+                            stroke-width="1" />
                         <line x1="100" y1="80" x2="100" y2="20" stroke="rgba(255,255,255,0.1)" />
                         <line x1="100" y1="80" x2="176" y2="65" stroke="rgba(255,255,255,0.1)" />
                         <line x1="100" y1="80" x2="147" y2="150" stroke="rgba(255,255,255,0.1)" />
                         <line x1="100" y1="80" x2="53" y2="150" stroke="rgba(255,255,255,0.1)" />
                         <line x1="100" y1="80" x2="24" y2="65" stroke="rgba(255,255,255,0.1)" />
-                        <polygon points="100,50 150,65 120,120 70,130 50,70" fill="rgba(255, 0, 127, 0.2)" stroke="var(--neon-pink)" stroke-width="2" />
-                        <circle class="hover-target" data-tt-title="Weather Risk" data-tt-val="High" data-tt-desc="Score: 8/10. Delays expected due to monsoon." cx="100" cy="50" r="6" fill="transparent" />
-                        <circle class="hover-target" data-tt-title="Supply Chain" data-tt-val="Medium" data-tt-desc="Score: 5/10. Steel deliveries slightly behind." cx="150" cy="65" r="6" fill="transparent" />
-                        <circle class="hover-target" data-tt-title="Labor" data-tt-val="Very High" data-tt-desc="Score: 9/10. Shortage of MEP technicians." cx="120" cy="120" r="6" fill="transparent" />
-                        <circle class="hover-target" data-tt-title="Design" data-tt-val="Low" data-tt-desc="Score: 3/10. Minor RFIs pending." cx="70" cy="130" r="6" fill="transparent" />
-                        <circle class="hover-target" data-tt-title="Safety" data-tt-val="Medium" data-tt-desc="Score: 6/10. Need better edge protection." cx="50" cy="70" r="6" fill="transparent" />
+                        <polygon points="100,50 150,65 120,120 70,130 50,70" fill="rgba(255, 0, 127, 0.2)"
+                            stroke="var(--neon-pink)" stroke-width="2" />
+                        <circle class="hover-target" data-tt-title="Weather Risk" data-tt-val="High"
+                            data-tt-desc="Score: 8/10. Delays expected due to monsoon." cx="100" cy="50" r="6"
+                            fill="transparent" />
+                        <circle class="hover-target" data-tt-title="Supply Chain" data-tt-val="Medium"
+                            data-tt-desc="Score: 5/10. Steel deliveries slightly behind." cx="150" cy="65" r="6"
+                            fill="transparent" />
+                        <circle class="hover-target" data-tt-title="Labor" data-tt-val="Very High"
+                            data-tt-desc="Score: 9/10. Shortage of MEP technicians." cx="120" cy="120" r="6"
+                            fill="transparent" />
+                        <circle class="hover-target" data-tt-title="Design" data-tt-val="Low"
+                            data-tt-desc="Score: 3/10. Minor RFIs pending." cx="70" cy="130" r="6" fill="transparent" />
+                        <circle class="hover-target" data-tt-title="Safety" data-tt-val="Medium"
+                            data-tt-desc="Score: 6/10. Need better edge protection." cx="50" cy="70" r="6"
+                            fill="transparent" />
                         <text x="100" y="10" fill="#7a8ba3" font-size="8" text-anchor="middle">Weather</text>
                         <text x="185" y="65" fill="#7a8ba3" font-size="8" text-anchor="start">Supply</text>
                         <text x="155" y="160" fill="#7a8ba3" font-size="8" text-anchor="middle">Labor</text>
@@ -427,8 +1747,20 @@
                 </div>
 
                 <div class="milestone-list">
-                    <div class="milestone-item"><div class="milestone-info"><span>Structural Topping Out</span><span class="status-badge status-on-track">On Track</span></div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width: 85%;"></div></div></div>
-                    <div class="milestone-item"><div class="milestone-info"><span>Curtain Wall Install</span><span class="status-badge status-delayed">Delayed</span></div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width: 45%; background: var(--neon-pink);"></div></div></div>
+                    <div class="milestone-item">
+                        <div class="milestone-info"><span>Structural Topping Out</span><span
+                                class="status-badge status-on-track">On Track</span></div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" style="width: 85%;"></div>
+                        </div>
+                    </div>
+                    <div class="milestone-item">
+                        <div class="milestone-info"><span>Curtain Wall Install</span><span
+                                class="status-badge status-delayed">Delayed</span></div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" style="width: 45%; background: var(--neon-pink);"></div>
+                        </div>
+                    </div>
                 </div>
                 <div class="resize-handle" data-resize="left-panel"></div>
             </div>
@@ -444,40 +1776,78 @@
                         <div class="win-btn close" data-target="right-panel">×</div>
                     </div>
                 </div>
-                
+
                 <div class="resource-grid">
-                    <div class="resource-card"><h3>742</h3><p>Workforce</p></div>
-                    <div class="resource-card"><h3 style="color: var(--neon-purple);">8</h3><p>Cranes Active</p></div>
+                    <div class="resource-card">
+                        <h3>742</h3>
+                        <p>Workforce</p>
+                    </div>
+                    <div class="resource-card">
+                        <h3 style="color: var(--neon-purple);">8</h3>
+                        <p>Cranes Active</p>
+                    </div>
                 </div>
-                
+
                 <div class="chart-container">
-                    <div class="chart-title"><span>Cost Performance</span><span style="display:flex; gap:10px; align-items:center;"><span>Budget vs Actual</span> <span class="expand-icon">⛶</span></span></div>
+                    <div class="chart-title"><span>Cost Performance</span><span
+                            style="display:flex; gap:10px; align-items:center;"><span>Budget vs Actual</span> <span
+                                class="expand-icon">⛶</span></span></div>
                     <svg class="svg-chart" viewBox="0 0 280 80">
-                        <defs><linearGradient id="costGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--neon-blue)" /><stop offset="100%" stop-color="transparent" /></linearGradient></defs>
+                        <defs>
+                            <linearGradient id="costGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="var(--neon-blue)" />
+                                <stop offset="100%" stop-color="transparent" />
+                            </linearGradient>
+                        </defs>
                         <line x1="0" y1="80" x2="280" y2="80" class="grid-line" />
-                        <path d="M0,80 L30,70 L80,50 L130,30 L180,20 L230,15 L280,10" fill="none" stroke="var(--neon-purple)" stroke-width="2" stroke-dasharray="3" />
-                        <path d="M0,80 L30,75 L80,60 L130,45 L180,35 L230,30 L280,25 L280,80 Z" fill="url(#costGradient)" opacity="0.4" />
-                        <path d="M0,80 L30,75 L80,60 L130,45 L180,35 L230,30 L280,25" fill="none" stroke="var(--neon-blue)" stroke-width="2" />
-                        <rect class="hover-target" data-tt-title="Q1 2024" data-tt-val="$150k" data-tt-desc="Budget: $120k | Variance: -$30k" x="0" y="0" width="70" height="80" fill="transparent" />
-                        <rect class="hover-target" data-tt-title="Q2 2024" data-tt-val="$280k" data-tt-desc="Budget: $250k | Variance: -$30k" x="70" y="0" width="70" height="80" fill="transparent" />
-                        <rect class="hover-target" data-tt-title="Q3 2024" data-tt-val="$420k" data-tt-desc="Budget: $400k | Variance: -$20k" x="140" y="0" width="70" height="80" fill="transparent" />
-                        <rect class="hover-target" data-tt-title="Q4 2024" data-tt-val="$590k" data-tt-desc="Budget: $600k | Variance: +$10k" x="210" y="0" width="70" height="80" fill="transparent" />
+                        <path d="M0,80 L30,70 L80,50 L130,30 L180,20 L230,15 L280,10" fill="none"
+                            stroke="var(--neon-purple)" stroke-width="2" stroke-dasharray="3" />
+                        <path d="M0,80 L30,75 L80,60 L130,45 L180,35 L230,30 L280,25 L280,80 Z"
+                            fill="url(#costGradient)" opacity="0.4" />
+                        <path d="M0,80 L30,75 L80,60 L130,45 L180,35 L230,30 L280,25" fill="none"
+                            stroke="var(--neon-blue)" stroke-width="2" />
+                        <rect class="hover-target" data-tt-title="Q1 2024" data-tt-val="$150k"
+                            data-tt-desc="Budget: $120k | Variance: -$30k" x="0" y="0" width="70" height="80"
+                            fill="transparent" />
+                        <rect class="hover-target" data-tt-title="Q2 2024" data-tt-val="$280k"
+                            data-tt-desc="Budget: $250k | Variance: -$30k" x="70" y="0" width="70" height="80"
+                            fill="transparent" />
+                        <rect class="hover-target" data-tt-title="Q3 2024" data-tt-val="$420k"
+                            data-tt-desc="Budget: $400k | Variance: -$20k" x="140" y="0" width="70" height="80"
+                            fill="transparent" />
+                        <rect class="hover-target" data-tt-title="Q4 2024" data-tt-val="$590k"
+                            data-tt-desc="Budget: $600k | Variance: +$10k" x="210" y="0" width="70" height="80"
+                            fill="transparent" />
                     </svg>
                 </div>
-                
+
                 <div class="chart-container">
                     <div class="chart-title"><span>Labor Utilization</span> <span class="expand-icon">⛶</span></div>
                     <svg class="svg-chart" viewBox="0 0 100 50">
-                        <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="8" stroke-linecap="round" />
-                        <path class="hover-target" data-tt-title="Labor Utilization" data-tt-val="82%" data-tt-desc="742 Workers Active | 160 Available" d="M 10 50 A 40 40 0 0 1 75 20" fill="none" stroke="var(--neon-green)" stroke-width="8" stroke-linecap="round" />
-                        <text x="50" y="45" fill="#fff" font-size="14" font-weight="bold" text-anchor="middle" pointer-events="none">82%</text>
+                        <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="rgba(255,255,255,0.1)"
+                            stroke-width="8" stroke-linecap="round" />
+                        <path class="hover-target" data-tt-title="Labor Utilization" data-tt-val="82%"
+                            data-tt-desc="742 Workers Active | 160 Available" d="M 10 50 A 40 40 0 0 1 75 20"
+                            fill="none" stroke="var(--neon-green)" stroke-width="8" stroke-linecap="round" />
+                        <text x="50" y="45" fill="#fff" font-size="14" font-weight="bold" text-anchor="middle"
+                            pointer-events="none">82%</text>
                     </svg>
                 </div>
-                
+
                 <div class="chart-title" style="margin-top: 5px;"><span>Incoming Deliveries</span></div>
                 <div class="delivery-list">
-                    <div class="delivery-item on-time"><div><div class="delivery-name">Rebar L4</div><div class="delivery-eta">ETA: Today 14:00</div></div><span style="color:var(--neon-green); font-size:0.65rem;">Arrived</span></div>
-                    <div class="delivery-item late"><div><div class="delivery-name">Curtain Wall Panels</div><div class="delivery-eta">ETA: Tomorrow 09:00</div></div><span style="color:var(--neon-pink); font-size:0.65rem;">Delayed</span></div>
+                    <div class="delivery-item on-time">
+                        <div>
+                            <div class="delivery-name">Rebar L4</div>
+                            <div class="delivery-eta">ETA: Today 14:00</div>
+                        </div><span style="color:var(--neon-green); font-size:0.65rem;">Arrived</span>
+                    </div>
+                    <div class="delivery-item late">
+                        <div>
+                            <div class="delivery-name">Curtain Wall Panels</div>
+                            <div class="delivery-eta">ETA: Tomorrow 09:00</div>
+                        </div><span style="color:var(--neon-pink); font-size:0.65rem;">Delayed</span>
+                    </div>
                 </div>
                 <div class="resize-handle" data-resize="right-panel"></div>
             </div>
@@ -501,7 +1871,8 @@
                     </select>
                 </div>
                 <div class="control-group">
-                    <button id="btn-show-all" style="border-color: var(--neon-green); color: var(--neon-green);">Show All / Clear</button>
+                    <button id="btn-show-all" style="border-color: var(--neon-green); color: var(--neon-green);">Show
+                        All / Clear</button>
                 </div>
             </div>
             <div class="resize-handle" data-resize="floating-controls-panel"></div>
@@ -529,8 +1900,11 @@
                     <input type="number" id="crane-rot" value="45" step="15">
                 </div>
                 <div class="control-group">
-                    <button id="btn-add-crane" style="border-color: var(--neon-orange); color: var(--neon-orange);">🏗️ Add Crane</button>
-                    <button id="btn-clear-cranes" style="border-color: var(--neon-pink); color: var(--neon-pink); margin-top: 5px;">🗑️ Clear Cranes</button>
+                    <button id="btn-add-crane" style="border-color: var(--neon-orange); color: var(--neon-orange);">🏗️
+                        Add Crane</button>
+                    <button id="btn-clear-cranes"
+                        style="border-color: var(--neon-pink); color: var(--neon-pink); margin-top: 5px;">🗑️ Clear
+                        Cranes</button>
                 </div>
             </div>
             <div class="resize-handle" data-resize="crane-panel"></div>
@@ -547,9 +1921,13 @@
             <div class="content">
                 <div class="control-group">
                     <label>Import Data (Excel/CSV/JSON)</label>
-                    <input type="file" id="data-import-input" accept=".xlsx, .xls, .csv, .json" style="font-size: 0.65rem; padding: 3px;">
-                    <div id="import-status" style="font-size: 0.65rem; color: var(--text-muted); margin-top: 5px;">No data loaded.</div>
-                    <button id="btn-load-sample" style="border-color: var(--neon-purple); color: var(--neon-purple); margin-top: 8px; font-size: 0.65rem;">📄 Load Sample Data</button>
+                    <input type="file" id="data-import-input" accept=".xlsx, .xls, .csv, .json"
+                        style="font-size: 0.65rem; padding: 3px;">
+                    <div id="import-status" style="font-size: 0.65rem; color: var(--text-muted); margin-top: 5px;">No
+                        data loaded.</div>
+                    <button id="btn-load-sample"
+                        style="border-color: var(--neon-purple); color: var(--neon-purple); margin-top: 8px; font-size: 0.65rem;">📄
+                        Load Sample Data</button>
                 </div>
                 <div class="control-group">
                     <label>Custom Color</label>
@@ -559,8 +1937,12 @@
                     </div>
                 </div>
                 <div class="control-group">
-                    <button id="btn-apply-status" style="border-color: var(--neon-orange); color: var(--neon-orange);">Color by Status Data</button>
-                    <button id="btn-reset-colors" style="border-color: var(--neon-pink); color: var(--neon-pink); margin-top: 5px;">Reset All Colors</button>
+                    <button id="btn-apply-status"
+                        style="border-color: var(--neon-orange); color: var(--neon-orange);">Color by Status
+                        Data</button>
+                    <button id="btn-reset-colors"
+                        style="border-color: var(--neon-pink); color: var(--neon-pink); margin-top: 5px;">Reset All
+                        Colors</button>
                 </div>
             </div>
             <div class="resize-handle" data-resize="data-color-panel"></div>
@@ -572,8 +1954,11 @@
             <span class="inspector-title">
                 Element Properties
                 <div class="action-buttons">
-                    <button class="action-btn validate-btn" id="btn-validate-sg" title="Validate selected elements">🇸🇬 Validate</button>
-                    <button class="action-btn" id="btn-export-excel" title="Export selected elements' attributes to Excel (one tab per Pset)">📊 Export Excel</button>
+                    <button class="action-btn validate-btn" id="btn-validate-sg" title="Validate selected elements">🇸🇬
+                        Validate</button>
+                    <button class="action-btn" id="btn-export-excel"
+                        title="Export selected elements' attributes to Excel (one tab per Pset)">📊 Export
+                        Excel</button>
                     <button class="action-btn" id="btn-zoom" title="Zoom to Element(s)">🔍 Zoom</button>
                     <button class="action-btn" id="btn-isolate" title="Isolate Element(s)">👁️ Isolate</button>
                 </div>
@@ -586,7 +1971,8 @@
         </div>
         <div class="inspector-body">
             <div class="search-container">
-                <input type="text" id="prop-search" class="search-input" placeholder="Search properties (e.g. Fire Rating)...">
+                <input type="text" id="prop-search" class="search-input"
+                    placeholder="Search properties (e.g. Fire Rating)...">
             </div>
             <div class="tab-nav" id="tab-nav"></div>
             <div class="tab-content-container" id="tab-content-container"></div>
@@ -660,7 +2046,7 @@
 
         const selectionBoxes = new THREE.Group();
         scene.add(selectionBoxes);
-        let selectedMeshes = new Map(); 
+        let selectedMeshes = new Map();
 
         const craneGroup = new THREE.Group();
         scene.add(craneGroup);
@@ -669,13 +2055,13 @@
         ifcAPI.SetWasmPath('https://unpkg.com/web-ifc@0.0.78/', true);
 
         let currentIfcModel = null; let currentModelID = -1;
-        
+
         const guidToMeshMap = new Map();
         const importedDataMap = new Map();
-        
+
         const sharedDefaultMaterial = new THREE.MeshPhysicalMaterial({ color: 0x00f0ff, emissive: 0x003366, metalness: 0.8, roughness: 0.2, transmission: 0.5, thickness: 0.5, transparent: true, opacity: 0.7, side: THREE.DoubleSide });
         const selectedMaterial = new THREE.MeshPhysicalMaterial({ color: 0xff007f, emissive: 0x44001a, metalness: 0.9, roughness: 0.1, transparent: true, opacity: 0.9, side: THREE.DoubleSide });
-        
+
         const loadingOverlay = document.getElementById('loading-overlay'); const loadStatus = document.getElementById('load-status'); const loadTitle = document.getElementById('load-title');
         const progressContainer = document.getElementById('progress-container'); const progressBar = document.getElementById('progress-bar');
         const inspectorPanel = document.getElementById('inspector-panel'); const tabNav = document.getElementById('tab-nav'); const tabContentContainer = document.getElementById('tab-content-container');
@@ -765,7 +2151,7 @@
         document.addEventListener('mousemove', (e) => {
             if (tooltip.classList.contains('visible')) {
                 let x = e.clientX; let y = e.clientY;
-                if (y < 80) y = 80; 
+                if (y < 80) y = 80;
                 tooltip.style.left = x + 'px'; tooltip.style.top = y + 'px';
             }
         });
@@ -839,12 +2225,12 @@
             const cab = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), matDark); cab.position.set(2, 39, 0); crane.add(cab);
             const peak = new THREE.Mesh(new THREE.ConeGeometry(1.5, 6, 4), matOrange); peak.position.set(0, 43, 0); peak.rotation.y = Math.PI / 4; crane.add(peak);
 
-            const cableGeo = new THREE.BufferGeometry().setFromPoints([ new THREE.Vector3(0, 46, 0), new THREE.Vector3(25, 40, 0), new THREE.Vector3(0, 46, 0), new THREE.Vector3(-9, 40, 0) ]);
+            const cableGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 46, 0), new THREE.Vector3(25, 40, 0), new THREE.Vector3(0, 46, 0), new THREE.Vector3(-9, 40, 0)]);
             crane.add(new THREE.LineSegments(cableGeo, matCable));
 
-            const hookCableGeo = new THREE.BufferGeometry().setFromPoints([ new THREE.Vector3(20, 40, 0), new THREE.Vector3(20, 15, 0) ]);
+            const hookCableGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(20, 40, 0), new THREE.Vector3(20, 15, 0)]);
             crane.add(new THREE.Line(hookCableGeo, matCable));
-            
+
             const hook = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), matDark); hook.position.set(20, 14.5, 0); crane.add(hook);
 
             crane.position.set(x, 0, z); crane.rotation.y = THREE.MathUtils.degToRad(rotationDeg);
@@ -864,7 +2250,7 @@
         });
 
         function updateDashboardGrid() {
-            if (window.innerWidth <= 768) return; 
+            if (window.innerWidth <= 768) return;
             const leftPanel = document.getElementById('left-panel');
             const rightPanel = document.getElementById('right-panel');
             const leftVisible = leftPanel.style.display !== 'none' && !leftPanel.classList.contains('maximized') && !leftPanel.classList.contains('detached');
@@ -914,7 +2300,7 @@
                 if (!isDragging) return;
                 isDragging = false;
                 panel.classList.remove('dragging');
-                try { handle.releasePointerCapture(e.pointerId); } catch(err) {}
+                try { handle.releasePointerCapture(e.pointerId); } catch (err) { }
             };
             handle.addEventListener('pointerup', stopDrag);
             handle.addEventListener('pointercancel', stopDrag);
@@ -960,7 +2346,7 @@
                 if (!isResizing) return;
                 isResizing = false;
                 panel.classList.remove('resizing');
-                try { handle.releasePointerCapture(e.pointerId); } catch(err) {}
+                try { handle.releasePointerCapture(e.pointerId); } catch (err) { }
             };
             handle.addEventListener('pointerup', stopResize);
             handle.addEventListener('pointercancel', stopResize);
@@ -1019,8 +2405,8 @@
         }
 
         setupWindow('inspector-panel'); setupWindow('validation-results'); setupWindow('floating-controls-panel'); setupWindow('data-color-panel'); setupWindow('crane-panel'); setupWindow('left-panel'); setupWindow('right-panel'); setupWindow('chart-modal');
-        
-        ['left-panel','right-panel','floating-controls-panel','data-color-panel','crane-panel','inspector-panel','validation-results','chart-modal'].forEach(id => {
+
+        ['left-panel', 'right-panel', 'floating-controls-panel', 'data-color-panel', 'crane-panel', 'inspector-panel', 'validation-results', 'chart-modal'].forEach(id => {
             const el = document.getElementById(id);
             if (el) { makePanelDraggable(el); makePanelResizable(el); }
         });
@@ -1138,7 +2524,7 @@
             if (!collection) return;
             if (Array.isArray(collection)) { collection.forEach(callback); }
             else if (typeof collection.size === 'function') { for (let i = 0; i < collection.size(); i++) callback(collection.get(i)); }
-            else if (typeof collection === 'object') { try { for (const item of collection) callback(item); } catch(e) {} }
+            else if (typeof collection === 'object') { try { for (const item of collection) callback(item); } catch (e) { } }
         }
 
         function extractValue(prop, depth = 0) {
@@ -1155,7 +2541,7 @@
                 let nested = [];
                 iterateCollection(prop.HasProperties, nestedPropHandle => {
                     const nid = safeExpressID(nestedPropHandle); if (nid < 0) return;
-                    let np = null; try { np = ifcAPI.GetLine(currentModelID, nid, false); } catch(e) { return; }
+                    let np = null; try { np = ifcAPI.GetLine(currentModelID, nid, false); } catch (e) { return; }
                     if (np && np.Name) {
                         const nVal = extractValue(np, depth + 1);
                         if (nVal !== null && nVal !== "") nested.push(`${np.Name.value}: ${nVal}`);
@@ -1171,11 +2557,11 @@
             const safeId = safeExpressID(expressID); if (safeId < 0) return psetMap;
             // GetLine needs inverse=true to populate IsDefinedBy / IsTypedBy
             let rawElement = null;
-            try { rawElement = ifcAPI.GetLine(modelID, safeId, false, true); } catch(e) {}
-            if (!rawElement) { try { rawElement = ifcAPI.GetLine(modelID, safeId, false); } catch(e) { return psetMap; } }
+            try { rawElement = ifcAPI.GetLine(modelID, safeId, false, true); } catch (e) { }
+            if (!rawElement) { try { rawElement = ifcAPI.GetLine(modelID, safeId, false); } catch (e) { return psetMap; } }
             const processPsetHandle = (psetHandle) => {
                 const psetID = safeExpressID(psetHandle); if (psetID < 0) return;
-                let pset = null; try { pset = ifcAPI.GetLine(modelID, psetID, false); } catch(e) { return; }
+                let pset = null; try { pset = ifcAPI.GetLine(modelID, psetID, false); } catch (e) { return; }
                 if (!pset || !pset.Name) return;
                 const psetName = pset.Name.value;
                 if (!psetMap.has(psetName)) psetMap.set(psetName, new Map());
@@ -1183,8 +2569,8 @@
                 if (pset.HasProperties) {
                     iterateCollection(pset.HasProperties, propHandle => {
                         const propID = safeExpressID(propHandle); if (propID < 0) return;
-                        let prop = null; try { prop = ifcAPI.GetLine(modelID, propID, false); } catch(e) { return; }
-                        if (prop && prop.Name) { try { propMap.set(prop.Name.value, extractValue(prop)); } catch(e) {} }
+                        let prop = null; try { prop = ifcAPI.GetLine(modelID, propID, false); } catch (e) { return; }
+                        if (prop && prop.Name) { try { propMap.set(prop.Name.value, extractValue(prop)); } catch (e) { } }
                     });
                 }
             };
@@ -1193,22 +2579,22 @@
                 const apiPsets = ifcAPI.properties.getPropertySets(modelID, safeId, true);
                 const awaited = apiPsets instanceof Promise ? await apiPsets : apiPsets;
                 if (awaited) iterateCollection(awaited, pset => processPsetHandle(pset));
-            } catch(e) {}
+            } catch (e) { }
             if (rawElement) {
                 if (rawElement.IsDefinedBy) {
                     iterateCollection(rawElement.IsDefinedBy, relHandle => {
                         const relId = safeExpressID(relHandle); if (relId < 0) return;
-                        let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; }
+                        let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch (e) { return; }
                         if (rel && rel.RelatingPropertyDefinition) processPsetHandle(rel.RelatingPropertyDefinition);
                     });
                 }
                 if (rawElement.IsTypedBy) {
                     iterateCollection(rawElement.IsTypedBy, relHandle => {
                         const relId = safeExpressID(relHandle); if (relId < 0) return;
-                        let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; }
+                        let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch (e) { return; }
                         if (rel && rel.RelatingType) {
                             const typeId = safeExpressID(rel.RelatingType); if (typeId < 0) return;
-                            let typeObj = null; try { typeObj = ifcAPI.GetLine(modelID, typeId, false); } catch(e) { return; }
+                            let typeObj = null; try { typeObj = ifcAPI.GetLine(modelID, typeId, false); } catch (e) { return; }
                             if (typeObj && typeObj.HasPropertySets) iterateCollection(typeObj.HasPropertySets, processPsetHandle);
                         }
                     });
@@ -1222,16 +2608,16 @@
             const safeId = safeExpressID(expressID); if (safeId < 0) return parts;
             // GetLine needs inverse=true to populate IsDecomposedBy
             let rawElement = null;
-            try { rawElement = ifcAPI.GetLine(modelID, safeId, false, true); } catch(e) {}
-            if (!rawElement) { try { rawElement = ifcAPI.GetLine(modelID, safeId, false); } catch(e) { return parts; } }
+            try { rawElement = ifcAPI.GetLine(modelID, safeId, false, true); } catch (e) { }
+            if (!rawElement) { try { rawElement = ifcAPI.GetLine(modelID, safeId, false); } catch (e) { return parts; } }
             if (rawElement && rawElement.IsDecomposedBy) {
                 iterateCollection(rawElement.IsDecomposedBy, relHandle => {
                     const relId = safeExpressID(relHandle); if (relId < 0) return;
-                    let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; }
+                    let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch (e) { return; }
                     if (rel && rel.RelatedObjects) {
                         iterateCollection(rel.RelatedObjects, objHandle => {
                             const id = safeExpressID(objHandle); if (id < 0) return;
-                            let obj = null; try { obj = ifcAPI.GetLine(modelID, id, true); } catch(e) { return; }
+                            let obj = null; try { obj = ifcAPI.GetLine(modelID, id, true); } catch (e) { return; }
                             if (obj && obj.type === 'IFCBUILDINGELEMENTPART') parts.push(id);
                         });
                     }
@@ -1252,14 +2638,14 @@
 
             // 1) Try GetLine(..., true) — the usual path
             let line = null;
-            try { line = ifcAPI.GetLine(modelID, safeId, true); } catch(e) {}
+            try { line = ifcAPI.GetLine(modelID, safeId, true); } catch (e) { }
             if (line) {
                 const t = line.type || (line.constructor && line.constructor.name);
                 if (typeof t === 'string' && /^IFC/i.test(t)) return t;
             }
 
             // 2) Try GetLine(..., false)
-            try { line = ifcAPI.GetLine(modelID, safeId, false); } catch(e) {}
+            try { line = ifcAPI.GetLine(modelID, safeId, false); } catch (e) { }
             if (line) {
                 const t = line.type || (line.constructor && line.constructor.name);
                 if (typeof t === 'string' && /^IFC/i.test(t)) return t;
@@ -1273,14 +2659,14 @@
                     const tname = ifcAPI.GetNameFromTypeCode(t);
                     if (tname && /^IFC/i.test(tname)) return tname;
                 }
-            } catch(e) {}
+            } catch (e) { }
 
             // 4) Last resort — the .type field is numeric, map via GetNameFromTypeCode
             if (line && typeof line.type === 'number' && typeof ifcAPI.GetNameFromTypeCode === 'function') {
                 try {
                     const tname = ifcAPI.GetNameFromTypeCode(line.type);
                     if (tname && /^IFC/i.test(tname)) return tname;
-                } catch(e) {}
+                } catch (e) { }
             }
 
             return null;
@@ -1289,7 +2675,7 @@
         function _safeGetLine(modelID, id, isType = false) {
             const safeId = safeExpressID(id);
             if (safeId < 0) return null;
-            try { return ifcAPI.GetLine(modelID, safeId, isType); } catch(e) { return null; }
+            try { return ifcAPI.GetLine(modelID, safeId, isType); } catch (e) { return null; }
         }
         function _collectHandles(collection, out) {
             if (!collection) return;
@@ -1298,9 +2684,9 @@
                 else if (typeof collection.size === 'function') {
                     for (let i = 0; i < collection.size(); i++) { const id = safeExpressID(collection.get(i)); if (id >= 0) out.push(id); }
                 } else if (typeof collection === 'object') {
-                    try { for (const item of collection) { const id = safeExpressID(item); if (id >= 0) out.push(id); } } catch(e) {}
+                    try { for (const item of collection) { const id = safeExpressID(item); if (id >= 0) out.push(id); } } catch (e) { }
                 }
-            } catch(e) {}
+            } catch (e) { }
         }
 
         function findGlobalIdForNonRoot(modelID, expressID) {
@@ -1317,21 +2703,21 @@
             const visited = new Set();
             const queue = [{ id: rootId, depth: 0, path: 'self' }];
             const relAttrsUp = ['Decomposes', 'ContainedInStructure', 'HasAssignments', 'HasAssociations',
-                                'IsDefinedBy', 'IsTypedBy', 'IsGroupedBy', 'ReferencedBy', 'HasContext',
-                                'VoidsElements', 'FillsVoids', 'HasOpenings', 'ContainsElements', 'HasPorts'];
+                'IsDefinedBy', 'IsTypedBy', 'IsGroupedBy', 'ReferencedBy', 'HasContext',
+                'VoidsElements', 'FillsVoids', 'HasOpenings', 'ContainsElements', 'HasPorts'];
             const pushRelatedHandles = (obj, out) => {
                 if (!obj) return;
                 ['RelatingObject', 'RelatingStructure', 'RelatingGroup', 'RelatingType',
-                 'RelatingPropertyDefinition', 'RelatingMaterial', 'RelatingProduct',
-                 'RelatingBuildingElement', 'RelatingOpeningElement', 'RelatingContext'].forEach(k => {
-                    const v = obj[k]; if (v !== undefined) { const id = safeExpressID(v); if (id >= 0) out.push(id); }
-                });
+                    'RelatingPropertyDefinition', 'RelatingMaterial', 'RelatingProduct',
+                    'RelatingBuildingElement', 'RelatingOpeningElement', 'RelatingContext'].forEach(k => {
+                        const v = obj[k]; if (v !== undefined) { const id = safeExpressID(v); if (id >= 0) out.push(id); }
+                    });
                 ['RelatedObjects', 'RelatedElements', 'RelatedProducts', 'HasProperties',
-                 'HasPropertySets', 'HasAssociations', 'HasAssignments', 'HasOpenings',
-                 'ContainsElements', 'IsDecomposedBy', 'IsDefinedBy', 'IsTypedBy',
-                 'IsGroupedBy', 'ReferencedBy', 'HasContext', 'HasPorts'].forEach(k => {
-                    if (obj[k] !== undefined) _collectHandles(obj[k], out);
-                });
+                    'HasPropertySets', 'HasAssociations', 'HasAssignments', 'HasOpenings',
+                    'ContainsElements', 'IsDecomposedBy', 'IsDefinedBy', 'IsTypedBy',
+                    'IsGroupedBy', 'ReferencedBy', 'HasContext', 'HasPorts'].forEach(k => {
+                        if (obj[k] !== undefined) _collectHandles(obj[k], out);
+                    });
             };
 
             while (queue.length > 0) {
@@ -1353,10 +2739,10 @@
                     try {
                         if (Array.isArray(coll)) { coll.forEach(h => { const rid = safeExpressID(h); if (rid >= 0) nextIds.push(rid); }); }
                         else if (typeof coll.size === 'function') { for (let i = 0; i < coll.size(); i++) { const rid = safeExpressID(coll.get(i)); if (rid >= 0) nextIds.push(rid); } }
-                        else if (typeof coll === 'object') { try { for (const item of coll) { const rid = safeExpressID(item); if (rid >= 0) nextIds.push(rid); } } catch(e) {} }
-                    } catch(e) {}
+                        else if (typeof coll === 'object') { try { for (const item of coll) { const rid = safeExpressID(item); if (rid >= 0) nextIds.push(rid); } } catch (e) { } }
+                    } catch (e) { }
                 });
-                try { pushRelatedHandles(obj, nextIds); } catch(e) {}
+                try { pushRelatedHandles(obj, nextIds); } catch (e) { }
 
                 nextIds.forEach(nid => {
                     if (!visited.has(nid)) queue.push({ id: nid, depth: depth + 1, path: `${path} → ${obj.type || '?'}` });
@@ -1390,10 +2776,10 @@
 
         async function processAndAddModel(arrayBuffer) {
             try {
-                if (currentModelID !== -1) { try { ifcAPI.CloseModel(currentModelID); } catch(e) {} currentModelID = -1; }
+                if (currentModelID !== -1) { try { ifcAPI.CloseModel(currentModelID); } catch (e) { } currentModelID = -1; }
                 if (currentIfcModel) { scene.remove(currentIfcModel); currentIfcModel.traverse((child) => { if (child.isMesh) child.geometry.dispose(); }); currentIfcModel = null; }
                 await new Promise(r => setTimeout(r, 100));
-                if (window.gc) { try { window.gc(); } catch(e) {} }
+                if (window.gc) { try { window.gc(); } catch (e) { } }
 
                 showLoading("Parsing WASM Geometry...", "Opening IFC Model (This may take a moment)...");
                 await new Promise(r => setTimeout(r, 50));
@@ -1402,9 +2788,9 @@
                 const openBytes = new Uint8Array(arrayBuffer);
                 try { opened = ifcAPI.OpenModel(openBytes, { optimizeGeometry: true, COORDINATE_TO_ORIGIN: true }); }
                 catch (err) {
-                    try { ifcAPI.CloseAllModels(); } catch(e) {}
+                    try { ifcAPI.CloseAllModels(); } catch (e) { }
                     await new Promise(r => setTimeout(r, 500));
-                    if (window.gc) { try { window.gc(); } catch(e) {} }
+                    if (window.gc) { try { window.gc(); } catch (e) { } }
                     try { opened = ifcAPI.OpenModel(openBytes, { optimizeGeometry: true, COORDINATE_TO_ORIGIN: true }); }
                     catch (err2) { showToast("Model is too large for browser memory. Try a smaller IFC or a desktop viewer.", 'error'); throw err2; }
                 }
@@ -1430,7 +2816,7 @@
                                     try {
                                         verts = sanitizeVertexArray(ifcAPI.GetVertexArray(geometry.GetVertexData(), geometry.GetVertexDataSize()));
                                         indices = sanitizeIndexArray(ifcAPI.GetIndexArray(geometry.GetIndexData(), geometry.GetIndexDataSize()));
-                                    } catch(e) { continue; }
+                                    } catch (e) { continue; }
                                     if (!verts || verts.length === 0 || !indices || indices.length === 0) continue;
                                     if (verts.length % 6 !== 0) continue;
                                     rawGeometries.push({
@@ -1438,9 +2824,9 @@
                                         expressID: mesh.expressID,
                                         matrix: placedGeometryData.flatTransformation ? new THREE.Matrix4().fromArray(placedGeometryData.flatTransformation) : null
                                     });
-                                } catch(placeErr) {}
+                                } catch (placeErr) { }
                             }
-                        } catch(meshErr) {}
+                        } catch (meshErr) { }
                     });
                 } catch (streamErr) {
                     if (rawGeometries.length === 0) throw streamErr;
@@ -1487,9 +2873,9 @@
                                 try {
                                     const line = ifcAPI.GetLine(modelID, eid, true);
                                     if (line && line.GlobalId && line.GlobalId.value) guidToMeshMap.set(line.GlobalId.value, mesh3D);
-                                } catch(e) {}
+                                } catch (e) { }
                             }
-                        } catch(meshErr) {}
+                        } catch (meshErr) { }
                     });
 
                     const percent = Math.min(100, Math.round(((i + CHUNK_SIZE) / rawGeometries.length) * 100));
@@ -1533,7 +2919,7 @@
         function clearSelection() {
             selectedMeshes.forEach((mesh) => { mesh.material = sharedDefaultMaterial; });
             selectedMeshes.clear();
-            while(selectionBoxes.children.length > 0){ selectionBoxes.remove(selectionBoxes.children[0]); }
+            while (selectionBoxes.children.length > 0) { selectionBoxes.remove(selectionBoxes.children[0]); }
             inspectorPanel.classList.remove('open');
             inspectorPanel.style.display = 'none';
         }
@@ -1598,12 +2984,12 @@
             if (Math.hypot(event.clientX - pointerDownPos.x, event.clientY - pointerDownPos.y) > 5) return;
             if (isDraggingModel) { isDraggingModel = false; return; }
             if (event.target.closest('.panel') || event.target.closest('#inspector-panel') || event.target.closest('header') || event.target.closest('.floating-controls') || event.target.closest('#validation-results') || event.target.closest('#chart-modal') || event.target.closest('#minimized-dock') || event.target.closest('.resize-handle') || event.target.closest('.toolbar') || event.target.closest('#settings-popup')) return;
-            
+
             pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
             pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(pointer, camera);
             if (!currentIfcModel || currentModelID === -1) return;
-            
+
             const intersects = raycaster.intersectObjects(currentIfcModel.children.filter(c => c.visible));
             if (intersects.length > 0) {
                 const hitMesh = intersects[0].object;
@@ -1687,19 +3073,36 @@
         }
 
         document.getElementById('btn-load-sample').addEventListener('click', () => {
-            const base64Data = "TWFya2luZyxJRkMgR3VpZGUsc3RhdHVzLHVwZGF0ZWQgb24KVy0wMSwxTzJjJHBwTHVLdlB3MFh5WmFCY0QsQ29tcGxldGVkLDIwMjQtMDUtMTUKVy0wMiwyUDNkJHFxTTVMd1F4MVl6QWJDZEUsSW4gUHJvZ3Jlc3MsMjAyNC0wNS0xNgpTLTAxLDNRNGUkckZyTjZNeFJ5MlphQmNEZUYsRGVsYXllZCwyMDI0LTA1LTE0CkQtMDEsNFI1ZiRzR3NPN055U3ozQWJDZEVmRyxQZW5kaW5nLDIwMjQtMDUtMTcKQy0wMSw1UzZnJHRIdFA4T3pUYTRCY0RlRmdILENvbXBsZXRlZCwyMDI0LTA1LTE1Cg==";
             try {
-                const csvString = atob(base64Data);
-                const workbook = XLSX.read(csvString, { type: 'string' });
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                let rows = XLSX.utils.sheet_to_json(firstSheet);
-                if (guidToMeshMap.size > 0) {
-                    const realGuids = Array.from(guidToMeshMap.keys()).slice(0, 5);
-                    rows = rows.map((row, index) => { if (index < realGuids.length) row['IFC Guide'] = realGuids[index]; return row; });
-                    showToast("Loaded sample data with REAL GUIDs from model.", 'success');
-                } else { showToast("Loaded sample data (Dummy GUIDs - load a model for real mapping).", 'success'); }
-                processImportedData(rows);
-            } catch (err) { showToast("Failed to load sample data.", 'error'); }
+                // ── Build 8 sample rows driven by the currently loaded model (if any) ──
+                const realGuids = Array.from(guidToMeshMap.keys()).slice(0, 8);
+                const statuses  = ['Completed', 'In Progress', 'Delayed', 'Pending'];
+                const markings  = ['W-01', 'W-02', 'S-01', 'D-01', 'C-01', 'B-01', 'SL-01', 'W-03'];
+
+                const sampleRows = (realGuids.length > 0 ? realGuids : [
+                    '3oi25H4Cb7IPZsZyRoTp6v', '2P3d$qqM5LwQx1YzAbCdEe',
+                    '0DBEKiCxn0eP1DqHwtKowK', '4R5f$sGsO7NySz3AbCdEfG',
+                    '5S6g$tHtP8OzTa4BcDeFgH', '6T7h$uIuQ9PaUb5CdEfGhI',
+                    '7U8i$vJvR0QbVc6DeFgHiJ', '8V9j$wKwS1RcWd7EfGhIjK'
+                ]).map((guid, idx) => ({
+                    'Marking':   markings[idx % markings.length],
+                    'IFC Guide': guid,
+                    'status':    statuses[idx % statuses.length],
+                    'updated on': `2024-05-${String(10 + (idx % 9)).padStart(2, '0')}`
+                }));
+
+                // ── Load into the app ──
+                processImportedData(sampleRows);
+
+                if (realGuids.length > 0) {
+                    showToast(`Loaded 8 sample rows with REAL GUIDs from model.`, 'success');
+                } else {
+                    showToast(`Loaded 8 sample rows (Dummy GUIDs — load a model for real mapping).`, 'success');
+                }
+            } catch (err) {
+                console.error('[btn-load-sample] failed:', err);
+                showToast('Failed to load sample data.', 'error');
+            }
         });
 
         document.getElementById('btn-apply-color').addEventListener('click', () => {
@@ -1757,7 +3160,7 @@
             const attrContent = document.createElement('div'); attrContent.className = 'tab-content active'; attrContent.id = 'tab-attributes'; tabContentContainer.appendChild(attrContent);
 
             let ifcLine = null;
-            try { ifcLine = ifcAPI.GetLine(modelID, safeId, true); } catch(e) {}
+            try { ifcLine = ifcAPI.GetLine(modelID, safeId, true); } catch (e) { }
 
             const addAttributeRow = (key, value) => {
                 if (value === undefined || value === null || value === "") return;
@@ -1779,7 +3182,7 @@
                     row.className = 'prop-row';
                     row.innerHTML = `<div class="prop-key">QR Code</div><div class="prop-val"><img class="qr-img" src="${dataUrl}" alt="QR code for ${text}" title="${text}"></div>`;
                     attrContent.appendChild(row);
-                } catch(e) { console.warn('[QR] Failed to generate QR code:', e); }
+                } catch (e) { console.warn('[QR] Failed to generate QR code:', e); }
             };
 
             addAttributeRow("Express ID", safeId);
@@ -1816,17 +3219,17 @@
 
             try {
                 const uniquePsets = new Map();
-                const rawElement = ifcLine || (() => { try { return ifcAPI.GetLine(modelID, safeId, false); } catch(e) { return null; } })();
+                const rawElement = ifcLine || (() => { try { return ifcAPI.GetLine(modelID, safeId, false); } catch (e) { return null; } })();
                 const addPset = (handle) => {
                     const psetID = safeExpressID(handle); if (psetID < 0) return;
-                    let pset = null; try { pset = ifcAPI.GetLine(modelID, psetID, false); } catch(e) { return; }
+                    let pset = null; try { pset = ifcAPI.GetLine(modelID, psetID, false); } catch (e) { return; }
                     if (!pset || !pset.Name) return;
                     if (!uniquePsets.has(pset.expressID)) uniquePsets.set(pset.expressID, pset);
                 };
                 if (rawElement) {
-                    try { const apiPsets = ifcAPI.properties.getPropertySets(modelID, safeId, true); const awaited = apiPsets instanceof Promise ? await apiPsets : apiPsets; if (awaited) iterateCollection(awaited, pset => addPset(pset)); } catch(e) {}
-                    try { iterateCollection(rawElement.IsDefinedBy, relHandle => { const relId = safeExpressID(relHandle); if (relId < 0) return; let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; } if (rel && rel.RelatingPropertyDefinition) addPset(rel.RelatingPropertyDefinition); }); } catch(e) {}
-                    try { iterateCollection(rawElement.IsTypedBy, relHandle => { const relId = safeExpressID(relHandle); if (relId < 0) return; let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch(e) { return; } if (rel && rel.RelatingType) { const typeId = safeExpressID(rel.RelatingType); if (typeId < 0) return; let typeObj = null; try { typeObj = ifcAPI.GetLine(modelID, typeId, false); } catch(e) { return; } if (typeObj && typeObj.HasPropertySets) iterateCollection(typeObj.HasPropertySets, psetHandle => addPset(psetHandle)); } }); } catch(e) {}
+                    try { const apiPsets = ifcAPI.properties.getPropertySets(modelID, safeId, true); const awaited = apiPsets instanceof Promise ? await apiPsets : apiPsets; if (awaited) iterateCollection(awaited, pset => addPset(pset)); } catch (e) { }
+                    try { iterateCollection(rawElement.IsDefinedBy, relHandle => { const relId = safeExpressID(relHandle); if (relId < 0) return; let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch (e) { return; } if (rel && rel.RelatingPropertyDefinition) addPset(rel.RelatingPropertyDefinition); }); } catch (e) { }
+                    try { iterateCollection(rawElement.IsTypedBy, relHandle => { const relId = safeExpressID(relHandle); if (relId < 0) return; let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch (e) { return; } if (rel && rel.RelatingType) { const typeId = safeExpressID(rel.RelatingType); if (typeId < 0) return; let typeObj = null; try { typeObj = ifcAPI.GetLine(modelID, typeId, false); } catch (e) { return; } if (typeObj && typeObj.HasPropertySets) iterateCollection(typeObj.HasPropertySets, psetHandle => addPset(psetHandle)); } }); } catch (e) { }
                 }
 
                 let psetIndex = 0;
@@ -1840,10 +3243,10 @@
                     if (pset.HasProperties) {
                         iterateCollection(pset.HasProperties, propHandle => {
                             const propID = safeExpressID(propHandle); if (propID < 0) return;
-                            let prop = null; try { prop = ifcAPI.GetLine(modelID, propID, false); } catch(e) { return; }
+                            let prop = null; try { prop = ifcAPI.GetLine(modelID, propID, false); } catch (e) { return; }
                             if (prop && prop.Name) {
                                 hasProps = true;
-                                let val = 'N/A'; try { val = extractValue(prop) || 'N/A'; } catch(e) { val = 'N/A'; }
+                                let val = 'N/A'; try { val = extractValue(prop) || 'N/A'; } catch (e) { val = 'N/A'; }
                                 const row = document.createElement('div'); row.className = 'prop-row';
                                 row.innerHTML = `<div class="prop-key">${prop.Name.value}</div><div class="prop-val">${val}</div>`;
                                 content.appendChild(row);
@@ -1852,7 +3255,7 @@
                     }
                     if (!hasProps) content.innerHTML = '<div style="color:var(--text-muted); font-size:0.8rem; margin-top:10px;">No properties in this set.</div>';
                 });
-            } catch (psetErr) {}
+            } catch (psetErr) { }
 
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
@@ -1879,11 +3282,11 @@
             }
 
             const requiredSchema = {
-                'IfcWall':   { 'SGPset_Wall': ['ConstructionMethod', 'ReinforcementSteelGrade'], 'SGPset_WallDimension': ['Mark', 'Thickness'] },
-                'IfcBeam':   { 'SGPset_Beam': ['Reference', 'Status'], 'Pset_BeamCommon': ['IsExternal', 'LoadBearing'] },
+                'IfcWall': { 'SGPset_Wall': ['ConstructionMethod', 'ReinforcementSteelGrade'], 'SGPset_WallDimension': ['Mark', 'Thickness'] },
+                'IfcBeam': { 'SGPset_Beam': ['Reference', 'Status'], 'Pset_BeamCommon': ['IsExternal', 'LoadBearing'] },
                 'IfcColumn': { 'SGPset_Column': ['IsExternal', 'ReferTo2DDetail', 'LoadBearing'] },
-                'IfcSlab':   { 'SGPset_Slab': ['Reference', 'Status'], 'Pset_SlabCommon': ['IsExternal', 'LoadBearing', 'FireRating'] },
-                'IfcDoor':   { 'SGPset_Door': ['Reference', 'Status'], 'Pset_DoorCommon': ['IsExternal', 'FireRating', 'SecurityRating'] }
+                'IfcSlab': { 'SGPset_Slab': ['Reference', 'Status'], 'Pset_SlabCommon': ['IsExternal', 'LoadBearing', 'FireRating'] },
+                'IfcDoor': { 'SGPset_Door': ['Reference', 'Status'], 'Pset_DoorCommon': ['IsExternal', 'FireRating', 'SecurityRating'] }
             };
             console.log('[SG-VALIDATION] Required schema:', JSON.parse(JSON.stringify(requiredSchema)));
 
@@ -2077,7 +3480,7 @@
                 if (safeId < 0) continue;
 
                 let line = null;
-                try { line = ifcAPI.GetLine(currentModelID, safeId, true); } catch(e) {}
+                try { line = ifcAPI.GetLine(currentModelID, safeId, true); } catch (e) { }
                 const globalId = (line && line.GlobalId && line.GlobalId.value) || '';
                 const name = (line && line.Name && line.Name.value) || '';
                 const type = resolveIfcTypeName(currentModelID, safeId) || '';
@@ -2177,7 +3580,7 @@
                     let key = "Unknown";
                     if (mode === 'type') {
                         const eid = safeExpressID(child.userData.expressID);
-                        if (eid >= 0) { try { const t = resolveIfcTypeName(currentModelID, eid); if (t) key = t; } catch(e) {} }
+                        if (eid >= 0) { try { const t = resolveIfcTypeName(currentModelID, eid); if (t) key = t; } catch (e) { } }
                     } else if (mode === 'material') {
                         const eid = safeExpressID(child.userData.expressID);
                         if (eid >= 0) {
@@ -2193,10 +3596,10 @@
                                                 const mat = ifcAPI.GetLine(currentModelID, mid, false);
                                                 if (mat && mat.Name) key = mat.Name.value;
                                             }
-                                        } catch(e) {}
+                                        } catch (e) { }
                                     });
                                 }
-                            } catch(e) {}
+                            } catch (e) { }
                         }
                     }
                     if (!typeColors[key]) typeColors[key] = new THREE.Color().setHSL(Math.random(), 0.8, 0.5);
@@ -2214,7 +3617,7 @@
         async function startApp() {
             try {
                 ifcAPI.SetWasmPath('https://unpkg.com/web-ifc@0.0.78/', true);
-                try { if (typeof ifcAPI.SetLogLevel === 'function') ifcAPI.SetLogLevel(0); } catch(e) {}
+                try { if (typeof ifcAPI.SetLogLevel === 'function') ifcAPI.SetLogLevel(0); } catch (e) { }
                 await ifcAPI.Init();
                 const defaultIfcURL = 'https://thatopen.github.io/engine_fragment/resources/example.ifc';
                 showLoading("Initializing...", "Downloading default IFC...");
@@ -2238,7 +3641,7 @@
                     loadStatus.innerText = `Reading File: ${percent}% (${(e.loaded / 1024 / 1024).toFixed(1)} MB)`;
                 }
             };
-            reader.onload = async function(e) {
+            reader.onload = async function (e) {
                 await processAndAddModel(e.target.result);
                 document.querySelector('.breadcrumbs').innerHTML = `DIGITAL TWIN | Project: <span style="color:var(--neon-blue)">${file.name}</span> | SITE STATUS: <span>ON TRACK</span> | <span id="clock">${new Date().toLocaleTimeString()}</span>`;
             };
@@ -2247,7 +3650,8 @@
 
         function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); } animate();
         window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
-        setInterval(() => { const clockEl = document.getElementById('clock'); if(clockEl) { const now = new Date(); let hours = now.getHours(); const ampm = hours >= 12 ? 'PM' : 'AM'; hours = hours % 12 || 12; clockEl.textContent = `${hours}:${String(now.getMinutes()).padStart(2, '0')} ${ampm}`; } }, 1000);
+        setInterval(() => { const clockEl = document.getElementById('clock'); if (clockEl) { const now = new Date(); let hours = now.getHours(); const ampm = hours >= 12 ? 'PM' : 'AM'; hours = hours % 12 || 12; clockEl.textContent = `${hours}:${String(now.getMinutes()).padStart(2, '0')} ${ampm}`; } }, 1000);
     </script>
 </body>
+
 </html>
