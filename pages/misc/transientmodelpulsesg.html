@@ -1858,7 +1858,7 @@
             const requiredSchema = {
                 'IfcWall':   { 'SGPset_Wall': ['ConstructionMethod', 'ReferTo2DDetail', 'ReinforcementSteelGrade'], 'SGPset_WallDimension': ['Mark', 'Thickness'] },
                 'IfcBeam':   { 'SGPset_Beam': ['Reference', 'Status'], 'Pset_BeamCommon': ['IsExternal', 'LoadBearing'] },
-                'IfcColumn': { 'SGPset_Column': ['IsExternal', 'LoadBearing'] },
+                'IfcColumn': { 'SGPset_Column': ['IsExternal', 'ReferTo2DDetail', 'LoadBearing'] },
                 'IfcSlab':   { 'SGPset_Slab': ['Reference', 'Status'], 'Pset_SlabCommon': ['IsExternal', 'LoadBearing', 'FireRating'] },
                 'IfcDoor':   { 'SGPset_Door': ['Reference', 'Status'], 'Pset_DoorCommon': ['IsExternal', 'FireRating', 'SecurityRating'] }
             };
@@ -1882,12 +1882,15 @@
 
                 const elementName = isPart ? `Part (ID: ${safeId})` : `Element (ID: ${safeId})`;
 
-                // Empty = null/undefined, blank or whitespace-only string, or placeholder like "N/A"
+                // Empty = null/undefined, blank or whitespace-only string, or placeholder like
+                // "-", "NA", "N/A", "N.A", "N.A.", "n.a", "n/a" etc. (any case/punctuation variant)
                 const isEmptyVal = (v) => {
                     if (v === null || v === undefined) return true;
                     if (typeof v === 'string') {
                         const t = v.trim();
-                        return t === '' || t.toUpperCase() === 'N/A' || t === '-';
+                        if (t === '' || t === '-') return true;
+                        // Normalize: drop dots/slashes/spaces, uppercase → all N/A variants become "NA"
+                        return t.replace(/[./\s]/g, '').toUpperCase() === 'NA';
                     }
                     return false;
                 };
