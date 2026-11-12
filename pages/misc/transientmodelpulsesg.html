@@ -339,6 +339,9 @@
                 <button id="header-validate-btn" class="header-validate-btn" title="Validate all selected elements against BCA IFC-SG standards">
                     <span>🇸🇬</span> <span class="icon">Validate Selected SG</span>
                 </button>
+                <button id="header-export-btn" class="upload-btn" title="Export all attributes of selected elements to Excel (one tab per Pset)">
+                    <span>📊</span> <span class="icon">Export Selected Excel</span>
+                </button>
                 <div><label for="ifc-upload" class="upload-btn"><span>📂</span> <span class="icon">Load Local IFC</span></label><input type="file" id="ifc-upload" accept=".ifc" style="display: none;"></div>
                 <div class="user-profile"><div class="user-avatar">AC</div> <span>Alex Chen</span></div>
             </div>
@@ -570,6 +573,7 @@
                 Element Properties
                 <div class="action-buttons">
                     <button class="action-btn validate-btn" id="btn-validate-sg" title="Validate selected elements">🇸🇬 Validate</button>
+                    <button class="action-btn" id="btn-export-excel" title="Export selected elements' attributes to Excel (one tab per Pset)">📊 Export Excel</button>
                     <button class="action-btn" id="btn-zoom" title="Zoom to Element(s)">🔍 Zoom</button>
                     <button class="action-btn" id="btn-isolate" title="Isolate Element(s)">👁️ Isolate</button>
                 </div>
@@ -2057,6 +2061,58 @@
         }
         document.getElementById('header-validate-btn').addEventListener('click', () => runSGValidation(Array.from(selectedMeshes.keys())));
         document.getElementById('btn-validate-sg').addEventListener('click', () => runSGValidation(Array.from(selectedMeshes.keys())));
+
+        // ─── Export selected elements' attributes to Excel, one worksheet per Pset ───
+        async function exportSelectedToExcel() {
+            const expressIDs = Array.from(selectedMeshes.keys());
+            if (!expressIDs.length) { showToast("Select element(s) first.", 'error'); return; }
+            if (typeof XLSX === 'undefined') { showToast("Excel library not loaded.", 'error'); return; }
+
+            showToast(`Exporting ${expressIDs.length} element(s) to Excel...`);
+            const attrRows = [];
+            const psetSheets = new Map(); // pset name -> array of row objects
+
+            for (const expressID of expressIDs) {
+                const safeId = safeExpressID(expressID);
+                if (safeId < 0) continue;
+
+                let line = null;
+                try { line = ifcAPI.GetLine(currentModelID, safeId, true); } catch(e) {}
+                const globalId = (line && line.GlobalId && line.GlobalId.value) || '';
+                const name = (line && line.Name && line.Name.value) || '';
+                const type = resolveIfcTypeName(currentModelID, safeId) || '';
+                attrRows.push({ 'Express ID': safeId, 'Global ID': globalId, 'Type': type, 'Name': name });
+
+                const psetMap = await getPsetsAsMap(currentModelID, safeId);
+                for (const [psetName, propsMap] of psetMap) {
+                    if (!psetSheets.has(psetName)) psetSheets.set(psetName, []);
+                    const row = { 'Express ID': safeId, 'Global ID': globalId, 'Name': name };
+                    for (const [propName, val] of propsMap) row[propName] = (val === null || val === undefined) ? '' : val;
+                    psetSheets.get(psetName).push(row);
+                }
+            }
+
+            if (!attrRows.length) { showToast("No exportable data in selection.", 'error'); return; }
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(attrRows), 'Attributes');
+
+            // Excel sheet names: max 31 chars, no []:*?/\ characters, must be unique
+            const usedNames = new Set(['attributes']);
+            for (const [psetName, rows] of psetSheets) {
+                let sheetName = String(psetName).replace(/[\[\]:*?\/\\]/g, '_').slice(0, 31) || 'Pset';
+                let suffix = 2;
+                while (usedNames.has(sheetName.toLowerCase())) sheetName = `${sheetName.slice(0, 28)}_${suffix++}`;
+                usedNames.add(sheetName.toLowerCase());
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), sheetName);
+            }
+
+            const ts = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15);
+            XLSX.writeFile(wb, `ifc-sg-export-${ts}.xlsx`);
+            showToast(`Exported ${attrRows.length} element(s) across ${psetSheets.size} Pset tab(s).`, 'success');
+        }
+        document.getElementById('header-export-btn').addEventListener('click', exportSelectedToExcel);
+        document.getElementById('btn-export-excel').addEventListener('click', exportSelectedToExcel);
 
         searchInput.addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase();
