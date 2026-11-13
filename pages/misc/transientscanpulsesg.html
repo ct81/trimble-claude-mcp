@@ -5,19 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Transient Scan Pulse SG</title>
 
-  <!-- html5-qrcode: QR + 1D barcodes, camera & file -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  <!-- Tesseract.js: OCR engine -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <!-- OpenCV.js: industrial-surface preprocessing -->
   <script async src="https://docs.opencv.org/4.10.0/opencv.js" onload="onOpenCvReady()"></script>
 
   <style>
-    
-        :root {
-            --text-muted: #7a8ba3;
-            --neon-blue: #00f0ff;
-        }
+    :root {
+      --text-muted: #7a8ba3;
+      --neon-blue:  #00f0ff;
+      --neon-green: #39ff14;
+    }
 
     * { box-sizing: border-box; }
     html, body {
@@ -32,41 +29,33 @@
     .app { max-width: 760px; margin: 0 auto; }
 
     header { text-align: center; margin-bottom: 14px; }
-    header h1 {
-      font-size: 1.25rem; margin: 0 0 4px;
-      color: #4fc3f7; letter-spacing: .3px;
-    }
-    header p { margin: 0; font-size: .8rem; color: #8a8a92; }
 
     .logo-area {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            font-weight: bold;
-            letter-spacing: 1px;
-        }
-
-        .logo-icon {
-            color: var(--neon-blue);
-            font-size: 1.2rem;
-        }
-
-        .breadcrumbs {
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            font-weight: normal;
-        }
-
-        .breadcrumbs span {
-            color: var(--neon-green);
-            margin-left: 5px;
-        }
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: bold;
+      letter-spacing: 1px;
+      font-size: .92rem;
+      color: #4fc3f7;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .logo-icon { color: var(--neon-blue); font-size: 1.2rem; }
+    .breadcrumbs {
+      color: var(--text-muted);
+      font-size: .75rem;
+      font-weight: normal;
+      flex-basis: 100%;
+      margin-top: 2px;
+    }
+    .breadcrumbs span { color: var(--neon-blue); margin-left: 5px; }
 
     /* ---------- SWIPE VIEWPORT ---------- */
     .swipe-viewport {
       overflow: hidden;
       border-radius: 14px;
-      touch-action: pan-y;              /* let browser handle vertical, we own horizontal */
+      touch-action: pan-y;
       position: relative;
       background: #17171a;
       box-shadow: 0 6px 24px rgba(0,0,0,.55);
@@ -84,7 +73,6 @@
       min-height: 480px;
     }
 
-    /* ---------- PANEL CONTENT ---------- */
     .panel-title {
       display: flex; align-items: center; gap: 8px;
       font-size: 1rem; font-weight: 700;
@@ -92,6 +80,7 @@
     }
     .panel-sub { font-size: .78rem; color: #85858e; margin: 0 0 14px; }
 
+    /* ---------- QR SCANNER HOST ---------- */
     #reader {
       width: 100%;
       border-radius: 10px;
@@ -100,6 +89,37 @@
       min-height: 240px;
     }
     #reader video { border-radius: 10px; }
+
+    /* ---------- OCR CAMERA (independent) ---------- */
+    .cam-wrap {
+      position: relative;
+      width: 100%;
+      min-height: 240px;
+      background: #000;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 4px;
+    }
+    #ocrVideo {
+      width: 100%;
+      display: block;
+      max-height: 60vh;
+      object-fit: contain;
+      background: #000;
+    }
+    .cam-off {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #555;
+      font-size: .82rem;
+      letter-spacing: .6px;
+      background: #0a0a0c;
+      pointer-events: none;
+    }
+    .cam-wrap.live .cam-off { display: none; }
 
     #previewCanvas {
       display: none;
@@ -129,6 +149,7 @@
     .btn-primary { background: #4fc3f7; color: #04212e; }
     .btn-ghost   { background: #2a2a30; color: #d6d6dd; }
     .btn-warn    { background: #3a2a12; color: #ffb74d; }
+    .btn-stop    { background: #3a1212; color: #ff8a8a; }
 
     input[type="file"] { display: none; }
 
@@ -153,7 +174,7 @@
       min-height: 18px;
     }
 
-    /* ---------- SWIPE HINTS & DOTS ---------- */
+    /* ---------- SWIPE HINTS ---------- */
     .swipe-hint {
       display: flex; align-items: center; justify-content: center;
       gap: 6px; margin-top: 12px;
@@ -183,7 +204,6 @@
     }
     .dot.active { background: #4fc3f7; transform: scale(1.35); }
 
-    /* Small screens */
     @media (max-height: 640px) {
       .slide { min-height: 400px; }
     }
@@ -193,10 +213,10 @@
 <div class="app">
 
   <header>
-            <div class="logo-area">
-                <span class="logo-icon">⧉</span> <span>Transient Scan Pulse SG</span>
-                <div class="breadcrumbs">Swipe to switch · QR / Barcode · Engraved OCR</div>
-            </div>
+    <div class="logo-area">
+      <span class="logo-icon">⧉</span> <span>Transient Scan Pulse SG</span>
+      <div class="breadcrumbs">Swipe to switch · QR / Barcode · Engraved OCR</div>
+    </div>
   </header>
 
   <div class="swipe-viewport" id="swipeViewport">
@@ -210,8 +230,8 @@
         <div id="reader"></div>
 
         <div class="controls">
-          <button id="startScanBtn" class="btn-primary" onclick="startScanner()">Start Camera</button>
-          <button class="btn-ghost" onclick="stopScanner()">Stop</button>
+          <button id="qrStartBtn" class="btn-primary" onclick="startScanner()">Start Camera</button>
+          <button id="qrStopBtn"  class="btn-stop"    onclick="stopScanner()">Stop</button>
           <label class="upload-label btn-ghost" for="qrFileInput">Scan Image</label>
           <input type="file" id="qrFileInput" accept="image/*" onchange="scanFile(event)">
         </div>
@@ -225,19 +245,26 @@
         </div>
       </section>
 
-      <!-- ================= SLIDE 1 : OCR ================= -->
+      <!-- ================= SLIDE 1 : OCR (own camera) ================= -->
       <section class="slide" id="slideOcr">
         <h2 class="panel-title">🔤 Engraved / Stamped OCR</h2>
         <p class="panel-sub">For concrete, steel, cast or engraved markings.</p>
 
-        <canvas id="previewCanvas"></canvas>
+        <!-- Independent OCR camera preview -->
+        <div class="cam-wrap" id="ocrCamWrap">
+          <video id="ocrVideo" playsinline autoplay muted></video>
+          <div class="cam-off">Camera off — tap “Start Camera”</div>
+        </div>
 
         <div class="controls">
-          <button id="captureBtn" class="btn-primary" onclick="captureForOcr()">Capture &amp; Read</button>
-          <button class="btn-warn" onclick="enableCameraForOcr()">Enable Camera</button>
+          <button id="ocrStartBtn" class="btn-primary" onclick="startOcrCamera()">Start Camera</button>
+          <button id="ocrStopBtn"  class="btn-stop"    onclick="stopOcrCamera()">Stop</button>
+          <button id="captureBtn"  class="btn-warn"    onclick="captureForOcr()">Capture &amp; Read</button>
           <label class="upload-label btn-ghost" for="ocrFileInput">Upload Image</label>
           <input type="file" id="ocrFileInput" accept="image/*" onchange="loadImageForOcr(event)">
         </div>
+
+        <canvas id="previewCanvas"></canvas>
 
         <div id="ocrResult" class="result">OCR result will appear here…</div>
         <div id="ocrStatus" class="status"></div>
@@ -256,7 +283,6 @@
     <button class="dot" data-index="1" aria-label="OCR scanner"></button>
   </div>
 
-  <!-- Hidden host for file-based QR decoding (avoids clashing with live camera) -->
   <div id="fileReader" style="position:fixed;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;"></div>
 </div>
 
@@ -265,6 +291,7 @@
    GLOBAL STATE
    ===================================================================== */
 let html5QrCode   = null;
+let ocrStream     = null;          // ← independent OCR camera stream
 let ocrWorker     = null;
 let cvReady       = false;
 let capturedBlob  = null;
@@ -279,9 +306,6 @@ function onOpenCvReady() {
 
 /* =====================================================================
    SWIPE NAVIGATION
-   ---------------------------------------------------------------------
-   Track is 200% wide, each slide is 50% of track (= 100% of viewport).
-   translateX = -(index * viewportWidth) + dragOffset
    ===================================================================== */
 const viewport = document.getElementById('swipeViewport');
 const track    = document.getElementById('swipeTrack');
@@ -294,8 +318,8 @@ let dragging    = false;
 let horizontal  = false;
 let pointerId   = null;
 
-const SWIPE_THRESHOLD = 55;   // px to commit a page change
-const DIRECTION_SLOP  = 8;    // px before we decide axis
+const SWIPE_THRESHOLD = 55;
+const DIRECTION_SLOP  = 8;
 
 function measure() {
   vw = viewport.clientWidth;
@@ -306,7 +330,6 @@ function renderTrack(animate, dx = 0) {
   if (!vw) measure();
   let t = -(currentIndex * vw) + dx;
 
-  // Rubber-band resistance at the edges
   if (currentIndex === 0 && dx > 0) {
     t = dx * 0.32;
   } else if (currentIndex === LAST_INDEX && dx < 0) {
@@ -329,7 +352,6 @@ function goTo(index, animate = true) {
   updateDots();
 }
 
-/* ---- Pointer events (unified touch + mouse) ---- */
 viewport.addEventListener('pointerdown', (e) => {
   if (e.pointerType === 'mouse' && e.button !== 0) return;
   if (dragging) return;
@@ -339,8 +361,6 @@ viewport.addEventListener('pointerdown', (e) => {
   startX     = e.clientX;
   startY     = e.clientY;
   measure();
-  // NOTE: we deliberately don't setPointerCapture here — capturing would
-  // swallow clicks on buttons inside the panels.
 }, { passive: true });
 
 viewport.addEventListener('pointermove', (e) => {
@@ -352,9 +372,9 @@ viewport.addEventListener('pointermove', (e) => {
   if (!horizontal) {
     if (Math.abs(dx) < DIRECTION_SLOP && Math.abs(dy) < DIRECTION_SLOP) return;
     if (Math.abs(dx) > Math.abs(dy)) {
-      horizontal = true;                    // committed to horizontal swipe
+      horizontal = true;
     } else {
-      dragging = false;                     // vertical scroll → abandon
+      dragging = false;
       renderTrack(true, 0);
       return;
     }
@@ -377,52 +397,50 @@ function endDrag(e) {
   const dx = e.clientX - startX;
   horizontal = false;
 
-  if (dx <= -SWIPE_THRESHOLD) {
-    goTo(currentIndex + 1);                 // swipe LEFT  → next panel
-  } else if (dx >= SWIPE_THRESHOLD) {
-    goTo(currentIndex - 1);                 // swipe RIGHT → previous panel
-  } else {
-    renderTrack(true, 0);                   // snap back
-  }
+  if (dx <= -SWIPE_THRESHOLD)      goTo(currentIndex + 1);
+  else if (dx >= SWIPE_THRESHOLD)  goTo(currentIndex - 1);
+  else                             renderTrack(true, 0);
 }
 
 viewport.addEventListener('pointerup', endDrag);
 viewport.addEventListener('pointercancel', endDrag);
 
-/* ---- Keyboard support (desktop) ---- */
 window.addEventListener('keydown', (e) => {
   if (e.target.matches('input, textarea')) return;
   if (e.key === 'ArrowLeft')  goTo(currentIndex + 1);
   if (e.key === 'ArrowRight') goTo(currentIndex - 1);
 });
 
-/* ---- Dots ---- */
 dots.forEach(dot => {
   dot.addEventListener('click', () => goTo(Number(dot.dataset.index)));
 });
 
-/* ---- Resize ---- */
 window.addEventListener('resize', () => {
   measure();
   renderTrack(false, 0);
 });
 
-/* ---- Init: always start on QR (index 0) ---- */
 measure();
 goTo(0, false);
 window.addEventListener('load', () => { measure(); goTo(0, false); });
 
 
 /* =====================================================================
-   PART 1 — QR / BARCODE SCANNING (html5-qrcode)
-   Handles QR + Code128/39 + EAN + UPC + DataMatrix.
+   PART 1 — QR / BARCODE SCANNER
    ===================================================================== */
 async function startScanner() {
   const statusEl = document.getElementById('qrStatus');
 
   if (html5QrCode) {
-    statusEl.textContent = 'Scanner is already running.';
+    statusEl.textContent = 'QR scanner is already running.';
     return;
+  }
+
+  // Only one camera can be active on most phones — release OCR first
+  if (ocrStream) {
+    await stopOcrCamera();
+    document.getElementById('ocrStatus').textContent =
+      'OCR camera released to free the device camera.';
   }
 
   try {
@@ -448,13 +466,13 @@ async function startScanner() {
         document.getElementById('qrResult').textContent =
           `✅ Scanned (${fmt}):\n${decodedText}`;
       },
-      () => { /* per-frame decode misses are normal — ignore */ }
+      () => { /* per-frame misses are normal */ }
     );
 
-    statusEl.textContent = 'Camera active. Point at a code.';
+    statusEl.textContent = 'QR camera active. Point at a code.';
   } catch (err) {
     html5QrCode = null;
-    statusEl.textContent = 'Camera error: ' + err;
+    statusEl.textContent = 'QR camera error: ' + err;
   }
 }
 
@@ -465,7 +483,7 @@ async function stopScanner() {
     html5QrCode.clear();
   } catch (e) { /* already stopped */ }
   html5QrCode = null;
-  document.getElementById('qrStatus').textContent = 'Scanner stopped.';
+  document.getElementById('qrStatus').textContent = 'QR scanner stopped.';
 }
 
 async function scanFile(event) {
@@ -476,7 +494,6 @@ async function scanFile(event) {
   statusEl.textContent = 'Decoding image…';
 
   try {
-    // Use a hidden host so we never disturb a live camera stream
     const scanner = new Html5Qrcode("fileReader", { verbose: false });
     const result  = await scanner.scanFile(file, false);
     document.getElementById('qrResult').textContent = '✅ File scan:\n' + result;
@@ -485,66 +502,80 @@ async function scanFile(event) {
   } catch (err) {
     statusEl.textContent = 'No code found in image. (' + err + ')';
   } finally {
-    event.target.value = '';   // allow re-selecting the same file
+    event.target.value = '';
   }
 }
 
 
 /* =====================================================================
-   PART 2 — OCR FOR INDUSTRIAL SURFACES
-   ---------------------------------------------------------------------
-   Pipeline: grayscale → CLAHE → Gaussian blur → adaptive threshold
-             → morphological open → (auto invert) → Tesseract
-   This handles the low-contrast, textured look of concrete & steel.
+   PART 2 — OCR CAMERA (independent of QR scanner)
    ===================================================================== */
 
-async function getOcrWorker() {
-  if (ocrWorker) return ocrWorker;
-
-  document.getElementById('ocrStatus').textContent = 'Initializing OCR engine…';
-
-  ocrWorker = await Tesseract.createWorker('eng', 1, {
-    logger: (m) => {
-      if (m.status === 'recognizing text') {
-        document.getElementById('ocrStatus').textContent =
-          `Reading text… ${Math.round(m.progress * 100)}%`;
-      }
-    }
-  });
-
-  await ocrWorker.setParameters({
-    tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
-    preserve_interword_spaces: '1',
-    tessedit_char_whitelist:
-      '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-./#&() '
-  });
-
-  document.getElementById('ocrStatus').textContent = 'OCR engine ready.';
-  return ocrWorker;
-}
-
-/** Try to start the camera from within the OCR panel */
-async function enableCameraForOcr() {
-  if (html5QrCode) {
-    document.getElementById('ocrStatus').textContent =
-      'Camera already running — tap "Capture & Read".';
-    return;
-  }
-  document.getElementById('ocrStatus').textContent = 'Starting camera…';
-  await startScanner();
-  document.getElementById('ocrStatus').textContent = html5QrCode
-    ? 'Camera running — tap "Capture & Read".'
-    : 'Camera unavailable. Upload an image instead.';
-}
-
-/** Grab a frame from the live camera stream and OCR it */
-function captureForOcr() {
-  const video = document.querySelector('#reader video');
+/** Start the OCR panel's own camera */
+async function startOcrCamera() {
   const statusEl = document.getElementById('ocrStatus');
 
-  if (!video || !video.videoWidth) {
+  if (ocrStream) {
+    statusEl.textContent = 'OCR camera is already running.';
+    return;
+  }
+
+  // Release the QR camera first so we get a clean device handle
+  if (html5QrCode) {
+    await stopScanner();
+    document.getElementById('qrStatus').textContent =
+      'QR camera released to free the device camera.';
+  }
+
+  statusEl.textContent = 'Starting OCR camera…';
+
+  try {
+    ocrStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: 'environment' },
+        width:  { ideal: 1920 },
+        height: { ideal: 1080 }
+      },
+      audio: false
+    });
+
+    const video = document.getElementById('ocrVideo');
+    video.srcObject = ocrStream;
+    await video.play().catch(() => {});   // play() may reject on autoplay policies
+
+    document.getElementById('ocrCamWrap').classList.add('live');
+    statusEl.textContent = 'OCR camera active. Frame the engraved text and tap “Capture & Read”.';
+  } catch (err) {
+    ocrStream = null;
+    statusEl.textContent = 'OCR camera error: ' + (err.message || err) +
+      ' — try uploading an image instead.';
+  }
+}
+
+/** Stop the OCR camera only (does not touch QR camera) */
+function stopOcrCamera() {
+  const statusEl = document.getElementById('ocrStatus');
+
+  if (ocrStream) {
+    ocrStream.getTracks().forEach(t => t.stop());
+    ocrStream = null;
+  }
+
+  const video = document.getElementById('ocrVideo');
+  if (video) video.srcObject = null;
+
+  document.getElementById('ocrCamWrap').classList.remove('live');
+  statusEl.textContent = 'OCR camera stopped.';
+}
+
+/** Capture from the OCR camera preview and run OCR */
+function captureForOcr() {
+  const video = document.getElementById('ocrVideo');
+  const statusEl = document.getElementById('ocrStatus');
+
+  if (!ocrStream || !video || !video.videoWidth) {
     statusEl.textContent =
-      'No camera stream. Tap "Enable Camera" or upload an image.';
+      'OCR camera is off. Tap “Start Camera” or upload an image.';
     return;
   }
 
@@ -582,7 +613,35 @@ function loadImageForOcr(event) {
   event.target.value = '';
 }
 
-/** Main OCR entry point */
+
+/* =====================================================================
+   PART 3 — OCR PIPELINE (Tesseract + OpenCV)
+   ===================================================================== */
+async function getOcrWorker() {
+  if (ocrWorker) return ocrWorker;
+
+  document.getElementById('ocrStatus').textContent = 'Initializing OCR engine…';
+
+  ocrWorker = await Tesseract.createWorker('eng', 1, {
+    logger: (m) => {
+      if (m.status === 'recognizing text') {
+        document.getElementById('ocrStatus').textContent =
+          `Reading text… ${Math.round(m.progress * 100)}%`;
+      }
+    }
+  });
+
+  await ocrWorker.setParameters({
+    tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
+    preserve_interword_spaces: '1',
+    tessedit_char_whitelist:
+      '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-./#&() '
+  });
+
+  document.getElementById('ocrStatus').textContent = 'OCR engine ready.';
+  return ocrWorker;
+}
+
 async function runOcr(blob) {
   const statusEl = document.getElementById('ocrStatus');
   const resultEl = document.getElementById('ocrResult');
@@ -628,13 +687,6 @@ async function runOcr(blob) {
   }
 }
 
-/**
- * Industrial preprocessing.
- *  - CLAHE fixes uneven lighting on metal/concrete
- *  - Adaptive threshold handles low-contrast engraved characters
- *  - Morphological opening removes scratches / speckle noise
- *  - Auto-invert so text is dark-on-light (Tesseract's preference)
- */
 async function preprocessWithOpenCV(sourceCanvas) {
   const src       = cv.imread(sourceCanvas);
   const gray      = new cv.Mat();
@@ -657,11 +709,8 @@ async function preprocessWithOpenCV(sourceCanvas) {
 
   cv.morphologyEx(binary, binary, cv.MORPH_OPEN, kernel);
 
-  // If the result is mostly dark, the original was dark-on-light → invert
   const mean = cv.mean(binary);
-  if (mean[0] < 128) {
-    cv.bitwise_not(binary, binary);
-  }
+  if (mean[0] < 128) cv.bitwise_not(binary, binary);
 
   const out = document.createElement('canvas');
   out.width  = sourceCanvas.width;
@@ -688,6 +737,7 @@ function blobToImage(blob) {
 window.addEventListener('beforeunload', () => {
   if (ocrWorker) ocrWorker.terminate();
   if (html5QrCode) html5QrCode.stop().catch(() => {});
+  if (ocrStream) ocrStream.getTracks().forEach(t => t.stop());
 });
 </script>
 </body>
