@@ -1406,6 +1406,31 @@
             cursor: pointer;
         }
 
+        .settings-row.schema-row {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 4px;
+        }
+
+        #set-required-schema {
+            width: 100%;
+            min-height: 140px;
+            background: rgba(157, 78, 221, 0.06);
+            border: 1px solid var(--neon-purple);
+            border-radius: 4px;
+            color: var(--text-main, #e0e0e0);
+            font-family: monospace;
+            font-size: 0.65rem;
+            line-height: 1.4;
+            padding: 6px;
+            resize: vertical;
+            outline: none;
+        }
+
+        #set-required-schema:focus {
+            box-shadow: 0 0 8px rgba(157, 78, 221, 0.4);
+        }
+
         .settings-row button {
             background: rgba(157, 78, 221, 0.1);
             border: 1px solid var(--neon-purple);
@@ -1579,6 +1604,10 @@
         <div class="settings-row"><label>Show Grid</label><input type="checkbox" id="set-grid" checked></div>
         <div class="settings-row"><label>Show Fog</label><input type="checkbox" id="set-fog" checked></div>
         <div class="settings-row"><label>Selection Box</label><input type="checkbox" id="set-selbox" checked></div>
+        <div class="settings-row schema-row">
+            <label for="set-required-schema">Required Schema (JSON)</label>
+            <textarea id="set-required-schema" spellcheck="false"></textarea>
+        </div>
         <div class="settings-row"><button id="btn-reset-camera">Reset Camera</button></div>
     </div>
 
@@ -2192,6 +2221,30 @@
         document.getElementById('set-grid').addEventListener('change', (e) => { gridHelper.visible = e.target.checked; });
         document.getElementById('set-fog').addEventListener('change', (e) => { scene.fog = e.target.checked ? new THREE.FogExp2(0x05070a, 0.001) : null; });
         document.getElementById('set-selbox').addEventListener('change', (e) => { selectionBoxes.visible = e.target.checked; });
+
+        const DEFAULT_REQUIRED_SCHEMA = {
+            'IfcWall': { 'SGPset_Wall': ['ConstructionMethod', 'ReinforcementSteelGrade'], 'SGPset_WallDimension': ['Mark', 'Thickness'] },
+            'IfcBeam': { 'SGPset_Beam': ['Reference', 'Status'], 'Pset_BeamCommon': ['IsExternal', 'LoadBearing'] },
+            'IfcColumn': { 'SGPset_Column': ['IsExternal', 'ReferTo2DDetail', 'LoadBearing'] },
+            'IfcSlab': { 'SGPset_Slab': ['Reference', 'Status'], 'Pset_SlabCommon': ['IsExternal', 'LoadBearing', 'FireRating'] },
+            'IfcDoor': { 'SGPset_Door': ['Reference', 'Status'], 'Pset_DoorCommon': ['IsExternal', 'FireRating', 'SecurityRating'] }
+        };
+        document.getElementById('set-required-schema').value = JSON.stringify(DEFAULT_REQUIRED_SCHEMA, null, 2);
+
+        function getRequiredSchema() {
+            const raw = document.getElementById('set-required-schema').value.trim();
+            if (!raw) return DEFAULT_REQUIRED_SCHEMA;
+            try {
+                const parsed = JSON.parse(raw);
+                if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Schema must be a JSON object.');
+                return parsed;
+            } catch (err) {
+                console.warn('[SG-VALIDATION] ⚠ Invalid Required Schema JSON in Settings — falling back to default.', err);
+                showToast('Invalid Required Schema JSON — using default schema.', 'error');
+                return DEFAULT_REQUIRED_SCHEMA;
+            }
+        }
+
         document.getElementById('btn-reset-camera').addEventListener('click', () => {
             if (currentIfcModel) {
                 const box = new THREE.Box3().setFromObject(currentIfcModel);
@@ -3325,13 +3378,7 @@
                 return;
             }
 
-            const requiredSchema = {
-                'IfcWall': { 'SGPset_Wall': ['ConstructionMethod', 'ReinforcementSteelGrade'], 'SGPset_WallDimension': ['Mark', 'Thickness'] },
-                'IfcBeam': { 'SGPset_Beam': ['Reference', 'Status'], 'Pset_BeamCommon': ['IsExternal', 'LoadBearing'] },
-                'IfcColumn': { 'SGPset_Column': ['IsExternal', 'ReferTo2DDetail', 'LoadBearing'] },
-                'IfcSlab': { 'SGPset_Slab': ['Reference', 'Status'], 'Pset_SlabCommon': ['IsExternal', 'LoadBearing', 'FireRating'] },
-                'IfcDoor': { 'SGPset_Door': ['Reference', 'Status'], 'Pset_DoorCommon': ['IsExternal', 'FireRating', 'SecurityRating'] }
-            };
+            const requiredSchema = getRequiredSchema();
             console.log('[SG-VALIDATION] Required schema:', JSON.parse(JSON.stringify(requiredSchema)));
 
             let allErrors = [];
