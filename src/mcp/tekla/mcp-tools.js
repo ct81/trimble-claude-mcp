@@ -42,6 +42,7 @@ export const tools = [
   {name:"tekla_create_curve_column",description:"Create curved Tekla columns from a point path. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({points:{type:"array",minItems:2,items:{type:"object",required:["x","y","z"],properties:{x:{type:"number"},y:{type:"number"},z:{type:"number"}}}},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"}},["points"])},
   {name:"tekla_create_curve_wall",description:"Create curved Tekla wall panels from a point path. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({points:{type:"array",minItems:3,items:{type:"object",required:["x","y","z"],properties:{x:{type:"number"},y:{type:"number"},z:{type:"number"}}}},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"}},["points"])},
   {name:"tekla_create_curve_slab",description:"Create curved Tekla slab panels from a point path. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({points:{type:"array",minItems:3,items:{type:"object",required:["x","y","z"],properties:{x:{type:"number"},y:{type:"number"},z:{type:"number"}}}},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"}},["points"])},
+  {name:"tekla_create_gridline",description:"Create a Tekla gridline under an existing grid (GridSurface). MODEL MODIFICATION: require explicit approval.",inputSchema:schema({parentGuid:{type:"string"},label:{type:"string"},isMagnetic:{type:"boolean"},extensionLeft:{type:"number"},extensionRight:{type:"number"},extensionBelow:{type:"number"},extensionAbove:{type:"number"}},["parentGuid","label"])},
   {name:"tekla_update_object",description:"Update a Tekla part's profile, material, class, or user-defined attributes. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({guid:{type:"string"},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"},attributes:{type:"object",additionalProperties:{type:"string"}}},["guid"])},
   {name:"tekla_update_beam",description:"Update a Tekla beam's profile, material, class, endpoints, or user-defined attributes by GUID. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({guid:{type:"string"},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"},x1:{type:"number"},y1:{type:"number"},z1:{type:"number"},x2:{type:"number"},y2:{type:"number"},z2:{type:"number"},attributes:{type:"object",additionalProperties:{type:"string"}}},["guid"])},
   {name:"tekla_update_polybeam",description:"Update a Tekla polybeam by GUID, including profile, material, class, contour points, and user-defined attributes. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({guid:{type:"string"},profile:{type:"string"},material:{type:"string"},classNumber:{type:"string"},points:{type:"array",minItems:2,items:{type:"object",required:["x","y","z"],properties:{x:{type:"number"},y:{type:"number"},z:{type:"number"}}}},attributes:{type:"object",additionalProperties:{type:"string"}}},["guid"])},
@@ -52,7 +53,9 @@ export const tools = [
   {name:"tekla_update_bolt",description:"Set user-defined attributes on a Tekla bolt by GUID. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({guid:{type:"string"},attributes:{type:"object",additionalProperties:{type:"string"}}},["guid","attributes"])},
   {name:"tekla_update_rebar",description:"Update a Tekla rebar's properties, point path, or user-defined attributes by GUID. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({guid:{type:"string"},name:{type:"string"},size:{type:"string"},grade:{type:"string"},classNumber:{type:"string"},points:{type:"array",minItems:2,items:{type:"object",required:["x","y","z"],properties:{x:{type:"number"},y:{type:"number"},z:{type:"number"}}}},bendingRadius:{type:"number"},fromPlaneOffset:{type:"number"},attributes:{type:"object",additionalProperties:{type:"string"}}},["guid"])},
   {name:"tekla_update_rebar_group",description:"Update a Tekla rebar group's properties, polygon paths, bar count, or user-defined attributes by GUID. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({guid:{type:"string"},name:{type:"string"},size:{type:"string"},grade:{type:"string"},classNumber:{type:"string"},polygons:{type:"array",minItems:1,maxItems:99,items:{type:"array",minItems:2,items:{type:"object",required:["x","y","z"],properties:{x:{type:"number"},y:{type:"number"},z:{type:"number"}}}}},barCount:{type:"integer",minimum:1},bendingRadius:{type:"number"},fromPlaneOffset:{type:"number"},attributes:{type:"object",additionalProperties:{type:"string"}}},["guid"])},
+  {name:"tekla_update_gridline",description:"Edit a Tekla gridline (GridSurface) by GUID. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({guid:{type:"string"},label:{type:"string"},isMagnetic:{type:"boolean"},extensionLeft:{type:"number"},extensionRight:{type:"number"},extensionBelow:{type:"number"},extensionAbove:{type:"number"}},["guid"])},
   {name:"tekla_delete_object",description:"Delete a Tekla object. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({guid:{type:"string"}},["guid"])},
+  {name:"tekla_delete_gridline",description:"Delete a Tekla gridline (GridSurface) by GUID. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({guid:{type:"string"}},["guid"])},
   {name:"tekla_create_assembly",description:"Create an assembly from Tekla parts. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({mainPartGuid:{type:"string"},secondaryPartGuids:{type:"array",items:{type:"string"}}},["mainPartGuid","secondaryPartGuids"])},
   {name:"tekla_create_weld",description:"Create a weld between Tekla parts. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({mainPartGuid:{type:"string"},secondaryPartGuid:{type:"string"}},["mainPartGuid","secondaryPartGuid"])},
   {name:"tekla_create_bolt",description:"Create a bolt between Tekla parts. MODEL MODIFICATION: require explicit approval.",inputSchema:schema({part1Guid:{type:"string"},part2Guid:{type:"string"},x:{type:"number"},y:{type:"number"},z:{type:"number"}},["part1Guid","part2Guid","x","y","z"])},
@@ -111,6 +114,7 @@ export async function callTeklaTool(name,args={}) {
     case "tekla_create_curve_column": return t.teklaCreateCurveColumn(args);
     case "tekla_create_curve_wall": return t.teklaCreateCurveWall(args);
     case "tekla_create_curve_slab": return t.teklaCreateCurveSlab(args);
+    case "tekla_create_gridline": return t.teklaCreateGridline(args);
     case "tekla_update_object": return t.teklaUpdateObject(args);
     case "tekla_update_beam": return t.teklaUpdateBeam(args);
     case "tekla_update_polybeam": return t.teklaUpdatePolyBeam(args);
@@ -127,6 +131,7 @@ export async function callTeklaTool(name,args={}) {
     case "tekla_update_bolt": return t.teklaUpdateBolt(args);
     case "tekla_update_rebar": return t.teklaUpdateRebar(args);
     case "tekla_update_rebar_group": return t.teklaUpdateRebarGroup(args);
+    case "tekla_update_gridline": return t.teklaUpdateGridline(args);
     case "tekla_update_phase": return t.teklaUpdatePhase(args);
     case "tekla_component_list": return t.teklaComponentList();
     case "tekla_component_get_definition": return t.teklaComponentGetDefinition(args);
@@ -147,6 +152,7 @@ export async function callTeklaTool(name,args={}) {
     case "tekla_delete_curve_column": return t.teklaDeleteCurveColumn(args);
     case "tekla_delete_curve_wall": return t.teklaDeleteCurveWall(args);
     case "tekla_delete_curve_slab": return t.teklaDeleteCurveSlab(args);
+    case "tekla_delete_gridline": return t.teklaDeleteGridline(args);
     case "tekla_create_assembly": return t.teklaCreateAssembly(args);
     case "tekla_create_weld": return t.teklaCreateWeld(args);
     case "tekla_create_bolt": return t.teklaCreateBolt(args);
@@ -156,4 +162,5 @@ export async function callTeklaTool(name,args={}) {
     default: throw new Error(`Unknown Tekla MCP tool: ${name}`);
   }
 }
+
 

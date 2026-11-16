@@ -76,6 +76,7 @@ export const teklaCreatePolyBeam = (a) => call("/api/tekla/create/polybeam",{met
 export const teklaCreateCurveColumn = (a) => call("/api/tekla/create/curve-column",{method:"POST",body:JSON.stringify(a)});
 export const teklaCreateCurveWall = (a) => call("/api/tekla/create/curve-wall",{method:"POST",body:JSON.stringify(a)});
 export const teklaCreateCurveSlab = (a) => call("/api/tekla/create/curve-slab",{method:"POST",body:JSON.stringify(a)});
+export const teklaCreateGridline = (a) => call("/api/tekla/create/gridline",{method:"POST",body:JSON.stringify(a)});
 export const teklaUpdateObject = (a) => call("/api/tekla/update/object",{method:"POST",body:JSON.stringify(a)});
 export const teklaUpdateBeam = (a) => call("/api/tekla/update/beam",{method:"POST",body:JSON.stringify(a)});
 export const teklaUpdatePolyBeam = (a) => call("/api/tekla/update/polybeam",{method:"POST",body:JSON.stringify(a)});
@@ -92,6 +93,7 @@ export const teklaUpdateWeld = (a) => call("/api/tekla/update/weld",{method:"POS
 export const teklaUpdateBolt = (a) => call("/api/tekla/update/bolt",{method:"POST",body:JSON.stringify(a)});
 export const teklaUpdateRebar = (a) => call("/api/tekla/update/rebar",{method:"POST",body:JSON.stringify(a)});
 export const teklaUpdateRebarGroup = (a) => call("/api/tekla/update/rebar-group",{method:"POST",body:JSON.stringify(a)});
+export const teklaUpdateGridline = (a) => call("/api/tekla/update/gridline",{method:"POST",body:JSON.stringify(a)});
 export const teklaUpdatePhase = (a) => call("/api/tekla/update/phase",{method:"POST",body:JSON.stringify(a)});
 export const teklaDeleteObject = (a) => call("/api/tekla/delete/object",{method:"POST",body:JSON.stringify(a)});
 export const teklaDeleteWall = (a) => call("/api/tekla/delete/wall",{method:"POST",body:JSON.stringify(a)});
@@ -100,6 +102,7 @@ export const teklaDeleteCurveBeam = (a) => call("/api/tekla/delete/curve-beam",{
 export const teklaDeleteCurveColumn = (a) => call("/api/tekla/delete/curve-column",{method:"POST",body:JSON.stringify(a)});
 export const teklaDeleteCurveWall = (a) => call("/api/tekla/delete/curve-wall",{method:"POST",body:JSON.stringify(a)});
 export const teklaDeleteCurveSlab = (a) => call("/api/tekla/delete/curve-slab",{method:"POST",body:JSON.stringify(a)});
+export const teklaDeleteGridline = (a) => call("/api/tekla/delete/gridline",{method:"POST",body:JSON.stringify(a)});
 export const teklaCreateAssembly = (a) => call("/api/tekla/create/assembly",{method:"POST",body:JSON.stringify(a)});
 export const teklaCreateWeld = (a) => call("/api/tekla/create/weld",{method:"POST",body:JSON.stringify(a)});
 export const teklaCreateBolt = (a) => call("/api/tekla/create/bolt",{method:"POST",body:JSON.stringify(a)});
@@ -119,3 +122,4 @@ export const teklaComponentGetInstance = (a) => call("/api/tekla/components/inst
 export const teklaComponentClone = (a) => call("/api/tekla/components/clone",{method:"POST",body:JSON.stringify(a)});
 export const teklaComponentUpdate = (a) => call("/api/tekla/components/update",{method:"POST",body:JSON.stringify(a)});
 export const teklaComponentDelete = (a) => call("/api/tekla/components/delete",{method:"POST",body:JSON.stringify(a)});
+
