@@ -2488,6 +2488,10 @@ async function callToolInBridgeSession(
     result = await teklaBridge.teklaCreateCurveSlab(args);
     break;
 
+  case 'tekla_create_gridline':
+    result = await teklaBridge.teklaCreateGridline(args);
+    break;
+
   case 'tekla_update_object':
     result = await teklaBridge.teklaUpdateObject(args);
     break;
@@ -2554,6 +2558,10 @@ async function callToolInBridgeSession(
 
   case 'tekla_update_phase':
     result = await teklaBridge.teklaUpdatePhase(args);
+    break;
+
+  case 'tekla_update_gridline':
+    result = await teklaBridge.teklaUpdateGridline(args);
     break;
 
   case 'tekla_component_list':
@@ -2630,6 +2638,10 @@ async function callToolInBridgeSession(
 
   case 'tekla_delete_curve_slab':
     result = await teklaBridge.teklaDeleteCurveSlab(args);
+    break;
+
+  case 'tekla_delete_gridline':
+    result = await teklaBridge.teklaDeleteGridline(args);
     break;
 
   case 'tekla_create_assembly':

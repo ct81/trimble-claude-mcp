@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp & Telegram ChatBots, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #3"
+// #4"
 // git push origin main
 
 // git add .
@@ -4118,6 +4118,7 @@ const teklaActionRoutes = [
   { path: '/api/mcp/tekla/create/curve-column', toolName: 'tekla_create_curve_column' },
   { path: '/api/mcp/tekla/create/curve-wall', toolName: 'tekla_create_curve_wall' },
   { path: '/api/mcp/tekla/create/curve-slab', toolName: 'tekla_create_curve_slab' },
+  { path: '/api/mcp/tekla/create/gridline', toolName: 'tekla_create_gridline' },
   { path: '/api/mcp/tekla/create/assembly', toolName: 'tekla_create_assembly' },
   { path: '/api/mcp/tekla/create/weld', toolName: 'tekla_create_weld' },
   { path: '/api/mcp/tekla/create/bolt', toolName: 'tekla_create_bolt' },
@@ -4140,12 +4141,14 @@ const teklaActionRoutes = [
   { path: '/api/mcp/tekla/update/rebar', toolName: 'tekla_update_rebar' },
   { path: '/api/mcp/tekla/update/rebar-group', toolName: 'tekla_update_rebar_group' },
   { path: '/api/mcp/tekla/update/phase', toolName: 'tekla_update_phase' },
+  { path: '/api/mcp/tekla/update/gridline', toolName: 'tekla_update_gridline' },
   { path: '/api/mcp/tekla/delete/wall', toolName: 'tekla_delete_wall' },
   { path: '/api/mcp/tekla/delete/slab', toolName: 'tekla_delete_slab' },
   { path: '/api/mcp/tekla/delete/curve-beam', toolName: 'tekla_delete_curve_beam' },
   { path: '/api/mcp/tekla/delete/curve-column', toolName: 'tekla_delete_curve_column' },
   { path: '/api/mcp/tekla/delete/curve-wall', toolName: 'tekla_delete_curve_wall' },
   { path: '/api/mcp/tekla/delete/curve-slab', toolName: 'tekla_delete_curve_slab' },
+  { path: '/api/mcp/tekla/delete/gridline', toolName: 'tekla_delete_gridline' },
   { path: '/api/mcp/tekla/capture/view', toolName: 'tekla_capture_view' },
   { path: '/api/mcp/tekla/capture/model', toolName: 'tekla_capture_model' },
   { path: '/api/mcp/tekla/capture/part', toolName: 'tekla_capture_part' },
