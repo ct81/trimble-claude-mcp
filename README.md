@@ -88,6 +88,10 @@ are available through their respective local bridge integrations; a deployed
 Render service cannot directly reach software running on a user's workstation
 without a reachable bridge or relay.
 
+Tekla gridline create/update/delete calls log their tool name, request path
+and arguments, response and elapsed milliseconds, or failure message to the
+server console. Bridge keys and authentication headers are not logged.
+
 ### DXF grid data in Workflow Builder
 
 On a Brain node, select **gridline** to extract plain entities from

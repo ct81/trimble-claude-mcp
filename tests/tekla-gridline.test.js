@@ -16,7 +16,9 @@ test('bridge sends gridline requests to the matching Tekla endpoints', async () 
         .replace('import { getSelectedBridge } from "../bridge-selection.js";', '')
         .replaceAll('export const ', 'var ');
     let request;
+    const logs = [];
     const context = vm.createContext({
+        console: { log: (...args) => logs.push(args) },
         process: { env: { TEKLA_BRIDGE_KEY: 'test-key', TEKLA_BRIDGE_URL: 'http://tekla.test' } },
         getSelectedBridge: () => null,
         fetch: async (url, options) => {
@@ -26,11 +28,49 @@ test('bridge sends gridline requests to the matching Tekla endpoints', async () 
     });
     vm.runInContext(source, context);
     for (const { action, method, args } of operations) {
-        await context[method](args);
+        const result = await context[method](args);
+        assert.deepEqual(JSON.parse(JSON.stringify(result)), { success: true });
         assert.equal(request.url, `http://tekla.test/api/tekla/${action}/gridline`);
         assert.equal(request.options.method, 'POST');
         assert.equal(request.options.headers['X-Tekla-Bridge-Key'], 'test-key');
         assert.deepEqual(JSON.parse(request.options.body), args);
+        const [requestLog, responseLog] = logs.splice(0);
+        assert.equal(requestLog[0], `[Tekla] tekla_${action}_gridline request:`);
+        assert.deepEqual(requestLog[1].arguments, args);
+        assert.equal(responseLog[0], `[Tekla] tekla_${action}_gridline response:`);
+        assert.ok(responseLog[1].durationMs >= 0);
+        assert.equal(responseLog[1].result.success, true);
+        assert.equal(JSON.stringify([requestLog, responseLog]).includes('test-key'), false);
+    }
+});
+
+test('gridline failures are logged and still reject for all operations', async () => {
+    const source = readSource('../src/mcp/tekla/bridge.js')
+        .replace('import { getSelectedBridge } from "../bridge-selection.js";', '')
+        .replaceAll('export const ', 'var ');
+    for (const { action, method, args } of operations) {
+        for (const failure of ['network', 'http', 'json', 'config']) {
+            const errors = [];
+            const networkError = new Error('Connection refused');
+            const context = vm.createContext({
+                process: { env: { TEKLA_BRIDGE_KEY: 'test-key', TEKLA_BRIDGE_URL: failure === 'config' ? '' : 'http://tekla.test' } },
+                getSelectedBridge: () => null,
+                console: { log() {}, error: (...args) => errors.push(args) },
+                fetch: async () => {
+                    if (failure === 'network') throw networkError;
+                    return { ok: false, status: 400, text: async () => failure === 'json' ? 'invalid JSON' : '{"error":"Invalid grid"}' };
+                }
+            });
+            vm.runInContext(source, context);
+            await assert.rejects(context[method](args), error => {
+                if (failure === 'network') assert.equal(error, networkError);
+                assert.equal(errors.length, 1);
+                assert.equal(errors[0][0], `[Tekla] tekla_${action}_gridline failed:`);
+                assert.equal(errors[0][1].error, error.message);
+                assert.ok(errors[0][1].durationMs >= 0);
+                return true;
+            });
+        }
     }
 });
 
