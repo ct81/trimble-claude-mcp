@@ -1289,6 +1289,8 @@ function bodyFor(type, id) {
                             <option value="supraesophageal_ganglion_4_dxf.js">supraesophageal_ganglion_4_dxf.js</option>
                           </select>
                           <div class="hint" style="margin-top:6px">Object types to process</div>
+                          <label style="display:block;margin-top:6px;font-size:12px"><input type="checkbox" class="fl" data-k="type_gridline"> gridline</label>
+                          <div class="hint">Extract geometry and labels from S-_ANOTGRID_E, S-_ANOTGRID_E2, S-_ANOTGRID_T and S-_ANOTGRID_T2. Returns modelling data only; does not create Tekla grids.</div>
                           <details style="margin-top:6px"><summary style="font-size:12px"><input type="checkbox" class="fl" data-k="type_column" checked> column</summary>
                             <input type="text" class="fl" data-k="column_profile" placeholder="profile (blank = from DXF)" value="" spellcheck="false" style="margin-top:4px">
                             <input type="text" class="fl" data-k="column_material" placeholder="material" value="" spellcheck="false" style="margin-top:4px">
@@ -2977,8 +2979,9 @@ async function runWorkflowCore(signal) {
         });
         const converted = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(converted.error || "Brain conversion failed (HTTP " + response.status + ")");
-        const rows = converted.calls.map((call) => call.arguments);
-        if (!converted.calls.length) {
+        const gridlines = converted.gridlines || [];
+        const rows = [...converted.calls.map((call) => call.arguments), ...gridlines];
+        if (!converted.calls.length && !gridlines.length) {
           const found = Object.entries(converted.counts || {}).map(([t, n]) => `${t}:${n}`).join(", ") || "none";
           const failed = converted.skipped.filter((x) => x.reason !== "type not selected");
           const why = failed.slice(0, 3).map((x) => `${x.handle || "?"} (${x.type || "?"}): ${x.reason}`).join("; ");
@@ -2986,11 +2989,11 @@ async function runWorkflowCore(signal) {
         }
         state.rows = rows;
         state.brainCalls = converted.calls;
-        state.result = { result: { structuredContent: { rows } } };
+        state.result = { result: { structuredContent: { rows, gridlines } } };
         cur.el._brainResult = converted;
         renderBrain(cur.el);
         cur.el.querySelector(".status").textContent =
-          `✔ ${converted.calls.length} mapped, ${converted.skipped.length} skipped`;
+          `✔ ${converted.calls.length} mapped, ${gridlines.length} grid entities extracted, ${converted.skipped.length} skipped`;
       }
 
       if (cur.type === "mcp") {
@@ -3042,6 +3045,7 @@ async function runWorkflowCore(signal) {
           if (signal.aborted) throw new DOMException("Aborted", "AbortError");
           const brainCall = state.brainCalls?.[r];
           const templated = JSON.stringify(toolArgs).includes("{{row.");
+          if (state.brainCalls && !brainCall && !templated) continue;
           if (brainCall && toolName && !templated && toolName !== brainCall.tool) continue;
           const useBrain = brainCall && !templated;
           results.push(await callMcpTool(

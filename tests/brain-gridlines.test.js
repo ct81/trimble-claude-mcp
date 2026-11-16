@@ -1,0 +1,71 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
+import { dxfTextToRecords } from '../src/AI_RoachHarbor/dxf-text.js';
+import { extractGridlineData } from '../src/AI_RoachHarbor/supraesophageal_ganglion_4_dxf.js';
+import { brainToTekla } from '../src/AI_RoachHarbor/brain-tekla.js';
+
+const dxf = [
+    0, 'SECTION', 2, 'ENTITIES',
+    0, 'LINE', 5, 'line', 8, 'S-_ANOTGRID_E', 10, 100, 20, 200, 30, 0, 11, 100, 21, 1000, 31, 0,
+    0, 'LINE', 5, 'secondary', 8, 'S-_ANOTGRID_E2', 10, 300, 20, 200, 30, 0, 11, 300, 21, 1000, 31, 0,
+    0, 'TEXT', 5, 'label', 8, 'S-_ANOTGRID_T', 10, 100, 20, 1100, 30, 0, 40, 50, 1, 'A',
+    0, 'CIRCLE', 5, 'bubble', 8, 'S-_ANOTGRID_T2', 10, 100, 20, 1100, 30, 0, 40, 100,
+    0, 'ARC', 5, 'arc', 8, 'S-_ANOTGRID_E', 10, 0, 20, 0, 30, 0, 40, 500, 50, -75, 51, 90,
+    0, 'LINE', 5, 'other', 8, 'OTHER', 10, 0, 20, 0, 11, 5, 21, 5,
+    0, 'ENDSEC', 0, 'EOF'
+].join('\n');
+
+test('extracts plain grid entities with labels, coordinates and arc angles from all four layers', () => {
+    const records = dxfTextToRecords(dxf);
+    const gridlines = extractGridlineData(records);
+    assert.equal(gridlines.length, 5);
+    assert.deepEqual(gridlines[0].startPoint, { x: 100, y: 200, z: 0 });
+    assert.deepEqual(gridlines[0].endPoint, { x: 100, y: 1000, z: 0 });
+    assert.equal(gridlines[2].label, 'A');
+    assert.equal(gridlines[2].radius, undefined);
+    assert.deepEqual(gridlines[3].center, { x: 100, y: 1100, z: 0 });
+    assert.equal(gridlines[3].radius, 100);
+    assert.equal(gridlines[4].startAngle, -75);
+    assert.equal(gridlines[4].endAngle, 90);
+    assert.equal(gridlines[4].radius, 500);
+});
+
+test('grid extraction is opt-in and does not create unsupported grid MCP calls', () => {
+    const records = dxfTextToRecords(dxf);
+    const without = brainToTekla(records, ['column']);
+    const withGrid = brainToTekla(records, ['column', 'gridline']);
+    assert.deepEqual(without.gridlines, []);
+    assert.equal(withGrid.gridlines.length, 5);
+    assert.deepEqual(withGrid.calls, without.calls);
+    assert.equal(brainToTekla(records, ['gridline']).calls.length, 0);
+});
+
+test('a grid-only Brain run exposes extracted entities as workflow rows', async () => {
+    const page = readFileSync(new URL('../pages/workflowBuilder.html', import.meta.url), 'utf8');
+    assert.match(page, /type="checkbox" class="fl" data-k="type_gridline"/);
+    const start = page.indexOf('      if (cur.type === "brain") {');
+    const end = page.indexOf('      if (cur.type === "mcp") {', start);
+    assert.ok(start >= 0 && end > start);
+    const state = { fileText: dxf };
+    const status = {};
+    const el = { querySelector: () => status };
+    const context = vm.createContext({
+        state,
+        cur: { type: 'brain', el },
+        readFlow: () => ({ script: 'supraesophageal_ganglion_4_dxf.js', type_gridline: true }),
+        ensureToken: async () => 'test',
+        fetch: async (_url, options) => {
+            const body = JSON.parse(options.body);
+            assert.deepEqual(body.types, ['gridline']);
+            return { ok: true, json: async () => brainToTekla(dxfTextToRecords(body.dxfText), body.types) };
+        },
+        renderBrain() {}
+    });
+    await vm.runInContext(`(async () => { ${page.slice(start, end)} })()`, context);
+    assert.equal(state.rows.length, 5);
+    assert.equal(state.brainCalls.length, 0);
+    assert.equal(state.result.result.structuredContent.gridlines[2].label, 'A');
+    assert.match(status.textContent, /5 grid entities extracted/);
+});

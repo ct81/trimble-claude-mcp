@@ -1,4 +1,4 @@
-import { convertDxfJson } from "./supraesophageal_ganglion_4_dxf.js";
+import { convertDxfJson, extractGridlineData } from "./supraesophageal_ganglion_4_dxf.js";
 
 const num = (value) => {
   const n = Number(value);
@@ -351,5 +351,6 @@ export function brainToTekla(records, types, defaults = {}) {
   const mapped = {};
   for (const c of calls) mapped[c.tool] = (mapped[c.tool] || 0) + 1;
   const counts = Object.fromEntries(Object.entries(converted.counts).filter(([type]) => type !== "unknown" && type !== "ignored"));
-  return { version: BRAIN_VERSION, totalRecords: converted.calls.length, counts, mapped, calls, skipped };
+  const gridlines = wanted.has("gridline") ? extractGridlineData(records) : [];
+  return { version: BRAIN_VERSION, totalRecords: converted.calls.length, counts, mapped, calls, skipped, gridlines };
 }

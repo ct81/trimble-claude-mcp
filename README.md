@@ -88,6 +88,16 @@ are available through their respective local bridge integrations; a deployed
 Render service cannot directly reach software running on a user's workstation
 without a reachable bridge or relay.
 
+### DXF grid data in Workflow Builder
+
+On a Brain node, select **gridline** to extract plain entities from
+`S-_ANOTGRID_E`, `S-_ANOTGRID_E2`, `S-_ANOTGRID_T`, and `S-_ANOTGRID_T2`.
+The Brain preview includes `gridlines` with geometry, text labels, source
+handles and layers; these entities are also included in workflow result rows
+for export or explicit `{{row.field}}` mappings. Coordinates retain the DXF's
+units and origin. This extracts modelling data only: it does not associate
+labels with lines or generate Tekla grid-creation calls.
+
 ## Important production notes
 1. The included session store is intentionally in-memory for development. Replace it with Firestore, Redis, or PostgreSQL before multi-instance production.
 2. Set `FIREBASE_STORAGE_BUCKET` in Render to enable shared temporary PDF uploads across restarts and instances. Uploads expire after 15 minutes.

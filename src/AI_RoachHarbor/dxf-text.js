@@ -31,6 +31,10 @@ export function dxfTextToRecords(text) {
       case 5: cur.Handle = value; break;
       case 8: cur.Layer = value; break;
       case 2: cur.Name = value; break;
+      case 1: cur.Text = (cur.Text || "") + value; break;
+      case 3: if (cur.Type === "MTEXT") cur.Text = (cur.Text || "") + value; break;
+      case 50: if (cur.Type === "ARC") cur.StartAngle = n; break;
+      case 51: if (cur.Type === "ARC") cur.EndAngle = n; break;
       case 10:
         if (cur.Type === "LWPOLYLINE") cur._v.push({ x: n });
         else if (cur.Type === "CIRCLE" || cur.Type === "ARC") cur.Center_X = n;

@@ -1380,11 +1380,32 @@ export async function readDxfJson(filePath) {
   return parseDxfJson(contents);
 }
 
+// Keep grid drafting entities separate from structural MCP calls until geometry-aware grid tools are available.
+export function extractGridlineData(input) {
+  return parseDxfJson(input)
+    .filter(record => /^S-_ANOTGRID_(E2?|T2?)$/i.test(String(readSource(record, "layer") ?? "").trim()))
+    .map(record => {
+      const normalized = normalizedRecord(record);
+      return {
+        type: "gridline",
+        handle: normalized.handle,
+        layer: normalized.layer,
+        entityType: normalized.dxfEntityType,
+        label: normalized.name,
+        startPoint: normalized.start,
+        endPoint: normalized.end,
+        center: normalized.center,
+        vertices: normalized.vertices,
+        radius: /^(CIRCLE|ARC)$/i.test(normalized.dxfEntityType ?? "") ? toNumber(readSource(record, "radius")) : undefined,
+        startAngle: toNumber(record.StartAngle ?? record.startAngle),
+        endAngle: toNumber(record.EndAngle ?? record.endAngle),
+        source: record
+      };
+    });
+}
+
 /**
- * Converts all records.
- *
- * Unknown and ignored records are returned separately
- * for inspection and classification-rule improvements.
+ * Converts structural records; unknown and ignored records are returned separately.
  */
 export function convertDxfJson(input, options = {}) {
   const records = parseDxfJson(input);
