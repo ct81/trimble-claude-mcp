@@ -1964,6 +1964,7 @@
                     <label>Import Data (Excel/CSV/JSON)</label>
                     <input type="file" id="data-import-input" accept=".xlsx, .xls, .csv, .json"
                         style="font-size: 0.65rem; padding: 3px;">
+                    <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 5px;">Matching records are shown newest first by Updated On. Status colors use the newest record.</div>
                     <div id="import-status" style="font-size: 0.65rem; color: var(--text-muted); margin-top: 5px;">No
                         data loaded.</div>
                     <button id="btn-load-sample"
@@ -3205,13 +3206,29 @@
                 let rows = [];
                 try {
                     if (file.name.endsWith('.json')) rows = JSON.parse(evt.target.result);
-                    else { const workbook = XLSX.read(evt.target.result, { type: 'binary' }); const firstSheet = workbook.Sheets[workbook.SheetNames[0]]; rows = XLSX.utils.sheet_to_json(firstSheet); }
+                    else { const workbook = XLSX.read(evt.target.result, { type: 'binary', cellDates: true }); const firstSheet = workbook.Sheets[workbook.SheetNames[0]]; rows = XLSX.utils.sheet_to_json(firstSheet); }
                     processImportedData(rows);
                 } catch (err) { showToast("Error parsing file. Check format.", 'error'); }
             };
             if (file.name.endsWith('.json')) reader.readAsText(file);
             else reader.readAsBinaryString(file);
         });
+
+        function normalizeImportedDate(value) {
+            if (value instanceof Date && !Number.isNaN(value.getTime())) {
+                const year = value.getFullYear();
+                const month = String(value.getMonth() + 1).padStart(2, '0');
+                const day = String(value.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+            return value;
+        }
+
+        function importedDateTimestamp(value) {
+            if (value === undefined || value === null || value === '') return -Infinity;
+            const timestamp = Date.parse(value);
+            return Number.isNaN(timestamp) ? -Infinity : timestamp;
+        }
 
         function processImportedData(rows) {
             importedDataMap.clear();
@@ -3220,11 +3237,19 @@
                 const guid = row['IFC Guide'] || row['IFC GUID'] || row['guid'] || row['Guid'] || row['GlobalId'];
                 const status = row['status'] || row['Status'] || row['STATUS'];
                 const marking = row['Marking'] || row['marking'] || row['MARKING'];
-                const updatedOn = row['updated on'] || row['Updated On'] || row['updated_on'];
-                if (guid) { importedDataMap.set(guid.trim(), { status, marking, updatedOn }); validCount++; }
+                const updatedOn = normalizeImportedDate(row['updated on'] || row['Updated On'] || row['updated_on']);
+                if (typeof guid === 'string' && guid.trim()) {
+                    const key = guid.trim();
+                    if (!importedDataMap.has(key)) importedDataMap.set(key, []);
+                    importedDataMap.get(key).push({ status, marking, updatedOn });
+                    validCount++;
+                }
             });
+            importedDataMap.forEach(records => records.sort((a, b) => importedDateTimestamp(b.updatedOn) - importedDateTimestamp(a.updatedOn)));
             importStatus.innerText = `Loaded ${validCount} records.`;
             showToast(`Imported ${validCount} records successfully.`, 'success');
+            const firstEid = selectedMeshes.keys().next().value;
+            if (firstEid !== undefined && inspectorPanel.classList.contains('open')) showElementProperties(currentModelID, firstEid);
         }
 
         // Central color map — add as many statuses as you want
@@ -3266,10 +3291,10 @@
         // Apply each status's color (from STATUS_COLOR_MAP) to the matching model elements
         function applyStatusColors() {
             let count = 0;
-            importedDataMap.forEach((data, guid) => {
+            importedDataMap.forEach((records, guid) => {
                 const mesh = guidToMeshMap.get(guid);
                 if (mesh) {
-                    const color = new THREE.Color(getStatusColor(data.status));
+                    const color = new THREE.Color(getStatusColor(records[0].status));
                     const newMat = sharedDefaultMaterial.clone();
                     newMat.color = color; newMat.emissive = color.clone().multiplyScalar(0.3); newMat.opacity = 1.0;
                     mesh.material = newMat;
@@ -3369,7 +3394,9 @@
                 if (value === undefined || value === null || value === "") return;
                 const row = document.createElement('div');
                 row.className = 'prop-row';
-                row.innerHTML = `<div class="prop-key">${key}</div><div class="prop-val">${value}</div>`;
+                const keyElement = document.createElement('div'); keyElement.className = 'prop-key'; keyElement.textContent = key;
+                const valueElement = document.createElement('div'); valueElement.className = 'prop-val'; valueElement.textContent = value;
+                row.append(keyElement, valueElement);
                 attrContent.appendChild(row);
             };
 
@@ -3410,11 +3437,14 @@
                 if (ifcLine.ObjectType && ifcLine.ObjectType.value) addAttributeRow("ObjectType", ifcLine.ObjectType.value);
 
                 if (ifcLine.GlobalId && importedDataMap.has(ifcLine.GlobalId.value)) {
-                    const data = importedDataMap.get(ifcLine.GlobalId.value);
+                    const records = importedDataMap.get(ifcLine.GlobalId.value);
                     attrContent.innerHTML += '<div style="margin-top: 10px; margin-bottom: 5px; border-bottom: 1px solid var(--neon-purple); padding-bottom: 2px; color: var(--neon-purple); font-weight: bold; font-size: 0.75rem; text-transform: uppercase;">Imported Data</div>';
-                    if (data.marking) addAttributeRow("Marking", data.marking);
-                    if (data.status) addAttributeRow("Status", data.status);
-                    if (data.updatedOn) addAttributeRow("Updated On", data.updatedOn);
+                    records.forEach((data, index) => {
+                        if (records.length > 1) addAttributeRow("Record", index + 1);
+                        addAttributeRow("Marking", data.marking);
+                        addAttributeRow("Status", data.status);
+                        addAttributeRow("Updated On", data.updatedOn);
+                    });
                 }
             } else {
                 attrContent.innerHTML += '<div style="color:var(--text-muted); font-size:0.8rem; margin-top:10px;">Could not read attributes for this element.</div>';
