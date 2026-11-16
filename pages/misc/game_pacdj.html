@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pac-Man Eats Bald Heads</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: radial-gradient(circle at 50% 0%, #131a3a 0%, #05060f 70%);
+    font-family: 'Courier New', monospace;
+    color: #ffe27a;
+    user-select: none;
+    -webkit-user-select: none;
+    padding: 10px;
+  }
+  h1 {
+    font-size: 17px; letter-spacing: 3px; margin: 0 0 8px;
+    color: #7fa6ff; text-shadow: 0 0 12px rgba(127,166,255,.9);
+    font-weight: 700; text-align: center;
+  }
+  #hud {
+    display: flex; gap: 22px; font-size: 13px; letter-spacing: 1px;
+    margin-bottom: 8px; text-transform: uppercase; flex-wrap: wrap; justify-content: center;
+  }
+  #hud b { color: #fff; }
+  canvas {
+    display: block;
+    width: min(94vw, 470px);
+    height: auto;
+    border-radius: 14px;
+    box-shadow: 0 0 50px rgba(60,110,255,.35);
+    background: #05060f;
+    touch-action: none;
+  }
+  .hint { margin-top: 10px; font-size: 11px; color: #5b6a9e; letter-spacing: 1px; text-align: center; }
+</style>
+</head>
+<body>
+<h1>PAC-MAN &mdash; EAT THE BALD HEADS</h1>
+<div id="hud">
+  <span>Score <b id="score">0</b></span>
+  <span>Heads <b id="heads">0/4</b></span>
+  <span>Level <b id="level">1</b></span>
+</div>
+<canvas id="game"></canvas>
+<div class="hint">ARROWS / WASD to move &nbsp;•&nbsp; SPACE for next level</div>
+
+<script>
+(function () {
+'use strict';
+
+/* ------------------------------------------------------------------ *
+*  MAZE                                                              *
+* ------------------------------------------------------------------ */
+const MAZE_SRC = [
+  "#####################",
+  "#.........#.........#",
+  "#o##.####.#.####.##o#",
+  "#.##.####.#.####.##.#",
+  "#...................#",
+  "#.##.#.#######.#.##.#",
+  "#....#....#....#....#",
+  "####.#### # ####.####",
+  "####.#         #.####",
+  "####.# ##---## #.####",
+  "    .  #     #  .    ",
+  "####.# ####### #.####",
+  "####.# ####### #.####",
+  "####.# ####### #.####",
+  "#...................#",
+  "#.##.####.#.####.##.#",
+  "#o.#.....###.....#.o#",
+  "##.#.#.#######.#.#.##",
+  "#....#....#....#....#",
+  "#.########.########.#",
+  "#...................#",
+  "#####################"
+];
+
+const COLS = 21;
+const ROWS = 22;
+const TILE = 24;
+const DOOR_ROW = 9;
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+canvas.width = COLS * TILE;
+canvas.height = ROWS * TILE;
+
+const elScore = document.getElementById('score');
+const elHeads = document.getElementById('heads');
+const elLevel = document.getElementById('level');
+
+/* ------------------------------------------------------------------ *
+*  TINY HELPERS                                                      *
+* ------------------------------------------------------------------ */
+const DIRS = {
+  up:    { x: 0,  y: -1 },
+  down:  { x: 0,  y: 1  },
+  left:  { x: -1, y: 0  },
+  right: { x: 1,  y: 0  }
+};
+
+function shade(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  r = Math.max(0, Math.min(255, r + amt));
+  g = Math.max(0, Math.min(255, g + amt));
+  b = Math.max(0, Math.min(255, b + amt));
+  return 'rgb(' + r + ',' + g + ',' + b + ')';
+}
+
+function atCenter(e) {
+  return Math.abs(e.x - Math.round(e.x)) < 1e-9 &&
+         Math.abs(e.y - Math.round(e.y)) < 1e-9;
+}
+
+/* ------------------------------------------------------------------ *
+*  GAME STATE                                                        *
+* ------------------------------------------------------------------ */
+let maze, dotsLeft, dotTotal;
+let score, highScore = 0, level;
+let state, stateTimer;
+let headsEaten;
+let pacman, ghosts;
+
+const GHOST_DEFS = [
+  { color: '#f5c396', type: 0 },   // Blinky
+  { color: '#ffb0a8', type: 1 },   // Pinky
+  { color: '#c98a5b', type: 2 },   // Inky
+  { color: '#8d5524', type: 3 }    // Clyde
+];
+
+/* ------------------------------------------------------------------ *
+*  MAZE / MOVEMENT UTILITIES                                         *
+* ------------------------------------------------------------------ */
+function canMove(cx, cy, ent) {
+  if (cy < 0 || cy >= ROWS) return false;
+  const wx = ((cx % COLS) + COLS) % COLS;
+  const t = maze[cy][wx];
+  if (t === '#') return false;
+  if (t === '-') return !!(ent && ent.isGhost && ent.inHouse);
+  return true;
+}
+
+function moveAlong(e, dt, speed) {
+  const dist = speed * dt;
+  let nx = e.x, ny = e.y;
+
+  if (e.dir.x !== 0) {
+    nx = e.x + e.dir.x * dist;
+    if (e.dir.x > 0) nx = Math.min(nx, Math.floor(e.x) + 1);
+    else             nx = Math.max(nx, Math.ceil(e.x) - 1);
+    ny = Math.round(e.y);
+  } else if (e.dir.y !== 0) {
+    ny = e.y + e.dir.y * dist;
+    if (e.dir.y > 0) ny = Math.min(ny, Math.floor(e.y) + 1);
+    else             ny = Math.max(ny, Math.ceil(e.y) - 1);
+    nx = Math.round(e.x);
+  }
+
+  e.x = nx;
+  e.y = ny;
+
+  if (e.x >= COLS) e.x -= COLS;
+  else if (e.x < 0) e.x += COLS;
+}
+
+/* ------------------------------------------------------------------ *
+*  SETUP                                                             *
+* ------------------------------------------------------------------ */
+function buildMaze() {
+  maze = MAZE_SRC.map(r => r.split(''));
+  dotTotal = 0;
+  for (let y = 0; y < ROWS; y++)
+    for (let x = 0; x < COLS; x++)
+      if (maze[y][x] === '.' || maze[y][x] === 'o') dotTotal++;
+  dotsLeft = dotTotal;
+}
+
+function makeGhost(x, y, def, i) {
+  return {
+    x, y,
+    startX: x, startY: y,
+    dir: { x: 0, y: -1 },
+    speed: 5.15 + level * 0.12,
+    color: def.color,
+    type: def.type,
+    isGhost: true,
+    inHouse: false,
+    eaten: false,
+    phase: i * 1.7
+  };
+}
+
+function resetActors() {
+  pacman = {
+    x: 10, y: 14,
+    dir: { x: 0, y: 0 },
+    nextDir: null,
+    speed: 6.1,
+    mouthPhase: 0,
+    lastAngle: 0,
+    isGhost: false
+  };
+
+  // Ghosts start in open corners, away from Pac-Man.
+  ghosts = [
+    makeGhost(1,  1,  GHOST_DEFS[0], 0),
+    makeGhost(19, 1,  GHOST_DEFS[1], 1),
+    makeGhost(1,  20, GHOST_DEFS[2], 2),
+    makeGhost(19, 20, GHOST_DEFS[3], 3)
+  ];
+}
+
+function newGame() {
+  score = 0;
+  level = 1;
+  headsEaten = 0;
+  buildMaze();
+  resetActors();
+  state = 'ready';
+  stateTimer = 2.0;
+  updateHUD(true);
+}
+
+function nextLevel() {
+  level++;
+  headsEaten = 0;
+  buildMaze();
+  resetActors();
+  state = 'ready';
+  stateTimer = 1.6;
+  updateHUD(true);
+}
+
+/* ------------------------------------------------------------------ *
+*  INPUT                                                             *
+* ------------------------------------------------------------------ */
+function setDir(d) {
+  if (!pacman) return;
+  const cur = pacman.dir;
+  if ((cur.x || cur.y) && d.x === -cur.x && d.y === -cur.y) {
+    pacman.dir = d;
+    pacman.nextDir = null;
+  } else {
+    pacman.nextDir = d;
+  }
+}
+
+document.addEventListener('keydown', function (e) {
+  const k = e.key;
+  if (k === 'ArrowUp'    || k === 'w' || k === 'W') setDir(DIRS.up);
+  else if (k === 'ArrowDown'  || k === 's' || k === 'S') setDir(DIRS.down);
+  else if (k === 'ArrowLeft'  || k === 'a' || k === 'A') setDir(DIRS.left);
+  else if (k === 'ArrowRight' || k === 'd' || k === 'D') setDir(DIRS.right);
+  else if (k === ' ' || k === 'Enter') {
+    if (state === 'win') nextLevel();
+  }
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].indexOf(k) !== -1) e.preventDefault();
+}, { passive: false });
+
+let touchStart = null;
+canvas.addEventListener('touchstart', function (e) {
+  const t = e.touches[0];
+  touchStart = { x: t.clientX, y: t.clientY };
+  e.preventDefault();
+}, { passive: false });
+
+canvas.addEventListener('touchend', function (e) {
+  if (!touchStart) return;
+  const t = e.changedTouches[0];
+  const dx = t.clientX - touchStart.x;
+  const dy = t.clientY - touchStart.y;
+  if (Math.abs(dx) > Math.abs(dy)) {
+    if (dx > 20) setDir(DIRS.right);
+    else if (dx < -20) setDir(DIRS.left);
+  } else {
+    if (dy > 20) setDir(DIRS.down);
+    else if (dy < -20) setDir(DIRS.up);
+  }
+  touchStart = null;
+  e.preventDefault();
+}, { passive: false });
+
+/* ------------------------------------------------------------------ *
+*  PAC-MAN UPDATE                                                    *
+* ------------------------------------------------------------------ */
+function updatePacman(dt) {
+  const p = pacman;
+
+  if (atCenter(p)) {
+    p.x = Math.round(p.x);
+    p.y = Math.round(p.y);
+
+    if (p.nextDir && canMove(p.x + p.nextDir.x, p.y + p.nextDir.y, p)) {
+      p.dir = p.nextDir;
+      p.nextDir = null;
+    }
+    if (!canMove(p.x + p.dir.x, p.y + p.dir.y, p)) {
+      p.dir = { x: 0, y: 0 };
+    }
+  }
+
+  if (p.dir.x || p.dir.y) {
+    moveAlong(p, dt, p.speed);
+    p.mouthPhase += dt * 14;
+  }
+
+  if (p.dir.x === 1) p.lastAngle = 0;
+  else if (p.dir.x === -1) p.lastAngle = Math.PI;
+  else if (p.dir.y === 1) p.lastAngle = Math.PI / 2;
+  else if (p.dir.y === -1) p.lastAngle = -Math.PI / 2;
+
+  /* --- eat dots / pellets --- */
+  const tx = ((Math.round(p.x) % COLS) + COLS) % COLS;
+  const ty = Math.round(p.y);
+  if (ty >= 0 && ty < ROWS) {
+    const cell = maze[ty][tx];
+    if (cell === '.') {
+      maze[ty][tx] = ' ';
+      score += 10;
+      dotsLeft--;
+      updateHUD();
+    } else if (cell === 'o') {
+      maze[ty][tx] = ' ';
+      score += 50;
+      dotsLeft--;
+      updateHUD();
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ *
+*  GHOST AI — FLEE FROM PAC-MAN                                      *
+* ------------------------------------------------------------------ */
+function updateGhost(g, dt) {
+  if (g.eaten) return;
+
+  if (atCenter(g)) {
+    g.x = Math.round(g.x);
+    g.y = Math.round(g.y);
+
+    const options = [];
+    for (const key in DIRS) {
+      const d = DIRS[key];
+      if (d.x === -g.dir.x && d.y === -g.dir.y) continue;
+      if (!canMove(g.x + d.x, g.y + d.y, g)) continue;
+      options.push(d);
+    }
+
+    if (options.length === 0) {
+      g.dir = { x: -g.dir.x, y: -g.dir.y };
+    } else {
+      // Choose direction that maximizes distance from Pac-Man.
+      let best = options[0];
+      let bestScore = -Infinity;
+      for (const d of options) {
+        const nx = g.x + d.x;
+        const ny = g.y + d.y;
+        const dist = (nx - pacman.x) * (nx - pacman.x) + (ny - pacman.y) * (ny - pacman.y);
+        const s = dist + Math.random() * 0.01;
+        if (s > bestScore) { bestScore = s; best = d; }
+      }
+      // occasional random wiggle so they don't get cornered too predictably
+      if (Math.random() < 0.08) best = options[(Math.random() * options.length) | 0];
+      g.dir = best;
+    }
+  }
+
+  moveAlong(g, dt, g.speed);
+}
+
+/* ------------------------------------------------------------------ *
+*  COLLISIONS — PAC-MAN EATS BALD HEADS                              *
+* ------------------------------------------------------------------ */
+function checkCollisions() {
+  for (const g of ghosts) {
+    if (g.eaten) continue;
+
+    const dx = g.x - pacman.x;
+    const dy = g.y - pacman.y;
+    if (dx * dx + dy * dy > 0.62 * 0.62) continue;
+
+    // Pac-Man eats the bald head!
+    g.eaten = true;
+    headsEaten++;
+    score += 200;
+    updateHUD();
+
+    if (headsEaten >= ghosts.length) {
+      state = 'win';
+      stateTimer = 0;
+      if (score > highScore) highScore = score;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ *
+*  UPDATE                                                            *
+* ------------------------------------------------------------------ */
+function update(dt) {
+  if (state === 'ready') {
+    stateTimer -= dt;
+    if (stateTimer <= 0) state = 'playing';
+    return;
+  }
+
+  if (state === 'win') return;
+
+  updatePacman(dt);
+  for (const g of ghosts) updateGhost(g, dt);
+
+  checkCollisions();
+}
+
+/* ------------------------------------------------------------------ *
+*  RENDERING                                                         *
+* ------------------------------------------------------------------ */
+function tileIsNotWall(x, y) {
+  if (y < 0 || y >= ROWS || x < 0 || x >= COLS) return false;
+  return maze[y][x] !== '#';
+}
+
+function drawMaze() {
+  ctx.fillStyle = '#0a1240';
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      if (maze[y][x] === '#') ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+    }
+  }
+
+  ctx.strokeStyle = '#2f5fff';
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  const inset = 1.5;
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      if (maze[y][x] !== '#') continue;
+      const px = x * TILE, py = y * TILE;
+      if (tileIsNotWall(x, y - 1)) {
+        ctx.moveTo(px + inset, py + inset);
+        ctx.lineTo(px + TILE - inset, py + inset);
+      }
+      if (tileIsNotWall(x, y + 1)) {
+        ctx.moveTo(px + inset, py + TILE - inset);
+        ctx.lineTo(px + TILE - inset, py + TILE - inset);
+      }
+      if (tileIsNotWall(x - 1, y)) {
+        ctx.moveTo(px + inset, py + inset);
+        ctx.lineTo(px + inset, py + TILE - inset);
+      }
+      if (tileIsNotWall(x + 1, y)) {
+        ctx.moveTo(px + TILE - inset, py + inset);
+        ctx.lineTo(px + TILE - inset, py + TILE - inset);
+      }
+    }
+  }
+  ctx.stroke();
+
+  ctx.strokeStyle = '#ff9ecb';
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  for (let x = 0; x < COLS; x++) {
+    if (maze[DOOR_ROW][x] === '-') {
+      ctx.moveTo(x * TILE, DOOR_ROW * TILE + TILE / 2);
+      ctx.lineTo((x + 1) * TILE, DOOR_ROW * TILE + TILE / 2);
+    }
+  }
+  ctx.stroke();
+}
+
+function drawDots() {
+  const t = performance.now() / 1000;
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      const cell = maze[y][x];
+      if (cell === '.') {
+        ctx.fillStyle = '#ffe8a3';
+        ctx.beginPath();
+        ctx.arc((x + 0.5) * TILE, (y + 0.5) * TILE, TILE * 0.095, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (cell === 'o') {
+        const pulse = 1 + Math.sin(t * 6) * 0.18;
+        ctx.fillStyle = '#ffd93b';
+        ctx.shadowColor = '#ffd93b';
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.arc((x + 0.5) * TILE, (y + 0.5) * TILE, TILE * 0.25 * pulse, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    }
+  }
+}
+
+function drawPacman() {
+  const p = pacman;
+  const cx = (p.x + 0.5) * TILE;
+  const cy = (p.y + 0.5) * TILE;
+  const r = TILE * 0.44;
+
+  let mouth = 0;
+  if (p.dir.x || p.dir.y) {
+    mouth = (Math.abs(Math.sin(p.mouthPhase)) * 0.33);
+  } else {
+    mouth = 0.06;
+  }
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(p.lastAngle);
+
+  const grad = ctx.createRadialGradient(-r * 0.3, -r * 0.3, r * 0.1, 0, 0, r);
+  grad.addColorStop(0, '#fff5a8');
+  grad.addColorStop(1, '#ffc800');
+  ctx.fillStyle = grad;
+
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.arc(0, 0, r, mouth * Math.PI, (2 - mouth) * Math.PI);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = '#1a1a2e';
+  ctx.beginPath();
+  ctx.arc(r * 0.08, -r * 0.42, r * 0.14, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/* --------------------------------------------------------------- *
+*  BALD HEAD RENDERER                                              *
+* --------------------------------------------------------------- */
+function drawBaldHead(cx, cy, r, skin, lookX, lookY) {
+  ctx.save();
+  ctx.translate(cx, cy);
+
+  const base = skin;
+  const light = shade(base, 32);
+  const dark  = shade(base, -40);
+
+  /* ears */
+  ctx.fillStyle = dark;
+  ctx.beginPath();
+  ctx.ellipse(-r * 0.93, r * 0.06, r * 0.24, r * 0.33, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(r * 0.93, r * 0.06, r * 0.24, r * 0.33, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  /* head */
+  const g = ctx.createRadialGradient(-r * 0.34, -r * 0.46, r * 0.08, 0, 0, r * 1.3);
+  g.addColorStop(0, light);
+  g.addColorStop(0.62, base);
+  g.addColorStop(1, dark);
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r * 0.88, r, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  /* bald shine */
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.beginPath();
+  ctx.ellipse(-r * 0.33, -r * 0.5, r * 0.30, r * 0.15, -0.62, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.beginPath();
+  ctx.ellipse(-r * 0.02, -r * 0.68, r * 0.12, r * 0.07, -0.35, 0, Math.PI * 2);
+  ctx.fill();
+
+  /* eyes */
+  const ex = lookX * r * 0.10;
+  const ey = lookY * r * 0.10;
+  const eyeR = r * 0.19;
+
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.ellipse(-r * 0.31 + ex, -r * 0.09 + ey, eyeR, eyeR * 1.18, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(r * 0.31 + ex, -r * 0.09 + ey, eyeR, eyeR * 1.18, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#20161a';
+  const px = lookX * r * 0.085;
+  const py = lookY * r * 0.085;
+  ctx.beginPath();
+  ctx.arc(-r * 0.31 + ex + px, -r * 0.09 + ey + py, eyeR * 0.48, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(r * 0.31 + ex + px, -r * 0.09 + ey + py, eyeR * 0.48, 0, Math.PI * 2);
+  ctx.fill();
+
+  /* eyebrows */
+  ctx.strokeStyle = 'rgba(70,45,25,0.75)';
+  ctx.lineWidth = r * 0.085;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.52, -r * 0.33);
+  ctx.lineTo(-r * 0.14, -r * 0.40);
+  ctx.moveTo(r * 0.52, -r * 0.33);
+  ctx.lineTo(r * 0.14, -r * 0.40);
+  ctx.stroke();
+
+  /* nose */
+  ctx.fillStyle = dark;
+  ctx.beginPath();
+  ctx.ellipse(0, r * 0.22, r * 0.085, r * 0.065, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  /* mouth */
+  ctx.strokeStyle = 'rgba(100,55,35,0.85)';
+  ctx.lineWidth = r * 0.085;
+  ctx.beginPath();
+  ctx.arc(0, r * 0.30, r * 0.24, Math.PI * 0.22, Math.PI * 0.78);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawGhosts() {
+  const t = performance.now() / 1000;
+
+  for (const g of ghosts) {
+    if (g.eaten) continue;
+
+    const cx = (g.x + 0.5) * TILE;
+    const cy = (g.y + 0.5) * TILE;
+    const r = TILE * 0.43;
+
+    const bob = Math.sin(t * 4 + g.phase) * 1.2;
+
+    let lookX = g.dir.x;
+    let lookY = g.dir.y;
+
+    /* shadow */
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + r * 0.95, r * 0.7, r * 0.18, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    drawBaldHead(cx, cy + bob, r, g.color, lookX, lookY);
+  }
+}
+
+function drawOverlay() {
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  if (state === 'ready') {
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(0, canvas.height / 2 - 34, canvas.width, 68);
+    ctx.fillStyle = '#ffd93b';
+    ctx.font = 'bold 26px "Courier New", monospace';
+    ctx.fillText('READY!', canvas.width / 2, canvas.height / 2);
+  }
+
+  if (state === 'win') {
+    ctx.fillStyle = 'rgba(0,0,0,0.72)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#5dffb0';
+    ctx.font = 'bold 24px "Courier New", monospace';
+    ctx.fillText('ALL HEADS EATEN!', canvas.width / 2, canvas.height / 2 - 30);
+    ctx.fillStyle = '#ffe27a';
+    ctx.font = 'bold 15px "Courier New", monospace';
+    ctx.fillText('SCORE  ' + score, canvas.width / 2, canvas.height / 2 + 10);
+    ctx.fillStyle = '#7fa6ff';
+    ctx.font = 'bold 13px "Courier New", monospace';
+    ctx.fillText('PRESS SPACE FOR NEXT LEVEL', canvas.width / 2, canvas.height / 2 + 48);
+  }
+}
+
+function render() {
+  ctx.fillStyle = '#05060f';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  drawMaze();
+  drawDots();
+  drawGhosts();
+  drawPacman();
+  drawOverlay();
+}
+
+/* ------------------------------------------------------------------ *
+*  HUD                                                               *
+* ------------------------------------------------------------------ */
+let lastHUD = { s: -1, h: -1, v: -1 };
+function updateHUD(force) {
+  if (force || score !== lastHUD.s) { elScore.textContent = score; lastHUD.s = score; }
+  const headsText = headsEaten + '/' + ghosts.length;
+  if (force || headsText !== lastHUD.h) { elHeads.textContent = headsText; lastHUD.h = headsText; }
+  if (force || level !== lastHUD.v) { elLevel.textContent = level; lastHUD.v = level; }
+}
+
+/* ------------------------------------------------------------------ *
+*  MAIN LOOP                                                         *
+* ------------------------------------------------------------------ */
+let lastTime = performance.now();
+
+function loop(now) {
+  let dt = (now - lastTime) / 1000;
+  lastTime = now;
+  if (dt > 0.05) dt = 0.05;
+
+  update(dt);
+  render();
+
+  requestAnimationFrame(loop);
+}
+
+/* ------------------------------------------------------------------ *
+*  START                                                             *
+* ------------------------------------------------------------------ */
+newGame();
+requestAnimationFrame(loop);
+
+})();
+</script>
+</body>
+</html>

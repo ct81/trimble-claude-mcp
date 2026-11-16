@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lamborghini Racing - 350km/h</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@400;700&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #050a15;
+            color: white;
+            font-family: 'Roboto', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: none; 
+            user-select: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            max-width: 800px;
+            max-height: 600px;
+            border: 3px solid #00a8ff;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 168, 255, 0.5);
+            overflow: hidden;
+            background-color: #222;
+            aspect-ratio: 4/3;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* UI Overlay */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-sizing: border-box;
+            padding: 15px;
+        }
+
+        .top-ui {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .panel {
+            background: rgba(0, 15, 30, 0.85);
+            border: 2px solid #00a8ff;
+            border-radius: 8px;
+            padding: 8px 15px;
+            box-shadow: 0 0 10px rgba(0, 168, 255, 0.3);
+        }
+
+        .speed-panel { text-align: left; }
+        .speed-value { color: #ffcc00; font-family: 'Orbitron', sans-serif; font-size: 28px; font-weight: 900; }
+        .label { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #aaa; }
+
+        .position-panel { text-align: right; }
+        .position-value { color: #ffcc00; font-family: 'Orbitron', sans-serif; font-size: 28px; font-weight: 900; }
+
+        /* Mini-map and Speedometer */
+        .bottom-ui {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 110px; 
+        }
+
+        .minimap-container {
+            width: 70px;
+            height: 70px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid #ccc;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .speedometer {
+            width: 80px;
+            height: 80px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 3px solid #555;
+            border-radius: 50%;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .needle {
+            position: absolute;
+            width: 4px;
+            height: 30px;
+            background: red;
+            bottom: 50%;
+            transform-origin: bottom center;
+            transform: rotate(-120deg); /* Start position */
+            border-radius: 2px 2px 0 0;
+            transition: transform 0.1s linear;
+        }
+        .speed-text {
+            position: absolute;
+            bottom: 10px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        /* Touch Controls */
+        #controls-container {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-sizing: border-box;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 15px;
+            pointer-events: auto;
+        }
+
+        .ctrl-btn {
+            width: 75px;
+            height: 75px;
+            background: rgba(0, 15, 30, 0.8);
+            border: 3px solid #00a8ff;
+            border-radius: 50%;
+            color: white;
+            font-size: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 15px rgba(0, 168, 255, 0.4);
+            touch-action: none;
+            transition: all 0.1s;
+        }
+
+        .ctrl-btn:active, .ctrl-btn.pressed {
+            background: #00a8ff;
+            color: #000;
+            transform: scale(0.9);
+            box-shadow: 0 0 25px rgba(0, 168, 255, 0.9);
+        }
+
+        .accel-btn {
+            border-color: #33cc33;
+            color: #33cc33;
+            box-shadow: 0 0 15px rgba(51, 204, 51, 0.4);
+        }
+        .accel-btn:active, .accel-btn.pressed {
+            background: #33cc33;
+            color: #000;
+            box-shadow: 0 0 25px rgba(51, 204, 51, 0.9);
+        }
+
+        .brake-btn {
+            border-color: #ff3333;
+            color: #ff3333;
+            box-shadow: 0 0 15px rgba(255, 51, 51, 0.4);
+        }
+        .brake-btn:active, .brake-btn.pressed {
+            background: #ff3333;
+            color: #000;
+            box-shadow: 0 0 25px rgba(255, 51, 51, 0.9);
+        }
+
+        /* Pause Menu Overlay */
+        #pause-menu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 10, 20, 0.85);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+            z-index: 10;
+        }
+
+        #pause-menu h1 {
+            font-family: 'Orbitron', sans-serif;
+            color: #00a8ff;
+            text-shadow: 0 0 10px rgba(0, 168, 255, 0.8);
+            margin-bottom: 20px;
+        }
+
+        .menu-btn {
+            background: linear-gradient(180deg, #005588, #002244);
+            border: 2px solid #00a8ff;
+            color: white;
+            font-family: 'Roboto', sans-serif;
+            font-size: 18px;
+            padding: 12px 30px;
+            margin: 8px;
+            width: 220px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: left;
+            display: flex;
+            align-items: center;
+        }
+        
+        .menu-btn:active { background: #00a8ff; color: black; }
+
+        /* Leaderboard - Draggable */
+        #leaderboard {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%); 
+            width: 280px;
+            background: rgba(0, 15, 30, 0.95);
+            border: 2px solid #00a8ff;
+            border-radius: 8px;
+            padding: 15px;
+            display: none;
+            pointer-events: auto;
+            z-index: 15; 
+            cursor: grab;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }
+
+        #leaderboard:active {
+            cursor: grabbing;
+        }
+
+        #leaderboard h2 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #ffcc00;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+            text-align: center;
+            pointer-events: none; 
+        }
+
+        .score-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 14px;
+            pointer-events: none;
+        }
+        
+        .score-row.you { color: #00a8ff; font-weight: bold; }
+
+        /* Start Screen */
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            pointer-events: auto;
+            padding: 20px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+        
+        #start-screen h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 28px;
+            color: white;
+            text-shadow: 0 0 20px #00a8ff;
+            margin-bottom: 10px;
+        }
+
+        #start-screen p {
+            color: #aaa;
+            margin-bottom: 20px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .start-btn {
+            background: #00a8ff;
+            color: black;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(0, 168, 255, 0.5);
+            margin: 8px;
+            width: 100%;
+            max-width: 280px;
+        }
+        
+        .start-btn:active { background: #0088cc; }
+
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <!-- Start Screen -->
+    <div id="start-screen">
+        <h1>LAMBORGHINI RACING</h1>
+        <p>Use <b>Screen Buttons</b> or <b>Arrow Keys</b>.<br>Hold <b>▲</b> to Accelerate (Max 350km/h), <b>▼</b> to Brake.<br>Steer with <b>◀ ▶</b>.</p>
+        <button id="tilt-btn" class="start-btn" style="font-size: 14px; padding: 10px; background: #444; box-shadow: none;" onclick="requestTiltPermission()">Enable Tilt (Optional)</button>
+        <button id="start-btn" class="start-btn" onclick="startGame()">START ENGINE</button>
+    </div>
+
+    <!-- UI Layer -->
+    <div id="ui-layer">
+        <div class="top-ui">
+            <div class="panel speed-panel">
+                <div class="label">Speed:</div>
+                <div class="speed-value"><span id="speed-display">0</span> <span style="font-size:12px;">km/h</span></div>
+            </div>
+            <div class="panel position-panel">
+                <div class="label">Position:</div>
+                <div class="position-value"><span id="position-display">1</span> / 4</div>
+            </div>
+        </div>
+
+        <div class="bottom-ui">
+            <div class="minimap-container">
+                <svg width="50" height="50" viewBox="0 0 100 100">
+                    <path d="M 30 80 Q 10 60 20 30 Q 30 10 70 20 Q 90 30 80 60 Q 70 80 50 70 Q 30 60 40 40 Q 50 20 70 30 Q 80 50 60 70 Q 40 90 30 80 Z" fill="none" stroke="#888" stroke-width="3"/>
+                    <circle cx="30" cy="80" r="4" fill="red" id="minimap-dot"/>
+                </svg>
+            </div>
+            
+            <div class="speedometer">
+                <div class="needle" id="speed-needle"></div>
+                <div class="speed-text" id="speed-text-odo">0</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- On-Screen Controls -->
+    <div id="controls-container">
+        <div class="control-group">
+            <div class="ctrl-btn" id="btn-left">◀</div>
+            <div class="ctrl-btn" id="btn-right">▶</div>
+        </div>
+        <div class="control-group">
+            <div class="ctrl-btn brake-btn" id="btn-down">▼</div>
+            <div class="ctrl-btn accel-btn" id="btn-up">▲</div>
+        </div>
+    </div>
+
+    <!-- Pause Menu -->
+    <div id="pause-menu">
+        <h1>PAUSED</h1>
+        <button class="menu-btn" onclick="togglePause()"><i>▶</i> Resume</button>
+        <button class="menu-btn" onclick="restartGame()"><i>↻</i> Restart</button>
+        <button class="menu-btn" onclick="location.reload()"><i>⏏</i> Main Menu</button>
+    </div>
+
+    <!-- Draggable Leaderboard -->
+    <div id="leaderboard">
+        <h2>🏆 Race Results (Drag me)</h2>
+        <div id="score-list"></div>
+    </div>
+</div>
+
+<script>
+    // --- Game Variables & State ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    let gameState = 'start'; 
+    let animationId;
+    let lastTime = 0;
+    let raceTime = 0;
+    let distance = 0;
+    const FINISH_LINE_DISTANCE = 60000; // Increased distance due to higher speed
+
+    // Tilt Variables
+    let tiltX = 0;           
+    let targetTiltX = 0;     
+    let hasTiltPermission = false;
+
+    // UI Elements
+    const speedDisplay = document.getElementById('speed-display');
+    const positionDisplay = document.getElementById('position-display');
+    const speedNeedle = document.getElementById('speed-needle');
+    const speedOdo = document.getElementById('speed-text-odo');
+    const pauseMenu = document.getElementById('pause-menu');
+    const leaderboard = document.getElementById('leaderboard');
+    const scoreList = document.getElementById('score-list');
+    const startScreen = document.getElementById('start-screen');
+    const minimapDot = document.getElementById('minimap-dot');
+
+    // Player Car Settings (Lamborghini)
+    const player = {
+        x: 400,
+        y: 500,
+        width: 60,   
+        height: 110, 
+        speed: 0,
+        maxSpeed: 350, // MAX SPEED 350
+        acceleration: 180, 
+        braking: 350,      
+        drag: 30,          
+        angle: 0,
+        color: '#2ecc71' // Verde Mantis (Lamborghini Green)
+    };
+
+    // Controls State
+    const keys = {
+        ArrowLeft: false,
+        ArrowRight: false,
+        ArrowUp: false,
+        ArrowDown: false
+    };
+
+    let obstacles = [];
+    let roadLines = [];
+    let spawnTimer = 0;
+
+    const aiRacers = [
+        { name: 'Racer2', time: 0 },
+        { name: 'Racer3', time: 0 },
+        { name: 'Racer4', time: 0 }
+    ];
+
+    // --- Initialization ---
+    function init() {
+        for (let i = 0; i < 10; i++) {
+            roadLines.push({ x: 200, y: i * 100, width: 10, height: 50 });
+            roadLines.push({ x: 400, y: i * 100, width: 10, height: 50 });
+            roadLines.push({ x: 600, y: i * 100, width: 10, height: 50 });
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (keys.hasOwnProperty(e.key)) keys[e.key] = true;
+            if (e.key === 'Escape') togglePause();
+        });
+        window.addEventListener('keyup', (e) => {
+            if (keys.hasOwnProperty(e.key)) keys[e.key] = false;
+        });
+
+        bindControl('btn-left', 'ArrowLeft');
+        bindControl('btn-right', 'ArrowRight');
+        bindControl('btn-up', 'ArrowUp');
+        bindControl('btn-down', 'ArrowDown');
+
+        setupDraggableLeaderboard();
+    }
+
+    function bindControl(btnId, keyName) {
+        const btn = document.getElementById(btnId);
+        
+        const press = (e) => {
+            e.preventDefault();
+            keys[keyName] = true;
+            btn.classList.add('pressed');
+        };
+        
+        const release = (e) => {
+            e.preventDefault();
+            keys[keyName] = false;
+            btn.classList.remove('pressed');
+        };
+
+        btn.addEventListener('touchstart', press, {passive: false});
+        btn.addEventListener('touchend', release);
+        btn.addEventListener('touchcancel', release);
+        btn.addEventListener('mousedown', press);
+        btn.addEventListener('mouseup', release);
+        btn.addEventListener('mouseleave', release);
+    }
+
+    // --- Draggable Leaderboard Logic ---
+    function setupDraggableLeaderboard() {
+        let isDragging = false;
+        let offsetX, offsetY;
+
+        const startDrag = (e) => {
+            isDragging = true;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const rect = leaderboard.getBoundingClientRect();
+            
+            offsetX = clientX - rect.left;
+            offsetY = clientY - rect.top;
+            
+            leaderboard.style.transform = 'none';
+            leaderboard.style.left = rect.left + 'px';
+            leaderboard.style.top = rect.top + 'px';
+        };
+
+        const drag = (e) => {
+            if (!isDragging) return;
+            e.preventDefault(); 
+            
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            const containerRect = document.getElementById('game-container').getBoundingClientRect();
+
+            let newX = clientX - containerRect.left - offsetX;
+            let newY = clientY - containerRect.top - offsetY;
+
+            newX = Math.max(0, Math.min(newX, containerRect.width - leaderboard.offsetWidth));
+            newY = Math.max(0, Math.min(newY, containerRect.height - leaderboard.offsetHeight));
+
+            leaderboard.style.left = newX + 'px';
+            leaderboard.style.top = newY + 'px';
+        };
+
+        const stopDrag = () => {
+            isDragging = false;
+        };
+
+        leaderboard.addEventListener('mousedown', startDrag);
+        leaderboard.addEventListener('touchstart', startDrag, {passive: false});
+        window.addEventListener('mousemove', drag);
+        window.addEventListener('touchmove', drag, {passive: false});
+        window.addEventListener('mouseup', stopDrag);
+        window.addEventListener('touchend', stopDrag);
+    }
+
+    // --- Motion Sensor Logic ---
+    async function requestTiltPermission() {
+        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+            try {
+                const permissionState = await DeviceOrientationEvent.requestPermission();
+                if (permissionState === 'granted') {
+                    setupTilt();
+                } else {
+                    alert('Permission denied.');
+                }
+            } catch (error) {
+                setupTilt();
+            }
+        } else {
+            setupTilt();
+        }
+    }
+
+    function setupTilt() {
+        window.addEventListener('deviceorientation', handleOrientation);
+        hasTiltPermission = true;
+        document.getElementById('tilt-btn').innerText = "✅ Tilt Enabled";
+        document.getElementById('tilt-btn').style.background = "#33cc33";
+        document.getElementById('tilt-btn').style.color = "white";
+    }
+
+    function handleOrientation(event) {
+        if (!hasTiltPermission) return;
+        let angle = screen.orientation ? screen.orientation.angle : (window.orientation || 0);
+        let gamma = event.gamma || 0; 
+        let beta = event.beta || 0;   
+
+        if (angle === 0) targetTiltX = gamma; 
+        else if (angle === 90) targetTiltX = beta;
+        else if (angle === -90 || angle === 270) targetTiltX = -beta;
+
+        if (Math.abs(targetTiltX) < 4) targetTiltX = 0;
+    }
+
+    // --- Core Game Loop ---
+    function startGame() {
+        startScreen.style.display = 'none';
+        gameState = 'playing';
+        player.x = 400;
+        player.speed = 0; 
+        obstacles = [];
+        raceTime = 0;
+        distance = 0;
+        spawnTimer = 0;
+        
+        // Reset Leaderboard Position
+        leaderboard.style.transform = 'translate(-50%, -50%)';
+        leaderboard.style.left = '50%';
+        leaderboard.style.top = '50%';
+
+        aiRacers.forEach(ai => {
+            ai.time = 80 + Math.random() * 20; // AI times adjusted for faster car
+        });
+
+        lastTime = performance.now();
+        loop(lastTime);
+    }
+
+    function restartGame() {
+        pauseMenu.style.display = 'none';
+        leaderboard.style.display = 'none';
+        startGame();
+    }
+
+    function togglePause() {
+        if (gameState === 'playing') {
+            gameState = 'paused';
+            pauseMenu.style.display = 'flex';
+        } else if (gameState === 'paused') {
+            gameState = 'playing';
+            pauseMenu.style.display = 'none';
+            lastTime = performance.now();
+            loop(lastTime);
+        }
+    }
+
+    function loop(timestamp) {
+        if (gameState !== 'playing') return;
+
+        const deltaTime = Math.min((timestamp - lastTime) / 1000, 0.1); 
+        lastTime = timestamp;
+
+        update(deltaTime);
+        draw();
+
+        animationId = requestAnimationFrame(loop);
+    }
+
+    // --- Update Logic ---
+    function update(dt) {
+        raceTime += dt;
+        
+        if (player.speed > 0) {
+            distance += player.speed * dt * 0.3; 
+        }
+
+        // Speed Logic
+        if (keys.ArrowUp) {
+            player.speed += player.acceleration * dt;
+        } else if (keys.ArrowDown) {
+            player.speed -= player.braking * dt;
+        } else {
+            player.speed -= player.drag * dt;
+        }
+
+        player.speed = Math.max(0, Math.min(player.speed, player.maxSpeed));
+
+        // Steering Logic
+        let moveX = 0;
+        if (player.speed > 5) {
+            if (keys.ArrowLeft) moveX -= 350 * dt;
+            if (keys.ArrowRight) moveX += 350 * dt;
+
+            tiltX += (targetTiltX - tiltX) * 0.15;
+            if (Math.abs(tiltX) > 0) {
+                moveX += (tiltX / 30) * 350 * dt; 
+            }
+        }
+
+        player.x += moveX;
+        player.x = Math.max(150, Math.min(player.x, 590)); 
+
+        // Car Tilt Visuals
+        if (moveX < -10) player.angle = -0.12;
+        else if (moveX > 10) player.angle = 0.12;
+        else player.angle *= 0.8;
+
+        // Road Lines Movement (Speed up scrolling to match top speed)
+        roadLines.forEach(line => {
+            line.y -= player.speed * dt * 1.8; 
+            if (line.y < -50) line.y += 1000;
+        });
+
+        // Spawn Obstacles
+        spawnTimer += dt;
+        if (spawnTimer > 0.6 && player.speed > 30) {
+            const lane = Math.floor(Math.random() * 3); 
+            obstacles.push({
+                x: 200 + (lane * 200) + 10, 
+                y: -150, 
+                width: 56, 
+                height: 100,
+                speed: 40 + Math.random() * 40,
+                color: ['#0044aa', '#ffaa00', '#22aa22', '#111111', '#ffffff', '#ff5500'][Math.floor(Math.random()*6)] 
+            });
+            spawnTimer = 0;
+        }
+
+        // Update Obstacles
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+            let obs = obstacles[i];
+            
+            obs.y += (player.speed - obs.speed) * dt * 1.8; 
+            
+            // Collision Detection
+            const hitMargin = 8;
+            if (
+                player.x + hitMargin < obs.x + obs.width &&
+                player.x + player.width - hitMargin > obs.x &&
+                player.y + hitMargin < obs.y + obs.height &&
+                player.y + player.height - hitMargin > obs.y
+            ) {
+                endGame(false); 
+                return;
+            }
+
+            if (obs.y > 800 || obs.y < -400) obstacles.splice(i, 1);
+        }
+
+        if (distance >= FINISH_LINE_DISTANCE) {
+            endGame(true);
+            return;
+        }
+
+        updateUI();
+    }
+
+    function draw() {
+        // Asphalt base
+        ctx.fillStyle = '#2a2a2a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Grass
+        ctx.fillStyle = '#1a3a1a';
+        ctx.fillRect(0, 0, 150, canvas.height);
+        ctx.fillRect(650, 0, 150, canvas.height);
+
+        // Road Borders
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(150, 0, 10, canvas.height);
+        ctx.fillRect(640, 0, 10, canvas.height);
+
+        // Lane Lines
+        roadLines.forEach(line => {
+            ctx.fillRect(line.x, line.y, line.width, line.height);
+        });
+
+        // Obstacles (Generic Rival Cars)
+        obstacles.forEach(obs => {
+            drawRivalCar(obs.x, obs.y, obs.width, obs.height, obs.color);
+        });
+
+        // Player Car (Lamborghini)
+        ctx.save();
+        ctx.translate(player.x + player.width/2, player.y + player.height/2);
+        ctx.rotate(player.angle);
+        ctx.translate(-player.width/2, -player.height/2);
+        drawLamborghini(0, 0, player.width, player.height, player.color);
+        ctx.restore();
+    }
+
+    // --- LAMBORGHINI AVENTADOR RENDERER (Top-Down) ---
+    function drawLamborghini(x, y, w, h, color) {
+        const cx = x + w / 2;
+
+        // 1. Deep Drop Shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.beginPath();
+        ctx.ellipse(cx + 5, y + h/2 + 8, w * 0.55, h * 0.55, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 2. Tires & Rims (Low Profile)
+        ctx.fillStyle = '#0a0a0a'; 
+        // Rear tires (wider)
+        ctx.beginPath(); ctx.ellipse(x + 2, y + h * 0.75, w * 0.09, h * 0.11, 0, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(x + w - 2, y + h * 0.75, w * 0.09, h * 0.11, 0, 0, Math.PI*2); ctx.fill();
+        // Front tires
+        ctx.beginPath(); ctx.ellipse(x + 5, y + h * 0.15, w * 0.07, h * 0.09, 0, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(x + w - 5, y + h * 0.15, w * 0.07, h * 0.09, 0, 0, Math.PI*2); ctx.fill();
+
+        // Rims (Silver Spoked look)
+        ctx.fillStyle = '#999';
+        ctx.beginPath(); ctx.ellipse(x + 2, y + h * 0.75, w * 0.06, h * 0.08, 0, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(x + w - 2, y + h * 0.75, w * 0.06, h * 0.08, 0, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(x + 5, y + h * 0.15, w * 0.045, h * 0.06, 0, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(x + w - 5, y + h * 0.15, w * 0.045, h * 0.06, 0, 0, Math.PI*2); ctx.fill();
+        // Rim center details (Brake calipers)
+        ctx.fillStyle = '#ffcc00'; // Yellow calipers
+        ctx.fillRect(x, y + h * 0.72, w * 0.03, h * 0.04);
+        ctx.fillRect(x + w - w * 0.03, y + h * 0.72, w * 0.03, h * 0.04);
+
+        // 3. Aggressive Angular Body (Lamborghini Wedge)
+        let bodyGrad = ctx.createLinearGradient(x, y, x + w, y);
+        bodyGrad.addColorStop(0, '#052b13');     
+        bodyGrad.addColorStop(0.15, color);   
+        bodyGrad.addColorStop(0.45, '#85f8a8'); // Bright highlight
+        bodyGrad.addColorStop(0.55, color);    
+        bodyGrad.addColorStop(0.85, color);   
+        bodyGrad.addColorStop(1, '#052b13');     
+
+        ctx.fillStyle = bodyGrad;
+        ctx.beginPath();
+        // Pointy Nose
+        ctx.moveTo(cx, y);
+        // Right Front Fender (Hexagonal arch)
+        ctx.lineTo(x + w * 0.85, y + h * 0.1);
+        ctx.lineTo(x + w, y + h * 0.25);
+        ctx.lineTo(x + w, y + h * 0.35);
+        // Right Door Indent
+        ctx.lineTo(x + w * 0.85, y + h * 0.5);
+        // Right Rear Fender (Hexagonal arch)
+        ctx.lineTo(x + w, y + h * 0.65);
+        ctx.lineTo(x + w, y + h * 0.85);
+        // Rear Bumper (Flat and wide)
+        ctx.lineTo(x + w * 0.9, y + h);
+        ctx.lineTo(x + w * 0.1, y + h);
+        // Left Rear Fender
+        ctx.lineTo(x, y + h * 0.85);
+        ctx.lineTo(x, y + h * 0.65);
+        // Left Door Indent
+        ctx.lineTo(x + w * 0.15, y + h * 0.5);
+        // Left Front Fender
+        ctx.lineTo(x, y + h * 0.35);
+        ctx.lineTo(x, y + h * 0.25);
+        ctx.lineTo(x + w * 0.15, y + h * 0.1);
+        ctx.closePath();
+        ctx.fill();
+
+        // Body Panel Lines (Sharp angles)
+        ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+        ctx.lineWidth = 1.5;
+        // Hood lines
+        ctx.beginPath();
+        ctx.moveTo(cx - w*0.2, y + h*0.1);
+        ctx.lineTo(cx - w*0.15, y + h*0.3);
+        ctx.moveTo(cx + w*0.2, y + h*0.1);
+        ctx.lineTo(cx + w*0.15, y + h*0.3);
+        // Roof lines
+        ctx.moveTo(cx - w*0.15, y + h*0.5);
+        ctx.lineTo(cx - w*0.25, y + h*0.7);
+        ctx.moveTo(cx + w*0.15, y + h*0.5);
+        ctx.lineTo(cx + w*0.25, y + h*0.7);
+        ctx.stroke();
+
+        // 4. The Cabin (Glass Canopy)
+        let glassGrad = ctx.createLinearGradient(x, y + h*0.3, x, y + h*0.6);
+        glassGrad.addColorStop(0, '#050a0f'); 
+        glassGrad.addColorStop(0.5, '#152535'); 
+        glassGrad.addColorStop(1, '#050a0f'); 
+        
+        // Windshield (Sharp Trapezoid)
+        ctx.fillStyle = glassGrad;
+        ctx.beginPath();
+        ctx.moveTo(cx - w*0.25, y + h*0.3);
+        ctx.lineTo(cx + w*0.25, y + h*0.3);
+        ctx.lineTo(cx + w*0.15, y + h*0.48);
+        ctx.lineTo(cx - w*0.15, y + h*0.48);
+        ctx.closePath();
+        ctx.fill();
+
+        // Windshield Reflection
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.beginPath();
+        ctx.moveTo(cx - w*0.2, y + h*0.31);
+        ctx.lineTo(cx, y + h*0.31);
+        ctx.lineTo(cx - w*0.1, y + h*0.47);
+        ctx.lineTo(cx - w*0.15, y + h*0.47);
+        ctx.closePath();
+        ctx.fill();
+
+        // Roof (Black/Carbon fiber)
+        ctx.fillStyle = '#111';
+        ctx.fillRect(cx - w*0.15, y + h*0.48, w*0.3, h*0.12);
+
+        // Rear Engine Cover (Glass louvers)
+        ctx.fillStyle = glassGrad;
+        ctx.beginPath();
+        ctx.moveTo(cx - w*0.15, y + h*0.6);
+        ctx.lineTo(cx + w*0.15, y + h*0.6);
+        ctx.lineTo(cx + w*0.25, y + h*0.75);
+        ctx.lineTo(cx - w*0.25, y + h*0.75);
+        ctx.closePath();
+        ctx.fill();
+
+        // Engine louvers (Black slats)
+        ctx.fillStyle = '#000';
+        for(let i=0; i<4; i++) {
+            ctx.fillRect(cx - w*0.18 + (i*w*0.09), y + h*0.64, w*0.04, h*0.08);
+        }
+
+        // 5. Aerodynamics & Side Intakes
+        // Huge Side Air Intakes (Signature Lambo)
+        ctx.fillStyle = '#050505';
+        ctx.beginPath();
+        ctx.moveTo(cx - w*0.45, y + h*0.55);
+        ctx.lineTo(cx - w*0.25, y + h*0.6);
+        ctx.lineTo(cx - w*0.25, y + h*0.75);
+        ctx.lineTo(cx - w*0.45, y + h*0.7);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(cx + w*0.45, y + h*0.55);
+        ctx.lineTo(cx + w*0.25, y + h*0.6);
+        ctx.lineTo(cx + w*0.25, y + h*0.75);
+        ctx.lineTo(cx + w*0.45, y + h*0.7);
+        ctx.fill();
+
+        // Side Mirrors
+        ctx.fillStyle = color;
+        ctx.beginPath(); ctx.moveTo(cx - w*0.4, y + h*0.32); ctx.lineTo(cx - w*0.5, y + h*0.35); ctx.lineTo(cx - w*0.4, y + h*0.37); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(cx + w*0.4, y + h*0.32); ctx.lineTo(cx + w*0.5, y + h*0.35); ctx.lineTo(cx + w*0.4, y + h*0.37); ctx.fill();
+
+        // 6. Rear Wing & Diffuser
+        // Massive fixed wing
+        ctx.fillStyle = '#111';
+        ctx.fillRect(x - w*0.05, y + h*0.92, w*1.1, h*0.06);
+        // Wing endplates
+        ctx.fillStyle = color;
+        ctx.fillRect(x - w*0.05, y + h*0.88, w*0.03, h*0.1);
+        ctx.fillRect(x + w*1.02, y + h*0.88, w*0.03, h*0.1);
+        
+        // Rear Diffuser (Sharp fins)
+        ctx.fillStyle = '#0a0a0a';
+        for(let i=0; i<5; i++) {
+            ctx.fillRect(cx - w*0.25 + (i*w*0.12), y + h*0.98, w*0.04, h*0.04);
+        }
+
+        // 7. Exhaust & Lights
+        // Hexagonal Exhausts (Center)
+        ctx.fillStyle = '#888';
+        ctx.beginPath();
+        ctx.moveTo(cx - w*0.05, y + h*0.98);
+        ctx.lineTo(cx - w*0.02, y + h*0.96);
+        ctx.lineTo(cx + w*0.02, y + h*0.96);
+        ctx.lineTo(cx + w*0.05, y + h*0.98);
+        ctx.lineTo(cx + w*0.02, y + h*1.0);
+        ctx.lineTo(cx - w*0.02, y + h*1.0);
+        ctx.closePath();
+        ctx.fill();
+
+        // Y-Shaped LED Headlights
+        ctx.fillStyle = '#fff';
+        ctx.shadowColor = '#fff';
+        ctx.shadowBlur = 15;
+        // Left Light
+        ctx.beginPath();
+        ctx.moveTo(cx - w*0.35, y + h*0.05);
+        ctx.lineTo(cx - w*0.15, y + h*0.02);
+        ctx.lineTo(cx - w*0.25, y + h*0.1);
+        ctx.lineTo(cx - w*0.35, y + h*0.08);
+        ctx.fill();
+        // Right Light
+        ctx.beginPath();
+        ctx.moveTo(cx + w*0.35, y + h*0.05);
+        ctx.lineTo(cx + w*0.15, y + h*0.02);
+        ctx.lineTo(cx + w*0.25, y + h*0.1);
+        ctx.lineTo(cx + w*0.35, y + h*0.08);
+        ctx.fill();
+
+        // Y-Shaped Taillights (Red)
+        const isBraking = keys.ArrowDown;
+        ctx.fillStyle = isBraking ? '#ff0000' : '#aa0000';
+        ctx.shadowColor = isBraking ? '#ff0000' : 'transparent';
+        ctx.shadowBlur = isBraking ? 25 : 0;
+        
+        // Left Tail
+        ctx.beginPath();
+        ctx.moveTo(cx - w*0.4, y + h*0.95);
+        ctx.lineTo(cx - w*0.2, y + h*0.95);
+        ctx.lineTo(cx - w*0.15, y + h*0.98);
+        ctx.lineTo(cx - w*0.35, y + h*0.98);
+        ctx.fill();
+        // Right Tail
+        ctx.beginPath();
+        ctx.moveTo(cx + w*0.4, y + h*0.95);
+        ctx.lineTo(cx + w*0.2, y + h*0.95);
+        ctx.lineTo(cx + w*0.15, y + h*0.98);
+        ctx.lineTo(cx + w*0.35, y + h*0.98);
+        ctx.fill();
+
+        ctx.shadowBlur = 0;
+    }
+
+    // --- RIVAL CAR RENDERER (Simpler generic sports car) ---
+    function drawRivalCar(x, y, w, h, color) {
+        const cx = x + w / 2;
+        
+        // Shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.beginPath();
+        ctx.ellipse(cx + 4, y + h/2 + 6, w * 0.5, h * 0.55, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Tires
+        ctx.fillStyle = '#0a0a0a'; 
+        ctx.fillRect(x + 2, y + h * 0.15, w * 0.1, h * 0.15);
+        ctx.fillRect(x + w - w * 0.1 - 2, y + h * 0.15, w * 0.1, h * 0.15);
+        ctx.fillRect(x + 2, y + h * 0.7, w * 0.1, h * 0.15);
+        ctx.fillRect(x + w - w * 0.1 - 2, y + h * 0.7, w * 0.1, h * 0.15);
+
+        // Body
+        let grad = ctx.createLinearGradient(x, y, x + w, y);
+        grad.addColorStop(0, '#050505');
+        grad.addColorStop(0.2, color);
+        grad.addColorStop(0.5, '#ffffff');
+        grad.addColorStop(0.8, color);
+        grad.addColorStop(1, '#050505');
+        
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(cx, y);
+        ctx.quadraticCurveTo(x + w, y + h * 0.1, x + w, y + h * 0.3);
+        ctx.lineTo(x + w * 0.95, y + h * 0.7);
+        ctx.quadraticCurveTo(x + w, y + h, x + w * 0.8, y + h);
+        ctx.lineTo(x + w * 0.2, y + h);
+        ctx.quadraticCurveTo(x, y + h, x + w * 0.05, y + h * 0.7);
+        ctx.lineTo(x, y + h * 0.3);
+        ctx.quadraticCurveTo(x, y + h * 0.1, cx, y);
+        ctx.fill();
+
+        // Cabin (Dark Glass)
+        ctx.fillStyle = '#111';
+        ctx.beginPath();
+        ctx.moveTo(cx - w*0.2, y + h*0.3);
+        ctx.lineTo(cx + w*0.2, y + h*0.3);
+        ctx.lineTo(cx + w*0.15, y + h*0.7);
+        ctx.lineTo(cx - w*0.15, y + h*0.7);
+        ctx.closePath();
+        ctx.fill();
+
+        // Headlights
+        ctx.fillStyle = '#fff';
+        ctx.shadowColor = '#fff';
+        ctx.shadowBlur = 5;
+        ctx.fillRect(x + w*0.15, y + h*0.05, w*0.1, h*0.03);
+        ctx.fillRect(x + w*0.75, y + h*0.05, w*0.1, h*0.03);
+        
+        // Taillights
+        ctx.fillStyle = '#aa0000';
+        ctx.shadowColor = '#aa0000';
+        ctx.fillRect(x + w*0.1, y + h*0.95, w*0.2, h*0.03);
+        ctx.fillRect(x + w*0.7, y + h*0.95, w*0.2, h*0.03);
+        ctx.shadowBlur = 0;
+    }
+
+    function updateUI() {
+        const displaySpeed = Math.floor(player.speed);
+        speedDisplay.innerText = displaySpeed;
+        speedOdo.innerText = displaySpeed;
+
+        // Max speed is 350
+        const maxKmh = 350;
+        let angle = (displaySpeed / maxKmh) * 240 - 120; 
+        speedNeedle.style.transform = `rotate(${angle}deg)`;
+
+        let projectedTime = (distance > 0) ? (raceTime / distance) * FINISH_LINE_DISTANCE : 999;
+        let currentPosition = 1;
+        aiRacers.forEach(ai => {
+            if (projectedTime > ai.time) currentPosition++;
+        });
+        positionDisplay.innerText = currentPosition;
+
+        const progress = distance / FINISH_LINE_DISTANCE;
+        if (progress < 0.25) minimapDot.setAttribute('cy', 80 - (progress*4)*60);
+        else if (progress < 0.5) minimapDot.setAttribute('cx', 30 + ((progress-0.25)*4)*50);
+        else if (progress < 0.75) minimapDot.setAttribute('cy', 20 + ((progress-0.5)*4)*50);
+        else minimapDot.setAttribute('cx', 80 - ((progress-0.75)*4)*50);
+    }
+
+    // --- End Game Logic ---
+    function endGame(won) {
+        gameState = 'finished';
+        cancelAnimationFrame(animationId);
+
+        let finalTime = raceTime;
+        if (!won) {
+            finalTime += 10; 
+        }
+
+        saveResult("You", finalTime);
+        showLeaderboard(finalTime, won);
+    }
+
+    function formatTime(seconds) {
+        const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+        const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+        const ms = Math.floor((seconds % 1) * 100).toString().padStart(2, '0');
+        return `${m}:${s}.${ms}`;
+    }
+
+    function saveResult(name, time) {
+        let results = JSON.parse(localStorage.getItem('raceResults')) || [];
+        results.push({ name: name, time: time, date: new Date().toISOString() });
+        results.sort((a, b) => a.time - b.time);
+        results = results.slice(0, 10);
+        localStorage.setItem('raceResults', JSON.stringify(results));
+    }
+
+    function showLeaderboard(playerTime, won) {
+        leaderboard.style.display = 'block';
+        
+        let allRacers = [
+            { name: 'You', time: playerTime, isPlayer: true },
+            ...aiRacers
+        ];
+
+        allRacers.sort((a, b) => a.time - b.time);
+
+        scoreList.innerHTML = '';
+        allRacers.forEach((racer, index) => {
+            const row = document.createElement('div');
+            row.className = `score-row ${racer.isPlayer ? 'you' : ''}`;
+            row.innerHTML = `
+                <span>${index + 1}. ${racer.name}</span>
+                <span>${formatTime(racer.time)}</span>
+            `;
+            scoreList.appendChild(row);
+        });
+
+        pauseMenu.style.display = 'flex';
+        document.querySelector('#pause-menu h1').innerText = won ? "FINISHED!" : "CRASHED!";
+    }
+
+    // Helper for rounded rectangles
+    CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+        if (w < 2 * r) r = w / 2;
+        if (h < 2 * r) r = h / 2;
+        this.beginPath();
+        this.moveTo(x + r, y);
+        this.arcTo(x + w, y, x + w, y + h, r);
+        this.arcTo(x + w, y + h, x, y + h, r);
+        this.arcTo(x, y + h, x, y, r);
+        this.arcTo(x, y, x + w, y, r);
+        this.closePath();
+        return this;
+    };
+
+    init();
+</script>
+</body>
+</html>

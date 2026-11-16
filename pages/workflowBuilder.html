@@ -473,13 +473,12 @@
   .rail button[aria-pressed="true"] { background: #1d4ed8; color: #fff; }
   #railBreak { margin-top: auto; flex-shrink: 0; }
   #viewBreak { padding: 0; overflow: hidden; }
-  #breakFrame, #teeniepingFrame { width: 100%; flex: 1; min-height: 0; border: 0; }
+  .break-panel iframe { width: 100%; flex: 1; min-height: 0; border: 0; }
   .break-tabs { display: flex; gap: 4px; padding: 8px; }
   .break-tab { flex: 1; padding: 6px 4px; border: 1px solid #334155; border-radius: 6px; background: transparent; color: #94a3b8; cursor: pointer; }
   .break-tab[aria-selected="true"] { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
   .break-panel { display: flex; flex-direction: column; flex: 1; min-height: 0; }
   .break-panel[hidden] { display: none; }
-  .break-placeholder { padding: 12px; color: #94a3b8; }
   .sidepanel {
     width: 340px; flex: none; display: flex; flex-direction: column; min-height: 0;
     background: #111827; border-left: 1px solid #1f2937;
@@ -775,8 +774,8 @@
       <div class="break-tabs" role="tablist" aria-label="Break Time activities">
         <button class="break-tab" id="breakTab1" type="button" role="tab" aria-selected="true" aria-controls="breakPanel1">Macross</button>
         <button class="break-tab" id="breakTab2" type="button" role="tab" aria-selected="false" aria-controls="breakPanel2" tabindex="-1">Teenieping</button>
-        <button class="break-tab" id="breakTab3" type="button" role="tab" aria-selected="false" aria-controls="breakPanel3" tabindex="-1">Tab 3</button>
-        <button class="break-tab" id="breakTab4" type="button" role="tab" aria-selected="false" aria-controls="breakPanel4" tabindex="-1">Tab 4</button>
+        <button class="break-tab" id="breakTab3" type="button" role="tab" aria-selected="false" aria-controls="breakPanel3" tabindex="-1">Pac DJ</button>
+        <button class="break-tab" id="breakTab4" type="button" role="tab" aria-selected="false" aria-controls="breakPanel4" tabindex="-1">Racing</button>
       </div>
       <div class="break-panel" id="breakPanel1" role="tabpanel" aria-labelledby="breakTab1">
         <iframe id="breakFrame" title="Break Time - Macross" data-src="misc/game_macross.html" allow="fullscreen" allowfullscreen></iframe>
@@ -784,8 +783,12 @@
       <div class="break-panel" id="breakPanel2" role="tabpanel" aria-labelledby="breakTab2" hidden>
         <iframe id="teeniepingFrame" title="Break Time - Teenieping" data-src="misc/game_teenieping.html" allow="fullscreen" allowfullscreen></iframe>
       </div>
-      <div class="break-panel break-placeholder" id="breakPanel3" role="tabpanel" aria-labelledby="breakTab3" tabindex="0" hidden>Coming soon.</div>
-      <div class="break-panel break-placeholder" id="breakPanel4" role="tabpanel" aria-labelledby="breakTab4" tabindex="0" hidden>Coming soon.</div>
+      <div class="break-panel" id="breakPanel3" role="tabpanel" aria-labelledby="breakTab3" hidden>
+        <iframe id="pacdjFrame" title="Break Time - Pac DJ" data-src="misc/game_pacdj.html" allow="fullscreen" allowfullscreen></iframe>
+      </div>
+      <div class="break-panel" id="breakPanel4" role="tabpanel" aria-labelledby="breakTab4" hidden>
+        <iframe id="racingFrame" title="Break Time - Racing" data-src="misc/game_racing.html" allow="fullscreen" allowfullscreen></iframe>
+      </div>
     </div>
   </section>
   <nav class="rail" aria-label="Tools">
@@ -3301,7 +3304,9 @@ function autoSignIn() {
   const breakTabs = [...document.querySelectorAll(".break-tab")];
   const gameFrames = [
     { tab: breakTabs[0], frame: document.getElementById("breakFrame") },
-    { tab: breakTabs[1], frame: document.getElementById("teeniepingFrame") }
+    { tab: breakTabs[1], frame: document.getElementById("teeniepingFrame") },
+    { tab: breakTabs[2], frame: document.getElementById("pacdjFrame") },
+    { tab: breakTabs[3], frame: document.getElementById("racingFrame") }
   ];
   let current = null;
 
