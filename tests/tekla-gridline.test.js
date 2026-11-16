@@ -10,6 +10,33 @@ const operations = [
     { action: 'update', method: 'teklaUpdateGridline', args: { guid: 'gridline', label: 'B', extensionAbove: 200 } },
     { action: 'delete', method: 'teklaDeleteGridline', args: { guid: 'gridline' } }
 ];
+const gridOperations = [
+    { action: 'create', method: 'teklaCreateGrid', args: { origin: { x: 0, y: 0, z: 0 }, coordinateX: ['0'], coordinateY: ['0'] } },
+    { action: 'update', method: 'teklaUpdateGrid', args: { guid: 'grid', name: 'Updated grid' } },
+    { action: 'delete', method: 'teklaDeleteGrid', args: { guid: 'grid' } }
+];
+
+test('bridge sends parent grid requests to the matching Tekla endpoints', async () => {
+    const source = readSource('../src/mcp/tekla/bridge.js')
+        .replace('import { getSelectedBridge } from "../bridge-selection.js";', '')
+        .replaceAll('export const ', 'var ');
+    let request;
+    const context = vm.createContext({
+        process: { env: { TEKLA_BRIDGE_KEY: 'test-key', TEKLA_BRIDGE_URL: 'http://tekla.test' } },
+        getSelectedBridge: () => null,
+        fetch: async (url, options) => {
+            request = { url, options };
+            return { ok: true, text: async () => '{"success":true}' };
+        }
+    });
+    vm.runInContext(source, context);
+    for (const { action, method, args } of gridOperations) {
+        await context[method](args);
+        assert.equal(request.url, `http://tekla.test/api/tekla/${action}/grid`);
+        assert.equal(request.options.method, 'POST');
+        assert.deepEqual(JSON.parse(request.options.body), args);
+    }
+});
 
 test('bridge sends gridline requests to the matching Tekla endpoints', async () => {
     const source = readSource('../src/mcp/tekla/bridge.js')
@@ -86,7 +113,7 @@ test('main MCP dispatcher forwards gridline operations and bridge failures', asy
         authorizeBridge: () => {},
         sketchupInspectionDefinitions: [],
         SKETCHUP_PREFIX: 'sketchup_',
-        teklaBridge: Object.fromEntries(operations.map(({ method }) => [method, async args => {
+        teklaBridge: Object.fromEntries([...operations, ...gridOperations].map(({ method }) => [method, async args => {
             if (bridgeError) throw bridgeError;
             forwarded = { method, args };
             return { success: true };
@@ -95,6 +122,11 @@ test('main MCP dispatcher forwards gridline operations and bridge failures', asy
     vm.runInContext(source.slice(start, end), context);
     for (const { action, method, args } of operations) {
         const result = await context.callToolInBridgeSession('test-session', `tekla_${action}_gridline`, args);
+        assert.deepEqual(forwarded, { method, args });
+        assert.deepEqual(JSON.parse(result.content[0].text), { success: true });
+    }
+    for (const { action, method, args } of gridOperations) {
+        const result = await context.callToolInBridgeSession('test-session', `tekla_${action}_grid`, args);
         assert.deepEqual(forwarded, { method, args });
         assert.deepEqual(JSON.parse(result.content[0].text), { success: true });
     }
@@ -127,6 +159,15 @@ test('server registers authenticated POST routes for all gridline operations', a
             await route.handler({ body }, {});
             assert.deepEqual(forwarded, { name: `tekla_${action}_gridline`, args });
         }
+        for (const { action, args } of gridOperations) {
+            const route = routes.get(`/api/mcp/tekla/${action}/grid`);
+            assert.ok(route);
+            assert.equal(route.auth, requireSession);
+            for (const body of [args, { arguments: args }]) {
+                await route.handler({ body }, {});
+                assert.deepEqual(forwarded, { name: `tekla_${action}_grid`, args });
+            }
+        }
     }
 });
 
@@ -147,6 +188,16 @@ test('Swagger documents gridline REST and MCP routes using the bridge schemas', 
         const name = `tekla_${action}_gridline`;
         const definition = tools.find(tool => tool.name === name);
         for (const path of [`/api/mcp/tekla/${action}/gridline`, `/api/mcp/tools/${name}`]) {
+            const operation = doc.paths[path].post;
+            assert.ok(operation);
+            assert.deepEqual(JSON.parse(JSON.stringify(operation.security)), [{ bearerAuth: [] }]);
+            assert.deepEqual(operation.requestBody.content['application/json'].schema, definition.inputSchema);
+        }
+    }
+    for (const { action } of gridOperations) {
+        const name = `tekla_${action}_grid`;
+        const definition = tools.find(tool => tool.name === name);
+        for (const path of [`/api/mcp/tekla/${action}/grid`, `/api/mcp/tools/${name}`]) {
             const operation = doc.paths[path].post;
             assert.ok(operation);
             assert.deepEqual(JSON.parse(JSON.stringify(operation.security)), [{ bearerAuth: [] }]);
