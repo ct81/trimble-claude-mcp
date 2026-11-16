@@ -2867,7 +2867,10 @@ async function callMcpTool(url, toolName, args, signal) {
   }
   const json = await res.json();
   if (json?.error) throw new Error(json.error.message || "MCP error");
-  if (json?.result?.isError) throw new Error("Tool reported an error");
+  if (json?.result?.isError) {
+    const detail = (json.result.content || []).filter(item => item.type === "text").map(item => item.text).join("\n");
+    throw new Error(detail || "Tool reported an error");
+  }
   return json;
 }
 async function runLoop(cur, state) {
@@ -3028,6 +3031,19 @@ async function runWorkflowCore(signal) {
         toolArgs = subst(toolArgs);
 
         const rowList = state.rows || [null];
+        const gridRows = rowList.filter(row => row?.type === "gridline");
+        if (gridRows.length && state.brainCalls && !JSON.stringify(toolArgs).includes("{{row.") &&
+            (!toolName || toolName === "tekla_create_gridline") &&
+            !state.brainCalls.some(call => call.tool === "tekla_create_gridline")) {
+          const message = `Cannot create DXF gridlines: ${gridRows.length} grid entities were extracted, but the Brain generated no tekla_create_gridline calls. The current tool requires an existing parentGuid and label and exposes no line/arc geometry inputs. No gridline request was sent.`;
+          console.error("[Workflow] Gridline dispatch blocked:", {
+            tool: toolName || "Brain automatic dispatch",
+            gridEntities: gridRows.length,
+            brainCalls: state.brainCalls.length,
+            reason: message
+          });
+          throw new Error(message);
+        }
         const results = [];
         for (let r = 0; r < rowList.length; r++) {
           const row = rowList[r];
@@ -3048,12 +3064,24 @@ async function runWorkflowCore(signal) {
           if (state.brainCalls && !brainCall && !templated) continue;
           if (brainCall && toolName && !templated && toolName !== brainCall.tool) continue;
           const useBrain = brainCall && !templated;
-          results.push(await callMcpTool(
-            url,
-            useBrain ? brainCall.tool : toolName,
-            useBrain ? brainCall.arguments : fill(toolArgs),
-            signal
-          ));
+          const dispatchedTool = useBrain ? brainCall.tool : toolName;
+          try {
+            results.push(await callMcpTool(
+              url,
+              dispatchedTool,
+              useBrain ? brainCall.arguments : fill(toolArgs),
+              signal
+            ));
+          } catch (error) {
+            console.error("[Workflow] MCP call failed:", {
+              tool: dispatchedTool,
+              row: r + 1,
+              handle: row?.handle,
+              entityType: row?.entityType,
+              error: error.message
+            });
+            throw error;
+          }
         }
         state.result = state.rows ? { results } : results[0];
         statusBox.textContent = state.rows ? `✔ ${results.length} call(s)` : "✔ responded";

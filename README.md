@@ -101,6 +101,10 @@ handles and layers; these entities are also included in workflow result rows
 for export or explicit `{{row.field}}` mappings. Coordinates retain the DXF's
 units and origin. This extracts modelling data only: it does not associate
 labels with lines or generate Tekla grid-creation calls.
+If these extraction-only rows reach automatic gridline MCP dispatch, the
+workflow reports that no creation request was sent. The server logs grid
+entity/call counts, and workflow MCP failures retain the bridge error text
+in the UI and log the failing tool, row, and source handle in the browser console.
 
 ## Important production notes
 1. The included session store is intentionally in-memory for development. Replace it with Firestore, Redis, or PostgreSQL before multi-instance production.

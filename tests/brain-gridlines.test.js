@@ -69,3 +69,43 @@ test('a grid-only Brain run exposes extracted entities as workflow rows', async 
     assert.equal(state.result.result.structuredContent.gridlines[2].label, 'A');
     assert.match(status.textContent, /5 grid entities extracted/);
 });
+
+test('grid-only MCP execution reports why no grid creation request was sent', async () => {
+        const page = readFileSync(new URL('../pages/workflowBuilder.html', import.meta.url), 'utf8');
+        const start = page.indexOf('      if (cur.type === "mcp") {');
+        const end = page.indexOf('      if (cur.type === "api") {', start);
+        const errors = [];
+        let requests = 0;
+        const context = vm.createContext({
+            URL,
+            state: { rows: extractGridlineData(dxfTextToRecords(dxf)), brainCalls: [] },
+            cur: { type: 'mcp', el: { querySelector: selector => ({
+                '.url': { value: 'https://mcp.test' },
+                '.tool': { value: 'tekla_create_gridline' },
+                '.args': { value: '{}' },
+                '.status': {}
+            })[selector] } },
+            ensureToken: async () => 'test',
+            callMcpTool: async () => { requests++; },
+            console: { error: (...args) => errors.push(args) }
+        });
+        await assert.rejects(vm.runInContext(`(async () => { ${page.slice(start, end)} })()`, context), /No gridline request was sent/);
+        assert.equal(requests, 0);
+        assert.equal(errors.length, 1);
+        assert.equal(errors[0][1].gridEntities, 5);
+    });
+
+test('MCP tool errors retain the bridge diagnostic text', async () => {
+        const page = readFileSync(new URL('../pages/workflowBuilder.html', import.meta.url), 'utf8');
+        const start = page.indexOf('async function callMcpTool(');
+        const end = page.indexOf('async function runLoop(', start);
+        const context = vm.createContext({
+            ensureToken: async () => 'test',
+            fetch: async () => ({
+                ok: true,
+                json: async () => ({ result: { isError: true, content: [{ type: 'text', text: 'Tekla bridge HTTP 400: parentGuid is required' }] } })
+            })
+        });
+        vm.runInContext(page.slice(start, end), context);
+        await assert.rejects(context.callMcpTool('https://mcp.test', 'tekla_create_gridline', {}), /parentGuid is required/);
+    });
