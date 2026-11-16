@@ -5,10 +5,12 @@ import vm from 'node:vm';
 
 test('Break Time tabs switch panels and load only the active game', () => {
     const page = readFileSync(new URL('../pages/workflowBuilder.html', import.meta.url), 'utf8');
-    const view = page.slice(page.indexOf('<div class="sp-view" id="viewBreak"'), page.indexOf('<div class="sp-view" id="viewTeenieping"'));
+    const view = page.slice(page.indexOf('<div class="sp-view" id="viewBreak"'), page.indexOf('  </section>', page.indexOf('<div class="sp-view" id="viewBreak"')));
     const markup = [...view.matchAll(/<button class="break-tab" id="([^"]+)"[^>]*aria-selected="([^"]+)" aria-controls="([^"]+)"[^>]*>/g)];
     assert.equal(markup.length, 4);
     assert.match(view, /data-src="misc\/game_macross\.html"/);
+    assert.match(view, /id="breakPanel2"[^>]*>[\s\S]*?<iframe id="teeniepingFrame"[^>]*data-src="misc\/game_teenieping\.html"/);
+    assert.doesNotMatch(page, /id="railTeenieping"|id="viewTeenieping"/);
 
     const elements = {};
     function element() {
@@ -23,7 +25,7 @@ test('Break Time tabs switch panels and load only the active game', () => {
             focus() { this.focused = true; }
         };
     }
-    for (const id of ['sidepanel', 'viewChat', 'viewAgent', 'viewBug', 'viewBreak', 'viewTeenieping', 'railChat', 'railAgent', 'railBug', 'railBreak', 'railTeenieping', 'spTitle', 'breakFrame', 'teeniepingFrame']) elements[id] = element();
+    for (const id of ['sidepanel', 'viewChat', 'viewAgent', 'viewBug', 'viewBreak', 'railChat', 'railAgent', 'railBug', 'railBreak', 'spTitle', 'breakFrame', 'teeniepingFrame']) elements[id] = element();
     elements.breakFrame.dataset.src = 'misc/game_macross.html';
     elements.teeniepingFrame.dataset.src = 'misc/game_teenieping.html';
     const tabs = markup.map(([, id, selected, controls]) => {
@@ -46,17 +48,23 @@ test('Break Time tabs switch panels and load only the active game', () => {
     assert.equal(elements.breakFrame.attributes.src, 'misc/game_macross.html');
     tabs[1].listeners.click();
     assert.equal(elements.breakFrame.hasAttribute('src'), false);
+    assert.equal(elements.teeniepingFrame.attributes.src, 'misc/game_teenieping.html');
     assert.equal(elements.breakPanel1.hidden, true);
     assert.equal(elements.breakPanel2.hidden, false);
     assert.equal(tabs[1].attributes['aria-selected'], 'true');
     tabs[1].listeners.keydown({ key: 'End', preventDefault() {} });
     assert.equal(tabs[3].focused, true);
     assert.equal(elements.breakPanel4.hidden, false);
+    assert.equal(elements.teeniepingFrame.hasAttribute('src'), false);
     tabs[3].listeners.keydown({ key: 'Home', preventDefault() {} });
     assert.equal(elements.breakFrame.attributes.src, 'misc/game_macross.html');
-    elements.railTeenieping.listeners.click();
+    tabs[1].listeners.click();
     assert.equal(elements.breakFrame.hasAttribute('src'), false);
     assert.equal(elements.teeniepingFrame.attributes.src, 'misc/game_teenieping.html');
-    elements.railTeenieping.listeners.click();
+    elements.railBreak.listeners.click();
+    assert.equal(elements.teeniepingFrame.hasAttribute('src'), false);
+    elements.railBreak.listeners.click();
+    assert.equal(elements.teeniepingFrame.attributes.src, 'misc/game_teenieping.html');
+    elements.railChat.listeners.click();
     assert.equal(elements.teeniepingFrame.hasAttribute('src'), false);
 });

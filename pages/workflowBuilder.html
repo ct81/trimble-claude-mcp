@@ -472,7 +472,7 @@
   .rail button:hover { color: #e2e8f0; background: #1f2937; }
   .rail button[aria-pressed="true"] { background: #1d4ed8; color: #fff; }
   #railBreak { margin-top: auto; flex-shrink: 0; }
-  #viewBreak, #viewTeenieping { padding: 0; overflow: hidden; }
+  #viewBreak { padding: 0; overflow: hidden; }
   #breakFrame, #teeniepingFrame { width: 100%; flex: 1; min-height: 0; border: 0; }
   .break-tabs { display: flex; gap: 4px; padding: 8px; }
   .break-tab { flex: 1; padding: 6px 4px; border: 1px solid #334155; border-radius: 6px; background: transparent; color: #94a3b8; cursor: pointer; }
@@ -774,21 +774,18 @@
     <div class="sp-view" id="viewBreak" hidden>
       <div class="break-tabs" role="tablist" aria-label="Break Time activities">
         <button class="break-tab" id="breakTab1" type="button" role="tab" aria-selected="true" aria-controls="breakPanel1">Macross</button>
-        <button class="break-tab" id="breakTab2" type="button" role="tab" aria-selected="false" aria-controls="breakPanel2" tabindex="-1">Tab 2</button>
+        <button class="break-tab" id="breakTab2" type="button" role="tab" aria-selected="false" aria-controls="breakPanel2" tabindex="-1">Teenieping</button>
         <button class="break-tab" id="breakTab3" type="button" role="tab" aria-selected="false" aria-controls="breakPanel3" tabindex="-1">Tab 3</button>
         <button class="break-tab" id="breakTab4" type="button" role="tab" aria-selected="false" aria-controls="breakPanel4" tabindex="-1">Tab 4</button>
       </div>
       <div class="break-panel" id="breakPanel1" role="tabpanel" aria-labelledby="breakTab1">
         <iframe id="breakFrame" title="Break Time - Macross" data-src="misc/game_macross.html" allow="fullscreen" allowfullscreen></iframe>
       </div>
-      <div class="break-panel break-placeholder" id="breakPanel2" role="tabpanel" aria-labelledby="breakTab2" tabindex="0" hidden>
+      <div class="break-panel" id="breakPanel2" role="tabpanel" aria-labelledby="breakTab2" hidden>
         <iframe id="teeniepingFrame" title="Break Time - Teenieping" data-src="misc/game_teenieping.html" allow="fullscreen" allowfullscreen></iframe>
       </div>
       <div class="break-panel break-placeholder" id="breakPanel3" role="tabpanel" aria-labelledby="breakTab3" tabindex="0" hidden>Coming soon.</div>
       <div class="break-panel break-placeholder" id="breakPanel4" role="tabpanel" aria-labelledby="breakTab4" tabindex="0" hidden>Coming soon.</div>
-    </div>
-    <div class="sp-view" id="viewTeenieping" hidden>
-      
     </div>
   </section>
   <nav class="rail" aria-label="Tools">
@@ -796,7 +793,6 @@
     <button id="railAgent" title="Agentic" aria-label="Agentic" aria-pressed="false">🪳</button>
     <button id="railBug" title="Bug Tracker" aria-label="Bug Tracker" aria-pressed="false">🐞</button>
     <button id="railBreak" type="button" title="Break Time" aria-label="Break Time" aria-controls="viewBreak" aria-pressed="false">🕹️</button>
-    <button id="railTeenieping" type="button" title="Teenieping" aria-label="Teenieping" aria-controls="viewTeenieping" aria-pressed="false" style="visibility:collapse;">🕹️🤖</button>
   </nav>
 </div>
 
@@ -3299,16 +3295,19 @@ function autoSignIn() {
    ========================================================================= */
 (function () {
   const panel = document.getElementById("sidepanel");
-  const views = { chat: document.getElementById("viewChat"), agent: document.getElementById("viewAgent"), bug: document.getElementById("viewBug"), break: document.getElementById("viewBreak"), teenieping: document.getElementById("viewTeenieping") };
-  const rails = { chat: document.getElementById("railChat"), agent: document.getElementById("railAgent"), bug: document.getElementById("railBug"), break: document.getElementById("railBreak"), teenieping: document.getElementById("railTeenieping") };
-  const titles = { chat: "AI Chat (Claude)", agent: "Agentic — scheduled workflows", bug: "Bug Tracker", break: "Break Time", teenieping: "Break Time - Teenieping" };
-  const gameFrames = { break: document.getElementById("breakFrame"), teenieping: document.getElementById("teeniepingFrame") };
+  const views = { chat: document.getElementById("viewChat"), agent: document.getElementById("viewAgent"), bug: document.getElementById("viewBug"), break: document.getElementById("viewBreak") };
+  const rails = { chat: document.getElementById("railChat"), agent: document.getElementById("railAgent"), bug: document.getElementById("railBug"), break: document.getElementById("railBreak") };
+  const titles = { chat: "AI Chat (Claude)", agent: "Agentic — scheduled workflows", bug: "Bug Tracker", break: "Break Time" };
   const breakTabs = [...document.querySelectorAll(".break-tab")];
+  const gameFrames = [
+    { tab: breakTabs[0], frame: document.getElementById("breakFrame") },
+    { tab: breakTabs[1], frame: document.getElementById("teeniepingFrame") }
+  ];
   let current = null;
 
   function syncGameFrames() {
-    for (const [name, frame] of Object.entries(gameFrames)) {
-      const active = current === name && (name !== "break" || breakTabs[0].getAttribute("aria-selected") === "true");
+    for (const { tab, frame } of gameFrames) {
+      const active = current === "break" && tab.getAttribute("aria-selected") === "true";
       if (active && !frame.hasAttribute("src")) frame.src = frame.dataset.src;
       else if (!active) frame.removeAttribute("src");
     }
@@ -3352,7 +3351,6 @@ function autoSignIn() {
   rails.agent.addEventListener("click", () => toggle("agent"));
   rails.bug.addEventListener("click", () => toggle("bug"));
   rails.break.addEventListener("click", () => toggle("break"));
-  rails.teenieping.addEventListener("click", () => toggle("teenieping"));
 
   /* ---- chat ---- */
   const log = document.getElementById("chatLog");
