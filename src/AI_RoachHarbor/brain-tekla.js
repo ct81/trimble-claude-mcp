@@ -1,4 +1,4 @@
-import { convertDxfJson, extractGridlineData } from "./supraesophageal_ganglion_4_dxf.js";
+import { buildGridDefinition, convertDxfJson, extractGridlineData } from "./supraesophageal_ganglion_4_dxf.js";
 
 const num = (value) => {
   const n = Number(value);
@@ -348,9 +348,17 @@ export function brainToTekla(records, types, defaults = {}) {
       skipped.push({ handle: call.handle, type, reason: error.message });
     }
   }
+  const gridlines = wanted.has("gridline") ? extractGridlineData(records) : [];
+  let grid = null;
+  if (gridlines.length) {
+    const result = buildGridDefinition(gridlines);
+    grid = result.grid;
+    skipped.push(...result.skipped);
+    if (grid) calls.push({ type: "gridline", tool: "tekla_create_grid", arguments: grid });
+  }
   const mapped = {};
   for (const c of calls) mapped[c.tool] = (mapped[c.tool] || 0) + 1;
   const counts = Object.fromEntries(Object.entries(converted.counts).filter(([type]) => type !== "unknown" && type !== "ignored"));
-  const gridlines = wanted.has("gridline") ? extractGridlineData(records) : [];
-  return { version: BRAIN_VERSION, totalRecords: converted.calls.length, counts, mapped, calls, skipped, gridlines };
+  const gridWarnings = grid ? ["The parent grid uses common rectangular extents; individual DXF line lengths may differ. Verify the grid in Tekla."] : [];
+  return { version: BRAIN_VERSION, totalRecords: converted.calls.length, counts, mapped, calls, skipped, gridlines, grid, gridWarnings };
 }

@@ -1380,7 +1380,6 @@ export async function readDxfJson(filePath) {
   return parseDxfJson(contents);
 }
 
-// Keep grid drafting entities separate from structural MCP calls until geometry-aware grid tools are available.
 export function extractGridlineData(input) {
   return parseDxfJson(input)
     .filter(record => /^S-_ANOTGRID_(E2?|T2?)$/i.test(String(readSource(record, "layer") ?? "").trim()))
@@ -1404,6 +1403,142 @@ export function extractGridlineData(input) {
     });
 }
 
+// A parent grid represents straight, axis-aligned lines with common rectangular extents.
+export function buildGridDefinition(entities) {
+  const tolerance = 0.01;
+  const skipped = [];
+  const used = new Set();
+  const skip = (entity, reason) => skipped.push({ handle: entity.handle, type: "gridline", entityType: entity.entityType, reason });
+  const circles = entities.filter(e => e.entityType === "CIRCLE" && e.center && e.radius > 0);
+  const texts = entities.filter(e => e.entityType === "TEXT" && e.startPoint && e.label);
+  const segments = [];
+  for (const entity of entities) {
+    if (entity.entityType !== "LINE") continue;
+    const a = entity.startPoint, b = entity.endPoint;
+    if (!a || !b || ![a.x, a.y, b.x, b.y].every(Number.isFinite)) {
+      skip(entity, "line has invalid endpoints");
+      continue;
+    }
+    const za = a.z ?? 0, zb = b.z ?? 0;
+    const dx = Math.abs(b.x - a.x), dy = Math.abs(b.y - a.y);
+    if (!Number.isFinite(za) || !Number.isFinite(zb) ||
+        Math.abs(za - zb) > tolerance || (dx <= tolerance && dy <= tolerance)) {
+      skip(entity, "line is non-planar or has zero length");
+      continue;
+    }
+    if (dx > tolerance && dy > tolerance) {
+      skip(entity, "diagonal grid line is unsupported");
+      continue;
+    }
+    const axis = dx <= tolerance ? "x" : "y";
+    const coordinate = axis === "x" ? (a.x + b.x) / 2 : (a.y + b.y) / 2;
+    const ends = axis === "x" ? [a.y, b.y] : [a.x, b.x];
+    segments.push({ entity, axis, coordinate, z: (za + zb) / 2, min: Math.min(...ends), max: Math.max(...ends) });
+  }
+  const groups = [];
+  for (const segment of segments) {
+    let group = groups.find(g => g.axis === segment.axis &&
+      Math.abs(g.coordinate - segment.coordinate) <= tolerance && Math.abs(g.z - segment.z) <= tolerance);
+    if (!group) {
+      group = { axis: segment.axis, coordinate: segment.coordinate, z: segment.z, segments: [] };
+      groups.push(group);
+    }
+    if (group.segments.some(other => Math.abs(other.min - segment.min) <= tolerance && Math.abs(other.max - segment.max) <= tolerance)) {
+      skip(segment.entity, "duplicate grid line");
+      continue;
+    }
+    group.segments.push(segment);
+  }
+  const lines = [];
+  for (const group of groups) {
+    group.segments.sort((a, b) => a.min - b.min);
+    let min = group.segments[0].min, max = group.segments[0].max, disconnected = false;
+    for (const segment of group.segments.slice(1)) {
+      if (segment.min > max + tolerance) disconnected = true;
+      max = Math.max(max, segment.max);
+    }
+    if (disconnected) {
+      for (const segment of group.segments) skip(segment.entity, "disconnected collinear fragments cannot be represented safely");
+      continue;
+    }
+    const matches = [];
+    for (const circle of circles) {
+      const perpendicular = group.axis === "x" ? circle.center.x : circle.center.y;
+      const along = group.axis === "x" ? circle.center.y : circle.center.x;
+      const distance = Math.min(Math.abs(along - min), Math.abs(along - max));
+      const nearEnd = Math.abs(distance - circle.radius) <= Math.max(tolerance, circle.radius * 0.1);
+      if (!nearEnd || Math.abs(perpendicular - group.coordinate) > circle.radius * 0.1 ||
+          Math.abs((circle.center.z ?? 0) - group.z) > tolerance) continue;
+      const inBubble = texts.filter(text =>
+        Math.hypot(text.startPoint.x - circle.center.x, text.startPoint.y - circle.center.y) <= circle.radius &&
+        Math.abs((text.startPoint.z ?? 0) - group.z) <= tolerance);
+      for (const text of inBubble) matches.push({ circle, text, label: String(text.label).trim() });
+    }
+    for (const text of texts) {
+      if (matches.some(match => match.text === text)) continue;
+      const height = toNumber(text.source?.Radius ?? text.source?.height);
+      if (!height || height <= 0 || Math.abs((text.startPoint.z ?? 0) - group.z) > tolerance) continue;
+      const perpendicular = group.axis === "x" ? text.startPoint.x : text.startPoint.y;
+      const along = group.axis === "x" ? text.startPoint.y : text.startPoint.x;
+      if (Math.abs(perpendicular - group.coordinate) <= height &&
+          Math.min(Math.abs(along - min), Math.abs(along - max)) <= height * 2) {
+        matches.push({ text, label: String(text.label).trim() });
+      }
+    }
+    const labels = [...new Set(matches.map(m => m.label))];
+    if (labels.length !== 1 || /\s/.test(labels[0])) {
+      for (const segment of group.segments) skip(segment.entity, labels.length ? "ambiguous grid labels" : "no matching grid label");
+      continue;
+    }
+    lines.push({ ...group, min, max, label: labels[0], matches });
+  }
+  const ambiguous = new Set();
+  for (let i = 0; i < lines.length; i++) {
+    for (let j = i + 1; j < lines.length; j++) {
+      if ((lines[i].axis === lines[j].axis && lines[i].label === lines[j].label) ||
+          lines[i].matches.some(a => lines[j].matches.some(b => (a.circle && a.circle === b.circle) || a.text === b.text))) {
+        ambiguous.add(lines[i]);
+        ambiguous.add(lines[j]);
+      }
+    }
+  }
+  for (const line of ambiguous) {
+    for (const segment of line.segments) skip(segment.entity, "grid label is associated with multiple lines");
+  }
+  const accepted = lines.filter(line => !ambiguous.has(line));
+  const x = accepted.filter(line => line.axis === "x").sort((a, b) => a.coordinate - b.coordinate);
+  const y = accepted.filter(line => line.axis === "y").sort((a, b) => a.coordinate - b.coordinate);
+  const samePlane = accepted.every(line => Math.abs(line.z - accepted[0].z) <= tolerance);
+  if (!x.length || !y.length || !samePlane) {
+    for (const line of accepted) for (const segment of line.segments) {
+      skip(segment.entity, !samePlane ? "grid lines have different elevations" : "both X and Y grid lines are required");
+    }
+  } else {
+    for (const line of accepted) {
+      for (const segment of line.segments) used.add(segment.entity);
+      for (const match of line.matches) { if (match.circle) used.add(match.circle); used.add(match.text); }
+    }
+  }
+  for (const entity of entities) {
+    if (entity.entityType === "LINE" || used.has(entity)) continue;
+    skip(entity, entity.entityType === "ARC" ? "curved grid lines are unsupported by the parent grid tool" :
+      entity.entityType === "CIRCLE" || entity.entityType === "TEXT" ? "annotation not associated with a created grid line" :
+      "unsupported grid entity");
+  }
+  if (!x.length || !y.length || !samePlane) return { grid: null, skipped };
+  const format = value => String(Number(value.toFixed(6)));
+  const spacings = lines => lines.map((line, i) => format(i ? line.coordinate - lines[i - 1].coordinate : 0));
+  const grid = {
+    origin: { x: x[0].coordinate, y: y[0].coordinate, z: x[0].z },
+    coordinateX: spacings(x), coordinateY: spacings(y),
+    labelX: x.map(line => line.label), labelY: y.map(line => line.label),
+    extensionLeft: Math.max(0, x[0].coordinate - Math.min(...y.map(line => line.min))),
+    extensionRight: Math.max(0, Math.max(...y.map(line => line.max)) - x[x.length - 1].coordinate),
+    extensionBelow: Math.max(0, y[0].coordinate - Math.min(...x.map(line => line.min))),
+    extensionAbove: Math.max(0, Math.max(...x.map(line => line.max)) - y[y.length - 1].coordinate)
+  };
+  return { grid, skipped };
+}
 /**
  * Converts structural records; unknown and ignored records are returned separately.
  */

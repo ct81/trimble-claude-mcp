@@ -1290,7 +1290,7 @@ function bodyFor(type, id) {
                           </select>
                           <div class="hint" style="margin-top:6px">Object types to process</div>
                           <label style="display:block;margin-top:6px;font-size:12px"><input type="checkbox" class="fl" data-k="type_gridline"> gridline</label>
-                          <div class="hint">Extract geometry.</div>
+                          <div class="hint">Prepare a straight parent grid in DXF millimetres. Review skipped entities and rectangular extents before dispatch.</div>
                           <details style="margin-top:6px"><summary style="font-size:12px"><input type="checkbox" class="fl" data-k="type_column" checked> column</summary>
                             <input type="text" class="fl" data-k="column_profile" placeholder="profile (blank = from DXF)" value="" spellcheck="false" style="margin-top:4px">
                             <input type="text" class="fl" data-k="column_material" placeholder="material" value="" spellcheck="false" style="margin-top:4px">
@@ -2873,6 +2873,41 @@ async function callMcpTool(url, toolName, args, signal) {
   }
   return json;
 }
+function summarizeGridResponse(response, grid, skipped, warnings) {
+  let payload = response?.result?.structuredContent;
+  if (!payload) {
+    const text = response?.result?.content?.find(item => item.type === "text")?.text;
+    if (text) {
+      try { payload = JSON.parse(text); }
+      catch { payload = { message: text }; }
+    }
+  }
+  const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const findGuid = (value) => {
+    if (typeof value === "string" && guidPattern.test(value)) return value;
+    if (!value || typeof value !== "object") return null;
+    for (const [key, item] of Object.entries(value)) {
+      if (/^(guid|gridGuid|id)$/i.test(key) && typeof item === "string" && guidPattern.test(item)) return item;
+    }
+    for (const [key, item] of Object.entries(value)) {
+      if (!/^(result|data|grid|object|identifier)$/i.test(key) || !item || typeof item !== "object") continue;
+      const found = findGuid(item);
+      if (found) return found;
+    }
+    return null;
+  };
+  const findFailure = (value) => {
+    if (!value || typeof value !== "object") return false;
+    if (value.success === false || value.isError === true || value.error) return true;
+    return Object.values(value).some(findFailure);
+  };
+  const guid = findGuid(payload);
+  const failed = findFailure(payload);
+  return {
+    status: failed ? "failed" : guid ? "guid-returned" : "unverified",
+    guid, grid, skipped, warnings, response: payload ?? null
+  };
+}
 async function runLoop(cur, state) {
   const cfg = readFlow(cur.el);
   if (!state.result) throw new Error("Connect a Get Result (or MCP) node before the loop");
@@ -2992,7 +3027,9 @@ async function runWorkflowCore(signal) {
         }
         state.rows = rows;
         state.brainCalls = converted.calls;
-        state.result = { result: { structuredContent: { rows, gridlines } } };
+        state.brainGridSkipped = converted.skipped.filter(item => item.type === "gridline");
+        state.brainGridWarnings = converted.gridWarnings || [];
+        state.result = { result: { structuredContent: { rows, gridlines, grid: converted.grid, skipped: state.brainGridSkipped, warnings: state.brainGridWarnings } } };
         cur.el._brainResult = converted;
         renderBrain(cur.el);
         cur.el.querySelector(".status").textContent =
@@ -3033,9 +3070,9 @@ async function runWorkflowCore(signal) {
         const rowList = state.rows || [null];
         const gridRows = rowList.filter(row => row?.type === "gridline");
         if (gridRows.length && state.brainCalls && !JSON.stringify(toolArgs).includes("{{row.") &&
-            (!toolName || toolName === "tekla_create_gridline") &&
-            !state.brainCalls.some(call => call.tool === "tekla_create_gridline")) {
-          const message = `Cannot create DXF gridlines: ${gridRows.length} grid entities were extracted, but the Brain generated no tekla_create_gridline calls. The current tool requires an existing parentGuid and label and exposes no line/arc geometry inputs. No gridline request was sent.`;
+            (toolName === "tekla_create_gridline" || toolName === "tekla_create_grid" || (!toolName && !state.brainCalls.length)) &&
+            !state.brainCalls.some(call => call.tool === toolName || (!toolName && call.tool === "tekla_create_grid"))) {
+          const message = `Cannot create DXF grid: ${gridRows.length} grid entities were extracted, but no matching grid creation call was generated. Check skipped entities for details. No gridline request was sent.`;
           console.error("[Workflow] Gridline dispatch blocked:", {
             tool: toolName || "Brain automatic dispatch",
             gridEntities: gridRows.length,
@@ -3045,6 +3082,7 @@ async function runWorkflowCore(signal) {
           throw new Error(message);
         }
         const results = [];
+        let gridVerification;
         for (let r = 0; r < rowList.length; r++) {
           const row = rowList[r];
           const lk = row ? lowerKeys(row) : {};
@@ -3066,12 +3104,16 @@ async function runWorkflowCore(signal) {
           const useBrain = brainCall && !templated;
           const dispatchedTool = useBrain ? brainCall.tool : toolName;
           try {
-            results.push(await callMcpTool(
+            const response = await callMcpTool(
               url,
               dispatchedTool,
               useBrain ? brainCall.arguments : fill(toolArgs),
               signal
-            ));
+            );
+            results.push(response);
+            if (useBrain && dispatchedTool === "tekla_create_grid") {
+              gridVerification = summarizeGridResponse(response, brainCall.arguments, state.brainGridSkipped || [], state.brainGridWarnings || []);
+            }
           } catch (error) {
             console.error("[Workflow] MCP call failed:", {
               tool: dispatchedTool,
@@ -3083,8 +3125,15 @@ async function runWorkflowCore(signal) {
             throw error;
           }
         }
-        state.result = state.rows ? { results } : results[0];
-        statusBox.textContent = state.rows ? `✔ ${results.length} call(s)` : "✔ responded";
+        state.result = state.rows ? { results, ...(gridVerification ? { gridVerification } : {}) } : results[0];
+        if (gridVerification?.status === "failed") throw new Error("Tekla reported grid creation failed: " + JSON.stringify(gridVerification.response));
+        if (gridVerification?.status === "unverified") {
+          statusBox.textContent = `⚠ Grid response has no recognizable GUID; creation is unverified. Inspect the result before retrying.`;
+        } else if (gridVerification?.status === "guid-returned") {
+          statusBox.textContent = "⚠ Grid GUID returned; verify rectangular extents in Tekla.";
+        } else {
+          statusBox.textContent = state.rows ? `✔ ${results.length} call(s)` : "✔ responded";
+        }
         if (state.brainCalls && !results.length) throw new Error(`No Brain objects match tool "${toolName}"`);
       }
 

@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, Whatsapp & Telegram ChatBots, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #8"
+// #9"
 // git push origin main
 
 // git add .
@@ -786,10 +786,11 @@ app.post('/api/brain/convert', requireMcpAuth, (req, res) => {
       console.log('[Brain] Gridline conversion:', {
         records: records.length,
         gridEntities: converted.gridlines.length,
-        gridlineCalls: converted.calls.filter(call => call.tool === 'tekla_create_gridline').length
+        gridCalls: converted.calls.filter(call => call.tool === 'tekla_create_grid').length,
+        gridEntitiesSkipped: converted.skipped.filter(item => item.type === 'gridline').length
       });
-      if (converted.gridlines.length && !converted.calls.some(call => call.tool === 'tekla_create_gridline')) {
-        console.warn('[Brain] Grid data extracted only; no tekla_create_gridline calls generated. The current tool requires parentGuid and label and has no DXF geometry inputs.');
+      if (converted.gridlines.length && !converted.grid) {
+        console.warn('[Brain] No parent grid call generated; check skipped grid entities for details.');
       }
     }
     return res.json(converted);

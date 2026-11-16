@@ -88,23 +88,27 @@ are available through their respective local bridge integrations; a deployed
 Render service cannot directly reach software running on a user's workstation
 without a reachable bridge or relay.
 
-Tekla gridline create/update/delete calls log their tool name, request path
-and arguments, response and elapsed milliseconds, or failure message to the
-server console. Bridge keys and authentication headers are not logged.
-
 ### DXF grid data in Workflow Builder
 
-On a Brain node, select **gridline** to extract plain entities from
+On a Brain node, select **gridline** to extract entities from
 `S-_ANOTGRID_E`, `S-_ANOTGRID_E2`, `S-_ANOTGRID_T`, and `S-_ANOTGRID_T2`.
-The Brain preview includes `gridlines` with geometry, text labels, source
-handles and layers; these entities are also included in workflow result rows
-for export or explicit `{{row.field}}` mappings. Coordinates retain the DXF's
-units and origin. This extracts modelling data only: it does not associate
-labels with lines or generate Tekla grid-creation calls.
-If these extraction-only rows reach automatic gridline MCP dispatch, the
-workflow reports that no creation request was sent. The server logs grid
-entity/call counts, and workflow MCP failures retain the bridge error text
-in the UI and log the failing tool, row, and source handle in the browser console.
+The Brain associates labels with straight, axis-aligned lines and generates one
+`tekla_create_grid` call when both axes have unambiguous labels. The preview
+includes the proposed grid, source entities, skipped entities and warnings.
+Unsupported arcs, disconnected fragments and ambiguous or unlabeled lines are
+not created. Raw entities remain available as rows for explicit mappings.
+
+The generated grid assumes DXF coordinates are millimetres in Tekla's global
+coordinate system and that the Windows bridge interprets coordinate arrays as
+successive spacings from the origin. Extensions use the outermost line ends;
+the parent grid has common rectangular extents, so individual line lengths may
+change. Review the preview and verify these assumptions with the Windows
+bridge before creating a grid. Normal model-modification authorization applies.
+The MCP result includes `gridVerification` with the returned GUID when
+recognizable, the submitted definition, skipped entities and bridge response.
+A missing GUID is reported as unverified, not as a failed or successful
+creation; inspect Tekla before retrying to avoid duplicate grids. The returned
+GUID is not an independent model read-back.
 
 ## Important production notes
 1. The included session store is intentionally in-memory for development. Replace it with Firestore, Redis, or PostgreSQL before multi-instance production.
