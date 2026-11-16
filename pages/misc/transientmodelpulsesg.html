@@ -1659,7 +1659,19 @@
                         class="label">Area</span></button>
                 <button class="toolbar-btn" id="mode-assembly" title="Assembly Selection"><span
                         class="tb-icon">🧱</span><span class="label">Assembly</span></button>
+               
                 <span class="toolbar-sep"></span>
+               
+                <!-- ANIMATION CONTROLS -->
+                <button class="toolbar-btn" id="btn-play-anim" title="Play/Pause Construction Sequence" style="border-color: var(--neon-green); color: var(--neon-green);">
+                    <span class="tb-icon">▶️</span><span class="label">Play</span>
+                </button>
+                <button class="toolbar-btn" id="btn-reset-anim" title="Reset Sequence" style="border-color: var(--neon-orange); color: var(--neon-orange);">
+                    <span class="tb-icon">🔄</span><span class="label">Reset</span>
+                </button>
+               
+                <span class="toolbar-sep"></span>
+               
                 <button class="toolbar-btn reopen" data-panel="left-panel" style="display:none;"
                     title="Reopen Project Timelines"><span class="tb-icon">📊</span><span
                         class="label">Timelines</span></button>
@@ -1974,7 +1986,6 @@
                         Colors</button>
                     <div id="status-legend" style="display:flex;flex-direction:column;gap:4px;margin-top:8px;font-size:0.62rem;border-top:1px solid rgba(255,255,255,0.08);padding-top:8px;">
                         <div style="color:var(--text-muted);margin-bottom:2px;">Status Legend</div>
-                        <!-- populated dynamically -->
                     </div>
                 </div>
             </div>
@@ -2092,6 +2103,13 @@
         const guidToMeshMap = new Map();
         const importedDataMap = new Map();
 
+        // --- ANIMATION STATE ---
+        let animMeshes = []; // Sorted array of { mesh, y }
+        let animChunks = []; // Grouped chunks of animMeshes
+        let animIndex = 0;
+        let isPlaying = false;
+        let animTimer = null;
+
         const sharedDefaultMaterial = new THREE.MeshPhysicalMaterial({ color: 0x00f0ff, emissive: 0x003366, metalness: 0.8, roughness: 0.2, transmission: 0.5, thickness: 0.5, transparent: true, opacity: 0.7, side: THREE.DoubleSide });
         const selectedMaterial = new THREE.MeshPhysicalMaterial({ color: 0xff007f, emissive: 0x44001a, metalness: 0.9, roughness: 0.1, transparent: true, opacity: 0.9, side: THREE.DoubleSide });
 
@@ -2120,6 +2138,74 @@
             toastContainer.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
         }
+
+        // --- ANIMATION LOGIC (PLAY/PAUSE TOGGLE) ---
+        function updatePlayButton() {
+            const btn = document.getElementById('btn-play-anim');
+            if (isPlaying) {
+                btn.innerHTML = '<span class="tb-icon">⏸️</span><span class="label">Pause</span>';
+                btn.classList.add('active'); // Changes background color to indicate active state
+            } else {
+                btn.innerHTML = '<span class="tb-icon">▶️</span><span class="label">Play</span>';
+                btn.classList.remove('active');
+            }
+        }
+
+        function playAnimation() {
+            if (animChunks.length === 0) return showToast("Load an IFC model first.", "error");
+           
+            if (isPlaying) {
+                // PAUSE ACTION
+                isPlaying = false;
+                clearInterval(animTimer);
+                updatePlayButton(); // Updates button to "Play"
+                return;
+            }
+           
+            // PLAY ACTION
+            isPlaying = true;
+            updatePlayButton(); // Updates button to "Pause"
+           
+            // If starting from beginning
+            if (animIndex === 0) {
+                animMeshes.forEach(item => { item.mesh.visible = false; });
+            }
+           
+            animTimer = setInterval(() => {
+                if (!isPlaying) return;
+               
+                if (animIndex >= animChunks.length) {
+                    // Done
+                    clearInterval(animTimer);
+                    isPlaying = false;
+                    animIndex = 0; // Reset for next play
+                    updatePlayButton(); // Reverts to "Play"
+                    showToast("Construction sequence complete.", "success");
+                    return;
+                }
+               
+                // Reveal the chunk
+                animChunks[animIndex].forEach(item => { item.mesh.visible = true; });
+                animIndex++;
+            }, 100); // 100ms per chunk
+        }
+
+        function resetAnimation() {
+            clearInterval(animTimer);
+            isPlaying = false;
+            animIndex = 0;
+            updatePlayButton(); // Reverts to "Play"
+           
+            if (animMeshes.length > 0) {
+                animMeshes.forEach(item => { item.mesh.visible = true; });
+                showToast("Sequence reset.", "success");
+            } else {
+                showToast("No model loaded.", "error");
+            }
+        }
+
+        document.getElementById('btn-play-anim').addEventListener('click', playAnimation);
+        document.getElementById('btn-reset-anim').addEventListener('click', resetAnimation);
 
         // ---- Drag-model-to-pan ----
         let isDraggingModel = false;
@@ -2612,7 +2698,6 @@
         async function getPsetsAsMap(modelID, expressID) {
             const psetMap = new Map();
             const safeId = safeExpressID(expressID); if (safeId < 0) return psetMap;
-            // GetLine needs inverse=true to populate IsDefinedBy / IsTypedBy
             let rawElement = null;
             try { rawElement = ifcAPI.GetLine(modelID, safeId, false, true); } catch (e) { }
             if (!rawElement) { try { rawElement = ifcAPI.GetLine(modelID, safeId, false); } catch (e) { return psetMap; } }
@@ -2631,7 +2716,6 @@
                     });
                 }
             };
-            // Primary source: web-ifc properties API (same as the properties panel)
             try {
                 const apiPsets = ifcAPI.properties.getPropertySets(modelID, safeId, true);
                 const awaited = apiPsets instanceof Promise ? await apiPsets : apiPsets;
@@ -2663,7 +2747,6 @@
         function getParts(modelID, expressID) {
             const parts = [];
             const safeId = safeExpressID(expressID); if (safeId < 0) return parts;
-            // GetLine needs inverse=true to populate IsDecomposedBy
             let rawElement = null;
             try { rawElement = ifcAPI.GetLine(modelID, safeId, false, true); } catch (e) { }
             if (!rawElement) { try { rawElement = ifcAPI.GetLine(modelID, safeId, false); } catch (e) { return parts; } }
@@ -2683,32 +2766,20 @@
             return parts;
         }
 
-        // ============================================================================
-        // ROBUST IFC TYPE RESOLVER
-        // The bug: for some entities, ifcLine.type returns the numeric express ID
-        //          as a string (e.g. "2391406946") rather than "IFCWALL".
-        // Fix:     try multiple methods until we get a real IFC type string.
-        // ============================================================================
         function resolveIfcTypeName(modelID, expressID) {
             const safeId = safeExpressID(expressID);
             if (safeId < 0) return null;
-
-            // 1) Try GetLine(..., true) — the usual path
             let line = null;
             try { line = ifcAPI.GetLine(modelID, safeId, true); } catch (e) { }
             if (line) {
                 const t = line.type || (line.constructor && line.constructor.name);
                 if (typeof t === 'string' && /^IFC/i.test(t)) return t;
             }
-
-            // 2) Try GetLine(..., false)
             try { line = ifcAPI.GetLine(modelID, safeId, false); } catch (e) { }
             if (line) {
                 const t = line.type || (line.constructor && line.constructor.name);
                 if (typeof t === 'string' && /^IFC/i.test(t)) return t;
             }
-
-            // 3) Try ifcAPI.GetLineType(...)
             try {
                 const t = ifcAPI.GetLineType(modelID, safeId);
                 if (typeof t === 'string' && /^IFC/i.test(t)) return t;
@@ -2717,15 +2788,12 @@
                     if (tname && /^IFC/i.test(tname)) return tname;
                 }
             } catch (e) { }
-
-            // 4) Last resort — the .type field is numeric, map via GetNameFromTypeCode
             if (line && typeof line.type === 'number' && typeof ifcAPI.GetNameFromTypeCode === 'function') {
                 try {
                     const tname = ifcAPI.GetNameFromTypeCode(line.type);
                     if (tname && /^IFC/i.test(tname)) return tname;
                 } catch (e) { }
             }
-
             return null;
         }
 
@@ -2832,6 +2900,14 @@
         }
 
         async function processAndAddModel(arrayBuffer) {
+            // Reset animation
+            clearInterval(animTimer);
+            isPlaying = false;
+            animIndex = 0;
+            animMeshes = [];
+            animChunks = [];
+            updatePlayButton();
+
             try {
                 if (currentModelID !== -1) { try { ifcAPI.CloseModel(currentModelID); } catch (e) { } currentModelID = -1; }
                 if (currentIfcModel) { scene.remove(currentIfcModel); currentIfcModel.traverse((child) => { if (child.isMesh) child.geometry.dispose(); }); currentIfcModel = null; }
@@ -2923,6 +2999,11 @@
                             const mesh3D = new THREE.Mesh(bufferGeometry, sharedDefaultMaterial);
                             mesh3D.userData.expressID = data.expressID;
                             if (data.matrix) mesh3D.applyMatrix4(data.matrix);
+                           
+                            // --- ANIMATION PREP: Calculate bounding box to find lowest Y ---
+                            const bbox = new THREE.Box3().setFromObject(mesh3D);
+                            animMeshes.push({ mesh: mesh3D, y: bbox.min.y });
+                           
                             group.add(mesh3D);
 
                             const eid = safeExpressID(data.expressID);
@@ -2939,6 +3020,16 @@
                     progressBar.style.width = `${percent}%`;
                     loadStatus.innerText = `Building 3D Scene: ${percent}% (${Math.min(i + CHUNK_SIZE, rawGeometries.length)} / ${rawGeometries.length})`;
                     await new Promise(r => setTimeout(r, 0));
+                }
+
+                // --- ANIMATION PREP: Sort by ground-up and create chunks ---
+                animMeshes.sort((a, b) => a.y - b.y);
+                const numChunks = Math.min(100, animMeshes.length);
+                if (numChunks > 0) {
+                    const chunkSize = Math.ceil(animMeshes.length / numChunks);
+                    for (let i = 0; i < animMeshes.length; i += chunkSize) {
+                        animChunks.push(animMeshes.slice(i, i + chunkSize));
+                    }
                 }
 
                 rawGeometries.length = 0;
@@ -3164,7 +3255,7 @@
                 legend.appendChild(row);
             });
         })();
-        
+       
         // Apply each status's color (from STATUS_COLOR_MAP) to the matching model elements
         function applyStatusColors() {
             let count = 0;
