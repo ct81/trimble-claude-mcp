@@ -90,3 +90,45 @@ test('replacing imported data clears old history and preserves a single record',
     assert.equal(rows.some(row => row.children[0].textContent === 'Record'), false);
     assert.equal(rows.find(row => row.children[0].textContent === 'Status').children[1].textContent, 'Pending');
 });
+
+test('displays and sorts numeric and text Excel serial dates for the same GUID', async () => {
+    const { context, mesh, tabContentContainer } = createHarness();
+    context.processImportedData([
+        { 'IFC Guide': 'guid-1', status: 'In Progress', 'updated on': 45427 },
+        { 'IFC Guide': 'guid-1', status: 'Delayed', 'updated on': '45426' },
+        { 'IFC Guide': 'guid-1', status: 'Completed', 'updated on': '45428.5' },
+        { 'IFC Guide': 'guid-2', status: 'Pending', 'updated on': 45430 }
+    ]);
+
+    await context.showElementProperties(0, 1);
+    const rows = tabContentContainer.children[0].children.filter(row => row.className === 'prop-row');
+    const values = rows.map(row => row.children.map(child => child.textContent));
+    assert.deepEqual(values.filter(row => row[0] === 'Status').map(row => row[1]), ['Completed', 'In Progress', 'Delayed']);
+    assert.deepEqual(values.filter(row => row[0] === 'Updated On').map(row => row[1]), ['2024-05-16', '2024-05-15', '2024-05-14']);
+    context.applyStatusColors();
+    assert.equal(mesh.material.color.value, '#00ff88');
+});
+
+test('uses the workbook date system when importing numeric Excel cells', () => {
+    const { context } = createHarness();
+    let onChange;
+    context.document.getElementById = () => ({ addEventListener: (_event, handler) => { onChange = handler; } });
+    context.XLSX = {
+        read: () => ({
+            SheetNames: ['Data'],
+            Sheets: { Data: {} },
+            Workbook: { WBProps: { date1904: true } }
+        }),
+        utils: { sheet_to_json: () => [{ 'IFC Guide': 'guid-1', status: 'Completed', 'updated on': 43965 }] }
+    };
+    context.FileReader = class {
+        readAsBinaryString() { this.onload({ target: { result: 'workbook' } }); }
+    };
+    vm.runInContext(section("        document.getElementById('data-import-input')", '        function normalizeImportedDate('), context);
+    onChange({ target: { files: [{ name: 'data.xlsx' }] } });
+
+    assert.equal(context.importedDataMap.get('guid-1')[0].updatedOn, '2024-05-15');
+    assert.equal(context.normalizeImportedDate(0, true), '1904-01-01');
+    assert.equal(context.normalizeImportedDate(59), '1900-02-28');
+    assert.equal(context.normalizeImportedDate(61), '1900-03-01');
+});

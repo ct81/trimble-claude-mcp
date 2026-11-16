@@ -3205,21 +3205,37 @@
             reader.onload = (evt) => {
                 let rows = [];
                 try {
+                    let date1904 = false;
                     if (file.name.endsWith('.json')) rows = JSON.parse(evt.target.result);
-                    else { const workbook = XLSX.read(evt.target.result, { type: 'binary', cellDates: true }); const firstSheet = workbook.Sheets[workbook.SheetNames[0]]; rows = XLSX.utils.sheet_to_json(firstSheet); }
-                    processImportedData(rows);
+                    else {
+                        const workbook = XLSX.read(evt.target.result, { type: 'binary', cellDates: true });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        rows = XLSX.utils.sheet_to_json(firstSheet);
+                        date1904 = !!workbook.Workbook?.WBProps?.date1904;
+                    }
+                    processImportedData(rows, date1904);
                 } catch (err) { showToast("Error parsing file. Check format.", 'error'); }
             };
             if (file.name.endsWith('.json')) reader.readAsText(file);
             else reader.readAsBinaryString(file);
         });
 
-        function normalizeImportedDate(value) {
+        function normalizeImportedDate(value, date1904 = false) {
             if (value instanceof Date && !Number.isNaN(value.getTime())) {
                 const year = value.getFullYear();
                 const month = String(value.getMonth() + 1).padStart(2, '0');
                 const day = String(value.getDate()).padStart(2, '0');
                 return `${year}-${month}-${day}`;
+            }
+            if (typeof value === 'number' || (typeof value === 'string' && /^\d+(?:\.\d+)?$/.test(value.trim()))) {
+                const serial = Number(value);
+                if (Number.isFinite(serial) && serial >= 0 && serial <= (date1904 ? 2957003 : 2958465)) {
+                    const days = Math.floor(serial);
+                    // Excel's 1900 date system includes the nonexistent 1900-02-29.
+                    if (!date1904 && days === 60) return '1900-02-29';
+                    const epoch = date1904 ? Date.UTC(1904, 0, 1) : Date.UTC(1899, 11, days < 60 ? 31 : 30);
+                    return new Date(epoch + days * 86400000).toISOString().slice(0, 10);
+                }
             }
             return value;
         }
@@ -3230,14 +3246,14 @@
             return Number.isNaN(timestamp) ? -Infinity : timestamp;
         }
 
-        function processImportedData(rows) {
+        function processImportedData(rows, date1904 = false) {
             importedDataMap.clear();
             let validCount = 0;
             rows.forEach(row => {
                 const guid = row['IFC Guide'] || row['IFC GUID'] || row['guid'] || row['Guid'] || row['GlobalId'];
                 const status = row['status'] || row['Status'] || row['STATUS'];
                 const marking = row['Marking'] || row['marking'] || row['MARKING'];
-                const updatedOn = normalizeImportedDate(row['updated on'] || row['Updated On'] || row['updated_on']);
+                const updatedOn = normalizeImportedDate(row['updated on'] ?? row['Updated On'] ?? row['updated_on'], date1904);
                 if (typeof guid === 'string' && guid.trim()) {
                     const key = guid.trim();
                     if (!importedDataMap.has(key)) importedDataMap.set(key, []);
