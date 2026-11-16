@@ -20,31 +20,45 @@ function createHarness() {
         addEventListener() {}
     });
     const tabContentContainer = element();
-    const mesh = { userData: { expressID: 1 } };
+    const mesh = { isMesh: true, userData: { expressID: 1 }, material: { name: 'original' } };
+    const elements = {
+        'btn-play-status': element(),
+        'status-playback-position': element(),
+        'status-playback-speed': { value: '1' }
+    };
+    const timers = new Map();
+    const toasts = [];
+    let timerId = 0;
     const context = vm.createContext({
         Date, Map, Set, Number, String, Promise,
         setTimeout: callback => callback(),
+        setInterval: (callback, delay) => { const id = ++timerId; timers.set(id, { callback, delay }); return id; },
+        clearInterval: id => timers.delete(id),
         importedDataMap: new Map(),
         importStatus: {},
         selectedMeshes: new Map(),
         selectedOriginalMaterials: new Map(),
         statusColoredMeshes: new Set(),
+        statusTimeline: [], statusTimelineIndex: 0, statusPlaying: false, statusTimer: null,
+        statusPlaybackOriginals: new Map(), statusPlaybackMaterials: new Map(),
         guidToMeshMap: new Map([['guid-1', mesh]]),
         inspectorPanel: element(),
         tabNav: element(),
         tabContentContainer,
         searchInput: {},
         currentModelID: 0,
-        showToast() {},
+        currentIfcModel: { children: [mesh] },
+        showToast: (message, type) => toasts.push({ message, type }),
         safeExpressID: id => id,
         ifcAPI: {
             GetLine: () => ({ GlobalId: { value: 'guid-1' }, type: 'IFCWALL' }),
             properties: { getPropertySets: () => [] }
         },
         iterateCollection() {},
-        document: { createElement: element, querySelectorAll: () => [] },
+        document: { createElement: element, querySelectorAll: () => [], getElementById: id => elements[id] },
         THREE: { Color: class { constructor(value) { this.value = value; } clone() { return this; } multiplyScalar() { return this; } } },
-        sharedDefaultMaterial: { clone: () => ({}) }
+        selectedMaterial: { clone: () => ({ name: 'selected' }) },
+        sharedDefaultMaterial: { clone: () => ({ dispose() { this.disposed = true; } }) }
     });
     vm.runInContext(
         section('        function normalizeImportedDate(', '        // Central color map') +
@@ -53,7 +67,7 @@ function createHarness() {
         section('        async function showElementProperties(', '        async function runSGValidation('),
         context
     );
-    return { context, mesh, tabContentContainer };
+    return { context, mesh, tabContentContainer, elements, timers, toasts };
 }
 
 test('preserves matching records, sorts dates, and colors by newest status', async () => {
@@ -112,7 +126,10 @@ test('displays and sorts numeric and text Excel serial dates for the same GUID',
 test('uses the workbook date system when importing numeric Excel cells', () => {
     const { context } = createHarness();
     let onChange;
-    context.document.getElementById = () => ({ addEventListener: (_event, handler) => { onChange = handler; } });
+    const getElementById = context.document.getElementById;
+    context.document.getElementById = id => id === 'data-import-input'
+        ? { addEventListener: (_event, handler) => { onChange = handler; } }
+        : getElementById(id);
     context.XLSX = {
         read: () => ({
             SheetNames: ['Data'],
@@ -131,4 +148,96 @@ test('uses the workbook date system when importing numeric Excel cells', () => {
     assert.equal(context.normalizeImportedDate(0, true), '1904-01-01');
     assert.equal(context.normalizeImportedDate(59), '1900-02-28');
     assert.equal(context.normalizeImportedDate(61), '1900-03-01');
+});
+
+test('plays matching status dates in ascending order, pauses, changes speed and restores colors', () => {
+    const { context, mesh, elements, timers, toasts } = createHarness();
+    const original = mesh.material;
+    const part = { isMesh: true, userData: { expressID: 1 }, material: { name: 'part-original' } };
+    const unrelated = { isMesh: true, userData: { expressID: 2 }, material: { name: 'unrelated' } };
+    context.currentIfcModel.children.push(part, unrelated);
+    context.processImportedData([
+        { 'IFC Guide': 'guid-1', status: 'Completed', 'updated on': '2024-05-16' },
+        { 'IFC Guide': 'guid-1', status: 'In Progress', 'updated on': '2024-05-15' },
+        { 'IFC Guide': 'guid-1', status: 'Delayed', 'updated on': 'bad date' },
+        { 'IFC Guide': 'unmatched', status: 'Pending', 'updated on': '2024-05-14' }
+    ]);
+
+    context.playStatusPlayback();
+    assert.equal(mesh.material.color.value, '#ffc400');
+    assert.equal(part.material.color.value, '#ffc400');
+    assert.equal(unrelated.material.name, 'unrelated');
+    assert.equal(elements['status-playback-position'].textContent, 'Date: 2024-05-15 (1/2)');
+    assert.equal([...timers.values()][0].delay, 1000);
+    assert.ok(toasts.some(toast => toast.message.includes('Skipped 1')));
+
+    context.playStatusPlayback();
+    assert.equal(timers.size, 0);
+    assert.equal(mesh.material.color.value, '#ffc400');
+    elements['status-playback-speed'].value = '2';
+    context.playStatusPlayback();
+    assert.equal([...timers.values()][0].delay, 500);
+    [...timers.values()][0].callback();
+    assert.equal(mesh.material.color.value, '#00ff88');
+    assert.equal(part.material.color.value, '#00ff88');
+    assert.equal(elements['status-playback-position'].textContent, 'Date: 2024-05-16 (2/2)');
+    assert.equal(timers.size, 0);
+    const lastMaterial = mesh.material;
+    context.resetStatusPlayback();
+    assert.equal(mesh.material, original);
+    assert.equal(part.material.name, 'part-original');
+    assert.equal(lastMaterial.disposed, true);
+});
+
+test('applies records on the same date together and stops playback when data is replaced', () => {
+    const { context, mesh, timers } = createHarness();
+    const other = { isMesh: true, userData: { expressID: 2 }, material: { name: 'other-original' } };
+    context.currentIfcModel.children.push(other);
+    context.guidToMeshMap.set('guid-2', other);
+    context.processImportedData([
+        { 'IFC Guide': 'guid-1', status: 'In Progress', 'updated on': '2024-05-15' },
+        { 'IFC Guide': 'guid-2', status: 'Delayed', 'updated on': '2024-05-15' },
+        { 'IFC Guide': 'guid-1', status: 'Completed', 'updated on': '2024-05-16' }
+    ]);
+    context.playStatusPlayback();
+    assert.equal(mesh.material.color.value, '#ffc400');
+    assert.equal(other.material.color.value, '#ff007f');
+    assert.equal(timers.size, 1);
+    context.processImportedData([{ 'IFC Guide': 'guid-1', status: 'Pending', 'updated on': '2024-05-17' }]);
+    assert.equal(timers.size, 0);
+    assert.equal(mesh.material.name, 'original');
+    assert.equal(other.material.name, 'other-original');
+});
+
+test('reports when no matching dated statuses can be played', () => {
+    const { context, timers, toasts } = createHarness();
+    context.processImportedData([{ 'IFC Guide': 'guid-1', status: 'Pending', 'updated on': 'invalid' }]);
+    context.playStatusPlayback();
+    assert.equal(timers.size, 0);
+    assert.ok(toasts.some(toast => toast.type === 'error' && toast.message.includes('No matching status records')));
+});
+
+test('reschedules an active timeline and restores selection on reset and replay', () => {
+    const { context, mesh, elements, timers } = createHarness();
+    const original = mesh.material;
+    context.selectedMeshes.set(1, mesh);
+    context.selectedOriginalMaterials.set(1, original);
+    mesh.material = { name: 'selected' };
+    context.processImportedData([
+        { 'IFC Guide': 'guid-1', status: 'In Progress', 'updated on': '2024-05-15' },
+        { 'IFC Guide': 'guid-1', status: 'Completed', 'updated on': '2024-05-16' }
+    ]);
+    context.playStatusPlayback();
+    elements['status-playback-speed'].value = '4';
+    context.scheduleStatusPlayback();
+    assert.equal(timers.size, 1);
+    assert.equal([...timers.values()][0].delay, 250);
+    [...timers.values()][0].callback();
+    context.playStatusPlayback();
+    assert.equal(mesh.material.color.value, '#ffc400');
+    context.resetStatusPlayback();
+    assert.equal(timers.size, 0);
+    assert.equal(mesh.material.name, 'selected');
+    assert.equal(context.selectedOriginalMaterials.get(1), original);
+    assert.equal(context.statusColoredMeshes.has(mesh), false);
 });

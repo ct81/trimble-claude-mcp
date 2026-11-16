@@ -692,8 +692,10 @@
         }
 
         #data-color-panel {
-            top: calc(var(--panel-top) + var(--controls-h) + var(--dashboard-gap) + var(--crane-h) + var(--dashboard-gap));
+            --data-panel-top: min(calc(var(--panel-top) + var(--controls-h) + var(--dashboard-gap) + var(--crane-h) + var(--dashboard-gap)), calc(100dvh - 180px));
+            top: var(--data-panel-top);
             right: calc(var(--right-col-w) + var(--dashboard-gap) + var(--floating-gap));
+            max-height: calc(100dvh - var(--data-panel-top) - 10px);
         }
 
         #crane-panel .content {
@@ -1989,6 +1991,18 @@
                         <div style="color:var(--text-muted);margin-bottom:2px;">Status Legend</div>
                     </div>
                 </div>
+                <div class="control-group">
+                    <label for="status-playback-speed">Status Playback Speed</label>
+                    <select id="status-playback-speed" title="Playback speed, with one date per second at 1x">
+                        <option value="0.5">0.5x</option>
+                        <option value="1" selected>1x</option>
+                        <option value="2">2x</option>
+                        <option value="4">4x</option>
+                    </select>
+                    <button id="btn-play-status" style="border-color: var(--neon-green); color: var(--neon-green);">▶ Play Status Timeline</button>
+                    <button id="btn-reset-status-playback" style="border-color: var(--neon-orange); color: var(--neon-orange); margin-top: 5px;">Reset Status Timeline</button>
+                    <div id="status-playback-position" aria-live="polite" style="font-size: 0.65rem; color: var(--text-muted); margin-top: 5px;">Oldest to newest; undated records are skipped.</div>
+                </div>
             </div>
             <div class="resize-handle" data-resize="data-color-panel"></div>
         </div>
@@ -2112,6 +2126,12 @@
         let animIndex = 0;
         let isPlaying = false;
         let animTimer = null;
+        let statusTimeline = [];
+        let statusTimelineIndex = 0;
+        let statusPlaying = false;
+        let statusTimer = null;
+        const statusPlaybackOriginals = new Map();
+        const statusPlaybackMaterials = new Map();
 
         const sharedDefaultMaterial = new THREE.MeshPhysicalMaterial({ color: 0x00f0ff, emissive: 0x003366, metalness: 0.8, roughness: 0.2, transmission: 0.5, thickness: 0.5, transparent: true, opacity: 0.7, side: THREE.DoubleSide });
         const selectedMaterial = new THREE.MeshPhysicalMaterial({ color: 0xff007f, emissive: 0x44001a, metalness: 0.9, roughness: 0.1, transparent: true, opacity: 0.9, side: THREE.DoubleSide });
@@ -2904,6 +2924,7 @@
 
         async function processAndAddModel(arrayBuffer) {
             // Reset animation
+            resetStatusPlayback();
             clearInterval(animTimer);
             isPlaying = false;
             animIndex = 0;
@@ -3247,6 +3268,7 @@
         }
 
         function processImportedData(rows, date1904 = false) {
+            resetStatusPlayback();
             importedDataMap.clear();
             let validCount = 0;
             rows.forEach(row => {
@@ -3291,6 +3313,128 @@
             return '#ff9900';
         }
 
+        function setMeshStatusColor(mesh, status) {
+            const color = new THREE.Color(getStatusColor(status));
+            const newMat = sharedDefaultMaterial.clone();
+            newMat.color = color; newMat.emissive = color.clone().multiplyScalar(0.3); newMat.opacity = 1.0;
+            mesh.material = newMat;
+            statusColoredMeshes.add(mesh);
+            if (selectedMeshes.get(mesh.userData.expressID) === mesh) selectedOriginalMaterials.set(mesh.userData.expressID, newMat);
+            return newMat;
+        }
+
+        function updateStatusPlaybackButton() {
+            const button = document.getElementById('btn-play-status');
+            button.textContent = statusPlaying ? '⏸ Pause Status Timeline' : '▶ Play Status Timeline';
+        }
+
+        function resetStatusPlayback() {
+            clearInterval(statusTimer);
+            statusTimer = null;
+            statusPlaying = false;
+            statusTimeline = [];
+            statusTimelineIndex = 0;
+            statusPlaybackOriginals.forEach((original, mesh) => {
+                const eid = mesh.userData.expressID;
+                const selected = selectedMeshes.get(eid) === mesh;
+                mesh.material = selected && !original.statusColored ? selectedMaterial.clone() : original.material;
+                if (selected) selectedOriginalMaterials.set(eid, original.material);
+                if (original.statusColored) statusColoredMeshes.add(mesh);
+                else statusColoredMeshes.delete(mesh);
+            });
+            statusPlaybackMaterials.forEach(material => material.dispose());
+            statusPlaybackMaterials.clear();
+            statusPlaybackOriginals.clear();
+            updateStatusPlaybackButton();
+            document.getElementById('status-playback-position').textContent = 'Oldest to newest; undated records are skipped.';
+        }
+
+        function buildStatusTimeline() {
+            const meshesById = new Map();
+            currentIfcModel.children.forEach(mesh => {
+                if (!mesh.isMesh) return;
+                const eid = mesh.userData.expressID;
+                if (!meshesById.has(eid)) meshesById.set(eid, []);
+                meshesById.get(eid).push(mesh);
+            });
+            const events = [];
+            let skipped = 0;
+            importedDataMap.forEach((records, guid) => {
+                const representative = guidToMeshMap.get(guid);
+                if (!representative) return;
+                const meshes = meshesById.get(representative.userData.expressID) || [];
+                records.forEach(record => {
+                    if (!String(record.status || '').trim()) return;
+                    const time = importedDateTimestamp(record.updatedOn);
+                    if (!Number.isFinite(time)) { skipped++; return; }
+                    events.push({ time, date: record.updatedOn, status: record.status, meshes });
+                });
+            });
+            events.sort((a, b) => a.time - b.time);
+            const timeline = [];
+            events.forEach(event => {
+                let step = timeline[timeline.length - 1];
+                if (!step || step.time !== event.time) {
+                    step = { time: event.time, date: event.date, events: [] };
+                    timeline.push(step);
+                }
+                step.events.push(event);
+            });
+            return { timeline, skipped };
+        }
+
+        function advanceStatusPlayback() {
+            const step = statusTimeline[statusTimelineIndex++];
+            step.events.forEach(event => event.meshes.forEach(mesh => {
+                if (!statusPlaybackOriginals.has(mesh)) {
+                    const eid = mesh.userData.expressID;
+                    const material = selectedMeshes.get(eid) === mesh ? selectedOriginalMaterials.get(eid) || mesh.material : mesh.material;
+                    statusPlaybackOriginals.set(mesh, { material, statusColored: statusColoredMeshes.has(mesh) });
+                }
+                const previous = statusPlaybackMaterials.get(mesh);
+                const material = setMeshStatusColor(mesh, event.status);
+                if (previous) previous.dispose();
+                statusPlaybackMaterials.set(mesh, material);
+            }));
+            document.getElementById('status-playback-position').textContent = `Date: ${step.date} (${statusTimelineIndex}/${statusTimeline.length})`;
+            if (statusTimelineIndex === statusTimeline.length) {
+                clearInterval(statusTimer);
+                statusTimer = null;
+                statusPlaying = false;
+                updateStatusPlaybackButton();
+                showToast('Status timeline complete.', 'success');
+            }
+        }
+
+        function scheduleStatusPlayback() {
+            clearInterval(statusTimer);
+            const speed = Number(document.getElementById('status-playback-speed').value);
+            statusTimer = setInterval(advanceStatusPlayback, 1000 / speed);
+        }
+
+        function playStatusPlayback() {
+            if (statusPlaying) {
+                clearInterval(statusTimer);
+                statusTimer = null;
+                statusPlaying = false;
+                updateStatusPlaybackButton();
+                return;
+            }
+            if (!currentIfcModel) return showToast('Load an IFC model first.', 'error');
+            if (!importedDataMap.size) return showToast('Import status data first.', 'error');
+            if (statusTimelineIndex === statusTimeline.length) {
+                resetStatusPlayback();
+                const result = buildStatusTimeline();
+                statusTimeline = result.timeline;
+                if (!statusTimeline.length) return showToast('No matching status records with valid dates.', 'error');
+                if (result.skipped) showToast(`Skipped ${result.skipped} status record(s) without a valid date.`, 'error');
+            }
+            statusPlaying = true;
+            updateStatusPlaybackButton();
+            if (statusTimelineIndex === 0) advanceStatusPlayback();
+            if (statusPlaying) scheduleStatusPlayback();
+        }
+
         // Populate the Status Legend in the Data & Color panel from STATUS_COLOR_MAP
         (function buildStatusLegend() {
             const legend = document.getElementById('status-legend');
@@ -3310,12 +3454,7 @@
             importedDataMap.forEach((records, guid) => {
                 const mesh = guidToMeshMap.get(guid);
                 if (mesh) {
-                    const color = new THREE.Color(getStatusColor(records[0].status));
-                    const newMat = sharedDefaultMaterial.clone();
-                    newMat.color = color; newMat.emissive = color.clone().multiplyScalar(0.3); newMat.opacity = 1.0;
-                    mesh.material = newMat;
-                    statusColoredMeshes.add(mesh);
-                    if (selectedMeshes.has(mesh.userData.expressID)) selectedOriginalMaterials.set(mesh.userData.expressID, newMat);
+                    setMeshStatusColor(mesh, records[0].status);
                     count++;
                 }
             });
@@ -3358,8 +3497,18 @@
             }
         });
 
+        document.getElementById('btn-play-status').addEventListener('click', playStatusPlayback);
+        document.getElementById('btn-reset-status-playback').addEventListener('click', () => {
+            resetStatusPlayback();
+            showToast('Status timeline reset.', 'success');
+        });
+        document.getElementById('status-playback-speed').addEventListener('change', () => {
+            if (statusPlaying) scheduleStatusPlayback();
+        });
+
         document.getElementById('btn-apply-color').addEventListener('click', () => {
             if (selectedMeshes.size === 0) return showToast("Select elements first.", 'error');
+            resetStatusPlayback();
             const hex = document.getElementById('custom-color-picker').value;
             const color = new THREE.Color(hex);
             selectedMeshes.forEach(mesh => {
@@ -3372,12 +3521,14 @@
 
         document.getElementById('btn-apply-status').addEventListener('click', () => {
             if (importedDataMap.size === 0) return showToast("Import data first.", 'error');
+            resetStatusPlayback();
             const count = applyStatusColors();
             showToast(`Applied status colors to ${count} elements.`, 'success');
         });
 
         document.getElementById('btn-reset-colors').addEventListener('click', () => {
             if (!currentIfcModel) return;
+            resetStatusPlayback();
             currentIfcModel.traverse(child => {
                 if (!child.isMesh) return;
                 child.material = sharedDefaultMaterial;
@@ -3813,6 +3964,7 @@
         document.getElementById('color-by-select').addEventListener('change', (e) => {
             const mode = e.target.value;
             if (!currentIfcModel || currentModelID === -1) return;
+            resetStatusPlayback();
             if (mode === 'default') {
                 currentIfcModel.traverse(child => { if (child.isMesh && !selectedMeshes.has(child.userData.expressID)) child.material = sharedDefaultMaterial; });
                 return;
