@@ -2091,6 +2091,7 @@
         const selectionBoxes = new THREE.Group();
         scene.add(selectionBoxes);
         let selectedMeshes = new Map();
+        const selectedOriginalMaterials = new Map();
 
         const craneGroup = new THREE.Group();
         scene.add(craneGroup);
@@ -2102,6 +2103,7 @@
 
         const guidToMeshMap = new Map();
         const importedDataMap = new Map();
+        const statusColoredMeshes = new Set();
 
         // --- ANIMATION STATE ---
         let animMeshes = []; // Sorted array of { mesh, y }
@@ -2911,6 +2913,7 @@
             try {
                 if (currentModelID !== -1) { try { ifcAPI.CloseModel(currentModelID); } catch (e) { } currentModelID = -1; }
                 if (currentIfcModel) { scene.remove(currentIfcModel); currentIfcModel.traverse((child) => { if (child.isMesh) child.geometry.dispose(); }); currentIfcModel = null; }
+                statusColoredMeshes.clear();
                 await new Promise(r => setTimeout(r, 100));
                 if (window.gc) { try { window.gc(); } catch (e) { } }
 
@@ -3065,8 +3068,11 @@
         }
 
         function clearSelection() {
-            selectedMeshes.forEach((mesh) => { mesh.material = sharedDefaultMaterial; });
+            selectedMeshes.forEach((mesh, eid) => {
+                mesh.material = selectedOriginalMaterials.get(eid) || sharedDefaultMaterial;
+            });
             selectedMeshes.clear();
+            selectedOriginalMaterials.clear();
             while (selectionBoxes.children.length > 0) { selectionBoxes.remove(selectionBoxes.children[0]); }
             inspectorPanel.classList.remove('open');
             inspectorPanel.style.display = 'none';
@@ -3077,7 +3083,8 @@
             if (eid === undefined) return;
             if (selectedMeshes.has(eid)) return;
             selectedMeshes.set(eid, mesh);
-            mesh.material = selectedMaterial.clone();
+            selectedOriginalMaterials.set(eid, mesh.material);
+            if (!statusColoredMeshes.has(mesh)) mesh.material = selectedMaterial.clone();
             if (selectionBoxes.visible) {
                 const box = new THREE.BoxHelper(mesh, 0xff007f);
                 selectionBoxes.add(box);
@@ -3265,7 +3272,10 @@
                     const color = new THREE.Color(getStatusColor(data.status));
                     const newMat = sharedDefaultMaterial.clone();
                     newMat.color = color; newMat.emissive = color.clone().multiplyScalar(0.3); newMat.opacity = 1.0;
-                    mesh.material = newMat; count++;
+                    mesh.material = newMat;
+                    statusColoredMeshes.add(mesh);
+                    if (selectedMeshes.has(mesh.userData.expressID)) selectedOriginalMaterials.set(mesh.userData.expressID, newMat);
+                    count++;
                 }
             });
             return count;
@@ -3327,7 +3337,12 @@
 
         document.getElementById('btn-reset-colors').addEventListener('click', () => {
             if (!currentIfcModel) return;
-            currentIfcModel.traverse(child => { if (child.isMesh) child.material = sharedDefaultMaterial; });
+            currentIfcModel.traverse(child => {
+                if (!child.isMesh) return;
+                child.material = sharedDefaultMaterial;
+                statusColoredMeshes.delete(child);
+                if (selectedMeshes.has(child.userData.expressID)) selectedOriginalMaterials.set(child.userData.expressID, sharedDefaultMaterial);
+            });
             showToast("Colors reset to default.", 'success');
         });
 
