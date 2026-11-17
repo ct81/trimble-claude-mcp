@@ -69,7 +69,24 @@ export const teklaCreateBeam = (a) => call("/api/tekla/create/beam",{method:"POS
 export const teklaCreateParametricStair = (a) => call("/api/tekla/create/parametric-stair",{method:"POST",body:JSON.stringify(a)});
 export const teklaCreateColumn = (a) => call("/api/tekla/create/column",{method:"POST",body:JSON.stringify(a)});
 export const teklaCreatePlate = (a) => call("/api/tekla/create/plate",{method:"POST",body:JSON.stringify(a)});
-export const teklaCreateWall = (a) => call("/api/tekla/create/wall",{method:"POST",body:JSON.stringify(a)});
+// A 3-point wall contour renders as a triangle; unless a triangle is explicitly requested,
+// complete the parallelogram (p4 = p1 + p3 - p2) so the wall plate is rectangular.
+function completeWallContour(a = {}) {
+  const { shape, ...rest } = a;
+  if (String(shape || "").trim().toLowerCase() === "triangle") return rest;
+  const n = (k) => Number(rest[k]);
+  const base = ["x1","y1","z1","x2","y2","z2","x3","y3","z3"].every((k) => Number.isFinite(n(k)));
+  const has4 = ["x4","y4","z4"].every((k) => Number.isFinite(n(k)));
+  if (!base || has4) return rest;
+  return {
+    ...rest,
+    x4: n("x1") + n("x3") - n("x2"),
+    y4: n("y1") + n("y3") - n("y2"),
+    z4: n("z1") + n("z3") - n("z2")
+  };
+}
+
+export const teklaCreateWall = (a) => call("/api/tekla/create/wall",{method:"POST",body:JSON.stringify(completeWallContour(a))});
 export const teklaCreateSlab = (a) => call("/api/tekla/create/slab",{method:"POST",body:JSON.stringify(a)});
 export const teklaCreateCurveBeam = (a) => call("/api/tekla/create/curve-beam",{method:"POST",body:JSON.stringify(a)});
 export const teklaCreatePolyBeam = (a) => call("/api/tekla/create/polybeam",{method:"POST",body:JSON.stringify(a)});

@@ -200,6 +200,7 @@ function wallArgs(args, defaults) {
       tool: "tekla_create_wall",
       arguments: {
         x1: p.x, y1: p.y, z1: p.z, x2: q.x, y2: q.y, z2: q.z, x3: r.x, y3: r.y, z3: r.z,
+        shape: "triangle",
         profile: plateProfile(args, args.thickness ?? args.width, defaults),
         ...common(args, defaults)
       }
@@ -218,7 +219,7 @@ function wallArgs(args, defaults) {
       arguments: {
         x1: p.x, y1: p.y, z1: p.z, x2: q.x, y2: q.y, z2: q.z,
         x3: q.x, y3: q.y, z3: q.z + (shape === "square" ? Math.hypot(q.x - p.x, q.y - p.y) : configuredHeight),
-        ...(shape === "triangle" ? {} : { x4: p.x, y4: p.y, z4: p.z + (shape === "square" ? Math.hypot(q.x - p.x, q.y - p.y) : configuredHeight) }),
+        ...(shape === "triangle" ? { shape } : { x4: p.x, y4: p.y, z4: p.z + (shape === "square" ? Math.hypot(q.x - p.x, q.y - p.y) : configuredHeight) }),
         profile, ...common(args, defaults)
       }
     });
@@ -240,7 +241,7 @@ function wallArgs(args, defaults) {
     tool: "tekla_create_wall",
     arguments: {
       x1: a.x, y1: a.y, z1: a.z, x2: b.x, y2: b.y, z2: b.z, x3: b.x, y3: b.y, z3: b.z + height,
-      ...(shape === "triangle" ? {} : { x4: a.x, y4: a.y, z4: a.z + height }),
+      ...(shape === "triangle" ? { shape } : { x4: a.x, y4: a.y, z4: a.z + height }),
       profile: plateProfile(args, args.thickness ?? args.width, defaults),
       ...common(args, defaults)
     }
