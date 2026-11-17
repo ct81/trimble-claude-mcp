@@ -1,4 +1,4 @@
-import { annotationSkipReason, buildGridDefinition, convertDxfJson, duplicateCallKey, extractGridlineData } from "./supraesophageal_ganglion_4_dxf.js";
+import { annotationSkipReason, buildGridDefinition, convertDxfJson, duplicateCallKey, extractGridlineData, wallOutlineCentreline } from "./supraesophageal_ganglion_4_dxf.js";
 
 const num = (value) => {
   const n = Number(value);
@@ -223,11 +223,12 @@ function wallArgs(args, defaults) {
         profile, ...common(args, defaults)
       }
     });
-    // A closed outline is a wall drawn as a thin rectangle: use its centreline along the long axis.
-    if (closed && pts.length === 4) {
-      const mid = (p, q) => ({ x: (p.x + q.x) / 2, y: (p.y + q.y) / 2, z: p.z });
-      const d01 = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y), d12 = Math.hypot(pts[2].x - pts[1].x, pts[2].y - pts[1].y);
-      return d01 >= d12 ? wall(mid(pts[0], pts[3]), mid(pts[1], pts[2])) : wall(mid(pts[0], pts[1]), mid(pts[3], pts[2]));
+    // A thin-rectangle outline is ONE wall along its long-axis centreline. Closed outlines
+    // are trusted as drawn; open outlines (closing edge left undrawn) collapse only when
+    // their edges really form a rectangle, so multi-leg wall runs still become segments.
+    if (pts.length === 4) {
+      const outline = wallOutlineCentreline(pts, { requireRectangle: !closed });
+      if (outline) return wall(outline.start, outline.end);
     }
     // Otherwise each segment becomes a wall.
     const segs = [];

@@ -1807,9 +1807,184 @@ export function wallCallRejection(call) {
 }
 
 /**
+ * A wall is drawn in plan as a thin rectangle outline. The outline
+ * may be closed, or open with the closing edge left undrawn (three
+ * edges: short-long-short or long-short-long).
+ *
+ * Returns the one wall that outline represents as
+ * { start, end, length, thickness } along the centreline of the
+ * long axis, or null when the points do not outline a rectangle.
+ *
+ * Set requireRectangle: false to collapse any 4-point outline
+ * without validating right angles (used for explicitly closed
+ * outlines, which are trusted as drawn).
+ */
+export function wallOutlineCentreline(points, options = {}) {
+  const tolerance = options.tolerance ?? 1;
+  const requireRectangle = options.requireRectangle ?? true;
+
+  const pts = [];
+
+  for (const point of points ?? []) {
+    const x = Number(point?.x);
+    const y = Number(point?.y);
+
+    if (!Number.isFinite(x) || !Number.isFinite(y)) {
+      return null;
+    }
+
+    const next = { x, y, z: Number(point?.z ?? 0) || 0 };
+    const previous = pts[pts.length - 1];
+
+    if (
+      !previous ||
+      Math.hypot(next.x - previous.x, next.y - previous.y) > tolerance
+    ) {
+      pts.push(next);
+    }
+  }
+
+  if (
+    pts.length === 5 &&
+    Math.hypot(
+      pts[4].x - pts[0].x,
+      pts[4].y - pts[0].y
+    ) <= tolerance
+  ) {
+    pts.pop();
+  }
+
+  if (pts.length !== 4) {
+    return null;
+  }
+
+  const [p0, p1, p2, p3] = pts;
+
+  const edge01 = { x: p1.x - p0.x, y: p1.y - p0.y };
+  const edge12 = { x: p2.x - p1.x, y: p2.y - p1.y };
+  const edge32 = { x: p2.x - p3.x, y: p2.y - p3.y };
+
+  const d01 = Math.hypot(edge01.x, edge01.y);
+  const d12 = Math.hypot(edge12.x, edge12.y);
+
+  if (!(d01 > 0) || !(d12 > 0)) {
+    return null;
+  }
+
+  if (requireRectangle) {
+    // Opposite edges equal (parallelogram) and adjacent edges
+    // perpendicular (rectangle), whether or not the closing edge
+    // p3 -> p0 was drawn.
+    if (
+      Math.abs(edge01.x - edge32.x) > tolerance ||
+      Math.abs(edge01.y - edge32.y) > tolerance
+    ) {
+      return null;
+    }
+
+    const dot = edge01.x * edge12.x + edge01.y * edge12.y;
+
+    if (Math.abs(dot) > tolerance * Math.max(d01, d12)) {
+      return null;
+    }
+  }
+
+  const mid = (a, b) => ({
+    x: (a.x + b.x) / 2,
+    y: (a.y + b.y) / 2,
+    z: a.z
+  });
+
+  return d01 >= d12
+    ? {
+        start: mid(p0, p3),
+        end: mid(p1, p2),
+        length: d01,
+        thickness: d12
+      }
+    : {
+        start: mid(p0, p1),
+        end: mid(p3, p2),
+        length: d12,
+        thickness: d01
+      };
+}
+
+function wallBasePoint(args, index) {
+  return {
+    x: Number(args?.["x" + index]),
+    y: Number(args?.["y" + index]),
+    z: Number(args?.["z" + index]) || 0
+  };
+}
+
+/**
+ * Consecutive wall calls from one source handle whose base
+ * segments chain into a thin-rectangle outline are the drawn
+ * edges of ONE wall, not one wall each. Returns the single
+ * centreline wall call, or null when the group is not such an
+ * outline.
+ */
+function collapseWallOutlineChain(group, tolerance = 1) {
+  if (group.length < 2) {
+    return null;
+  }
+
+  const pts = [wallBasePoint(group[0].arguments, 1)];
+
+  for (const call of group) {
+    const start = wallBasePoint(call.arguments, 1);
+    const previous = pts[pts.length - 1];
+
+    if (
+      Math.hypot(
+        start.x - previous.x,
+        start.y - previous.y
+      ) > tolerance
+    ) {
+      return null;
+    }
+
+    pts.push(wallBasePoint(call.arguments, 2));
+  }
+
+  const outline = wallOutlineCentreline(pts, { tolerance });
+
+  if (!outline) {
+    return null;
+  }
+
+  const template = group[0];
+  const args = template.arguments;
+  const height = Math.abs(Number(args.z3) - Number(args.z2));
+
+  if (!(height > 0)) {
+    return null;
+  }
+
+  const { start, end } = outline;
+
+  return {
+    ...template,
+    arguments: {
+      ...args,
+      x1: start.x, y1: start.y, z1: start.z,
+      x2: end.x, y2: end.y, z2: end.z,
+      x3: end.x, y3: end.y, z3: end.z + height,
+      x4: start.x, y4: start.y, z4: start.z + height
+    }
+  };
+}
+
+/**
  * Keeps only genuine wall creation calls from a brain conversion
  * result and removes everything that is not a wall (other tools,
  * degenerate contours, and duplicates).
+ *
+ * Consecutive calls from the same handle whose segments outline a
+ * thin rectangle in plan are collapsed into the one wall they
+ * draw (its long-axis centreline), so an outline drawn as three
+ * or four edges counts as one wall.
  *
  * Accepts the full result object ({ calls: [...] }) or a bare
  * calls array, and returns { calls, removed } where removed
@@ -1820,9 +1995,8 @@ export function filterWallCalls(result) {
     ? result
     : result?.calls ?? [];
 
-  const calls = [];
+  const valid = [];
   const removed = [];
-  const seen = new Set();
 
   for (const call of source) {
     const reason = wallCallRejection(call);
@@ -1836,6 +2010,38 @@ export function filterWallCalls(result) {
       continue;
     }
 
+    valid.push(call);
+  }
+
+  const collapsed = [];
+
+  for (let i = 0; i < valid.length; ) {
+    let j = i + 1;
+
+    while (
+      j < valid.length &&
+      valid[j].handle !== undefined &&
+      valid[j].handle === valid[i].handle
+    ) {
+      j += 1;
+    }
+
+    const group = valid.slice(i, j);
+    const merged = collapseWallOutlineChain(group);
+
+    if (merged) {
+      collapsed.push(merged);
+    } else {
+      collapsed.push(...group);
+    }
+
+    i = j;
+  }
+
+  const calls = [];
+  const seen = new Set();
+
+  for (const call of collapsed) {
     const key = duplicateCallKey(
       "wall",
       call.tool,
@@ -1876,5 +2082,6 @@ export default {
   annotationSkipReason,
   duplicateCallKey,
   wallCallRejection,
+  wallOutlineCentreline,
   filterWallCalls
 };
