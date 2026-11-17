@@ -97,6 +97,14 @@ They are sampled into one `tekla_create_polybeam` point contour in the XY plane,
 with at most 1 mm chord deviation; this is a faceted approximation, not an exact
 Tekla arc. Arc radius is not used as the beam's section size.
 Source Z/elevation is preserved; otherwise the beam height setting supplies Z.
+On Brain conversion, a blank Beam profile textbox is filled when the DXF has
+one unambiguous beam section (for example, `300x600` becomes `300*600`).
+Beam size text on `BEAM` layers ending in `_T2` takes precedence over exported
+profile fields; otherwise beam geometry profile fields are used. Other layers
+are excluded. Entered settings are preserved, and mixed sections are listed in
+the textbox placeholder rather than choosing one. Save the workflow to retain
+the populated setting. The detected section also supplies blank beam defaults
+for that conversion; individual source sections retain their existing priority.
 Annotations, unsupported entity types and zero-length paths are skipped with
 reasons. Multi-point paths take precedence over exported start/end fields.
 

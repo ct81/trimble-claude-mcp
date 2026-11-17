@@ -1540,6 +1540,39 @@ export function buildGridDefinition(entities) {
   return { grid, skipped };
 }
 /**
+ * Finds beam section settings, preferring dedicated beam size annotations.
+ */
+export function extractBeamProfiles(records) {
+  const labels = new Set();
+  const profiles = new Set();
+  const section = value => {
+    const text = cleanString(value);
+    const match = text?.match(/^(\d+(?:\.\d+)?)\s*[xX*×]\s*(\d+(?:\.\d+)?)$/);
+    return match && Number(match[1]) > 0 && Number(match[2]) > 0
+      ? `${Number(match[1])}*${Number(match[2])}` : null;
+  };
+  for (const record of records) {
+    const layer = cleanString(readSource(record, "layer")) || "";
+    if (!/beam/i.test(layer) || ANNOTATION_LAYER_PATTERN.test(layer)) continue;
+    const entity = String(readSource(record, "entityType") || "").toUpperCase();
+    if (/^(TEXT|MTEXT)$/.test(entity) && /_t2$/i.test(layer)) {
+      const profile = section(readSource(record, "name"));
+      if (profile) labels.add(profile);
+      continue;
+    }
+    if (TAG_LAYER_PATTERN.test(layer) || !/^(LINE|ARC|LWPOLYLINE|POLYLINE)$/.test(entity)) continue;
+    const geometry = extractGeometry(record);
+    if (entity === "LINE" && (!geometry.start || !geometry.end ||
+        Math.hypot(geometry.end.x - geometry.start.x, geometry.end.y - geometry.start.y,
+          (geometry.end.z || 0) - (geometry.start.z || 0)) === 0)) continue;
+    const raw = cleanString(readSource(record, "profile"));
+    if (raw) profiles.add(section(raw) || raw);
+  }
+  // Beam size tags are more specific than exporter profiles copied from nearby columns or walls.
+  return [...(labels.size ? labels : profiles)];
+}
+
+/**
  * Converts structural records; unknown and ignored records are returned separately.
  */
 export function convertDxfJson(input, options = {}) {
@@ -1571,6 +1604,7 @@ export function convertDxfJson(input, options = {}) {
 
   return {
     totalRecords: records.length,
+    beamProfiles: extractBeamProfiles(records),
     mappedCount: calls.length,
     skippedCount: skipped.length,
     counts,
@@ -2150,6 +2184,7 @@ export default {
   classifyDxfEntity,
   mapDxfEntityToMcp,
   convertDxfJson,
+  extractBeamProfiles,
   dispatchDxfJson,
   formatDxfReport,
   annotationSkipReason,

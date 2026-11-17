@@ -3017,6 +3017,18 @@ async function runWorkflowCore(signal) {
         });
         const converted = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(converted.error || "Brain conversion failed (HTTP " + response.status + ")");
+        if (state.brainTypes.includes("beam")) {
+          const profileInput = cur.el.querySelector('[data-k="beam_profile"]');
+          const profiles = converted.beamProfiles || [];
+          if (profileInput && !profileInput.value.trim()) {
+            if (profiles.length === 1) {
+              profileInput.value = profiles[0];
+              state.brainDefaults.beam.profile = profiles[0];
+            } else if (profiles.length > 1) {
+              profileInput.placeholder = "Multiple DXF beam profiles: " + profiles.join(", ");
+            }
+          }
+        }
         const gridlines = converted.gridlines || [];
         const rows = [...converted.calls.map((call) => call.arguments), ...gridlines];
         if (!converted.calls.length && !gridlines.length) {

@@ -344,6 +344,9 @@ export function brainToTekla(records, types, defaults = {}) {
     try {
       const args = { ...call.args, _src: call.source };
       const settings = settingsFor(type, defaults);
+      if (["beam", "polybeam"].includes(type) && !settings.profile && converted.beamProfiles.length === 1) {
+        settings.profile = converted.beamProfiles[0];
+      }
       if (["beam", "polybeam", "slab"].includes(type)) args._zDefault = settings.height;
       const result = BUILDERS[type](args, settings);
       for (const built of Array.isArray(result) ? result : [result]) {
@@ -373,5 +376,5 @@ export function brainToTekla(records, types, defaults = {}) {
   for (const c of calls) mapped[c.tool] = (mapped[c.tool] || 0) + 1;
   const counts = Object.fromEntries(Object.entries(converted.counts).filter(([type]) => type !== "unknown" && type !== "ignored"));
   const gridWarnings = grid ? ["The parent grid uses common rectangular extents; individual DXF line lengths may differ. Verify the grid in Tekla."] : [];
-  return { version: BRAIN_VERSION, totalRecords: converted.calls.length, counts, mapped, calls, skipped, gridlines, grid, gridWarnings };
+  return { version: BRAIN_VERSION, totalRecords: converted.calls.length, counts, mapped, calls, skipped, gridlines, grid, gridWarnings, beamProfiles: converted.beamProfiles };
 }
