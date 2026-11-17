@@ -88,6 +88,24 @@ are available through their respective local bridge integrations; a deployed
 Render service cannot directly reach software running on a user's workstation
 without a reachable bridge or relay.
 
+### DXF beams in Workflow Builder
+
+Select **beam** on the Brain node to create straight beams and single polybeams
+from ordered multi-point paths or DXF `ARC` records. Arcs require `Center_X`,
+`Center_Y`, `Radius`, `StartAngle` and `EndAngle` (counterclockwise degrees).
+They are sampled into one `tekla_create_polybeam` point contour in the XY plane,
+with at most 1 mm chord deviation; this is a faceted approximation, not an exact
+Tekla arc. Arc radius is not used as the beam's section size.
+Source Z/elevation is preserved; otherwise the beam height setting supplies Z.
+Annotations, unsupported entity types and zero-length paths are skipped with
+reasons. Multi-point paths take precedence over exported start/end fields.
+
+The DXF script also exports `filterBeamCalls(resultOrCalls)` to retain only valid
+beam/polybeam calls from mapped JSON and report rejected or duplicate entries in
+`removed`. It filters creation payloads, not existing Tekla model objects.
+Skipped arcs cannot be recovered from a mapped report containing only handles;
+regenerate from the original DXF records with their curve geometry.
+
 ### DXF grid data in Workflow Builder
 
 On a Brain node, select **gridline** to extract entities from

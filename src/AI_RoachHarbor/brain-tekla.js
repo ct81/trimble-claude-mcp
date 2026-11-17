@@ -1,4 +1,4 @@
-import { annotationSkipReason, buildGridDefinition, convertDxfJson, duplicateCallKey, extractGridlineData, wallOutlineCentreline } from "./supraesophageal_ganglion_4_dxf.js";
+import { annotationSkipReason, beamArcPoints, beamCallRejection, buildGridDefinition, convertDxfJson, duplicateCallKey, extractGridlineData, wallOutlineCentreline } from "./supraesophageal_ganglion_4_dxf.js";
 
 const num = (value) => {
   const n = Number(value);
@@ -32,9 +32,10 @@ const SIZE_TEXT = /(\d+(?:\.\d+)?)\s*[xX*×]\s*(\d+(?:\.\d+)?)/;
 // Length_mm is the member length/height, not part of the section.
 function sizeProfile(args) {
   const src = args._src;
-  const radius = rawDim(src, ["radius", "radius_mm", "r", "radius_m"]) ?? num(args.attributes?.radius) ?? num(args.radius);
+  const isArc = String(src?.Type ?? src?.type ?? args.attributes?.dxfEntityType ?? "").toUpperCase() === "ARC";
+  const radius = isArc ? undefined : rawDim(src, ["radius", "radius_mm", "r", "radius_m"]) ?? num(args.attributes?.radius) ?? num(args.radius);
   if (radius) return { profile: `D${round(radius * 2)}`, from: "Radius" };
-  const dia = rawDim(src, ["diameter", "diameter_mm", "dia", "dia_mm", "diameter_m"]) ?? num(args.diameter);
+  const dia = rawDim(src, ["diameter", "diameter_mm", "dia", "dia_mm", "diameter_m"]) ?? (isArc ? undefined : num(args.diameter));
   if (dia) return { profile: `D${round(dia)}`, from: "Diameter" };
 
   const w = rawDim(src, ["width_mm", "width", "w", "width_m"]) ?? num(args.width);
@@ -130,8 +131,20 @@ const plateProfile = (args, thickness, defaults) => {
 const baseZ = (args) => num(args.level) ?? args._zDefault ?? 0;
 const vertexPoints = (args) => (args.attributes?.vertices || args.vertices || []).map((p) => pt(p, baseZ(args))).filter(Boolean);
 
+function beamEntityType(args) {
+  const entity = String(args.attributes?.dxfEntityType ?? "").toUpperCase();
+  if (entity && !["LINE", "POLYLINE", "LWPOLYLINE", "ARC"].includes(entity)) {
+    throw new Error(`${entity} is not a beam path`);
+  }
+  return entity;
+}
+
 function beamArgs(args, defaults) {
   const level = baseZ(args);
+  const entity = beamEntityType(args);
+  if (entity === "ARC") return polybeamArgs(args, defaults, beamArcPoints(args._src, level));
+  const points = vertexPoints(args);
+  if (points.length >= 2) return polybeamArgs(args, defaults, points);
   const a = pt(args.startPoint, level), b = pt(args.endPoint, level);
   if (a && b) {
     if (same(a, b)) throw new Error("beam start and end points are the same");
@@ -139,17 +152,18 @@ function beamArgs(args, defaults) {
       tool: "tekla_create_beam",
       arguments: {
         x1: a.x, y1: a.y, z1: a.z, x2: b.x, y2: b.y, z2: b.z,
-        profile: profileFor(args, defaults),
+        profile: profileFor(args, defaults, false),
         ...common(args, defaults)
       }
     };
   }
-  const points = vertexPoints(args);
-  if (points.length >= 2) return polybeamArgs(args, defaults, points);
   throw new Error("beam needs start/end points or vertices");
 }
 
 function polybeamArgs(args, defaults, points = vertexPoints(args)) {
+  if (beamEntityType(args) === "ARC" && !points.length) {
+    points = beamArcPoints(args._src, baseZ(args));
+  }
   if (points.length < 2) throw new Error("polybeam needs at least 2 points");
   return {
     tool: "tekla_create_polybeam",
@@ -333,6 +347,10 @@ export function brainToTekla(records, types, defaults = {}) {
       if (["beam", "polybeam", "slab"].includes(type)) args._zDefault = settings.height;
       const result = BUILDERS[type](args, settings);
       for (const built of Array.isArray(result) ? result : [result]) {
+        if (["beam", "polybeam"].includes(type)) {
+          const reason = beamCallRejection({ type, ...built });
+          if (reason) { skipped.push({ handle: call.handle, type, reason }); continue; }
+        }
         // Same type at the same place counts once, even if drawn with different shapes (e.g. circle + outline).
         const key = duplicateCallKey(type, built.tool, built.arguments);
         if (seen.has(key)) { skipped.push({ handle: call.handle, type, reason: "duplicate of an earlier object" }); continue; }

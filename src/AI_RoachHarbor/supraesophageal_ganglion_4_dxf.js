@@ -1696,7 +1696,7 @@ export function formatDxfReport(result) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Structural wall filtering                                           */
+/* Structural beam and wall filtering                                  */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -1747,6 +1747,79 @@ export function duplicateCallKey(type, tool, args) {
     (_, value) =>
       typeof value === "number" ? Math.round(value) : value
   );
+}
+
+/**
+ * Samples a DXF ARC in its XY plane as one polybeam contour.
+ * Angles are degrees, counterclockwise, with at most 1 mm chord deviation.
+ */
+export function beamArcPoints(source, zFallback = 0) {
+  const center = getPoint(source, "center");
+  const radius = toNumber(readSource(source, "radius"));
+  const start = toNumber(source.StartAngle ?? source.startAngle);
+  const end = toNumber(source.EndAngle ?? source.endAngle);
+  if (!center || !(radius > 0) || start === undefined || end === undefined) {
+    throw new Error("curved beam needs center, positive radius, StartAngle and EndAngle");
+  }
+  const sweep = ((end - start) % 360 + 360) % 360;
+  if (!sweep) throw new Error("curved beam has zero angular sweep");
+  const radians = sweep * Math.PI / 180;
+  const step = Math.min(Math.PI / 36, 2 * Math.acos(Math.max(-1, 1 - 1 / radius)));
+  const segments = Math.max(2, Math.ceil(radians / step));
+  if (!Number.isFinite(segments) || segments > 10000) {
+    throw new Error("curved beam requires too many contour points at 1 mm tolerance");
+  }
+  const z = center.z ?? toNumber(readSource(source, "elevation")) ?? zFallback;
+  return Array.from({ length: segments + 1 }, (_, index) => {
+    const angle = start * Math.PI / 180 + radians * index / segments;
+    return { x: center.x + radius * Math.cos(angle), y: center.y + radius * Math.sin(angle), z };
+  });
+}
+
+export function beamCallRejection(call) {
+  if (!["tekla_create_beam", "tekla_create_polybeam"].includes(call?.tool)) {
+    return `tool ${call?.tool ?? "none"} is not a beam`;
+  }
+  if (call.type !== undefined && !["beam", "polybeam"].includes(call.type)) {
+    return `type ${call.type} is not a beam`;
+  }
+  const args = call.arguments ?? {};
+  const points = call.tool === "tekla_create_polybeam"
+    ? args.points
+    : [{ x: args.x1, y: args.y1, z: args.z1 }, { x: args.x2, y: args.y2, z: args.z2 }];
+  if (!Array.isArray(points) || points.length < 2) return "beam needs at least 2 points";
+  for (const point of points) {
+    if (!point || ["x", "y", "z"].some((axis) => toNumber(point[axis]) === undefined)) {
+      return "beam point coordinates must be finite numbers";
+    }
+  }
+  for (let index = 1; index < points.length; index += 1) {
+    if (["x", "y", "z"].every((axis) => Number(points[index][axis]) === Number(points[index - 1][axis]))) {
+      return "beam has a zero-length segment";
+    }
+  }
+  return null;
+}
+
+/**
+ * Accepts a mapped result or calls array; never deletes existing model objects.
+ * Rejected calls retain their handle, type and an explicit removal reason.
+ */
+export function filterBeamCalls(result) {
+  const calls = [];
+  const removed = [];
+  const seen = new Set();
+  for (const call of Array.isArray(result) ? result : result?.calls ?? []) {
+    const reason = beamCallRejection(call);
+    const key = reason ? null : duplicateCallKey("beam", call.tool, call.arguments);
+    if (reason || seen.has(key)) {
+      removed.push({ handle: call?.handle, type: call?.type, reason: reason || "duplicate of an earlier object" });
+      continue;
+    }
+    seen.add(key);
+    calls.push(call);
+  }
+  return { calls, removed };
 }
 
 /**
@@ -2081,6 +2154,9 @@ export default {
   formatDxfReport,
   annotationSkipReason,
   duplicateCallKey,
+  beamArcPoints,
+  beamCallRejection,
+  filterBeamCalls,
   wallCallRejection,
   wallOutlineCentreline,
   filterWallCalls
