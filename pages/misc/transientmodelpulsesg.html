@@ -4020,7 +4020,7 @@
                 await processAndAddModel(await response.arrayBuffer());
             } catch (error) { showToast("Failed to boot Web-IFC engine.", 'error'); loadTitle.innerText = "Init Error"; loadStatus.innerText = "Failed to boot."; }
         }
-        //startApp();
+        startApp();
 
         const fileInput = document.getElementById('ifc-upload');
         fileInput.addEventListener('change', (event) => {
