@@ -36,6 +36,32 @@
             aspect-ratio: 4/3;
         }
 
+        #game-container:fullscreen,
+        #game-container:-webkit-full-screen {
+            width: 100vw;
+            height: 100vh;
+            max-width: none;
+            max-height: none;
+            border: 0;
+            border-radius: 0;
+            aspect-ratio: auto;
+        }
+
+        #fullscreen-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            z-index: 30;
+            width: 42px;
+            height: 42px;
+            border: 2px solid #00a8ff;
+            border-radius: 8px;
+            background: rgba(0, 15, 30, 0.85);
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
         canvas {
             display: block;
             width: 100%;
@@ -333,6 +359,7 @@
 
 <div id="game-container">
     <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <button id="fullscreen-btn" type="button" title="Enter fullscreen" aria-label="Enter fullscreen" onclick="toggleFullscreen()">⛶</button>
 
     <!-- Start Screen -->
     <div id="start-screen">
@@ -401,6 +428,34 @@
     // --- Game Variables & State ---
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
+
+    function syncFullscreenButton() {
+        const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        const label = isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen';
+        const button = document.getElementById('fullscreen-btn');
+        button.title = label;
+        button.setAttribute('aria-label', label);
+    }
+
+    async function toggleFullscreen() {
+        try {
+            if (document.fullscreenElement || document.webkitFullscreenElement) {
+                const exitFullscreen = document.exitFullscreen || document.webkitExitFullscreen;
+                if (!exitFullscreen) throw new Error('Fullscreen is not supported by this browser.');
+                await exitFullscreen.call(document);
+            } else {
+                const game = document.getElementById('game-container');
+                const requestFullscreen = game.requestFullscreen || game.webkitRequestFullscreen;
+                if (!requestFullscreen) throw new Error('Fullscreen is not supported by this browser.');
+                await requestFullscreen.call(game);
+            }
+        } catch (error) {
+            console.error('Failed to toggle fullscreen:', error);
+        }
+    }
+
+    document.addEventListener('fullscreenchange', syncFullscreenButton);
+    document.addEventListener('webkitfullscreenchange', syncFullscreenButton);
     
     let gameState = 'start'; 
     let animationId;

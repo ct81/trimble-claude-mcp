@@ -71,6 +71,7 @@
   }
   .iconBtn:hover{transform:scale(1.08);background:rgba(255,255,255,.26)}
   .iconBtn:active{transform:scale(.94)}
+  #fullscreenBtn{position:absolute;top:12px;right:14px;z-index:15}
 
   .mute{
     position:absolute;right:14px;bottom:14px;z-index:6;
@@ -207,6 +208,7 @@
     <button class="iconBtn hidden" id="pauseBtn" title="Pause (P)" aria-label="Pause">❚❚</button>
   </div>
 
+  <button class="iconBtn" id="fullscreenBtn" type="button" title="Enter fullscreen" aria-label="Enter fullscreen">⛶</button>
   <button class="mute" id="muteBtn" title="Mute (M)">🔊</button>
 
   <!-- Start screen -->
@@ -283,6 +285,7 @@ const boardOver  = document.getElementById('boardOver');
 
 const muteBtn   = document.getElementById('muteBtn');
 const pauseBtn  = document.getElementById('pauseBtn');
+const fullscreenBtn = document.getElementById('fullscreenBtn');
 const playBtn   = document.getElementById('playBtn');
 const againBtn  = document.getElementById('againBtn');
 const resumeBtn = document.getElementById('resumeBtn');
@@ -487,6 +490,33 @@ muteBtn.addEventListener('click', () => {
   syncMute();
   if (!muted) initAudio();
 });
+
+function syncFullscreenButton(){
+  const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  const label = isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen';
+  fullscreenBtn.title = label;
+  fullscreenBtn.setAttribute('aria-label', label);
+}
+
+fullscreenBtn.addEventListener('click', async () => {
+  try {
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      const exitFullscreen = document.exitFullscreen || document.webkitExitFullscreen;
+      if (!exitFullscreen) throw new Error('Fullscreen is not supported by this browser.');
+      await exitFullscreen.call(document);
+    } else {
+      const game = document.getElementById('game');
+      const requestFullscreen = game.requestFullscreen || game.webkitRequestFullscreen;
+      if (!requestFullscreen) throw new Error('Fullscreen is not supported by this browser.');
+      await requestFullscreen.call(game);
+    }
+  } catch (error) {
+    console.error('Failed to toggle fullscreen:', error);
+  }
+});
+
+document.addEventListener('fullscreenchange', syncFullscreenButton);
+document.addEventListener('webkitfullscreenchange', syncFullscreenButton);
 
 /* ============================================================
    HELPERS
