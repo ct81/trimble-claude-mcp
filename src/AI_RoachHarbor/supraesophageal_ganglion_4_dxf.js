@@ -1695,17 +1695,186 @@ export function formatDxfReport(result) {
   return lines.join("\n");
 }
 
+/* ------------------------------------------------------------------ */
+/* Structural wall filtering                                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Grid bubbles, dimensions and title blocks are drawn as
+ * circles/lines but are not structural members.
+ *
+ * Layers ending in _T / _T2 are tag layers (labels and leader
+ * lines), e.g. S-_WALL----_T. Closed outlines there are kept
+ * because slab outlines are drawn on S-_SLAB----_T.
+ */
+export const ANNOTATION_LAYER_PATTERN =
+  /anot|grid|dim|tblk|title|text|note/i;
+
+export const TAG_LAYER_PATTERN = /_t\d?$/i;
+
+/**
+ * Returns a skip reason when the source record is annotation
+ * graphics (tags, dimensions, labels), or null when the record
+ * describes a real structural member.
+ */
+export function annotationSkipReason(source) {
+  const layer = String(source?.Layer ?? "");
+
+  const closedOutline =
+    /POLYLINE/i.test(String(source?.Type ?? "")) &&
+    /^(yes|true|1)$/i.test(String(source?.Closed ?? ""));
+
+  if (
+    ANNOTATION_LAYER_PATTERN.test(layer) ||
+    (TAG_LAYER_PATTERN.test(layer) && !closedOutline)
+  ) {
+    return `annotation layer ${layer}`;
+  }
+
+  return null;
+}
+
+/**
+ * Same type at the same place counts once, even if drawn with
+ * different shapes (e.g. circle + outline). Profile, material
+ * and class do not affect placement, so they are excluded.
+ */
+export function duplicateCallKey(type, tool, args) {
+  const { profile, material, classNumber, ...place } = args ?? {};
+
+  return JSON.stringify(
+    [type, tool, place],
+    (_, value) =>
+      typeof value === "number" ? Math.round(value) : value
+  );
+}
+
+/**
+ * Returns a removal reason when a mapped call is not a genuine
+ * wall, or null when it is one.
+ *
+ * A genuine wall call is a tekla_create_wall contour with
+ * numeric corners, a non-zero base run (point1 to point2) and a
+ * non-zero height (point2 up to point3).
+ */
+export function wallCallRejection(call) {
+  if (call?.tool !== "tekla_create_wall") {
+    return `tool ${call?.tool ?? "none"} is not a wall`;
+  }
+
+  if (call.type !== undefined && call.type !== "wall") {
+    return `type ${call.type} is not a wall`;
+  }
+
+  const args = call.arguments ?? {};
+
+  const corners = [
+    "x1", "y1", "z1",
+    "x2", "y2", "z2",
+    "x3", "y3", "z3"
+  ];
+
+  if (
+    args.x4 !== undefined ||
+    args.y4 !== undefined ||
+    args.z4 !== undefined
+  ) {
+    corners.push("x4", "y4", "z4");
+  }
+
+  for (const key of corners) {
+    if (!Number.isFinite(Number(args[key]))) {
+      return `corner value ${key} is not a number`;
+    }
+  }
+
+  const run = Math.hypot(
+    Number(args.x2) - Number(args.x1),
+    Number(args.y2) - Number(args.y1)
+  );
+
+  if (!(run > 0)) {
+    return "wall base has zero length";
+  }
+
+  const rise = Math.abs(Number(args.z3) - Number(args.z2));
+
+  if (!(rise > 0)) {
+    return "wall has zero height";
+  }
+
+  return null;
+}
+
+/**
+ * Keeps only genuine wall creation calls from a brain conversion
+ * result and removes everything that is not a wall (other tools,
+ * degenerate contours, and duplicates).
+ *
+ * Accepts the full result object ({ calls: [...] }) or a bare
+ * calls array, and returns { calls, removed } where removed
+ * entries carry { handle, type, reason }.
+ */
+export function filterWallCalls(result) {
+  const source = Array.isArray(result)
+    ? result
+    : result?.calls ?? [];
+
+  const calls = [];
+  const removed = [];
+  const seen = new Set();
+
+  for (const call of source) {
+    const reason = wallCallRejection(call);
+
+    if (reason) {
+      removed.push({
+        handle: call?.handle,
+        type: call?.type,
+        reason
+      });
+      continue;
+    }
+
+    const key = duplicateCallKey(
+      "wall",
+      call.tool,
+      call.arguments
+    );
+
+    if (seen.has(key)) {
+      removed.push({
+        handle: call.handle,
+        type: call.type,
+        reason: "duplicate of an earlier object"
+      });
+      continue;
+    }
+
+    seen.add(key);
+    calls.push(call);
+  }
+
+  return { calls, removed };
+}
+
 /**
  * Default module export.
  */
 export default {
   OBJECT_TYPE_REGISTRY,
   SOURCE_FIELD_ALIASES,
+  ANNOTATION_LAYER_PATTERN,
+  TAG_LAYER_PATTERN,
   parseDxfJson,
   readDxfJson,
   classifyDxfEntity,
   mapDxfEntityToMcp,
   convertDxfJson,
   dispatchDxfJson,
-  formatDxfReport
+  formatDxfReport,
+  annotationSkipReason,
+  duplicateCallKey,
+  wallCallRejection,
+  filterWallCalls
 };

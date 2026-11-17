@@ -1,4 +1,4 @@
-import { buildGridDefinition, convertDxfJson, extractGridlineData } from "./supraesophageal_ganglion_4_dxf.js";
+import { annotationSkipReason, buildGridDefinition, convertDxfJson, duplicateCallKey, extractGridlineData } from "./supraesophageal_ganglion_4_dxf.js";
 
 const num = (value) => {
   const n = Number(value);
@@ -289,12 +289,6 @@ const BUILDERS = {
 
 const BRAIN_VERSION = "2026-10-27.per-type-settings";
 
-// Grid bubbles, dimensions and title blocks are drawn as circles/lines but are not structural members.
-// Layers ending in _T / _T2 are tag layers (labels and leader lines), e.g. S-_COLN----_T. Closed outlines there
-// are kept because slab outlines are drawn on S-_SLAB----_T.
-const ANNOTATION_LAYER = /anot|grid|dim|tblk|title|text|note/i;
-const TAG_LAYER = /_t\d?$/i;
-
 const BUILT_IN_DEFAULTS = {
   column: { profile: "300*300", height: 3000 },
   beam: { profile: "300*600", height: 0 },
@@ -328,9 +322,9 @@ export function brainToTekla(records, types, defaults = {}) {
   for (const call of converted.calls) {
     const type = call.objectType;
     if (!wanted.has(type)) { skipped.push({ handle: call.handle, type, reason: "type not selected" }); continue; }
-    const layer = String(call.source?.Layer ?? "");
-    const closedOutline = /POLYLINE/i.test(String(call.source?.Type ?? "")) && /^(yes|true|1)$/i.test(String(call.source?.Closed ?? ""));
-    if (ANNOTATION_LAYER.test(layer) || (TAG_LAYER.test(layer) && !closedOutline)) { skipped.push({ handle: call.handle, type, reason: `annotation layer ${layer}` }); continue; }
+    // Tag/annotation graphics (e.g. S-_WALL----_T label layers) are not structural members.
+    const annotation = annotationSkipReason(call.source);
+    if (annotation) { skipped.push({ handle: call.handle, type, reason: annotation }); continue; }
     if (!BUILDERS[type]) { skipped.push({ handle: call.handle, type, reason: "no Tekla tool mapping yet" }); continue; }
     try {
       const args = { ...call.args, _src: call.source };
@@ -339,8 +333,7 @@ export function brainToTekla(records, types, defaults = {}) {
       const result = BUILDERS[type](args, settings);
       for (const built of Array.isArray(result) ? result : [result]) {
         // Same type at the same place counts once, even if drawn with different shapes (e.g. circle + outline).
-        const { profile, material, classNumber, ...place } = built.arguments;
-        const key = JSON.stringify([type, built.tool, place], (_, v) => typeof v === "number" ? Math.round(v) : v);
+        const key = duplicateCallKey(type, built.tool, built.arguments);
         if (seen.has(key)) { skipped.push({ handle: call.handle, type, reason: "duplicate of an earlier object" }); continue; }
         seen.add(key);
         calls.push({ handle: call.handle, type, ...built, profileFrom: args._profileFrom || "n/a" });
