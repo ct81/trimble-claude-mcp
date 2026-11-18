@@ -776,6 +776,7 @@
         <button class="break-tab" id="breakTab2" type="button" role="tab" aria-selected="false" aria-controls="breakPanel2" tabindex="-1">Teenieping</button>
         <button class="break-tab" id="breakTab3" type="button" role="tab" aria-selected="false" aria-controls="breakPanel3" tabindex="-1">Pac DJ</button>
         <button class="break-tab" id="breakTab4" type="button" role="tab" aria-selected="false" aria-controls="breakPanel4" tabindex="-1">Racing</button>
+        <button class="break-tab" id="breakTab5" type="button" role="tab" aria-selected="false" aria-controls="breakPanel5" tabindex="-1">Football Kick</button>
       </div>
       <div class="break-panel" id="breakPanel1" role="tabpanel" aria-labelledby="breakTab1">
         <iframe id="breakFrame" title="Break Time - Macross" data-src="misc/game_macross.html" allow="fullscreen" allowfullscreen></iframe>
@@ -788,6 +789,9 @@
       </div>
       <div class="break-panel" id="breakPanel4" role="tabpanel" aria-labelledby="breakTab4" hidden>
         <iframe id="racingFrame" title="Break Time - Racing" data-src="misc/game_racing.html" allow="fullscreen" allowfullscreen></iframe>
+      </div>
+      <div class="break-panel" id="breakPanel5" role="tabpanel" aria-labelledby="breakTab5" hidden>
+        <iframe id="footballkickFrame" title="Break Time - Football Kick" data-src="misc/game_footballkick.html" allow="fullscreen" allowfullscreen></iframe>
       </div>
     </div>
   </section>
@@ -3017,15 +3021,17 @@ async function runWorkflowCore(signal) {
         });
         const converted = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(converted.error || "Brain conversion failed (HTTP " + response.status + ")");
-        if (state.brainTypes.includes("beam")) {
-          const profileInput = cur.el.querySelector('[data-k="beam_profile"]');
-          const profiles = converted.beamProfiles || [];
+        for (const type of state.brainTypes) {
+          if (!Object.hasOwn(state.brainDefaults, type)) continue;
+          const profileInput = cur.el.querySelector(`[data-k="${type}_profile"]`);
+          const profiles = converted.profilesByType?.[type] || (type === "beam" ? converted.beamProfiles : []) || [];
           if (profileInput && !profileInput.value.trim()) {
+            profileInput.placeholder = "profile (blank = from DXF)";
             if (profiles.length === 1) {
               profileInput.value = profiles[0];
-              state.brainDefaults.beam.profile = profiles[0];
+              state.brainDefaults[type].profile = profiles[0];
             } else if (profiles.length > 1) {
-              profileInput.placeholder = "Multiple DXF beam profiles: " + profiles.join(", ");
+              profileInput.placeholder = `Multiple DXF ${type} profiles: ` + profiles.join(", ");
             }
           }
         }
@@ -3399,7 +3405,8 @@ function autoSignIn() {
     { tab: breakTabs[0], frame: document.getElementById("breakFrame") },
     { tab: breakTabs[1], frame: document.getElementById("teeniepingFrame") },
     { tab: breakTabs[2], frame: document.getElementById("pacdjFrame") },
-    { tab: breakTabs[3], frame: document.getElementById("racingFrame") }
+    { tab: breakTabs[3], frame: document.getElementById("racingFrame") },
+    { tab: breakTabs[4], frame: document.getElementById("footballkickFrame") }
   ];
   let current = null;
 

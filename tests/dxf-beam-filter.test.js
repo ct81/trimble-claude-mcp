@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { beamCallRejection, extractBeamProfiles, filterBeamCalls } from '../src/AI_RoachHarbor/supraesophageal_ganglion_4_dxf.js';
+import { beamCallRejection, extractBeamProfiles, extractProfilesByType, filterBeamCalls } from '../src/AI_RoachHarbor/supraesophageal_ganglion_4_dxf.js';
 import { brainToTekla } from '../src/AI_RoachHarbor/brain-tekla.js';
 
 const beam = (handle, overrides = {}) => ({
@@ -74,6 +74,75 @@ test('Brain conversion populates the Beam textbox, preserves entered settings an
         assert.equal(state.brainDefaults.beam.profile, expected);
         if (tags.length > 1) assert.match(input.placeholder, /400\*700, 300\*600/);
         if (expected) assert.equal(state.brainCalls[0].arguments.profile, expected);
+    }
+});
+
+test('per-type profiles use structural layers, aliases and size tags without cross-type contamination', () => {
+    const profiles = extractProfilesByType([
+        { ...beamRecord, Layer: 'S-_POLYBEAM----_E', Profile: '250x500' },
+        { ...beamRecord, Layer: 'S-_COLN----_E', TeklaPartType: 'Beam', Section: '650x650' },
+        { ...sizeTag('650 Dia'), Layer: 'S-_COLN----_T2' },
+        { ...beamRecord, Layer: 'S-_WALL----_E', Profile: 'PL300' },
+        { ...beamRecord, Layer: 'S-_SLAB----_E', Profile: 'PL200' },
+        { ...beamRecord, Layer: 'S-_FOOTING----_E', Profile: '1500×1500' },
+        { ...beamRecord, Layer: 'S-_PILE----_E', Profile: 'D400' },
+        { ...beamRecord, Layer: 'S-_ANOTGRID_E', Profile: '900x900' },
+        { ...beamRecord, Layer: 'S-_COLN----_T', Profile: '900x900' },
+        { ...beamRecord, Layer: 'S-_WALL----_E', Type: 'HATCH', Profile: 'PL900' }
+    ]);
+    assert.deepEqual(profiles, {
+        polybeam: ['250*500'], column: ['D650'], beam: [], wall: ['PL300'],
+        slab: ['PL200'], footing: ['1500*1500'], pile: ['D400']
+    });
+});
+
+test('Brain fills selected per-type profile textboxes only for unambiguous nonempty DXF data', async () => {
+    const page = readFileSync(new URL('../pages/workflowBuilder.html', import.meta.url), 'utf8');
+    const start = page.indexOf('      if (cur.type === "brain") {');
+    const end = page.indexOf('      if (cur.type === "mcp") {', start);
+    const sourceProfiles = {
+        polybeam: '250x500', column: '650x650', wall: 'PL300',
+        slab: 'PL200', footing: '1500x1500', pile: 'D400'
+    };
+    for (const mode of ['detected', 'entered', 'empty', 'mixed', 'unselected']) {
+        const inputs = Object.fromEntries(Object.keys(sourceProfiles).map(type => [
+            type, { value: mode === 'entered' ? 'CUSTOM' : '', placeholder: 'old placeholder' }
+        ]));
+        const records = [beamRecord];
+        for (const [type, profile] of Object.entries(sourceProfiles)) {
+            records.push({ ...beamRecord, Layer: `S-_${type.toUpperCase()}----_E`, Profile: mode === 'empty' ? ' ' : profile });
+            if (mode === 'mixed') records.push({
+                ...beamRecord, Layer: `S-_${type.toUpperCase()}----_E`, Profile: 'OTHER'
+            });
+        }
+        const state = { fileText: JSON.stringify(records) };
+        const beamInput = { value: '' };
+        const context = vm.createContext({
+            state,
+            cur: { type: 'brain', el: { querySelector: selector =>
+                selector === '[data-k="beam_profile"]' ? beamInput :
+                    inputs[selector.match(/data-k="(\w+)_profile"/)?.[1]] || {} } },
+            readFlow: () => ({
+                script: 'supraesophageal_ganglion_4_dxf.js', type_beam: true,
+                ...Object.fromEntries(Object.keys(inputs).flatMap(type => [
+                    [`type_${type}`, mode !== 'unselected'], [`${type}_profile`, inputs[type].value]
+                ]))
+            }),
+            ensureToken: async () => 'test',
+            fetch: async (_url, options) => {
+                const body = JSON.parse(options.body);
+                return { ok: true, json: async () => brainToTekla(body.records, body.types, body.defaults) };
+            },
+            renderBrain() {}
+        });
+        await vm.runInContext(`(async () => { ${page.slice(start, end)} })()`, context);
+        for (const [type, profile] of Object.entries(sourceProfiles)) {
+            const expected = mode === 'entered' ? 'CUSTOM' : mode === 'detected' ? profile.replace('x', '*') : '';
+            assert.equal(inputs[type].value, expected, `${type}: ${mode}`);
+            assert.equal(state.brainDefaults[type].profile, expected);
+            if (mode === 'mixed') assert.match(inputs[type].placeholder, /Multiple DXF .* profiles: .*OTHER/);
+            if (mode === 'empty') assert.equal(inputs[type].placeholder, 'profile (blank = from DXF)');
+        }
     }
 });
 

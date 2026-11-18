@@ -1540,36 +1540,49 @@ export function buildGridDefinition(entities) {
   return { grid, skipped };
 }
 /**
- * Finds beam section settings, preferring dedicated beam size annotations.
+ * Finds per-type section settings, preferring dedicated size annotations.
  */
-export function extractBeamProfiles(records) {
-  const labels = new Set();
-  const profiles = new Set();
+export function extractProfilesByType(records) {
+  const types = ["polybeam", "column", "beam", "wall", "slab", "footing", "pile"];
+  const labels = Object.fromEntries(types.map(type => [type, new Set()]));
+  const profiles = Object.fromEntries(types.map(type => [type, new Set()]));
   const section = value => {
     const text = cleanString(value);
     const match = text?.match(/^(\d+(?:\.\d+)?)\s*[xX*×]\s*(\d+(?:\.\d+)?)$/);
-    return match && Number(match[1]) > 0 && Number(match[2]) > 0
-      ? `${Number(match[1])}*${Number(match[2])}` : null;
+    if (match && Number(match[1]) > 0 && Number(match[2]) > 0) {
+      return `${Number(match[1])}*${Number(match[2])}`;
+    }
+    const diameter = text?.match(/^(?:D\s*(\d+(?:\.\d+)?)|(\d+(?:\.\d+)?)\s*Dia)$/i);
+    if (diameter && Number(diameter[1] || diameter[2]) > 0) return `D${Number(diameter[1] || diameter[2])}`;
+    return /^PL\s*\d+(?:\.\d+)?$/i.test(text || "") ? text.replace(/\s+/g, "").toUpperCase() : null;
   };
   for (const record of records) {
     const layer = cleanString(readSource(record, "layer")) || "";
-    if (!/beam/i.test(layer) || ANNOTATION_LAYER_PATTERN.test(layer)) continue;
+    if (ANNOTATION_LAYER_PATTERN.test(layer)) continue;
+    const type = types.find(type => OBJECT_TYPE_REGISTRY[type].layerPatterns.some(pattern => pattern.test(layer))) ||
+      classifyDxfEntity(record).objectType;
+    if (!profiles[type]) continue;
     const entity = String(readSource(record, "entityType") || "").toUpperCase();
     if (/^(TEXT|MTEXT)$/.test(entity) && /_t2$/i.test(layer)) {
       const profile = section(readSource(record, "name"));
-      if (profile) labels.add(profile);
+      if (profile) labels[type].add(profile);
       continue;
     }
-    if (TAG_LAYER_PATTERN.test(layer) || !/^(LINE|ARC|LWPOLYLINE|POLYLINE)$/.test(entity)) continue;
+    if (annotationSkipReason({ ...record, Layer: layer, Type: entity }) ||
+        !/^(LINE|ARC|CIRCLE|POINT|LWPOLYLINE|POLYLINE)$/.test(entity)) continue;
     const geometry = extractGeometry(record);
     if (entity === "LINE" && (!geometry.start || !geometry.end ||
         Math.hypot(geometry.end.x - geometry.start.x, geometry.end.y - geometry.start.y,
           (geometry.end.z || 0) - (geometry.start.z || 0)) === 0)) continue;
     const raw = cleanString(readSource(record, "profile"));
-    if (raw) profiles.add(section(raw) || raw);
+    if (raw) profiles[type].add(section(raw) || raw);
   }
-  // Beam size tags are more specific than exporter profiles copied from nearby columns or walls.
-  return [...(labels.size ? labels : profiles)];
+  // Size tags are more specific than exporter profiles copied from nearby objects.
+  return Object.fromEntries(types.map(type => [type, [...(labels[type].size ? labels[type] : profiles[type])]]));
+}
+
+export function extractBeamProfiles(records) {
+  return extractProfilesByType(records).beam;
 }
 
 /**
@@ -1577,6 +1590,7 @@ export function extractBeamProfiles(records) {
  */
 export function convertDxfJson(input, options = {}) {
   const records = parseDxfJson(input);
+  const profilesByType = extractProfilesByType(records);
 
   const calls = [];
   const skipped = [];
@@ -1604,7 +1618,8 @@ export function convertDxfJson(input, options = {}) {
 
   return {
     totalRecords: records.length,
-    beamProfiles: extractBeamProfiles(records),
+    beamProfiles: profilesByType.beam,
+    profilesByType,
     mappedCount: calls.length,
     skippedCount: skipped.length,
     counts,
@@ -2185,6 +2200,7 @@ export default {
   mapDxfEntityToMcp,
   convertDxfJson,
   extractBeamProfiles,
+  extractProfilesByType,
   dispatchDxfJson,
   formatDxfReport,
   annotationSkipReason,
