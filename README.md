@@ -88,12 +88,17 @@ are available through their respective local bridge integrations; a deployed
 Render service cannot directly reach software running on a user's workstation
 without a reachable bridge or relay.
 
-### Brain column offsets in Call MCP
+### Brain argument adjustments in Call MCP
 
-When Call MCP automatically dispatches Brain-generated `tekla_create_column`
-calls, its `x` argument is an offset in millimetres: `-300` sends
-`Brain X - 300` for each column. Blank or zero preserves Brain X; other Brain
-arguments remain unchanged. Without Brain data, or with explicit `{{row.*}}`
+When Call MCP automatically dispatches Brain-generated calls, coordinate fields
+(`x`, `y`, `z`, `x1`, `y1`, `z1`, `x2`, `y2`, `z2`, etc.) add offsets in
+millimetres: `x: -300` sends `Brain X - 300`. This also applies to coordinates
+inside point arrays and nested objects. Other nonblank fields replace Brain
+values, including profile, material, numeric settings and boolean values.
+Blank strings, nulls and empty arrays/objects preserve Brain values. Zero is
+a zero coordinate offset or an explicit replacement for a non-coordinate field.
+Use only coordinates present in the Brain payload; invalid offsets fail before
+that request is sent. Without Brain data, or with explicit `{{row.*}}`
 templates, coordinates retain their existing absolute/template behavior.
 Offsets affect new calls only, not already-created Tekla objects.
 

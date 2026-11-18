@@ -1381,7 +1381,7 @@ function bodyFor(type, id) {
                           </div>
                           <div style="margin-top:6px;font-size:11px"><label><input type="radio" class="args-mode" value="json" checked> JSON</label> <label style="margin-left:8px"><input type="radio" class="args-mode" value="fields"> Fields</label></div>
                           <div class="args-fields" style="display:none;margin-top:6px"></div>
-                          <div class="hint">With Brain automatic column calls, x is an offset in mm (e.g. -300 shifts each column left). Blank or 0 keeps Brain X. Without Brain, coordinates are absolute.</div>
+                          <div class="hint">With Brain automatic calls, coordinate fields (x, y, z, x1, y1, z1, etc.) add offsets in mm. Other nonblank fields replace Brain values. Blank fields keep Brain values. Without Brain or with row templates, coordinates are absolute.</div>
                           <textarea class="args" rows="3" spellcheck="false" style="width:100%;margin-top:6px;font-family:monospace;font-size:11px" placeholder='arguments JSON; file placeholders are replaced'>{"file_base64":"{{file_base64}}","filename":"{{filename}}"}</textarea>
                           <div class="status">not called yet</div>`;
     case "result": return `<div style="margin-bottom:6px;font-size:11px"><label><input type="radio" class="out-mode" value="pretty" checked> Pretty</label> <label style="margin-left:8px"><input type="radio" class="out-mode" value="raw"> Raw</label></div><div class="out">—</div>`;
@@ -3077,6 +3077,9 @@ async function runWorkflowCore(signal) {
           const raw = cur.el.querySelector(".args").value || "{}";
           toolArgs = JSON.parse(raw);
         } catch { throw new Error("Tool arguments must be valid JSON"); }
+        if (!toolArgs || typeof toolArgs !== "object" || Array.isArray(toolArgs)) {
+          throw new Error("Tool arguments must be a JSON object");
+        }
         const subst = (v) => typeof v === "string"
           ? (v === "{{pdf_base64}}" ? (state.pdfBase64 || "")
             : v === "{{file_base64}}" ? (state.fileBase64 || "")
@@ -3123,17 +3126,30 @@ async function runWorkflowCore(signal) {
           const useBrain = brainCall && !templated;
           const dispatchedTool = useBrain ? brainCall.tool : toolName;
           try {
-            let dispatchedArgs = useBrain ? brainCall.arguments : fill(toolArgs);
-            if (useBrain && dispatchedTool === "tekla_create_column" &&
-                toolArgs.x !== undefined && toolArgs.x !== null && String(toolArgs.x).trim() !== "") {
-              const offset = Number(toolArgs.x);
-              const x = brainCall.arguments.x;
-              if (!["number", "string"].includes(typeof toolArgs.x) || !Number.isFinite(offset) ||
-                  typeof x !== "number" || !Number.isFinite(x) || !Number.isFinite(x + offset)) {
-                throw new Error("Column X offset and Brain X must be finite numbers");
+            const adjust = (base, inputs) => {
+              const result = Array.isArray(inputs) ? [...(Array.isArray(base) ? base : [])] : { ...base };
+              for (const [key, value] of Object.entries(inputs)) {
+                if (value === null || value === undefined || (typeof value === "string" && !value.trim())) continue;
+                if (typeof value === "object") {
+                  if (Array.isArray(value) && value.length && value.every(item => item === null || typeof item !== "object")) {
+                    result[key] = [...value];
+                  } else if (Object.keys(value).length) result[key] = adjust(base?.[key], value);
+                } else if (/^[xyz]\d*$/i.test(key)) {
+                  const offset = Number(value);
+                  const coordinate = base?.[key];
+                  if (!["number", "string"].includes(typeof value) || !Number.isFinite(offset) ||
+                      typeof coordinate !== "number" || !Number.isFinite(coordinate) ||
+                      !Number.isFinite(coordinate + offset)) {
+                    throw new Error(`Coordinate ${key} offset and Brain value must be finite numbers`);
+                  }
+                  result[key] = coordinate + offset;
+                } else {
+                  result[key] = value;
+                }
               }
-              dispatchedArgs = { ...brainCall.arguments, x: x + offset };
-            }
+              return result;
+            };
+            const dispatchedArgs = useBrain ? adjust(brainCall.arguments, toolArgs) : fill(toolArgs);
             const response = await callMcpTool(
               url,
               dispatchedTool,
@@ -3142,7 +3158,7 @@ async function runWorkflowCore(signal) {
             );
             results.push(response);
             if (useBrain && dispatchedTool === "tekla_create_grid") {
-              gridVerification = summarizeGridResponse(response, brainCall.arguments, state.brainGridSkipped || [], state.brainGridWarnings || []);
+              gridVerification = summarizeGridResponse(response, dispatchedArgs, state.brainGridSkipped || [], state.brainGridWarnings || []);
             }
           } catch (error) {
             console.error("[Workflow] MCP call failed:", {

@@ -35,7 +35,7 @@ const rectangularDxf = [
     0, 'ENDSEC', 0, 'EOF'
 ].join('\n');
 
-test('Call MCP offsets Brain column X without mutating Brain data or other tool behavior', async () => {
+test('Call MCP offsets Brain coordinates without mutating Brain data or manual/template behavior', async () => {
     const page = readFileSync(new URL('../pages/workflowBuilder.html', import.meta.url), 'utf8');
     const start = page.indexOf('      if (cur.type === "mcp") {');
     const end = page.indexOf('      if (cur.type === "api") {', start);
@@ -49,7 +49,7 @@ test('Call MCP offsets Brain column X without mutating Brain data or other tool 
         { x: false, error: true },
         { x: -300, manual: true, expected: -300 },
         { x: -300, templated: true, expected: -300 },
-        { x: -300, tool: 'tekla_create_beam', expected: 1000 }
+        { x: -300, tool: 'tekla_create_beam', expected: 700 }
     ]) {
         const tool = scenario.tool || 'tekla_create_column';
         const original = { x: 1000, y: 2000, z1: 0, z2: 3000, profile: '300*300' };
@@ -89,6 +89,48 @@ test('Call MCP offsets Brain column X without mutating Brain data or other tool 
                 assert.equal(state.brainCalls[0].arguments.x, 1000);
             }
         }
+    }
+});
+
+test('Call MCP adjusts all coordinate fields and replaces nonblank settings, including nested point coordinates', async () => {
+    const page = readFileSync(new URL('../pages/workflowBuilder.html', import.meta.url), 'utf8');
+    const start = page.indexOf('      if (cur.type === "mcp") {');
+    const end = page.indexOf('      if (cur.type === "api") {', start);
+    for (const tool of ['tekla_create_column', 'tekla_create_beam', 'tekla_create_polybeam', 'tekla_create_wall', 'tekla_create_slab']) {
+        const original = {
+            x: 1000, y: 2000, z: 3000, x1: 100, x2: 200, y1: 300, y2: 400, z1: 500, z2: 600,
+            x3: 700, z4: 800, profile: '300*600', material: 'C30/37', classNumber: '1',
+            height: 3000, enabled: true, labels: ['A', 'B'],
+            points: [{ x: 100, y: 200, z: 300 }, { x: 400, y: 500, z: 600 }],
+            origin: { x: 10, y: 20, z: 30 }
+        };
+        const inputs = {
+            x: -300, y: 25, z: 0, x1: -10, x2: 10, y1: -20, y2: 20, z1: -30, z2: 30,
+            x3: 50, z4: -50, profile: '400*700', material: ' ', classNumber: '0',
+            height: 0, enabled: false, labels: ['C'],
+            points: [{ x: -10, z: 50 }, { y: 25 }],
+            origin: { z: -30 }
+        };
+        const requests = [];
+        const state = { rows: [original], brainCalls: [{ tool, arguments: original }] };
+        const context = vm.createContext({
+            URL, state, signal: { aborted: false },
+            cur: { type: 'mcp', el: { querySelector: selector => ({
+                '.url': { value: 'https://mcp.test' }, '.tool': { value: tool },
+                '.args': { value: JSON.stringify(inputs) }, '.status': {}
+            })[selector] } },
+            ensureToken: async () => 'test', lowerKeys: row => row,
+            callMcpTool: async (_url, _tool, payload) => { requests.push(payload); return {}; }, console
+        });
+        await vm.runInContext(`(async () => { ${page.slice(start, end)} })()`, context);
+        assert.deepEqual(JSON.parse(JSON.stringify(requests[0])), {
+            ...original, x: 700, y: 2025, z: 3000, x1: 90, x2: 210, y1: 280, y2: 420, z1: 470, z2: 630,
+            x3: 750, z4: 750, profile: '400*700', classNumber: '0', height: 0, enabled: false,
+            labels: ['C'], points: [{ x: 90, y: 200, z: 350 }, { x: 400, y: 525, z: 600 }],
+            origin: { x: 10, y: 20, z: 0 }
+        });
+        assert.equal(original.points[0].x, 100);
+        assert.equal(original.origin.z, 30);
     }
 });
 
@@ -197,7 +239,7 @@ test('automatic workflow dispatch sends the generated grid and retains verificat
     await vm.runInContext(`(async () => { ${page.slice(start, end)} })()`, context);
     assert.equal(requests.length, 1);
     assert.equal(requests[0].tool, 'tekla_create_grid');
-    assert.deepEqual(requests[0].args, converted.grid);
+    assert.deepEqual(JSON.parse(JSON.stringify(requests[0].args)), converted.grid);
     assert.equal(state.result.gridVerification.status, 'guid-returned');
     assert.equal(state.result.gridVerification.skipped.length, state.brainGridSkipped.length);
 });
