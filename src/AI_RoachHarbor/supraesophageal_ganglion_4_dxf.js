@@ -1821,7 +1821,7 @@ export function duplicateCallKey(type, tool, args) {
  * Samples a DXF ARC in its XY plane as one polybeam contour.
  * Angles are degrees, counterclockwise, with at most 1 mm chord deviation.
  */
-export function beamArcPoints(source, zFallback = 0) {
+export function beamArcPoints(source, zFallback = 0, zOverride) {
   const center = getPoint(source, "center");
   const radius = toNumber(readSource(source, "radius"));
   const start = toNumber(source.StartAngle ?? source.startAngle);
@@ -1837,7 +1837,7 @@ export function beamArcPoints(source, zFallback = 0) {
   if (!Number.isFinite(segments) || segments > 10000) {
     throw new Error("curved beam requires too many contour points at 1 mm tolerance");
   }
-  const z = center.z ?? toNumber(readSource(source, "elevation")) ?? zFallback;
+  const z = toNumber(zOverride) ?? center.z ?? toNumber(readSource(source, "elevation")) ?? zFallback;
   return Array.from({ length: segments + 1 }, (_, index) => {
     const angle = start * Math.PI / 180 + radians * index / segments;
     return { x: center.x + radius * Math.cos(angle), y: center.y + radius * Math.sin(angle), z };

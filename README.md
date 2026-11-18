@@ -98,7 +98,10 @@ records, also creating one object per arc. Arcs require `Center_X`,
 They are sampled into one `tekla_create_polybeam` point contour in the XY plane,
 with at most 1 mm chord deviation; this is a faceted approximation, not an exact
 Tekla arc. Arc radius is not used as the beam's section size.
-Source Z/elevation is preserved; otherwise the beam height setting supplies Z.
+For beam, polybeam and slab, an entered **Z level mm** overrides all source
+Z/elevation values, including an explicit level of `0`. A blank textbox preserves
+source Z/elevation (or uses zero when absent). Column/wall heights and
+footing/pile thickness/length settings retain their existing meaning.
 On Brain conversion, blank profile textboxes for selected beam, polybeam,
 column, wall, slab, footing and pile types are filled when the DXF has one
 unambiguous nonempty section for that type (`300x600` becomes `300*600`).

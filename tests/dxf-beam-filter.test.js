@@ -257,12 +257,39 @@ test('LINE beams use endpoints rather than unrelated exported vertices', () => {
     assert.equal(result.calls[0].arguments.y2, beamRecord.End_Y);
 });
 
+test('entered Z levels override DXF coordinates for LINE beams, ARC members and slabs', () => {
+    const arc = {
+        Type: 'ARC', Center_X: 100, Center_Y: 200, Center_Z: 2500,
+        Elevation_mm: 1200, Radius: 1000, StartAngle: 0, EndAngle: 90
+    };
+    const cases = [
+        ['beam', { ...beamRecord, Start_Z: 100, End_Z: 200 }, [100, 200]],
+        ['beam', { ...arc, Layer: 'S-_BEAM----' }, [2500]],
+        ['polybeam', { ...arc, Layer: 'S-_POLYBEAM----' }, [2500]],
+        ['slab', {
+            Type: 'LWPOLYLINE', Layer: 'S-_SLAB----_E', Closed: 'Yes',
+            Vertices: [{ x: 0, y: 0, z: 100 }, { x: 100, y: 0, z: 200 }, { x: 100, y: 100, z: 300 }]
+        }, [100, 200, 300]]
+    ];
+    for (const [type, record, sourceZ] of cases) {
+        for (const height of ['4500', '0', '-500', '', undefined]) {
+            const result = brainToTekla([record], [type], { [type]: { height } });
+            assert.equal(result.calls.length, 1, `${type}: ${height}`);
+            const args = result.calls[0].arguments;
+            const actual = args.points ? [...new Set(args.points.map(p => p.z))] :
+                type === 'slab' ? [args.z1, args.z2, args.z3] : [args.z1, args.z2];
+            const expected = height === '' || height === undefined ? sourceZ : actual.map(() => Number(height));
+            assert.deepEqual(actual, expected, `${type}: ${height}`);
+        }
+    }
+});
+
 test('ARC beam becomes one polybeam with wraparound, elevation and at most 1 mm chord deviation', () => {
     const result = brainToTekla([{
         Handle: '2C6', Type: 'ARC', Layer: 'S-_BEAM----',
         Center_X: 100, Center_Y: 200, Center_Z: 2500,
         Radius: 30000, StartAngle: 350, EndAngle: 80
-    }], ['beam'], { beam: { profile: '300*600', height: 4500 } });
+    }], ['beam'], { beam: { profile: '300*600', height: '' } });
     assert.equal(result.skipped.length, 0);
     assert.deepEqual(result.mapped, { tekla_create_polybeam: 1 });
     const call = result.calls[0];

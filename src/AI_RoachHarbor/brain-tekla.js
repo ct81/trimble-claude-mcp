@@ -127,9 +127,10 @@ const plateProfile = (args, thickness, defaults) => {
   const t = num(thickness);
   return t ? `PL${round(t)}` : "PL200";
 };
-// For beams and slabs the type's "height" setting is the Z level used when the DXF has no elevation.
-const baseZ = (args) => num(args.level) ?? args._zDefault ?? 0;
-const vertexPoints = (args) => (args.attributes?.vertices || args.vertices || []).map((p) => pt(p, baseZ(args))).filter(Boolean);
+// An entered Z level overrides source elevation; a blank setting preserves it.
+const baseZ = (args) => args._zOverride ?? num(args.level) ?? args._zDefault ?? 0;
+const modelPoint = (p, args) => pt(args._zOverride === undefined ? p : { ...p, z: args._zOverride }, baseZ(args));
+const vertexPoints = (args) => (args.attributes?.vertices || args.vertices || []).map((p) => modelPoint(p, args)).filter(Boolean);
 
 function beamEntityType(args) {
   const entity = String(args.attributes?.dxfEntityType ?? "").toUpperCase();
@@ -140,10 +141,9 @@ function beamEntityType(args) {
 }
 
 function beamArgs(args, defaults) {
-  const level = baseZ(args);
   const entity = beamEntityType(args);
-  if (entity === "ARC") return polybeamArgs(args, defaults, beamArcPoints(args._src, level));
-  const a = pt(args.startPoint, level), b = pt(args.endPoint, level);
+  if (entity === "ARC") return polybeamArgs(args, defaults);
+  const a = modelPoint(args.startPoint, args), b = modelPoint(args.endPoint, args);
   if (a && b) {
     if (same(a, b)) throw new Error("beam start and end points are the same");
     return {
@@ -158,7 +158,7 @@ function beamArgs(args, defaults) {
   throw new Error("beam needs start/end points");
 }
 
-function polybeamArgs(args, defaults, points = beamArcPoints(args._src, baseZ(args))) {
+function polybeamArgs(args, defaults, points = beamArcPoints(args._src, baseZ(args), args._zOverride)) {
   if (points.length < 2) throw new Error("polybeam needs at least 2 points");
   return {
     tool: "tekla_create_polybeam",
@@ -345,7 +345,10 @@ export function brainToTekla(records, types, defaults = {}) {
       if (!settings.profile && profiles.length === 1) {
         settings.profile = profiles[0];
       }
-      if (["beam", "polybeam", "slab"].includes(type)) args._zDefault = settings.height;
+      if (["beam", "polybeam", "slab"].includes(type)) {
+        args._zDefault = settings.height;
+        args._zOverride = num(defaults?.[type]?.height);
+      }
       const result = BUILDERS[type](args, settings);
       for (const built of Array.isArray(result) ? result : [result]) {
         if (["beam", "polybeam"].includes(type)) {
