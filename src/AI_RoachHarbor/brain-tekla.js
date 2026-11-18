@@ -146,11 +146,23 @@ function beamArgs(args, defaults) {
   const a = modelPoint(args.startPoint, args), b = modelPoint(args.endPoint, args);
   if (a && b) {
     if (same(a, b)) throw new Error("beam start and end points are the same");
+    const length = num(args.length), width = num(args.width), depth = num(args.depth);
+    const has3dDimensions = length > 0 && width > 0 && depth > 0;
+    if (has3dDimensions) {
+      const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
+      const span = Math.hypot(dx, dy, dz);
+      if (!(span > 0)) throw new Error("dimensioned beam needs a non-zero direction");
+      b.x = a.x + dx / span * length;
+      b.y = a.y + dy / span * length;
+      b.z = a.z + dz / span * length;
+      args._dimensionProfile = `${round(width)}*${round(depth)}`;
+      args._profileFrom = "Width_mm x Depth_mm";
+    }
     return {
       tool: "tekla_create_beam",
       arguments: {
         x1: a.x, y1: a.y, z1: a.z, x2: b.x, y2: b.y, z2: b.z,
-        profile: profileFor(args, defaults, false),
+        profile: args._dimensionProfile || profileFor(args, defaults, false),
         ...common(args, defaults)
       }
     };

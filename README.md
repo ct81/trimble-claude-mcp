@@ -98,6 +98,10 @@ records, also creating one object per arc. Arcs require `Center_X`,
 They are sampled into one `tekla_create_polybeam` point contour in the XY plane,
 with at most 1 mm chord deviation; this is a faceted approximation, not an exact
 Tekla arc. Arc radius is not used as the beam's section size.
+For LINE beams, when `Length_mm`, `Width_mm`, and `Depth_mm` are all positive,
+the source length sets the modeled 3D member span along the DXF line direction,
+and width/depth set its section profile. If any dimension is missing or
+non-positive, the beam keeps its DXF endpoints and existing profile behavior.
 For beam, polybeam and slab, an entered **Z level mm** overrides all source
 Z/elevation values, including an explicit level of `0`. A blank textbox preserves
 source Z/elevation (or uses zero when absent). Column/wall heights and

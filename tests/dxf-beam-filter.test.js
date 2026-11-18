@@ -257,6 +257,34 @@ test('LINE beams use endpoints rather than unrelated exported vertices', () => {
     assert.equal(result.calls[0].arguments.y2, beamRecord.End_Y);
 });
 
+test('LINE beam uses source length and section dimensions when all are positive', () => {
+    const result = brainToTekla([{
+        ...beamRecord, Start_X: 10, Start_Y: 20, End_X: 10, End_Y: 3020,
+        Length_mm: 1200, Width_mm: 300, Depth_mm: 600, Profile: '150x250'
+    }], ['beam']);
+    assert.equal(result.calls.length, 1);
+    assert.deepEqual(
+        Object.fromEntries(['x1', 'y1', 'x2', 'y2', 'profile'].map(key => [key, result.calls[0].arguments[key]])),
+        { x1: 10, y1: 20, x2: 10, y2: 1220, profile: '300*600' }
+    );
+    assert.equal(result.calls[0].profileFrom, 'Width_mm x Depth_mm');
+});
+
+test('LINE beam does not apply source length unless all three dimensions are positive', () => {
+    for (const [dimensions, expectedProfile] of [
+        [{ Length_mm: 1200, Width_mm: 300 }, '300*300'],
+        [{ Length_mm: 1200, Depth_mm: 600 }, '600*600'],
+        [{ Length_mm: 0, Width_mm: 300, Depth_mm: 600 }, '300*600']
+    ]) {
+        const result = brainToTekla([{
+            ...beamRecord, Start_X: 10, Start_Y: 20, End_X: 10, End_Y: 3020, ...dimensions
+        }], ['beam'], { beam: { profile: '' } });
+        assert.equal(result.calls.length, 1);
+        assert.equal(result.calls[0].arguments.y2, 3020);
+        assert.equal(result.calls[0].arguments.profile, expectedProfile);
+    }
+});
+
 test('entered Z levels override DXF coordinates for LINE beams, ARC members and slabs', () => {
     const arc = {
         Type: 'ARC', Center_X: 100, Center_Y: 200, Center_Z: 2500,
