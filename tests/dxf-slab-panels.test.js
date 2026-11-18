@@ -117,25 +117,58 @@ test('DXF closed bit and repeated endpoints both identify LWPOLYLINE outlines', 
     assert.equal(brainToTekla([{ ...records[0], Closed: false }], ['slab']).calls.length, 0);
 });
 
-test('slab arrows and closed annotation boxes are skipped without a supporting network', () => {
+test('slab markers without a supporting network report an unclosed boundary', () => {
     const vertices = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }];
     const result = brainToTekla([
         { Handle: 'ARROW', Type: 'LWPOLYLINE', Layer: 'S-_SLAB----_E', Vertices: vertices },
         { Handle: 'BOX', Type: 'LWPOLYLINE', Layer: 'S-_SLAB----_T', Closed: 'Yes', Vertices: vertices }
     ], ['slab']);
     assert.equal(result.calls.length, 0);
-    assert.equal(result.skipped.length, 2);
-    assert.ok(result.skipped.every(item => /not arrows or label boxes/.test(item.reason)));
+    assert.ok(result.skipped.some(item => item.handle === 'ARROW' && /not inside one closed supporting boundary/.test(item.reason)));
+    assert.ok(result.skipped.some(item => item.handle === 'BOX' && /not arrows or label boxes/.test(item.reason)));
 });
 
-test('actual drawing does not turn open slab polylines or tag boxes into slab panels', () => {
+test('LWPOLYLINE markers select supporting regions without labels and do not duplicate panels', () => {
+    const marker = (handle, x) => ({
+        Handle: handle, Type: 'LWPOLYLINE', Layer: 'S-_SLAB----_E', Elevation_mm: 100,
+        Vertices: [{ x: x - 20, y: 450 }, { x, y: 500 }, { x: x + 20, y: 550 }]
+    });
+    const supports = [
+        ...rectangle, line('DIVIDER', 500, 0, 500, 1000)
+    ].map(record => ({ ...record, Elevation_mm: 100 }));
+    const result = brainToTekla([...supports, marker('M1', 250), marker('M2', 260)], ['slab'],
+        { slab: { height: -300, profile: 'PL225', material: 'C40/50' } });
+    assert.equal(result.slabPanels, 1);
+    assert.equal(result.calls.length, 2);
+    let total = 0;
+    for (const { arguments: args } of result.calls) {
+        assert.deepEqual([args.z1, args.z2, args.z3], [-300, -300, -300]);
+        assert.equal(args.profile, 'PL225');
+        assert.equal(args.material, 'C40/50');
+        assert.ok([args.x1, args.x2, args.x3].every(x => x <= 500));
+        total += area([1, 2, 3].map(i => ({ x: args[`x${i}`], y: args[`y${i}`] })));
+    }
+    assert.equal(total, 500000);
+    assert.ok(!result.skipped.some(item => /not inside one closed/.test(item.reason)));
+});
+
+test('actual drawing derives 21 supported slab regions from LWPOLYLINE markers', () => {
     const records = dxfTextToRecords(readFileSync(
         new URL('../images/upload/TSD1 St. 3 (3) General Arrangement.dxf', import.meta.url), 'utf8'
     ));
-    const result = brainToTekla(records, ['slab'], { slab: { height: 4000, profile: 'PL225' } });
-    assert.equal(result.calls.length, 0);
-    assert.equal(result.slabPanels, 0);
-    for (const record of records.filter(record => /slab/i.test(record.Layer))) {
-        assert.ok(result.skipped.some(item => item.handle === record.Handle));
+    const result = brainToTekla(records, ['slab'], { slab: { height: 4000 } });
+    assert.equal(result.slabPanels, 21);
+    assert.ok(result.calls.length > 21);
+    assert.ok(!result.skipped.some(item => /not inside one closed|no closed slab|triangulat/.test(item.reason)));
+    let total = 0;
+    for (const call of result.calls) {
+        assert.match(call.handle, /^SLAB-PANEL-/);
+        const args = call.arguments;
+        assert.equal(args.profile, 'PL200');
+        assert.deepEqual([args.z1, args.z2, args.z3], [4000, 4000, 4000]);
+        const triangleArea = area([1, 2, 3].map(i => ({ x: args[`x${i}`], y: args[`y${i}`] })));
+        assert.ok(triangleArea > 0);
+        total += triangleArea;
     }
+    assert.ok(total > 400000000 && total < 460000000);
 });

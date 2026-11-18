@@ -1623,6 +1623,24 @@ export function extractBeamProfiles(records) {
   return extractProfilesByType(records).beam;
 }
 
+export function extractSlabMarkers(records) {
+  return records.flatMap(record => {
+    const normalized = normalizedRecord(record);
+    if (classifyDxfEntity(record).objectType !== "slab" ||
+        String(normalized.dxfEntityType).toUpperCase() !== "LWPOLYLINE" ||
+        ANNOTATION_LAYER_PATTERN.test(normalized.layer || "") ||
+        TAG_LAYER_PATTERN.test(normalized.layer || "") ||
+        /^(yes|true|1)$/i.test(normalized.closed || "") || normalized.vertices.length < 2) return [];
+    const points = normalized.vertices, first = points[0], last = points.at(-1);
+    if (Math.hypot(first.x - last.x, first.y - last.y, (first.z ?? 0) - (last.z ?? 0)) <= 0.1) return [];
+    const center = points.reduce((sum, p) => ({
+      x: sum.x + p.x / points.length, y: sum.y + p.y / points.length,
+      z: sum.z + (p.z ?? normalized.elevation ?? 0) / points.length
+    }), { x: 0, y: 0, z: 0 });
+    return [{ handle: normalized.handle, point: center }];
+  });
+}
+
 /**
  * Finds bounded faces of a planar beam network. Small support gaps are bridged
  * at intersections and between collinear spans, using column and beam sections.
@@ -1804,7 +1822,8 @@ export function deriveSlabPanels(beamCalls, records, zOverride) {
       if (area > tolerance && new Set(ids).size === ids.length) panels.push(points);
     }
   });
-  const labels = records.filter(record => /slab/i.test(readSource(record, "layer") || "") &&
+  const markers = extractSlabMarkers(records).map(marker => ({ ...marker, point: point(marker.point) }));
+  const labels = markers.length ? markers : records.filter(record => /slab/i.test(readSource(record, "layer") || "") &&
     /^(TEXT|MTEXT)$/i.test(readSource(record, "entityType") || "") &&
     /\bSI\s*\d+/i.test(readSource(record, "name") || "")).map(record => ({
       handle: readSource(record, "handle"), point: point(getPoint(record, "start"), extractGeometry(record).elevation)
@@ -1833,7 +1852,7 @@ export function deriveSlabPanels(beamCalls, records, zOverride) {
   for (const label of labels) {
     const matches = selected.filter(panel => contains(panel, label.point));
     if (matches.length !== 1) skipped.push({ handle: label.handle, type: "slab",
-      reason: "slab label is not inside one closed supporting boundary; provide a closed slab outline" });
+      reason: `slab ${markers.length ? "LWPOLYLINE marker" : "label"} is not inside one closed supporting boundary; provide a closed slab outline` });
   }
   if (!selected.length) skipped.push({ type: "slab", reason: "no closed slab panels found in supporting beam network" });
   return { panels: selected, skipped };
@@ -2621,6 +2640,7 @@ export default {
   convertDxfJson,
   extractBeamProfiles,
   extractProfilesByType,
+  extractSlabMarkers,
   deriveSlabPanels,
   triangulateSlabPanel,
   mergeBeamBoundaries,

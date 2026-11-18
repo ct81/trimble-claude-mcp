@@ -104,10 +104,15 @@ Offsets affect new calls only, not already-created Tekla objects.
 
 ### DXF slabs in Workflow Builder
 
-Select **slab** to model only closed structural DXF `LWPOLYLINE` outlines.
-The source vertices define each slab; regions are no longer derived from
-beams, arcs or wall centerlines. Other entity types, open outlines and
-annotation/text-layer label boxes are reported in `skipped`.
+Select **slab** to model closed structural DXF `LWPOLYLINE` outlines.
+Their source vertices define each slab. When no closed structural slab outlines
+are available, open slab-layer `LWPOLYLINE` direction markers locate regions
+bounded by cleaned beam centerlines, curved perimeter arcs and supporting walls.
+Markers are not modeled as small plates; multiple markers inside one region
+produce a single region. Unenclosed markers are reported in `skipped`.
+Beam modeling does not need to be selected. Support-sized gaps can be bridged,
+but larger openings are not closed arbitrarily. Annotation/text-layer label
+boxes are never used as slab boundaries.
 Closure uses the DXF closed flag (`Closed` in JSON), or matching first/last
 vertices. Source elevation is retained unless a slab Z level is entered.
 
@@ -119,7 +124,9 @@ The current slab tool accepts three corners, so each region is triangulated
 into multiple slab objects, preserving the entire boundary rather than only
 its first three vertices.
 Brain reports the region count separately from the creation-call count.
-Slab openings/holes and polyline bulges are not supported.
+Derived curved boundaries use the beam arc's 1 mm sampling tolerance.
+Nested derived boundaries are skipped for review; slab openings/holes and
+polyline bulges are not supported.
 This changes future conversions only; remove any previously created incorrect
 slabs separately after reviewing them. Live Tekla insertion must still be verified.
 

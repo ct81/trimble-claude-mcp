@@ -1,4 +1,4 @@
-import { annotationSkipReason, beamArcPoints, beamCallRejection, buildGridDefinition, convertDxfJson, dimensionedBeam, duplicateCallKey, extractGridlineData, mergeBeamBoundaries, parseDxfJson, triangulateSlabPanel, wallOutlineCentreline } from "./supraesophageal_ganglion_4_dxf.js";
+import { annotationSkipReason, beamArcPoints, beamCallRejection, buildGridDefinition, convertDxfJson, deriveSlabPanels, dimensionedBeam, duplicateCallKey, extractGridlineData, extractSlabMarkers, mergeBeamBoundaries, parseDxfJson, triangulateSlabPanel, wallOutlineCentreline } from "./supraesophageal_ganglion_4_dxf.js";
 
 const num = (value) => {
   const n = Number(value);
@@ -345,12 +345,21 @@ export function brainToTekla(records, types, defaults = {}) {
   const seen = new Set();
   const boundaries = mergeBeamBoundaries(converted.calls, converted.profilesByType, defaults);
   skipped.push(...boundaries.removed);
+  const markers = wanted.has("slab") ? extractSlabMarkers(records) : [];
+  const slabNetwork = markers.length && !boundaries.calls.some(call => call.objectType === "slab")
+    ? deriveSlabPanels(boundaries.calls, records, defaults.slab?.height) : null;
+  if (slabNetwork) skipped.push(...slabNetwork.skipped);
   const thicknesses = [...new Set(records.filter(record => /slab/i.test(record.Layer || "") &&
     /^(TEXT|MTEXT)$/i.test(record.Type || "")).flatMap(record => {
     const match = String(record.Text || "").match(/(?:^|\\P|\s)(\d+(?:\.\d+)?)\s*mm\b/i);
     return match && Number(match[1]) > 0 ? [Number(match[1])] : [];
   }))];
-  for (const call of boundaries.calls) {
+  const derivedSlabs = (slabNetwork?.panels || []).map((vertices, i) => ({
+    handle: `SLAB-PANEL-${i + 1}`, objectType: "slab",
+    source: { Type: "LWPOLYLINE", Layer: "SLAB_DERIVED", Closed: true },
+    args: { vertices }
+  }));
+  for (const call of [...boundaries.calls, ...derivedSlabs]) {
     const type = call.objectType;
     if (!wanted.has(type)) { skipped.push({ handle: call.handle, type, reason: "type not selected" }); continue; }
     // Tag/annotation graphics (e.g. S-_WALL----_T label layers) are not structural members.
