@@ -1605,6 +1605,245 @@ export function extractBeamProfiles(records) {
 }
 
 /**
+ * Finds bounded faces of a planar beam network. Small support gaps are bridged
+ * at intersections and between collinear spans, using column and beam sections.
+ */
+export function deriveSlabPanels(beamCalls, records, zOverride) {
+  const tolerance = 0.1;
+  const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  const supportSizes = records.filter(record => !annotationSkipReason(record) &&
+    /^(CIRCLE|LWPOLYLINE|POLYLINE)$/i.test(readSource(record, "entityType") || "") &&
+    OBJECT_TYPE_REGISTRY.column.layerPatterns.some(pattern => pattern.test(readSource(record, "layer") || ""))
+  ).flatMap(record => {
+    const geometry = extractGeometry(record);
+    if (geometry.radius > 0) return [geometry.radius * 2];
+    if (geometry.vertices.length >= 3) {
+      return [Math.max(...geometry.vertices.map(p => p.x)) - Math.min(...geometry.vertices.map(p => p.x)),
+        Math.max(...geometry.vertices.map(p => p.y)) - Math.min(...geometry.vertices.map(p => p.y))];
+    }
+    return [];
+  }).filter(value => value > 0 && Number.isFinite(value));
+  const widths = extractBeamProfiles(records).flatMap(profile => {
+    const match = profile.match(/^(\d+(?:\.\d+)?)\*/);
+    return match ? [Number(match[1])] : [];
+  });
+  const reach = supportSizes.length ? Math.max(...supportSizes) / 2 + Math.max(0, ...widths) / 2 : tolerance;
+  const lines = [], arcs = [], skipped = [];
+  const point = (p, level) => p && ({ ...p, z: toNumber(zOverride) ?? p.z ?? level ?? 0 });
+  for (const call of beamCalls) {
+    if (call.objectType === "wall" && !annotationSkipReason(call.source)) {
+      const vertices = call.args.attributes?.vertices || call.args.vertices || [];
+      const outline = wallOutlineCentreline(vertices, { requireRectangle: true });
+      if (outline) {
+        const a = point(outline.start, call.args.level), b = point(outline.end, call.args.level);
+        lines.push({ a, b, length: distance(a, b), cuts: [] });
+      }
+      continue;
+    }
+    if (!["beam", "polybeam"].includes(call.objectType) || annotationSkipReason(call.source)) continue;
+    const entity = String(readSource(call.source, "entityType") || "").toUpperCase();
+    const geometry = extractGeometry(call.source);
+    if (entity === "LINE") {
+      const a = point(call.args.startPoint, geometry.elevation), b = point(call.args.endPoint, geometry.elevation);
+      if (!a || !b || distance(a, b) <= tolerance) continue;
+      if (Math.abs(a.z - b.z) > tolerance) {
+        skipped.push({ handle: call.handle, type: "slab", reason: "sloping beam cannot bound a horizontal slab" });
+        continue;
+      }
+      lines.push({ a, b, length: distance(a, b), cuts: [] });
+    } else if (entity === "ARC") {
+      try {
+        beamArcPoints(call.source);
+      } catch (error) {
+        skipped.push({ handle: call.handle, type: "slab", reason: error.message });
+        continue;
+      }
+      const center = point(geometry.center, geometry.elevation);
+      const start = ((Number(call.source.StartAngle ?? call.source.startAngle) % 360) + 360) % 360 * Math.PI / 180;
+      const sweep = ((Number(call.source.EndAngle ?? call.source.endAngle) -
+        Number(call.source.StartAngle ?? call.source.startAngle)) % 360 + 360) % 360 * Math.PI / 180;
+      arcs.push({ center, radius: geometry.radius, start, end: start + sweep, cuts: [] });
+    }
+  }
+  // Collinear beams can stop on opposite faces of the same column.
+  for (let i = 0; i < lines.length; i++) {
+    for (let j = i + 1; j < lines.length;) {
+      const a = lines[i], b = lines[j];
+      const dx = (a.b.x - a.a.x) / a.length, dy = (a.b.y - a.a.y) / a.length;
+      const offset = p => (p.x - a.a.x) * dy - (p.y - a.a.y) * dx;
+      const along = p => (p.x - a.a.x) * dx + (p.y - a.a.y) * dy;
+      const low = Math.min(along(b.a), along(b.b)), high = Math.max(along(b.a), along(b.b));
+      if (Math.abs(a.a.z - b.a.z) <= tolerance &&
+          Math.max(Math.abs(offset(b.a)), Math.abs(offset(b.b))) <= tolerance &&
+          low <= a.length + 2 * reach && high >= -2 * reach) {
+        const origin = a.a;
+        const at = t => ({ x: origin.x + t * dx, y: origin.y + t * dy, z: origin.z });
+        a.a = at(Math.min(0, low)); a.b = at(Math.max(a.length, high)); a.length = distance(a.a, a.b);
+        lines.splice(j, 1);
+        j = i + 1;
+      } else j++;
+    }
+  }
+  // Adjacent perimeter arc pieces stop at column faces. Join only matching circles.
+  arcs.sort((a, b) => a.start - b.start);
+  for (let i = 0; i < arcs.length; i++) {
+    for (let j = i + 1; j < arcs.length;) {
+      const a = arcs[i], b = arcs[j];
+      if (distance(a.center, b.center) <= tolerance && Math.abs(a.center.z - b.center.z) <= tolerance &&
+          Math.abs(a.radius - b.radius) <= tolerance && b.start <= a.end + 2 * reach / a.radius) {
+        a.end = Math.max(a.end, b.end);
+        arcs.splice(j, 1);
+      } else j++;
+    }
+  }
+  const nodes = [], adjacency = [];
+  const node = p => {
+    let id = nodes.findIndex(q => distance(p, q) <= tolerance && Math.abs(p.z - q.z) <= tolerance);
+    if (id < 0) { id = nodes.length; nodes.push(p); adjacency.push(new Set()); }
+    return id;
+  };
+  const edge = (a, b) => {
+    const i = node(a), j = node(b);
+    if (i !== j) { adjacency[i].add(j); adjacency[j].add(i); }
+  };
+  const cross = (a, b) => a.x * b.y - a.y * b.x;
+  const vector = (a, b) => ({ x: b.x - a.x, y: b.y - a.y });
+  const within = (line, t) => t >= -reach / line.length && t <= 1 + reach / line.length;
+  for (let i = 0; i < lines.length; i++) {
+    const a = lines[i], d = vector(a.a, a.b);
+    for (let j = i + 1; j < lines.length; j++) {
+      const b = lines[j], e = vector(b.a, b.b), denominator = cross(d, e);
+      if (Math.abs(a.a.z - b.a.z) > tolerance || Math.abs(denominator) < 1e-8) continue;
+      const delta = vector(a.a, b.a);
+      const t = cross(delta, e) / denominator, u = cross(delta, d) / denominator;
+      if (within(a, t) && within(b, u)) {
+        const p = { x: a.a.x + t * d.x, y: a.a.y + t * d.y, z: a.a.z };
+        a.cuts.push({ t, p }); b.cuts.push({ t: u, p });
+      }
+    }
+    for (const arc of arcs) {
+      if (Math.abs(a.a.z - arc.center.z) > tolerance) continue;
+      const f = vector(arc.center, a.a);
+      const aa = d.x * d.x + d.y * d.y, bb = 2 * (f.x * d.x + f.y * d.y);
+      const cc = f.x * f.x + f.y * f.y - arc.radius * arc.radius;
+      const discriminant = bb * bb - 4 * aa * cc;
+      if (discriminant < 0) continue;
+      for (const t of [(-bb - Math.sqrt(discriminant)) / (2 * aa), (-bb + Math.sqrt(discriminant)) / (2 * aa)]) {
+        if (!within(a, t)) continue;
+        const p = { x: a.a.x + t * d.x, y: a.a.y + t * d.y, z: a.a.z };
+        let angle = Math.atan2(p.y - arc.center.y, p.x - arc.center.x);
+        while (angle < arc.start - reach / arc.radius) angle += 2 * Math.PI;
+        if (angle > arc.end + reach / arc.radius) continue;
+        a.cuts.push({ t, p }); arc.cuts.push({ t: angle, p });
+      }
+    }
+  }
+  for (const line of lines) {
+    line.cuts.push({ t: 0, p: line.a }, { t: 1, p: line.b });
+    line.cuts.sort((a, b) => a.t - b.t);
+    for (let i = 1; i < line.cuts.length; i++) edge(line.cuts[i - 1].p, line.cuts[i].p);
+  }
+  for (const arc of arcs) {
+    arc.cuts.sort((a, b) => a.t - b.t);
+    for (let i = 1; i < arc.cuts.length; i++) {
+      const a = arc.cuts[i - 1], b = arc.cuts[i];
+      if ((b.t - a.t) * arc.radius <= tolerance) continue;
+      const points = beamArcPoints({
+        Center_X: arc.center.x, Center_Y: arc.center.y, Center_Z: arc.center.z,
+        Radius: arc.radius, StartAngle: a.t * 180 / Math.PI, EndAngle: b.t * 180 / Math.PI
+      });
+      for (let j = 1; j < points.length; j++) edge(points[j - 1], points[j]);
+    }
+  }
+  // Remove dangling support stubs before tracing faces.
+  const queue = adjacency.map((neighbors, i) => neighbors.size < 2 ? i : -1).filter(i => i >= 0);
+  for (let n = 0; n < queue.length; n++) {
+    const i = queue[n];
+    for (const j of adjacency[i]) {
+      adjacency[j].delete(i);
+      if (adjacency[j].size === 1) queue.push(j);
+    }
+    adjacency[i].clear();
+  }
+  const ordered = adjacency.map((neighbors, i) => [...neighbors].sort((a, b) =>
+    Math.atan2(nodes[a].y - nodes[i].y, nodes[a].x - nodes[i].x) -
+    Math.atan2(nodes[b].y - nodes[i].y, nodes[b].x - nodes[i].x)));
+  const visited = new Set(), panels = [];
+  ordered.forEach((neighbors, i) => {
+    for (const j of neighbors) {
+      if (visited.has(`${i}:${j}`)) continue;
+      const ids = [];
+      let a = i, b = j;
+      do {
+        visited.add(`${a}:${b}`); ids.push(a);
+        const next = ordered[b];
+        const c = next[(next.indexOf(a) - 1 + next.length) % next.length];
+        a = b; b = c;
+      } while (!(a === i && b === j) && !visited.has(`${a}:${b}`));
+      const points = ids.map(id => nodes[id]);
+      const area = points.reduce((sum, p, k) => sum + cross(p, points[(k + 1) % points.length]), 0) / 2;
+      if (area > tolerance && new Set(ids).size === ids.length) panels.push(points);
+    }
+  });
+  const labels = records.filter(record => /slab/i.test(readSource(record, "layer") || "") &&
+    /^(TEXT|MTEXT)$/i.test(readSource(record, "entityType") || "") &&
+    /\bSI\s*\d+/i.test(readSource(record, "name") || "")).map(record => ({
+      handle: readSource(record, "handle"), point: point(getPoint(record, "start"), extractGeometry(record).elevation)
+    })).filter(label => label.point);
+  const contains = (polygon, p) => {
+    if (Math.abs(polygon[0].z - p.z) > tolerance) return false;
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const a = polygon[i], b = polygon[j];
+      if ((a.y > p.y) !== (b.y > p.y) && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x) inside = !inside;
+    }
+    return inside;
+  };
+  const nested = new Set();
+  for (const outer of panels) {
+    for (const inner of panels) {
+      if (outer !== inner && inner.every(p => contains(outer, p))) {
+        nested.add(outer); nested.add(inner);
+      }
+    }
+  }
+  if (nested.size) skipped.push({ type: "slab",
+    reason: "nested slab boundaries may contain openings; holes are not supported, so these regions were skipped" });
+  const selected = panels.filter(panel => !nested.has(panel) &&
+    (!labels.length || labels.some(label => contains(panel, label.point))));
+  for (const label of labels) {
+    const matches = selected.filter(panel => contains(panel, label.point));
+    if (matches.length !== 1) skipped.push({ handle: label.handle, type: "slab",
+      reason: "slab label is not inside one closed supporting boundary; provide a closed slab outline" });
+  }
+  if (!selected.length) skipped.push({ type: "slab", reason: "no closed slab panels found in supporting beam network" });
+  return { panels: selected, skipped };
+}
+
+export function triangulateSlabPanel(points) {
+  if (points.length < 3 || points.some(p => !p || ![p.x, p.y, p.z].every(Number.isFinite))) {
+    throw new Error("slab boundary needs at least three finite XYZ points");
+  }
+  const remaining = points.map(p => ({ ...p })), triangles = [];
+  const cross = (a, b, c) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+  while (remaining.length > 3) {
+    let found = false;
+    for (let i = 0; i < remaining.length; i++) {
+      const a = remaining[(i + remaining.length - 1) % remaining.length], b = remaining[i], c = remaining[(i + 1) % remaining.length];
+      if (Math.abs(cross(a, b, c)) < 1e-6) { remaining.splice(i, 1); found = true; break; }
+      if (cross(a, b, c) < 0) continue;
+      if (remaining.some(p => p !== a && p !== b && p !== c &&
+          cross(a, b, p) >= -1e-6 && cross(b, c, p) >= -1e-6 && cross(c, a, p) >= -1e-6)) continue;
+      triangles.push([a, b, c]); remaining.splice(i, 1); found = true; break;
+    }
+    if (!found) throw new Error("slab boundary cannot be triangulated; check for intersecting edges");
+  }
+  if (remaining.length === 3 && cross(...remaining) > 1e-6) triangles.push(remaining);
+  if (!triangles.length) throw new Error("slab boundary has zero area");
+  return triangles;
+}
+
+/**
  * Pairs beam boundaries whose separation matches the section width. End trims
  * may differ by up to that width. Ambiguous pairs are left unchanged.
  */
@@ -2363,6 +2602,8 @@ export default {
   convertDxfJson,
   extractBeamProfiles,
   extractProfilesByType,
+  deriveSlabPanels,
+  triangulateSlabPanel,
   mergeBeamBoundaries,
   dispatchDxfJson,
   formatDxfReport,

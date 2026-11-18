@@ -1,4 +1,4 @@
-import { annotationSkipReason, beamArcPoints, beamCallRejection, buildGridDefinition, convertDxfJson, dimensionedBeam, duplicateCallKey, extractGridlineData, mergeBeamBoundaries, wallOutlineCentreline } from "./supraesophageal_ganglion_4_dxf.js";
+import { annotationSkipReason, beamArcPoints, beamCallRejection, buildGridDefinition, convertDxfJson, deriveSlabPanels, dimensionedBeam, duplicateCallKey, extractGridlineData, mergeBeamBoundaries, parseDxfJson, triangulateSlabPanel, wallOutlineCentreline } from "./supraesophageal_ganglion_4_dxf.js";
 
 const num = (value) => {
   const n = Number(value);
@@ -176,20 +176,24 @@ function polybeamArgs(args, defaults, points = beamArcPoints(args._src, baseZ(ar
   };
 }
 
-// Tekla slab tool takes three contour points; the first three distinct vertices are used.
+// The slab endpoint accepts three corners, so preserve the full panel as triangles.
 function slabArgs(args, defaults) {
   const unique = [];
   for (const p of vertexPoints(args)) if (!unique.some((q) => same(p, q))) unique.push(p);
   if (unique.length < 3) throw new Error("slab needs a closed outline with 3+ distinct vertices");
-  const [a, b, c] = unique;
-  return {
+  const signedArea = unique.reduce((sum, p, i) => {
+    const q = unique[(i + 1) % unique.length];
+    return sum + p.x * q.y - q.x * p.y;
+  }, 0);
+  if (signedArea < 0) unique.reverse();
+  return triangulateSlabPanel(unique).map(([a, b, c]) => ({
     tool: "tekla_create_slab",
     arguments: {
       x1: a.x, y1: a.y, z1: a.z, x2: b.x, y2: b.y, z2: b.z, x3: c.x, y3: c.y, z3: c.z,
       profile: plateProfile(args, args.depth ?? args.thickness, defaults),
       ...common(args, defaults)
     }
-  };
+  }));
 }
 
 // A vertical wall plate: base start, base end, and the top of the end point.
@@ -330,6 +334,7 @@ function settingsFor(type, defaults) {
 }
 
 export function brainToTekla(records, types, defaults = {}) {
+  records = parseDxfJson(records);
   const converted = convertDxfJson(records);
   const wanted = new Set(types);
   const calls = [];
@@ -339,9 +344,35 @@ export function brainToTekla(records, types, defaults = {}) {
   const seen = new Set();
   const boundaries = mergeBeamBoundaries(converted.calls, converted.profilesByType, defaults);
   skipped.push(...boundaries.removed);
-  for (const call of boundaries.calls) {
+  const slabNetwork = wanted.has("slab") && boundaries.calls.some(call => ["beam", "polybeam"].includes(call.objectType))
+    ? deriveSlabPanels(boundaries.calls, records, defaults.slab?.height) : null;
+  if (slabNetwork) skipped.push(...slabNetwork.skipped);
+  const thicknesses = [...new Set(records.filter(record => /slab/i.test(record.Layer || "") &&
+    /^(TEXT|MTEXT)$/i.test(record.Type || "")).flatMap(record => {
+    const match = String(record.Text || "").match(/(?:^|\\P|\s)(\d+(?:\.\d+)?)\s*mm\b/i);
+    return match && Number(match[1]) > 0 ? [Number(match[1])] : [];
+  }))];
+  const derivedSlabs = (slabNetwork?.panels || []).map((vertices, i) => ({
+    handle: `SLAB-PANEL-${i + 1}`, objectType: "slab",
+    source: { Type: "LWPOLYLINE", Layer: "SLAB_DERIVED", Closed: "Yes" },
+    args: { vertices, ...(thicknesses.length === 1 ? { thickness: thicknesses[0] } : {}) }
+  }));
+  const derivedSlabSet = new Set(derivedSlabs);
+  for (const call of [...boundaries.calls, ...derivedSlabs]) {
     const type = call.objectType;
     if (!wanted.has(type)) { skipped.push({ handle: call.handle, type, reason: "type not selected" }); continue; }
+    if (type === "slab" && !derivedSlabSet.has(call)) {
+      const source = call.source;
+      const vertices = call.args.attributes?.vertices || call.args.vertices || [];
+      const closed = /^(yes|true|1)$/i.test(String(source.Closed || "")) ||
+        (vertices.length > 3 && same(pt(vertices[0]), pt(vertices.at(-1))));
+      if (slabNetwork || /_t\d?$/i.test(source.Layer || "") || !closed) {
+        skipped.push({ handle: call.handle, type, reason: slabNetwork
+          ? "slab panel derived from beam network; source is not used as a panel boundary"
+          : "slab requires a closed structural outline, not arrows or label boxes" });
+        continue;
+      }
+    }
     // Tag/annotation graphics (e.g. S-_WALL----_T label layers) are not structural members.
     const annotation = annotationSkipReason(call.source);
     if (annotation) { skipped.push({ handle: call.handle, type, reason: annotation }); continue; }
@@ -349,6 +380,9 @@ export function brainToTekla(records, types, defaults = {}) {
     try {
       const args = { ...call.args, _src: call.source };
       const settings = settingsFor(type, defaults);
+      if (derivedSlabSet.has(call) && thicknesses.length === 1 && !String(defaults.slab?.profile || "").trim()) {
+        settings.profile = `PL${thicknesses[0]}`;
+      }
       const profiles = converted.profilesByType[type] || [];
       if (!settings.profile && profiles.length === 1) {
         settings.profile = profiles[0];
@@ -385,5 +419,6 @@ export function brainToTekla(records, types, defaults = {}) {
   for (const c of calls) mapped[c.tool] = (mapped[c.tool] || 0) + 1;
   const counts = Object.fromEntries(Object.entries(converted.counts).filter(([type]) => type !== "unknown" && type !== "ignored"));
   const gridWarnings = grid ? ["The parent grid uses common rectangular extents; individual DXF line lengths may differ. Verify the grid in Tekla."] : [];
-  return { version: BRAIN_VERSION, totalRecords: converted.calls.length, counts, mapped, calls, skipped, gridlines, grid, gridWarnings, beamProfiles: converted.beamProfiles, profilesByType: converted.profilesByType };
+  return { version: BRAIN_VERSION, totalRecords: converted.calls.length, counts, mapped, calls, skipped, gridlines, grid, gridWarnings, beamProfiles: converted.beamProfiles, profilesByType: converted.profilesByType,
+    slabPanels: slabNetwork?.panels.length ?? 0 };
 }

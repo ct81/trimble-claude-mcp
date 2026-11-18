@@ -3052,7 +3052,8 @@ async function runWorkflowCore(signal) {
         cur.el._brainResult = converted;
         renderBrain(cur.el);
         cur.el.querySelector(".status").textContent =
-          `✔ ${converted.calls.length} mapped, ${gridlines.length} grid entities extracted, ${converted.skipped.length} skipped`;
+          `✔ ${converted.calls.length} mapped, ${gridlines.length} grid entities extracted, ${converted.skipped.length} skipped` +
+          (converted.slabPanels ? `; ${converted.slabPanels} slab regions (triangulated)` : "");
       }
 
       if (cur.type === "mcp") {
