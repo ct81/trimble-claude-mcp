@@ -88,6 +88,15 @@ are available through their respective local bridge integrations; a deployed
 Render service cannot directly reach software running on a user's workstation
 without a reachable bridge or relay.
 
+### Brain column offsets in Call MCP
+
+When Call MCP automatically dispatches Brain-generated `tekla_create_column`
+calls, its `x` argument is an offset in millimetres: `-300` sends
+`Brain X - 300` for each column. Blank or zero preserves Brain X; other Brain
+arguments remain unchanged. Without Brain data, or with explicit `{{row.*}}`
+templates, coordinates retain their existing absolute/template behavior.
+Offsets affect new calls only, not already-created Tekla objects.
+
 ### DXF beams in Workflow Builder
 
 Select **beam** on the Brain node to model only DXF `LINE` and `ARC` records:

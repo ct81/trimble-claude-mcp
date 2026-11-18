@@ -35,6 +35,63 @@ const rectangularDxf = [
     0, 'ENDSEC', 0, 'EOF'
 ].join('\n');
 
+test('Call MCP offsets Brain column X without mutating Brain data or other tool behavior', async () => {
+    const page = readFileSync(new URL('../pages/workflowBuilder.html', import.meta.url), 'utf8');
+    const start = page.indexOf('      if (cur.type === "mcp") {');
+    const end = page.indexOf('      if (cur.type === "api") {', start);
+    for (const scenario of [
+        { x: -300, expected: 700 },
+        { x: '250', expected: 1250 },
+        { x: 0, expected: 1000 },
+        { x: '', expected: 1000 },
+        { expected: 1000 },
+        { x: 'invalid', error: true },
+        { x: false, error: true },
+        { x: -300, manual: true, expected: -300 },
+        { x: -300, templated: true, expected: -300 },
+        { x: -300, tool: 'tekla_create_beam', expected: 1000 }
+    ]) {
+        const tool = scenario.tool || 'tekla_create_column';
+        const original = { x: 1000, y: 2000, z1: 0, z2: 3000, profile: '300*300' };
+        const args = { ...(scenario.x === undefined ? {} : { x: scenario.x }),
+            ...(scenario.templated ? { y: '{{row.y}}' } : {}) };
+        const state = {
+            rows: [{ ...original }, { ...original, x: 5000 }],
+            ...(!scenario.manual ? { brainCalls: [
+                { tool, arguments: { ...original } },
+                { tool, arguments: { ...original, x: 5000 } }
+            ] } : {})
+        };
+        const requests = [];
+        const context = vm.createContext({
+            URL, state, signal: { aborted: false },
+            cur: { type: 'mcp', el: { querySelector: selector => ({
+                '.url': { value: 'https://mcp.test' }, '.tool': { value: tool },
+                '.args': { value: JSON.stringify(args) }, '.status': {}
+            })[selector] } },
+            ensureToken: async () => 'test',
+            lowerKeys: row => row,
+            callMcpTool: async (_url, _tool, payload) => { requests.push(payload); return {}; },
+            console: { error() {} }
+        });
+        const run = () => vm.runInContext(`(async () => { ${page.slice(start, end)} })()`, context);
+        if (scenario.error) {
+            await assert.rejects(run(), /must be finite numbers/);
+            assert.equal(requests.length, 0);
+        } else {
+            await run();
+            assert.equal(requests.length, 2);
+            assert.equal(requests[0].x, scenario.expected);
+            assert.equal(requests[1].x, scenario.manual || scenario.templated ? scenario.expected : scenario.expected + 4000);
+            if (!scenario.manual && !scenario.templated) {
+                assert.equal(requests[0].y, original.y);
+                assert.equal(requests[0].profile, original.profile);
+                assert.equal(state.brainCalls[0].arguments.x, 1000);
+            }
+        }
+    }
+});
+
 test('extracts plain grid entities with labels, coordinates and arc angles from all four layers', () => {
     const records = dxfTextToRecords(dxf);
     const gridlines = extractGridlineData(records);

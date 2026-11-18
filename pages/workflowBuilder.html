@@ -1381,6 +1381,7 @@ function bodyFor(type, id) {
                           </div>
                           <div style="margin-top:6px;font-size:11px"><label><input type="radio" class="args-mode" value="json" checked> JSON</label> <label style="margin-left:8px"><input type="radio" class="args-mode" value="fields"> Fields</label></div>
                           <div class="args-fields" style="display:none;margin-top:6px"></div>
+                          <div class="hint">With Brain automatic column calls, x is an offset in mm (e.g. -300 shifts each column left). Blank or 0 keeps Brain X. Without Brain, coordinates are absolute.</div>
                           <textarea class="args" rows="3" spellcheck="false" style="width:100%;margin-top:6px;font-family:monospace;font-size:11px" placeholder='arguments JSON; file placeholders are replaced'>{"file_base64":"{{file_base64}}","filename":"{{filename}}"}</textarea>
                           <div class="status">not called yet</div>`;
     case "result": return `<div style="margin-bottom:6px;font-size:11px"><label><input type="radio" class="out-mode" value="pretty" checked> Pretty</label> <label style="margin-left:8px"><input type="radio" class="out-mode" value="raw"> Raw</label></div><div class="out">—</div>`;
@@ -1435,7 +1436,7 @@ function renderArgFields(el) {
     } else if (typeof v === "number") {
       inp.type = "number"; inp.step = Number.isInteger(v) ? "1" : "any"; inp.value = v;
       inp.title = Number.isInteger(v) ? "integer" : "decimal";
-      inp.oninput = () => { if (inp.value !== "" && isFinite(inp.value)) sync(k, Number(inp.value)); };
+      inp.oninput = () => { if (inp.value === "") sync(k, ""); else if (isFinite(inp.value)) sync(k, Number(inp.value)); };
     } else if (typeof v === "string") {
       inp.type = "text"; inp.value = v; inp.spellcheck = false;
       inp.oninput = () => sync(k, inp.value);
@@ -3122,10 +3123,21 @@ async function runWorkflowCore(signal) {
           const useBrain = brainCall && !templated;
           const dispatchedTool = useBrain ? brainCall.tool : toolName;
           try {
+            let dispatchedArgs = useBrain ? brainCall.arguments : fill(toolArgs);
+            if (useBrain && dispatchedTool === "tekla_create_column" &&
+                toolArgs.x !== undefined && toolArgs.x !== null && String(toolArgs.x).trim() !== "") {
+              const offset = Number(toolArgs.x);
+              const x = brainCall.arguments.x;
+              if (!["number", "string"].includes(typeof toolArgs.x) || !Number.isFinite(offset) ||
+                  typeof x !== "number" || !Number.isFinite(x) || !Number.isFinite(x + offset)) {
+                throw new Error("Column X offset and Brain X must be finite numbers");
+              }
+              dispatchedArgs = { ...brainCall.arguments, x: x + offset };
+            }
             const response = await callMcpTool(
               url,
               dispatchedTool,
-              useBrain ? brainCall.arguments : fill(toolArgs),
+              dispatchedArgs,
               signal
             );
             results.push(response);
