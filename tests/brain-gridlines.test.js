@@ -129,7 +129,6 @@ test('automatic workflow dispatch sends the generated grid and retains verificat
             '.args': { value: '{}' }, '.status': status
         })[selector] } },
         ensureToken: async () => 'test',
-        mergeBrainArguments: (brain, overrides) => ({ ...brain, ...overrides }),
         lowerKeys: row => row,
         callMcpTool: async (_url, tool, args) => {
             requests.push({ tool, args });
@@ -190,7 +189,6 @@ test('grid-only MCP execution reports why no grid creation request was sent', as
                 '.status': {}
             })[selector] } },
             ensureToken: async () => 'test',
-            mergeBrainArguments: (brain, overrides) => ({ ...brain, ...overrides }),
             callMcpTool: async () => { requests++; },
             console: { error: (...args) => errors.push(args) }
         });
@@ -215,48 +213,3 @@ test('MCP tool errors retain the bridge diagnostic text', async () => {
         vm.runInContext(page.slice(start, end), context);
         await assert.rejects(context.callMcpTool('https://mcp.test', 'tekla_create_gridline', {}), /parentGuid is required/);
     });
-
-test('Call MCP Brain dispatch merges explicitly changed textbox values over Brain arguments', async () => {
-    const page = readFileSync(new URL('../pages/workflowBuilder.html', import.meta.url), 'utf8');
-    const helperStart = page.indexOf('function mergeBrainArguments(');
-    const helperEnd = page.indexOf('function setArgsMode(', helperStart);
-    const mcpStart = page.indexOf('      if (cur.type === "mcp") {');
-    const mcpEnd = page.indexOf('      if (cur.type === "api") {', mcpStart);
-    const calls = [];
-    const args = {
-        profile: '400*500', material: '', classNumber: '', height: 0,
-        enabled: false, extra: 'textbox value', attributes: { userTag: 'manual' }
-    };
-    const baseline = {
-        profile: '', material: '', classNumber: '', height: 150,
-        enabled: true, extra: '', attributes: {}
-    };
-    const status = {};
-    const context = vm.createContext({
-        URL, state: {
-            rows: [{ profile: '300*600' }],
-            brainCalls: [{ tool: 'tekla_create_beam', arguments: {
-                profile: '300*600', material: 'C30/37', classNumber: '1',
-                height: 4500, enabled: true, attributes: { source: 'DXF', thickness: 20 }
-            } }]
-        },
-        signal: { aborted: false },
-        cur: { type: 'mcp', el: { _argsBaseline: JSON.stringify(baseline), querySelector: selector => ({
-            '.url': { value: 'https://mcp.test' }, '.tool': { value: '' },
-            '.args': { value: JSON.stringify(args) }, '.status': status
-        })[selector] } },
-        ensureToken: async () => 'test',
-        lowerKeys: row => row,
-        callMcpTool: async (_url, tool, toolArgs) => { calls.push({ tool, args: toolArgs }); return { ok: true }; },
-        console
-    });
-    vm.runInContext(page.slice(helperStart, helperEnd), context);
-    await vm.runInContext(`(async () => { ${page.slice(mcpStart, mcpEnd)} })()`, context);
-    assert.equal(calls.length, 1);
-    assert.equal(calls[0].tool, 'tekla_create_beam');
-    assert.deepEqual(JSON.parse(JSON.stringify(calls[0].args)), {
-        profile: '400*500', material: 'C30/37', classNumber: '1', height: 0,
-        enabled: false, extra: 'textbox value',
-        attributes: { source: 'DXF', thickness: 20, userTag: 'manual' }
-    });
-});

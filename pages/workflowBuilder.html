@@ -1460,36 +1460,6 @@ function renderBrain(el) {
   const raw = el.querySelector(".brain-mode:checked").value === "raw";
   box.textContent = raw ? JSON.stringify(el._brainResult) : JSON.stringify(el._brainResult, null, 2);
 }
-function mergeBrainArguments(brainArguments, textboxArguments, baselineText) {
-  let baseline = {};
-  try { baseline = JSON.parse(baselineText || "{}"); } catch {}
-  const isObject = value => value !== null && typeof value === "object" && !Array.isArray(value);
-  const hasValue = value => value !== null && value !== undefined &&
-    !(typeof value === "string" && !value.trim()) &&
-    !(Array.isArray(value) && !value.length) &&
-    !(isObject(value) && !Object.keys(value).length);
-  const diff = (current, original) => {
-    if (isObject(current)) {
-      const patch = {};
-      for (const [key, value] of Object.entries(current)) {
-        const change = diff(value, original?.[key]);
-        if (change !== undefined) patch[key] = change;
-      }
-      return Object.keys(patch).length ? patch : undefined;
-    }
-    if (JSON.stringify(current) === JSON.stringify(original) || !hasValue(current)) return undefined;
-    return current;
-  };
-  const merge = (base, patch) => {
-    if (!isObject(patch)) return patch;
-    const result = isObject(base) ? { ...base } : {};
-    for (const [key, value] of Object.entries(patch)) {
-      result[key] = isObject(value) ? merge(result[key], value) : value;
-    }
-    return result;
-  };
-  return merge(brainArguments, diff(textboxArguments, baseline) || {});
-}
 function setArgsMode(el, mode) {
   const fields = mode === "fields";
   if (fields) renderArgFields(el);
@@ -1611,7 +1581,6 @@ function createNode(type, x, y, { autoLoad = true } = {}) {
     gotoSel.value = cur;
   });
   const node = { id, type, instanceNumber, x: Math.max(0, x), y: Math.max(0, y), el };
-  if (type === "mcp") el._argsBaseline = el.querySelector(".args").value;
   nodes.push(node);
   updateNodeLabels(type);
   wireNode(node);
@@ -1739,11 +1708,7 @@ function wireNode(node) {
     toolInput.addEventListener("change", (e) => {
       const url = el.querySelector(".url").value.trim();
       const schema = toolSchemas[`${url}\n${e.target.value.trim()}`];
-      if (schema) {
-        el.querySelector(".args").value = argsTemplate(schema);
-        el._argsBaseline = el.querySelector(".args").value;
-        refreshArgsUi(el);
-      }
+      if (schema) { el.querySelector(".args").value = argsTemplate(schema); refreshArgsUi(el); }
     });
   }
 }
@@ -3111,7 +3076,6 @@ async function runWorkflowCore(signal) {
           const raw = cur.el.querySelector(".args").value || "{}";
           toolArgs = JSON.parse(raw);
         } catch { throw new Error("Tool arguments must be valid JSON"); }
-        const brainOverrides = mergeBrainArguments({}, toolArgs, cur.el._argsBaseline || "{}");
         const subst = (v) => typeof v === "string"
           ? (v === "{{pdf_base64}}" ? (state.pdfBase64 || "")
             : v === "{{file_base64}}" ? (state.fileBase64 || "")
@@ -3161,7 +3125,7 @@ async function runWorkflowCore(signal) {
             const response = await callMcpTool(
               url,
               dispatchedTool,
-              useBrain ? mergeBrainArguments(brainCall.arguments, brainOverrides, "{}") : fill(toolArgs),
+              useBrain ? brainCall.arguments : fill(toolArgs),
               signal
             );
             results.push(response);
