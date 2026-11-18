@@ -1606,7 +1606,7 @@ export function extractBeamProfiles(records) {
 
 /**
  * Pairs beam boundaries whose separation matches the section width. End trims
- * may differ by up to half that width. Ambiguous pairs are left unchanged.
+ * may differ by up to that width. Ambiguous pairs are left unchanged.
  */
 export function mergeBeamBoundaries(calls, profilesByType, defaults = {}) {
   const tolerance = 0.1;
@@ -1667,7 +1667,7 @@ export function mergeBeamBoundaries(calls, profilesByType, defaults = {}) {
       const radius = (a.radius + b.radius) / 2;
       const startDelta = ((b.angle - a.angle + 540) % 360) - 180;
       const endDelta = startDelta + b.sweep - a.sweep;
-      const trimLimit = a.width / 2 + tolerance;
+      const trimLimit = a.width + tolerance;
       if (Math.max(Math.abs(startDelta), Math.abs(endDelta)) * Math.PI / 180 * radius > trimLimit ||
           Math.min(a.sweep, b.sweep) * Math.PI / 180 * radius <= a.width * 2) return null;
       const start = a.angle + startDelta / 2;
@@ -1691,7 +1691,7 @@ export function mergeBeamBoundaries(calls, profilesByType, defaults = {}) {
     });
     const startGap = perpendicular(offset, startTrim), endGap = perpendicular(endOffset, endTrim);
     if (Math.abs(offset.z) > tolerance || Math.abs(endOffset.z) > tolerance ||
-        Math.max(Math.abs(startTrim), Math.abs(endTrim)) > a.width / 2 + tolerance ||
+        Math.max(Math.abs(startTrim), Math.abs(endTrim)) > a.width + tolerance ||
         Math.abs(Math.hypot(startGap.x, startGap.y, startGap.z) - a.width) > tolerance ||
         distance(startGap, endGap) > tolerance ||
         distance(start, end) <= a.width * 2) return null;

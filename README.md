@@ -102,7 +102,7 @@ Before modeling, matching LINE boundaries and concentric ARC boundaries
 are merged into one centerline member when their separation matches the section
 width (0.1 mm tolerance). Pairing requires compatible profiles, material, class
 and elevation; ambiguous pairs are left unchanged.
-Endpoint trims may differ by up to half the section width
+Endpoint trims may differ by up to the section width
 (measured along the line or arc); paired spans must exceed twice the width.
 For differently trimmed LINE edges with positive source dimensions, the merged
 centerline's measured length is used rather than either boundary's length.

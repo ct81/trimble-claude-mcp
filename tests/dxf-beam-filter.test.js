@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { dxfTextToRecords } from '../src/AI_RoachHarbor/dxf-text.js';
 import { beamCallRejection, convertDxfJson, dimensionedBeam, extractBeamProfiles, extractProfilesByType, filterBeamCalls } from '../src/AI_RoachHarbor/supraesophageal_ganglion_4_dxf.js';
 import { brainToTekla } from '../src/AI_RoachHarbor/brain-tekla.js';
 
@@ -300,7 +301,7 @@ test('beam pairing preserves ambiguous, offset, different-level and incompatible
     const line = { ...beamRecord, Profile: '300x600', Start_Y: 0, End_Y: 3000 };
     for (const extra of [
         { Start_X: 500, End_X: 500 },
-        { Start_X: 300, End_X: 300, Start_Y: 200, End_Y: 3200 },
+        { Start_X: 300, End_X: 300, Start_Y: 400, End_Y: 3400 },
         { Start_X: 300, End_X: 300, Start_Z: 3000, End_Z: 3000 },
         { Start_X: 300, End_X: 300, Profile: '400x600' },
         { Start_X: 300, End_X: 300, Width_mm: 650, Depth_mm: 650 },
@@ -334,6 +335,38 @@ test('seven near-curve LINE pairs merge despite small end trims and unequal sour
         assert.equal(call.arguments.y1, 10);
         assert.equal(call.arguments.y2, 3490);
     });
+});
+
+test('drawing at C8–C9 merges LINE 2A2/2A3 and ARC 2CC/2CD', () => {
+    const records = dxfTextToRecords(readFileSync(
+        new URL('../images/upload/TSD1 St. 3 (3) General Arrangement.dxf', import.meta.url), 'utf8'
+    ));
+    for (const [handles, tool] of [
+        [['2A2', '2A3'], 'tekla_create_beam'],
+        [['2CC', '2CD'], 'tekla_create_polybeam']
+    ]) {
+        const source = records.filter(record => handles.includes(record.Handle));
+        assert.equal(source.length, 2);
+        const result = brainToTekla(source, ['beam'], { beam: { profile: '300*600' } });
+        assert.equal(result.calls.length, 1);
+        assert.equal(result.calls[0].tool, tool);
+        assert.equal(result.skipped.length, 1);
+        assert.match(result.skipped[0].reason, /centerline/);
+        const args = result.calls[0].arguments;
+        if (tool === 'tekla_create_beam') {
+            assert.ok(Math.abs(args.x1 - 20795.0352635596) < 1e-8);
+            assert.ok(Math.abs(args.y1 - (source[0].Start_Y + source[1].Start_Y) / 2) < 1e-8);
+        } else {
+            for (const p of args.points) {
+                assert.ok(Math.abs(Math.hypot(p.x - source[0].Center_X, p.y - source[0].Center_Y) - 24000) < 1e-8);
+            }
+        }
+    }
+    const full = brainToTekla(records, ['beam']);
+    assert.deepEqual(full.mapped, { tekla_create_beam: 40, tekla_create_polybeam: 7 });
+    for (const handle of ['2A3', '2CD']) {
+        assert.match(full.skipped.find(item => item.handle === handle).reason, /centerline/);
+    }
 });
 
 test('seven concentric ARC pairs merge with slightly different trimmed angles', () => {
