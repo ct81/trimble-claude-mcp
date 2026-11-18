@@ -1200,7 +1200,8 @@ export function mapDxfEntityToMcp(
   const normalized = normalizedRecord(record);
   const entity = String(normalized.dxfEntityType || "").toUpperCase();
   const allowedEntities = classification.objectType === "beam" ? ["LINE", "ARC"] :
-    classification.objectType === "polybeam" ? ["ARC"] : null;
+    classification.objectType === "polybeam" ? ["ARC"] :
+    classification.objectType === "slab" ? ["LWPOLYLINE"] : null;
   if (allowedEntities && !allowedEntities.includes(entity)) {
     return {
       ok: false,
@@ -1209,6 +1210,24 @@ export function mapDxfEntityToMcp(
       classification: { ...classification, reason: `${normalized.dxfEntityType || "Unknown entity"} is not a ${classification.objectType} path; only ${allowedEntities.join(" and ")} are supported` },
       source: record
     };
+  }
+  if (classification.objectType === "slab") {
+    const points = normalized.vertices;
+    const first = points[0], last = points.at(-1);
+    const closed = /^(yes|true|1)$/i.test(normalized.closed || "") ||
+      (points.length > 3 && Math.hypot(first.x - last.x, first.y - last.y,
+        (first.z ?? 0) - (last.z ?? 0)) <= 0.1);
+    const annotation = ANNOTATION_LAYER_PATTERN.test(normalized.layer || "") ||
+      TAG_LAYER_PATTERN.test(normalized.layer || "");
+    if (!closed || annotation || points.length < 3) {
+      return {
+        ok: false,
+        handle: normalized.handle,
+        objectType: classification.objectType,
+        classification: { ...classification, reason: "slab requires a closed structural LWPOLYLINE with 3+ vertices, not arrows or label boxes" },
+        source: record
+      };
+    }
   }
 
   const fieldMap = {

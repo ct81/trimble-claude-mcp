@@ -104,27 +104,22 @@ Offsets affect new calls only, not already-created Tekla objects.
 
 ### DXF slabs in Workflow Builder
 
-Select **slab** to derive horizontal slab regions from cleaned beam centerlines,
-the sampled curved perimeter, and rectangular supporting wall centerlines.
-Beam modeling does not need to be selected. Column sections and beam widths
-limit how far boundaries can be extended across support gaps; unrelated open
-boundaries are not closed arbitrarily. Different elevations stay separate
-unless a slab Z level is entered.
+Select **slab** to model only closed structural DXF `LWPOLYLINE` outlines.
+The source vertices define each slab; regions are no longer derived from
+beams, arcs or wall centerlines. Other entity types, open outlines and
+annotation/text-layer label boxes are reported in `skipped`.
+Closure uses the DXF closed flag (`Closed` in JSON), or matching first/last
+vertices. Source elevation is retained unless a slab Z level is entered.
 
-Slab direction arrows and label boxes are not modeled. When `SI` slab labels
-are available, only regions containing those labels are kept; unmatched labels
-are reported in `skipped`. A single unambiguous thickness label such as `200 mm`
+A single unambiguous thickness label such as `200 mm`
 supplies `PL200` unless a slab profile is entered. Review mixed thicknesses and
 provide an explicit profile where required.
 
 The current slab tool accepts three corners, so each region is triangulated
 into multiple slab objects, preserving the entire boundary rather than only
-its first three vertices. Curved edges use the beam arc's 1 mm sampling tolerance.
+its first three vertices.
 Brain reports the region count separately from the creation-call count.
-The included general arrangement derives 21 labeled regions.
-Without a supporting beam network, only closed structural slab outlines are
-accepted. Open outlines, arrows and text-layer rectangles are skipped.
-Nested boundaries are skipped for review: slab openings/holes are not supported.
+Slab openings/holes and polyline bulges are not supported.
 This changes future conversions only; remove any previously created incorrect
 slabs separately after reviewing them. Live Tekla insertion must still be verified.
 

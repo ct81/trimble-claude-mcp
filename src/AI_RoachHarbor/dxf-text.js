@@ -51,6 +51,7 @@ export function dxfTextToRecords(text) {
       case 21: cur.End_Y = n; break;
       case 31: cur.End_Z = n; break;
       case 40: cur.Radius = n; break;
+      case 70: if (cur.Type === "LWPOLYLINE") cur.Closed = (n & 1) !== 0; break;
       default: break;
     }
   }
