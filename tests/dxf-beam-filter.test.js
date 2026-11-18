@@ -300,7 +300,7 @@ test('beam pairing preserves ambiguous, offset, different-level and incompatible
     const line = { ...beamRecord, Profile: '300x600', Start_Y: 0, End_Y: 3000 };
     for (const extra of [
         { Start_X: 500, End_X: 500 },
-        { Start_X: 300, End_X: 300, Start_Y: 100, End_Y: 3100 },
+        { Start_X: 300, End_X: 300, Start_Y: 200, End_Y: 3200 },
         { Start_X: 300, End_X: 300, Start_Z: 3000, End_Z: 3000 },
         { Start_X: 300, End_X: 300, Profile: '400x600' },
         { Start_X: 300, End_X: 300, Width_mm: 650, Depth_mm: 650 },
@@ -311,6 +311,65 @@ test('beam pairing preserves ambiguous, offset, different-level and incompatible
     }
     const ambiguous = brainToTekla([0, 300, 600].map((x, i) => ({
         ...line, Handle: String(i), Start_X: x, End_X: x
+    })), ['beam']);
+    assert.equal(ambiguous.calls.length, 3);
+});
+
+test('seven near-curve LINE pairs merge despite small end trims and unequal source lengths', () => {
+    const records = [];
+    for (let i = 0; i < 7; i++) {
+        const x = i * 6000;
+        const common = { ...beamRecord, Profile: '300x600', Width_mm: 300, Depth_mm: 600, Start_Y: 0 };
+        records.push(
+            { ...common, Handle: `A${i}`, Start_X: x, End_X: x, End_Y: 3500, Length_mm: 3500 },
+            { ...common, Handle: `B${i}`, Start_X: x + 300, End_X: x + 300,
+                Start_Y: 20, End_Y: 3480, Length_mm: 3460 }
+        );
+    }
+    const result = brainToTekla(records, ['beam']);
+    assert.equal(result.calls.length, 7);
+    assert.equal(result.skipped.filter(item => /centerline/.test(item.reason)).length, 7);
+    result.calls.forEach((call, i) => {
+        assert.equal(call.arguments.x1, i * 6000 + 150);
+        assert.equal(call.arguments.y1, 10);
+        assert.equal(call.arguments.y2, 3490);
+    });
+});
+
+test('seven concentric ARC pairs merge with slightly different trimmed angles', () => {
+    const records = [];
+    for (let i = 0; i < 7; i++) {
+        const common = {
+            Type: 'ARC', Layer: 'S-_BEAM----_E', Profile: '300x600',
+            Center_X: 2795.04, Center_Y: 27709.34
+        };
+        records.push(
+            { ...common, Handle: `INNER${i}`, Radius: 23850, StartAngle: -89 + i * 12, EndAngle: -79 + i * 12 },
+            { ...common, Handle: `OUTER${i}`, Radius: 24150, StartAngle: -88.98 + i * 12, EndAngle: -79.03 + i * 12 }
+        );
+    }
+    const result = brainToTekla(records, ['beam']);
+    assert.equal(result.calls.length, 7);
+    assert.equal(result.skipped.filter(item => /centerline/.test(item.reason)).length, 7);
+    for (const call of result.calls) for (const p of call.arguments.points) {
+        assert.ok(Math.abs(Math.hypot(p.x - 2795.04, p.y - 27709.34) - 24000) < 1e-8);
+    }
+});
+
+test('ARC cleanup preserves different spans, elevations and ambiguous concentric pairs', () => {
+    const arc = {
+        Type: 'ARC', Layer: 'S-_BEAM----', Profile: '300x600',
+        Center_X: 0, Center_Y: 0, StartAngle: 350, EndAngle: 10
+    };
+    for (const extra of [{ StartAngle: 351 }, { Center_Z: 3000 }]) {
+        const result = brainToTekla([
+            { ...arc, Handle: 'A', Radius: 23850 },
+            { ...arc, Handle: 'B', Radius: 24150, ...extra }
+        ], ['beam']);
+        assert.equal(result.calls.length, 2);
+    }
+    const ambiguous = brainToTekla([23850, 24150, 24450].map((Radius, i) => ({
+        ...arc, Handle: String(i), Radius
     })), ['beam']);
     assert.equal(ambiguous.calls.length, 3);
 });

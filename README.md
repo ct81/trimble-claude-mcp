@@ -98,10 +98,15 @@ records, also creating one object per arc. Arcs require `Center_X`,
 They are sampled into one `tekla_create_polybeam` point contour in the XY plane,
 with at most 1 mm chord deviation; this is a faceted approximation, not an exact
 Tekla arc. Arc radius is not used as the beam's section size.
-Before modeling, matching full-span LINE boundaries and concentric ARC boundaries
+Before modeling, matching LINE boundaries and concentric ARC boundaries
 are merged into one centerline member when their separation matches the section
 width (0.1 mm tolerance). Pairing requires compatible profiles, material, class
-and elevation; ambiguous pairs are left unchanged. Exact repeated boundaries
+and elevation; ambiguous pairs are left unchanged.
+Endpoint trims may differ by up to half the section width
+(measured along the line or arc); paired spans must exceed twice the width.
+For differently trimmed LINE edges with positive source dimensions, the merged
+centerline's measured length is used rather than either boundary's length.
+Repeated boundaries
 are removed, and merged/skipped handles are reported. Genuine crossings are
 preserved. Cleanup affects future conversions only, not existing Tekla objects.
 For LINE beams, when `Length_mm`, `Width_mm`, and `Depth_mm` are all positive,

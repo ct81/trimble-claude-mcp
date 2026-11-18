@@ -1605,8 +1605,8 @@ export function extractBeamProfiles(records) {
 }
 
 /**
- * Pairs full-span beam boundaries only when their separation matches the section
- * width. Ambiguous pairs and genuine intersections are left unchanged.
+ * Pairs beam boundaries whose separation matches the section width. End trims
+ * may differ by up to half that width. Ambiguous pairs are left unchanged.
  */
 export function mergeBeamBoundaries(calls, profilesByType, defaults = {}) {
   const tolerance = 0.1;
@@ -1656,15 +1656,23 @@ export function mergeBeamBoundaries(calls, profilesByType, defaults = {}) {
   const pair = (a, b) => {
     if (!a.entity || a.entity !== b.entity || a.call.objectType !== b.call.objectType ||
         !(a.width > 0) || a.width !== b.width || a.profile !== b.profile ||
-        a.dimensions.some((value, i) => value !== b.dimensions[i]) ||
+        a.dimensions.slice(1).some((value, i) => value !== b.dimensions[i + 1]) ||
         a.call.args.material !== b.call.args.material || a.call.args.class !== b.call.args.class) return null;
     if (a.entity === "ARC") {
       if (!a.center || !b.center || distance(a.center, b.center) > tolerance ||
-          a.angle === undefined || a.sweep === undefined || a.angle !== b.angle || a.sweep !== b.sweep ||
+          a.angle === undefined || a.sweep === undefined || b.angle === undefined || b.sweep === undefined ||
+          !(a.sweep > 0) || !(b.sweep > 0) ||
           !(a.radius > 0) || !(b.radius > 0) ||
           Math.abs(Math.abs(a.radius - b.radius) - a.width) > tolerance) return null;
       const radius = (a.radius + b.radius) / 2;
-      return { ...a.call, source: { ...a.call.source, Radius: radius } };
+      const startDelta = ((b.angle - a.angle + 540) % 360) - 180;
+      const endDelta = startDelta + b.sweep - a.sweep;
+      const trimLimit = a.width / 2 + tolerance;
+      if (Math.max(Math.abs(startDelta), Math.abs(endDelta)) * Math.PI / 180 * radius > trimLimit ||
+          Math.min(a.sweep, b.sweep) * Math.PI / 180 * radius <= a.width * 2) return null;
+      const start = a.angle + startDelta / 2;
+      const sweep = (a.sweep + b.sweep) / 2;
+      return { ...a.call, source: { ...a.call.source, Radius: radius, StartAngle: start, EndAngle: start + sweep } };
     }
     if (a.entity !== "LINE" || !a.start || !a.end || !b.start || !b.end) return null;
     const direct = distance(a.start, b.start) + distance(a.end, b.end);
@@ -1673,12 +1681,25 @@ export function mergeBeamBoundaries(calls, profilesByType, defaults = {}) {
     const end = direct <= reverse ? b.end : b.start;
     const offset = { x: start.x - a.start.x, y: start.y - a.start.y, z: start.z - a.start.z };
     const length = distance(a.start, a.end);
-    if (!(length > tolerance) || Math.abs(offset.z) > tolerance ||
-        Math.abs(distance(a.start, start) - a.width) > tolerance ||
-        Math.hypot(end.x - a.end.x - offset.x, end.y - a.end.y - offset.y, end.z - a.end.z - offset.z) > tolerance ||
-        Math.abs(((a.end.x - a.start.x) * offset.x + (a.end.y - a.start.y) * offset.y +
-          (a.end.z - a.start.z) * offset.z) / length) > tolerance) return null;
-    return { ...a.call, args: { ...a.call.args, startPoint: midpoint(a.start, start), endPoint: midpoint(a.end, end) } };
+    if (!(length > a.width * 2)) return null;
+    const direction = { x: (a.end.x - a.start.x) / length, y: (a.end.y - a.start.y) / length, z: (a.end.z - a.start.z) / length };
+    const endOffset = { x: end.x - a.end.x, y: end.y - a.end.y, z: end.z - a.end.z };
+    const projection = vector => vector.x * direction.x + vector.y * direction.y + vector.z * direction.z;
+    const startTrim = projection(offset), endTrim = projection(endOffset);
+    const perpendicular = (vector, along) => ({
+      x: vector.x - direction.x * along, y: vector.y - direction.y * along, z: vector.z - direction.z * along
+    });
+    const startGap = perpendicular(offset, startTrim), endGap = perpendicular(endOffset, endTrim);
+    if (Math.abs(offset.z) > tolerance || Math.abs(endOffset.z) > tolerance ||
+        Math.max(Math.abs(startTrim), Math.abs(endTrim)) > a.width / 2 + tolerance ||
+        Math.abs(Math.hypot(startGap.x, startGap.y, startGap.z) - a.width) > tolerance ||
+        distance(startGap, endGap) > tolerance ||
+        distance(start, end) <= a.width * 2) return null;
+    const centerStart = midpoint(a.start, start), centerEnd = midpoint(a.end, end);
+    return { ...a.call, args: { ...a.call.args, startPoint: centerStart, endPoint: centerEnd,
+      ...(a.dimensions[0] !== b.dimensions[0] &&
+        a.dimensions.every(value => value > 0) && b.dimensions.every(value => value > 0)
+        ? { length: distance(centerStart, centerEnd) } : {}) } };
   };
   const matches = entries.map(() => []);
   for (let i = 0; i < entries.length; i++) {
