@@ -257,6 +257,64 @@ test('LINE beams use endpoints rather than unrelated exported vertices', () => {
     assert.equal(result.calls[0].arguments.y2, beamRecord.End_Y);
 });
 
+test('paired LINE boundaries produce one centerline beam and retain a genuine crossing', () => {
+    const records = [
+        { ...beamRecord, Handle: '19A', Start_X: 14645.04, End_X: 14645.04, Start_Y: 23859.34, End_Y: 27384.34 },
+        { ...beamRecord, Handle: '19B', Start_X: 14945.04, End_X: 14945.04, Start_Y: 27384.34, End_Y: 23859.34 },
+        { ...beamRecord, Handle: 'COPY', Start_X: 14645.04, End_X: 14645.04, Start_Y: 23859.34, End_Y: 27384.34 },
+        { ...beamRecord, Handle: 'CROSS', Start_X: 13000, End_X: 16000, Start_Y: 25000, End_Y: 25000 },
+        sizeTag('300x600')
+    ];
+    const result = brainToTekla(records, ['beam'], { beam: { height: 4500 } });
+    assert.equal(result.calls.length, 2);
+    const args = result.calls.find(call => call.handle === '19A').arguments;
+    assert.deepEqual([args.x1, args.y1, args.z1, args.x2, args.y2, args.z2],
+        [14795.04, 23859.34, 4500, 14795.04, 27384.34, 4500]);
+    assert.ok(result.calls.some(call => call.handle === 'CROSS'));
+    assert.match(result.skipped.find(call => call.handle === '19B').reason, /centerline/);
+    assert.match(result.skipped.find(call => call.handle === 'COPY').reason, /duplicate/);
+});
+
+test('concentric ARC boundaries produce one polybeam at their average radius', () => {
+    for (const type of ['beam', 'polybeam']) {
+        const arc = {
+            Type: 'ARC', Layer: `S-_${type.toUpperCase()}----_E`,
+            Center_X: 2795.04, Center_Y: 27709.34, Center_Z: 2500,
+            StartAngle: -80, EndAngle: -60, Profile: '300x600'
+        };
+        const result = brainToTekla([
+            { ...arc, Handle: 'INNER', Radius: 23850, Length_mm: 8325.22 },
+            { ...arc, Handle: 'OUTER', Radius: 24150, Length_mm: 8429.94 }
+        ], [type]);
+        assert.equal(result.calls.length, 1);
+        assert.equal(result.calls[0].tool, 'tekla_create_polybeam');
+        for (const p of result.calls[0].arguments.points) {
+            assert.ok(Math.abs(Math.hypot(p.x - 2795.04, p.y - 27709.34) - 24000) < 1e-8);
+            assert.equal(p.z, 2500);
+        }
+        assert.match(result.skipped[0].reason, /centerline/);
+    }
+});
+
+test('beam pairing preserves ambiguous, offset, different-level and incompatible members', () => {
+    const line = { ...beamRecord, Profile: '300x600', Start_Y: 0, End_Y: 3000 };
+    for (const extra of [
+        { Start_X: 500, End_X: 500 },
+        { Start_X: 300, End_X: 300, Start_Y: 100, End_Y: 3100 },
+        { Start_X: 300, End_X: 300, Start_Z: 3000, End_Z: 3000 },
+        { Start_X: 300, End_X: 300, Profile: '400x600' },
+        { Start_X: 300, End_X: 300, Width_mm: 650, Depth_mm: 650 },
+        { Start_X: 300, End_X: 300, Material: 'STEEL' }
+    ]) {
+        const result = brainToTekla([{ ...line, Handle: 'A' }, { ...line, Handle: 'B', ...extra }], ['beam']);
+        assert.equal(result.calls.length, 2);
+    }
+    const ambiguous = brainToTekla([0, 300, 600].map((x, i) => ({
+        ...line, Handle: String(i), Start_X: x, End_X: x
+    })), ['beam']);
+    assert.equal(ambiguous.calls.length, 3);
+});
+
 test('LINE beam uses source length and section dimensions when all are positive', () => {
     const result = brainToTekla([{
         ...beamRecord, Start_X: 10, Start_Y: 20, End_X: 10, End_Y: 3020,

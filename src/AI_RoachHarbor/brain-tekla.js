@@ -1,4 +1,4 @@
-import { annotationSkipReason, beamArcPoints, beamCallRejection, buildGridDefinition, convertDxfJson, dimensionedBeam, duplicateCallKey, extractGridlineData, wallOutlineCentreline } from "./supraesophageal_ganglion_4_dxf.js";
+import { annotationSkipReason, beamArcPoints, beamCallRejection, buildGridDefinition, convertDxfJson, dimensionedBeam, duplicateCallKey, extractGridlineData, mergeBeamBoundaries, wallOutlineCentreline } from "./supraesophageal_ganglion_4_dxf.js";
 
 const num = (value) => {
   const n = Number(value);
@@ -337,7 +337,9 @@ export function brainToTekla(records, types, defaults = {}) {
     .filter(call => ["beam", "polybeam"].includes(call.objectType))
     .map(call => ({ handle: call.handle, type: call.objectType, reason: wanted.has(call.objectType) ? call.classification.reason : "type not selected" }));
   const seen = new Set();
-  for (const call of converted.calls) {
+  const boundaries = mergeBeamBoundaries(converted.calls, converted.profilesByType, defaults);
+  skipped.push(...boundaries.removed);
+  for (const call of boundaries.calls) {
     const type = call.objectType;
     if (!wanted.has(type)) { skipped.push({ handle: call.handle, type, reason: "type not selected" }); continue; }
     // Tag/annotation graphics (e.g. S-_WALL----_T label layers) are not structural members.

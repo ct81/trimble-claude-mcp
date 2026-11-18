@@ -1605,6 +1605,103 @@ export function extractBeamProfiles(records) {
 }
 
 /**
+ * Pairs full-span beam boundaries only when their separation matches the section
+ * width. Ambiguous pairs and genuine intersections are left unchanged.
+ */
+export function mergeBeamBoundaries(calls, profilesByType, defaults = {}) {
+  const tolerance = 0.1;
+  const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+  const midpoint = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2 });
+  const entries = [];
+  const removed = [];
+  const seen = new Set();
+  for (const call of calls) {
+    if (!["beam", "polybeam"].includes(call.objectType) || annotationSkipReason(call.source)) {
+      entries.push({ call });
+      continue;
+    }
+    const type = call.objectType;
+    const source = call.source;
+    const entity = String(readSource(source, "entityType") || "").toUpperCase();
+    const configuredZ = toNumber(defaults[type]?.height);
+    const point = p => p && ({ ...p, z: configuredZ ?? p.z ?? toNumber(call.args.level) ?? 0 });
+    const profile = profilesByType[type]?.length === 1 ? profilesByType[type][0] :
+      call.args.profile || defaults[type]?.profile || "";
+    const section = String(profile).match(/^(\d+(?:\.\d+)?)\s*[xX*×]\s*(\d+(?:\.\d+)?)$/);
+    const width = section ? Number(section[1]) : toNumber(call.args.width);
+    const entry = { call, entity, width, profile, start: point(call.args.startPoint), end: point(call.args.endPoint) };
+    if (entity === "ARC") {
+      entry.center = point(getPoint(source, "center"));
+      entry.radius = toNumber(readSource(source, "radius"));
+      const start = toNumber(source.StartAngle ?? source.startAngle);
+      const end = toNumber(source.EndAngle ?? source.endAngle);
+      if (start !== undefined && end !== undefined) {
+        entry.angle = ((start % 360) + 360) % 360;
+        entry.sweep = ((end - start) % 360 + 360) % 360;
+      }
+    }
+    const coords = p => p && [p.x, p.y, p.z];
+    const ends = [coords(entry.start), coords(entry.end)].sort();
+    const geometry = entity === "ARC" ? [coords(entry.center), entry.radius, entry.angle, entry.sweep] : ends;
+    const dimensions = [entity === "ARC" ? undefined : call.args.length, call.args.width, call.args.depth].map(toNumber);
+    entry.dimensions = dimensions;
+    const key = JSON.stringify([type, entity, geometry, profile, dimensions, call.args.material, call.args.class]);
+    if (seen.has(key)) {
+      removed.push({ handle: call.handle, type, reason: "duplicate of an earlier beam boundary" });
+      continue;
+    }
+    seen.add(key);
+    entries.push(entry);
+  }
+  const pair = (a, b) => {
+    if (!a.entity || a.entity !== b.entity || a.call.objectType !== b.call.objectType ||
+        !(a.width > 0) || a.width !== b.width || a.profile !== b.profile ||
+        a.dimensions.some((value, i) => value !== b.dimensions[i]) ||
+        a.call.args.material !== b.call.args.material || a.call.args.class !== b.call.args.class) return null;
+    if (a.entity === "ARC") {
+      if (!a.center || !b.center || distance(a.center, b.center) > tolerance ||
+          a.angle === undefined || a.sweep === undefined || a.angle !== b.angle || a.sweep !== b.sweep ||
+          !(a.radius > 0) || !(b.radius > 0) ||
+          Math.abs(Math.abs(a.radius - b.radius) - a.width) > tolerance) return null;
+      const radius = (a.radius + b.radius) / 2;
+      return { ...a.call, source: { ...a.call.source, Radius: radius } };
+    }
+    if (a.entity !== "LINE" || !a.start || !a.end || !b.start || !b.end) return null;
+    const direct = distance(a.start, b.start) + distance(a.end, b.end);
+    const reverse = distance(a.start, b.end) + distance(a.end, b.start);
+    const start = direct <= reverse ? b.start : b.end;
+    const end = direct <= reverse ? b.end : b.start;
+    const offset = { x: start.x - a.start.x, y: start.y - a.start.y, z: start.z - a.start.z };
+    const length = distance(a.start, a.end);
+    if (!(length > tolerance) || Math.abs(offset.z) > tolerance ||
+        Math.abs(distance(a.start, start) - a.width) > tolerance ||
+        Math.hypot(end.x - a.end.x - offset.x, end.y - a.end.y - offset.y, end.z - a.end.z - offset.z) > tolerance ||
+        Math.abs(((a.end.x - a.start.x) * offset.x + (a.end.y - a.start.y) * offset.y +
+          (a.end.z - a.start.z) * offset.z) / length) > tolerance) return null;
+    return { ...a.call, args: { ...a.call.args, startPoint: midpoint(a.start, start), endPoint: midpoint(a.end, end) } };
+  };
+  const matches = entries.map(() => []);
+  for (let i = 0; i < entries.length; i++) {
+    for (let j = i + 1; j < entries.length; j++) {
+      if (pair(entries[i], entries[j])) { matches[i].push(j); matches[j].push(i); }
+    }
+  }
+  const consumed = new Set();
+  const merged = [];
+  entries.forEach((entry, i) => {
+    if (consumed.has(i)) return;
+    const j = matches[i][0];
+    if (matches[i].length === 1 && matches[j].length === 1) {
+      merged.push(pair(entry, entries[j]));
+      consumed.add(j);
+      removed.push({ handle: entries[j].call.handle, type: entry.call.objectType,
+        reason: `merged with beam boundary ${entry.call.handle} into one centerline beam` });
+    } else merged.push(entry.call);
+  });
+  return { calls: merged, removed };
+}
+
+/**
  * Converts structural records; unknown and ignored records are returned separately.
  */
 export function convertDxfJson(input, options = {}) {
@@ -2245,6 +2342,7 @@ export default {
   convertDxfJson,
   extractBeamProfiles,
   extractProfilesByType,
+  mergeBeamBoundaries,
   dispatchDxfJson,
   formatDxfReport,
   annotationSkipReason,
