@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { beamCallRejection, convertDxfJson, extractBeamProfiles, extractProfilesByType, filterBeamCalls } from '../src/AI_RoachHarbor/supraesophageal_ganglion_4_dxf.js';
+import { beamCallRejection, convertDxfJson, dimensionedBeam, extractBeamProfiles, extractProfilesByType, filterBeamCalls } from '../src/AI_RoachHarbor/supraesophageal_ganglion_4_dxf.js';
 import { brainToTekla } from '../src/AI_RoachHarbor/brain-tekla.js';
 
 const beam = (handle, overrides = {}) => ({
@@ -268,6 +268,21 @@ test('LINE beam uses source length and section dimensions when all are positive'
         { x1: 10, y1: 20, x2: 10, y2: 1220, profile: '300*600' }
     );
     assert.equal(result.calls[0].profileFrom, 'Width_mm x Depth_mm');
+});
+
+test('dimensionedBeam applies all positive source dimensions and leaves incomplete dimensions unapplied', () => {
+    assert.deepEqual(dimensionedBeam(
+        { x: 10, y: 20, z: 0 }, { x: 10, y: 3020, z: 0 },
+        { length: 1200, width: 300, depth: 600 }
+    ), { endPoint: { x: 10, y: 1220, z: 0 }, profile: '300*600' });
+    assert.equal(dimensionedBeam(
+        { x: 0, y: 0, z: 0 }, { x: 0, y: 1, z: 0 },
+        { length: 100, width: 300, depth: 0 }
+    ), null);
+    assert.throws(() => dimensionedBeam(
+        { x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 0 },
+        { length: 100, width: 300, depth: 600 }
+    ), /non-zero direction/);
 });
 
 test('LINE beam does not apply source length unless all three dimensions are positive', () => {

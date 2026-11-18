@@ -1844,6 +1844,31 @@ export function beamArcPoints(source, zFallback = 0, zOverride) {
   });
 }
 
+/**
+ * Applies source length and section dimensions to a straight beam when all
+ * three dimensions are positive. Returns null when the dimensions are incomplete.
+ */
+export function dimensionedBeam(start, end, dimensions = {}) {
+  const length = toNumber(dimensions.length);
+  const width = toNumber(dimensions.width);
+  const depth = toNumber(dimensions.depth);
+  if (!(length > 0) || !(width > 0) || !(depth > 0)) return null;
+
+  const dx = end.x - start.x, dy = end.y - start.y, dz = end.z - start.z;
+  const span = Math.hypot(dx, dy, dz);
+  if (!(span > 0)) throw new Error("dimensioned beam needs a non-zero direction");
+
+  const profileDimension = value => String(Number(value.toFixed(1)));
+  return {
+    endPoint: {
+      x: start.x + dx / span * length,
+      y: start.y + dy / span * length,
+      z: start.z + dz / span * length
+    },
+    profile: `${profileDimension(width)}*${profileDimension(depth)}`
+  };
+}
+
 export function beamCallRejection(call) {
   if (!["tekla_create_beam", "tekla_create_polybeam"].includes(call?.tool)) {
     return `tool ${call?.tool ?? "none"} is not a beam`;
@@ -2225,6 +2250,7 @@ export default {
   annotationSkipReason,
   duplicateCallKey,
   beamArcPoints,
+  dimensionedBeam,
   beamCallRejection,
   filterBeamCalls,
   wallCallRejection,
