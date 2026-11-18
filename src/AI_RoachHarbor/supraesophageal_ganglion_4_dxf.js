@@ -801,6 +801,11 @@ function classifyByRegistryText(
     return undefined;
   }
 
+  // Match the specific polybeam type before the generic "beam" substring.
+  if (registry.polybeam && /\bpoly ?beam\b/.test(normalized)) {
+    return "polybeam";
+  }
+
   for (const [type, config] of Object.entries(registry)) {
     // Use regular expressions for layer names and part labels.
     const patterns =
@@ -1193,6 +1198,18 @@ export function mapDxfEntityToMcp(
 
   const config = registry[classification.objectType];
   const normalized = normalizedRecord(record);
+  const entity = String(normalized.dxfEntityType || "").toUpperCase();
+  const allowedEntities = classification.objectType === "beam" ? ["LINE", "ARC"] :
+    classification.objectType === "polybeam" ? ["ARC"] : null;
+  if (allowedEntities && !allowedEntities.includes(entity)) {
+    return {
+      ok: false,
+      handle: normalized.handle,
+      objectType: classification.objectType,
+      classification: { ...classification, reason: `${normalized.dxfEntityType || "Unknown entity"} is not a ${classification.objectType} path; only ${allowedEntities.join(" and ")} are supported` },
+      source: record
+    };
+  }
 
   const fieldMap = {
     ...config.fields,
@@ -1568,6 +1585,8 @@ export function extractProfilesByType(records) {
       if (profile) labels[type].add(profile);
       continue;
     }
+    if (type === "beam" && !["LINE", "ARC"].includes(entity)) continue;
+    if (type === "polybeam" && entity !== "ARC") continue;
     if (annotationSkipReason({ ...record, Layer: layer, Type: entity }) ||
         !/^(LINE|ARC|CIRCLE|POINT|LWPOLYLINE|POLYLINE)$/.test(entity)) continue;
     const geometry = extractGeometry(record);

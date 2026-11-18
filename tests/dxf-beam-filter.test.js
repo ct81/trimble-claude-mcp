@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { beamCallRejection, extractBeamProfiles, extractProfilesByType, filterBeamCalls } from '../src/AI_RoachHarbor/supraesophageal_ganglion_4_dxf.js';
+import { beamCallRejection, convertDxfJson, extractBeamProfiles, extractProfilesByType, filterBeamCalls } from '../src/AI_RoachHarbor/supraesophageal_ganglion_4_dxf.js';
 import { brainToTekla } from '../src/AI_RoachHarbor/brain-tekla.js';
 
 const beam = (handle, overrides = {}) => ({
@@ -79,7 +79,7 @@ test('Brain conversion populates the Beam textbox, preserves entered settings an
 
 test('per-type profiles use structural layers, aliases and size tags without cross-type contamination', () => {
     const profiles = extractProfilesByType([
-        { ...beamRecord, Layer: 'S-_POLYBEAM----_E', Profile: '250x500' },
+        { ...beamRecord, Type: 'ARC', Layer: 'S-_POLYBEAM----_E', Profile: '250x500' },
         { ...beamRecord, Layer: 'S-_COLN----_E', TeklaPartType: 'Beam', Section: '650x650' },
         { ...sizeTag('650 Dia'), Layer: 'S-_COLN----_T2' },
         { ...beamRecord, Layer: 'S-_WALL----_E', Profile: 'PL300' },
@@ -110,9 +110,9 @@ test('Brain fills selected per-type profile textboxes only for unambiguous nonem
         ]));
         const records = [beamRecord];
         for (const [type, profile] of Object.entries(sourceProfiles)) {
-            records.push({ ...beamRecord, Layer: `S-_${type.toUpperCase()}----_E`, Profile: mode === 'empty' ? ' ' : profile });
+            records.push({ ...beamRecord, Type: type === 'polybeam' ? 'ARC' : 'LINE', Layer: `S-_${type.toUpperCase()}----_E`, Profile: mode === 'empty' ? ' ' : profile });
             if (mode === 'mixed') records.push({
-                ...beamRecord, Layer: `S-_${type.toUpperCase()}----_E`, Profile: 'OTHER'
+                ...beamRecord, Type: type === 'polybeam' ? 'ARC' : 'LINE', Layer: `S-_${type.toUpperCase()}----_E`, Profile: 'OTHER'
             });
         }
         const state = { fileText: JSON.stringify(records) };
@@ -198,18 +198,63 @@ test('brainToTekla keeps straight beam coordinates and skips non-beams and annot
     assert.match(result.skipped.find(({ handle }) => handle === 'TEXT').reason, /not a beam path/);
 });
 
-test('multi-point beam uses its entire contour even when endpoints are present or coincident', () => {
-    const vertices = [{ x: 0, y: 0 }, { x: 100, y: 50 }, { x: 200, y: 0 }];
-    for (const End_X of [0, 200]) {
-        const result = brainToTekla([{
-            Handle: 'CURVE', Type: 'POLYLINE', Layer: 'S-_BEAM----',
-            Start_X: 0, Start_Y: 0, End_X, End_Y: 0, Vertices: vertices
-        }], ['beam'], { beam: { profile: '300x600', height: 4500 } });
-        assert.equal(result.calls.length, 1);
-        assert.equal(result.calls[0].tool, 'tekla_create_polybeam');
-        assert.deepEqual(result.calls[0].arguments.points, vertices.map((p) => ({ ...p, z: 4500 })));
-        assert.equal(result.calls[0].arguments.profile, '300x600');
-    }
+test('beam modeling rejects all non-LINE/ARC entities even with usable endpoints and vertices', () => {
+    const records = ['POLYLINE', 'LWPOLYLINE', 'CIRCLE', 'POINT', 'TEXT', 'MTEXT', 'SPLINE'].map(Type => ({
+        ...beamRecord, Handle: Type, Type, Profile: '900x900',
+        Vertices: [{ x: 0, y: 0 }, { x: 100, y: 50 }, { x: 200, y: 0 }]
+    }));
+    const converted = convertDxfJson(records);
+    assert.equal(converted.calls.length, 0);
+    assert.equal(converted.skipped.length, records.length);
+    assert.deepEqual(converted.beamProfiles, []);
+    const result = brainToTekla(records, ['beam']);
+    assert.equal(result.calls.length, 0);
+    assert.equal(result.skipped.length, records.length);
+    for (const skipped of result.skipped) assert.match(skipped.reason, /only LINE and ARC/);
+});
+
+test('polybeam modeling rejects non-ARC entities even with usable endpoints and vertices', () => {
+    const records = ['LINE', 'POLYLINE', 'LWPOLYLINE', 'CIRCLE', 'POINT', 'TEXT', 'MTEXT', 'SPLINE'].map(Type => ({
+        ...beamRecord, Handle: Type, Type, Layer: 'S-_POLYBEAM----', Profile: '900x900',
+        Vertices: [{ x: 0, y: 0 }, { x: 100, y: 50 }, { x: 200, y: 0 }]
+    }));
+    const converted = convertDxfJson(records);
+    assert.equal(converted.calls.length, 0);
+    assert.equal(converted.skipped.length, records.length);
+    assert.deepEqual(converted.profilesByType.polybeam, []);
+    const result = brainToTekla(records, ['polybeam']);
+    assert.equal(result.calls.length, 0);
+    assert.equal(result.skipped.length, records.length);
+    for (const skipped of result.skipped) assert.match(skipped.reason, /only ARC/);
+});
+
+test('polybeam ARC uses arc geometry instead of exported vertices and reports invalid arcs', () => {
+    const arc = {
+        Handle: 'CURVE', Type: 'ARC', Layer: 'S-_POLYBEAM----',
+        Center_X: 0, Center_Y: 0, Radius: 1000, StartAngle: 0, EndAngle: 90,
+        Vertices: [{ x: 50, y: 50 }, { x: 60, y: 60 }]
+    };
+    const result = brainToTekla([arc, { ...arc, Handle: 'BAD', Radius: '' }], ['polybeam'],
+        { polybeam: { profile: '300*600', height: 4500 } });
+    assert.equal(result.calls.length, 1);
+    assert.equal(result.calls[0].tool, 'tekla_create_polybeam');
+    const points = result.calls[0].arguments.points;
+    assert.deepEqual(points[0], { x: 1000, y: 0, z: 4500 });
+    assert.ok(Math.abs(points.at(-1).x) < 1e-8);
+    assert.equal(points.at(-1).y, 1000);
+    assert.equal(result.calls[0].arguments.profile, '300*600');
+    assert.equal(result.skipped.length, 1);
+    assert.match(result.skipped[0].reason, /radius/i);
+});
+
+test('LINE beams use endpoints rather than unrelated exported vertices', () => {
+    const result = brainToTekla([{
+        ...beamRecord, Vertices: [{ x: 10, y: 10 }, { x: 20, y: 20 }, { x: 30, y: 10 }]
+    }], ['beam']);
+    assert.equal(result.calls.length, 1);
+    assert.equal(result.calls[0].tool, 'tekla_create_beam');
+    assert.equal(result.calls[0].arguments.x1, beamRecord.Start_X);
+    assert.equal(result.calls[0].arguments.y2, beamRecord.End_Y);
 });
 
 test('ARC beam becomes one polybeam with wraparound, elevation and at most 1 mm chord deviation', () => {

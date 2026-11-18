@@ -90,8 +90,10 @@ without a reachable bridge or relay.
 
 ### DXF beams in Workflow Builder
 
-Select **beam** on the Brain node to create straight beams and single polybeams
-from ordered multi-point paths or DXF `ARC` records. Arcs require `Center_X`,
+Select **beam** on the Brain node to model only DXF `LINE` and `ARC` records:
+lines create straight beams and arcs create single polybeams. Other entity types
+are skipped with a reason. The separate **polybeam** type accepts only DXF `ARC`
+records, also creating one object per arc. Arcs require `Center_X`,
 `Center_Y`, `Radius`, `StartAngle` and `EndAngle` (counterclockwise degrees).
 They are sampled into one `tekla_create_polybeam` point contour in the XY plane,
 with at most 1 mm chord deviation; this is a faceted approximation, not an exact
@@ -110,7 +112,8 @@ Save the workflow to retain the populated settings.
 The detected section also supplies blank per-type defaults
 for that conversion; individual source sections retain their existing priority.
 Annotations, unsupported entity types and zero-length paths are skipped with
-reasons. Multi-point paths take precedence over exported start/end fields.
+reasons. LINE beams use their start/end fields; ARC polybeams use their
+center, radius and angles rather than exported vertices.
 
 The DXF script also exports `filterBeamCalls(resultOrCalls)` to retain only valid
 beam/polybeam calls from mapped JSON and report rejected or duplicate entries in

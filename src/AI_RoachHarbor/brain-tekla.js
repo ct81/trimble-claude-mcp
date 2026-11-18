@@ -143,8 +143,6 @@ function beamArgs(args, defaults) {
   const level = baseZ(args);
   const entity = beamEntityType(args);
   if (entity === "ARC") return polybeamArgs(args, defaults, beamArcPoints(args._src, level));
-  const points = vertexPoints(args);
-  if (points.length >= 2) return polybeamArgs(args, defaults, points);
   const a = pt(args.startPoint, level), b = pt(args.endPoint, level);
   if (a && b) {
     if (same(a, b)) throw new Error("beam start and end points are the same");
@@ -157,13 +155,10 @@ function beamArgs(args, defaults) {
       }
     };
   }
-  throw new Error("beam needs start/end points or vertices");
+  throw new Error("beam needs start/end points");
 }
 
-function polybeamArgs(args, defaults, points = vertexPoints(args)) {
-  if (beamEntityType(args) === "ARC" && !points.length) {
-    points = beamArcPoints(args._src, baseZ(args));
-  }
+function polybeamArgs(args, defaults, points = beamArcPoints(args._src, baseZ(args))) {
   if (points.length < 2) throw new Error("polybeam needs at least 2 points");
   return {
     tool: "tekla_create_polybeam",
@@ -332,7 +327,9 @@ export function brainToTekla(records, types, defaults = {}) {
   const converted = convertDxfJson(records);
   const wanted = new Set(types);
   const calls = [];
-  const skipped = [];
+  const skipped = converted.skipped
+    .filter(call => ["beam", "polybeam"].includes(call.objectType))
+    .map(call => ({ handle: call.handle, type: call.objectType, reason: wanted.has(call.objectType) ? call.classification.reason : "type not selected" }));
   const seen = new Set();
   for (const call of converted.calls) {
     const type = call.objectType;
