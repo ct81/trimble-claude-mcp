@@ -332,12 +332,13 @@
   }
 
   .node.code-editor-node { width: 640px; }
-  .node.code-editor-node .node-body { padding: 0; }
+  .node.code-editor-node .node-body { padding: 0; gap: 6px; }
   .code-frame { display: block; width: 100%; height: 560px; border: 0; border-radius: 0 0 10px 10px; background: #fff; }
   .node.sized .code-frame { flex: 1; height: auto; min-height: 0; }
   body.node-dragging .code-frame { pointer-events: none; }
   .node.sized { display: flex; flex-direction: column; }
   .node.sized .node-body { flex: 1; min-height: 0; overflow: auto; }
+  .node.code-editor-node.sized .out { flex: none; }
   .node.sized .out { flex: 1; max-height: none; min-height: 30px; }
   .node.sized .args { flex: 1; min-height: 40px; resize: none; }
   .resize-handle {
@@ -966,7 +967,7 @@ const TYPES = {
   brain:  { label: "Brain",    color: "#e11d48", icon: "🧠", hasIn: true,  hasOut: true  },
   claude: { label: "Claude Chat", color: "#d97706", icon: "✦", hasIn: true, hasOut: true },
   api:    { label: "Call API",   color: "#0ea5e9", icon: "🌐", hasIn: true,  hasOut: true  },
-  code_editor: { label: "Code Editor", color: "#4f46e5", icon: "💻", hasIn: false, hasOut: false },
+  code_editor: { label: "Code Editor", color: "#4f46e5", icon: "💻", hasIn: true, hasOut: true },
   mcp:    { label: "Call MCP",   color: "#7c3aed", icon: "🔌", hasIn: true,  hasOut: true  },
   result: { label: "Get Result", color: "#d97706", icon: "✅", hasIn: true,  hasOut: true  },
   output_grid: { label: "GridView", color: "#0284c7", icon: "▦", hasIn: true, hasOut: false },
@@ -1398,7 +1399,10 @@ function bodyFor(type, id) {
                           <div class="hint">With Brain automatic calls, coordinate fields (x, y, z, x1, y1, z1, etc.) add offsets in mm. Other nonblank fields replace Brain values. Blank fields keep Brain values. Without Brain or with row templates, coordinates are absolute.</div>
                           <textarea class="args" rows="3" spellcheck="false" style="width:100%;margin-top:6px;font-family:monospace;font-size:11px" placeholder='arguments JSON; file placeholders are replaced'>{"file_base64":"{{file_base64}}","filename":"{{filename}}"}</textarea>
                           <div class="status">not called yet</div>`;
-    case "code_editor": return `<iframe class="code-frame" src="codeEditor.html" title="Code Editor" loading="lazy"></iframe>`;
+    case "code_editor": return `<iframe class="code-frame" src="codeEditor.html" title="Code Editor"></iframe>
+                          <div class="hint" style="padding:0 10px">Connected JSON is available as <code>data</code>; <code>return</code> a value (or render to the page) to pass it on.</div>
+                          <div class="status" style="padding:0 10px">not run yet</div>
+                          <pre class="out code-out" style="margin:0 10px 10px">—</pre>`;
     case "result": return `<div style="margin-bottom:6px;font-size:11px"><label><input type="radio" class="out-mode" value="pretty" checked> Pretty</label> <label style="margin-left:8px"><input type="radio" class="out-mode" value="raw"> Raw</label></div><div class="out">—</div>`;
     case "output_grid":
     case "output_form": return `<div class="status">waiting for workflow result</div>
@@ -2732,6 +2736,30 @@ function fileToBase64(file) {
 }
 
 // Unwrapped JSON payload of a node result, without flattening nested data.
+const codeEditorRuns = new Map();
+window.addEventListener("message", (ev) => {
+  const d = ev.data;
+  if (!d || typeof d.type !== "string") return;
+  const frame = [...document.querySelectorAll("iframe.code-frame")].find((f) => f.contentWindow === ev.source);
+  if (!frame) return;
+  if (d.type === "workflow-editor-ready") frame._codeReady = true;
+  else if (d.type === "workflow-code-result") codeEditorRuns.get(d.runId)?.(d);
+});
+async function runCodeEditor(frame, data, signal) {
+  for (let i = 0; !frame._codeReady; i++) {
+    if (signal.aborted) throw new DOMException("Aborted", "AbortError");
+    if (i >= 100) throw new Error("Code Editor did not load");
+    await sleep(100);
+  }
+  const runId = "r" + Date.now() + "-" + Math.random().toString(36).slice(2);
+  const reply = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => { codeEditorRuns.delete(runId); reject(new Error("Code Editor timed out after 20s")); }, 20000);
+    signal.addEventListener("abort", () => { clearTimeout(timer); codeEditorRuns.delete(runId); reject(new DOMException("Aborted", "AbortError")); }, { once: true });
+    codeEditorRuns.set(runId, (msg) => { clearTimeout(timer); codeEditorRuns.delete(runId); resolve(msg); });
+  });
+  frame.contentWindow.postMessage({ type: "workflow-run", runId, data }, "*");
+  return reply;
+}
 function rawResultJson(result) {
   const value = result?.result?.structuredContent ?? result?.structuredContent;
   if (value !== undefined) return value;
@@ -3238,6 +3266,20 @@ async function runWorkflowCore(signal) {
         cur.el.querySelector(".api-out").textContent = typeof payload === "string" ? payload : JSON.stringify(payload, null, 2);
         state.result = { result: { structuredContent: state.rows ? { results } : (payload && typeof payload === "object" ? payload : { value: payload }) } };
         statusBox.textContent = `✔ ${results.length} call(s)`;
+      }
+
+      if (cur.type === "code_editor") {
+        const frame = cur.el.querySelector(".code-frame");
+        const statusBox = cur.el.querySelector(".status");
+        const input = state.result ? rawResultJson(state.result) : (state.rows ?? state.fileText ?? null);
+        statusBox.textContent = "Running code…";
+        const reply = await runCodeEditor(frame, input, signal);
+        if (!reply.ok) throw new Error("Code Editor: " + (reply.message || "code failed"));
+        const value = reply.hasValue ? reply.value : { output: reply.output || "" };
+        cur.el.querySelector(".code-out").textContent = JSON.stringify(value, null, 2);
+        state.result = { result: { structuredContent: value && typeof value === "object" ? value : { value } } };
+        if (Array.isArray(value) && value.every((r) => r && typeof r === "object" && !Array.isArray(r))) state.rows = value;
+        statusBox.textContent = "✔ code executed";
       }
 
       if (cur.type === "claude") {

@@ -652,6 +652,8 @@ const DEFAULT_HTML = `<!DOCTYPE html>
    ========================================================= */
 
 const DEFAULT_JS = `// JavaScript application logic
+// Inside a workflow, "data" holds the JSON from the connected component,
+// and the value you return is passed on as this component's output.
 
 const button = document.getElementById('myButton');
 
@@ -898,9 +900,11 @@ document.getElementById('resetCode')
    ========================================================= */
 
 document.getElementById('runCode')
-  .addEventListener('click', runCode);
+  .addEventListener('click', () => runCode());
 
-function runCode() {
+let workflowData = null;
+
+function runCode(runId) {
 
   const html = htmlEditor.getValue();
 
@@ -914,24 +918,63 @@ function runCode() {
 
   try {
 
-    // Convert user JavaScript to a safely embedded string.
-    const safeJS = JSON.stringify(js)
-      .replace(/</g, '\\u003c');
+    // Convert user JavaScript and workflow data to safely embedded strings.
+    const escapeForScript = value => JSON.stringify(value)
+      .replace(/</g, '\\u003c')
+      .replace(/\u2028/g, '\\u2028')
+      .replace(/\u2029/g, '\\u2029');
+
+    const safeJS = escapeForScript(js);
+
+    const safeData = escapeForScript(
+      workflowData === undefined ? null : workflowData
+    );
+
+    const safeRunId = typeof runId === 'string'
+      ? escapeForScript(runId)
+      : 'null';
 
     const executionScript = `
       <script>
-      (() => {
+      (async () => {
 
         const userCode = ${safeJS};
 
+        const data = ${safeData};
+
+        const runId = ${safeRunId};
+
+        const bodyText = () => {
+          const copy = document.body.cloneNode(true);
+          copy.querySelectorAll('script,style').forEach(node => node.remove());
+          return copy.textContent.trim();
+        };
+
         try {
 
-          const execute = new Function(userCode);
+          const AsyncFunction =
+            Object.getPrototypeOf(async function () {}).constructor;
 
-          execute();
+          const execute = new AsyncFunction('data', userCode);
+
+          const returned = await execute(data);
+
+          let value = null;
+
+          if (returned !== undefined) {
+            try {
+              value = JSON.parse(JSON.stringify(returned));
+            } catch (error) {
+              value = String(returned);
+            }
+          }
 
           window.parent.postMessage({
-            type: 'editor-run-success'
+            type: 'editor-run-success',
+            runId,
+            value,
+            hasValue: returned !== undefined,
+            output: bodyText()
           }, '*');
 
         } catch (error) {
@@ -946,6 +989,7 @@ function runCode() {
 
           window.parent.postMessage({
             type: 'editor-run-error',
+            runId,
             message: error.message
           }, '*');
 
@@ -962,7 +1006,7 @@ function runCode() {
 
       finalHTML = finalHTML.replace(
         /<\/body\s*>/i,
-        executionScript + '</body>'
+        () => executionScript + '</body>'
       );
 
     } else {
@@ -984,6 +1028,15 @@ function runCode() {
 
     status.textContent = 'Error: ' + error.message;
 
+    if (typeof runId === 'string') {
+      replyToWorkflow({
+        type: 'workflow-code-result',
+        runId,
+        ok: false,
+        message: error.message
+      });
+    }
+
   }
 
 }
@@ -993,11 +1046,35 @@ function runCode() {
    11. PREVIEW EXECUTION STATUS
    ========================================================= */
 
+function replyToWorkflow(message) {
+
+  if (window.parent !== window) {
+    window.parent.postMessage(message, '*');
+  }
+
+}
+
 window.addEventListener('message', event => {
 
-  // Only accept messages from the preview iframe.
   const frame = document.getElementById('previewFrame');
 
+  // A workflow builder embedding this editor sends JSON data to run the code.
+  if (event.source === window.parent && window.parent !== window) {
+
+    if (event.data?.type === 'workflow-run' &&
+        typeof event.data.runId === 'string') {
+
+      workflowData = event.data.data;
+
+      runCode(event.data.runId);
+
+    }
+
+    return;
+
+  }
+
+  // Only accept other messages from the preview iframe.
   if (event.source !== frame.contentWindow) return;
 
   const status = document.getElementById('previewStatus');
@@ -1008,6 +1085,19 @@ window.addEventListener('message', event => {
 
     status.className = 'status success';
 
+    if (typeof event.data.runId === 'string') {
+
+      replyToWorkflow({
+        type: 'workflow-code-result',
+        runId: event.data.runId,
+        ok: true,
+        value: event.data.value,
+        hasValue: event.data.hasValue,
+        output: event.data.output
+      });
+
+    }
+
   }
 
   if (event.data?.type === 'editor-run-error') {
@@ -1016,9 +1106,23 @@ window.addEventListener('message', event => {
 
     status.className = 'status error';
 
+    if (typeof event.data.runId === 'string') {
+
+      replyToWorkflow({
+        type: 'workflow-code-result',
+        runId: event.data.runId,
+        ok: false,
+        message: event.data.message
+      });
+
+    }
+
   }
 
 });
+
+// Tell an embedding workflow builder that the editor can receive data.
+replyToWorkflow({ type: 'workflow-editor-ready' });
 
 
 /* =========================================================
