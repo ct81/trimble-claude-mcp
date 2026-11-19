@@ -3852,5 +3852,57 @@ function autoSignIn() {
 </script>
 
 <script src="../pages/js/i18n.js"></script>
+
+<script src="../pages/js/syntax-ai-widget.js"></script>
+
+<syntax-ai-chat
+    id="personalAI"
+    mode="floating"
+    title="MY PERSONAL AI">
+</syntax-ai-chat>
+
+<script>
+const PROFILE = {
+    name: "Your Name",
+    tagline: "Digital Construction & AI Automation",
+    email: "your@email.com",
+    phone: "+65 12345678",
+    location: "Singapore",
+    skills: [
+        "Tekla Structures",
+        "Trimble Connect",
+        "SketchUp",
+        "BIM",
+        "MCP",
+        "AI Automation",
+        "JavaScript",
+        "C#"
+    ]
+};
+
+const PROJECTS = [
+    {
+        title: "AI Construction Automation",
+        description: "Developing AI-powered construction workflows."
+    }
+];
+
+const EXPERIENCE = [
+    {
+        title: "Digital Construction Development",
+        date: "2024–Present",
+        description: "Working on BIM integration and automation."
+    }
+];
+
+document.getElementById("personalAI")
+    .configurePersonalAssistant({
+        PROFILE,
+        PROJECTS,
+        EXPERIENCE,
+        API: {}
+    });
+</script>
+
 </body>
 </html>
