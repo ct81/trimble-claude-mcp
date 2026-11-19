@@ -331,6 +331,11 @@
     white-space: pre-wrap; word-break: break-all;
   }
 
+  .node.code-editor-node { width: 640px; }
+  .node.code-editor-node .node-body { padding: 0; }
+  .code-frame { display: block; width: 100%; height: 560px; border: 0; border-radius: 0 0 10px 10px; background: #fff; }
+  .node.sized .code-frame { flex: 1; height: auto; min-height: 0; }
+  body.node-dragging .code-frame { pointer-events: none; }
   .node.sized { display: flex; flex-direction: column; }
   .node.sized .node-body { flex: 1; min-height: 0; overflow: auto; }
   .node.sized .out { flex: 1; max-height: none; min-height: 30px; }
@@ -423,6 +428,7 @@
     .toolbar { padding: 8px 10px; gap: 6px; }
     .toolbar button { padding: 6px 10px; font-size: 12px; }
     .node { width: 190px; }
+    .node.code-editor-node { width: 300px; }
   }
   @media (prefers-reduced-motion: reduce) {
     * { transition: none !important; animation: none !important; }
@@ -562,6 +568,7 @@
       <button class="palette-tab" id="tabBrain" type="button" role="tab" aria-selected="false" aria-controls="panelBrain" tabindex="-1">The Brain</button>
       <button class="palette-tab" id="tabTools" type="button" role="tab" aria-selected="false" aria-controls="panelTools" tabindex="-1">MCP Tools</button>
       <button class="palette-tab" id="tabApi" type="button" role="tab" aria-selected="false" aria-controls="panelApi" tabindex="-1">API Endpoints</button>
+      <button class="palette-tab" id="tabCoding" type="button" role="tab" aria-selected="false" aria-controls="panelCoding" tabindex="-1">Coding</button>
       <button class="palette-tab" id="tabFlow" type="button" role="tab" aria-selected="false" aria-controls="panelFlow" tabindex="-1">Control Flow</button>
       <button class="palette-tab" id="tabOutput" type="button" role="tab" aria-selected="false" aria-controls="panelOutput" tabindex="-1">Output</button>
       <button class="palette-tab" id="tabExport" type="button" role="tab" aria-selected="false" aria-controls="panelExport" tabindex="-1">Export</button>
@@ -606,6 +613,12 @@
       <button type="button" id="btnAddApi" class="add-api-btn">+ Add API</button>
       <div id="apiList"></div>
       <div class="hint" id="apiEmpty" style="margin-top:8px">Register a REST API, then drag it onto the canvas. Use {{row.field}}, {{file_text}} or {{filename}} placeholders in the URL, headers or body.</div>
+    </div>
+    <div class="palette-panel" id="panelCoding" role="tabpanel" aria-labelledby="tabCoding" hidden>
+      <div class="item" draggable="true" data-type="code_editor">
+        <span class="dot" style="background:#4f46e5"></span> Code Editor
+      </div>
+      <div class="hint">An HTML &amp; JavaScript editor with live preview. Drag it onto the canvas and resize it as needed.</div>
     </div>
     <div class="palette-panel" id="panelFlow" role="tabpanel" aria-labelledby="tabFlow" hidden>
       <div class="item" draggable="true" data-type="flow_if">
@@ -953,6 +966,7 @@ const TYPES = {
   brain:  { label: "Brain",    color: "#e11d48", icon: "🧠", hasIn: true,  hasOut: true  },
   claude: { label: "Claude Chat", color: "#d97706", icon: "✦", hasIn: true, hasOut: true },
   api:    { label: "Call API",   color: "#0ea5e9", icon: "🌐", hasIn: true,  hasOut: true  },
+  code_editor: { label: "Code Editor", color: "#4f46e5", icon: "💻", hasIn: false, hasOut: false },
   mcp:    { label: "Call MCP",   color: "#7c3aed", icon: "🔌", hasIn: true,  hasOut: true  },
   result: { label: "Get Result", color: "#d97706", icon: "✅", hasIn: true,  hasOut: true  },
   output_grid: { label: "GridView", color: "#0284c7", icon: "▦", hasIn: true, hasOut: false },
@@ -1384,6 +1398,7 @@ function bodyFor(type, id) {
                           <div class="hint">With Brain automatic calls, coordinate fields (x, y, z, x1, y1, z1, etc.) add offsets in mm. Other nonblank fields replace Brain values. Blank fields keep Brain values. Without Brain or with row templates, coordinates are absolute.</div>
                           <textarea class="args" rows="3" spellcheck="false" style="width:100%;margin-top:6px;font-family:monospace;font-size:11px" placeholder='arguments JSON; file placeholders are replaced'>{"file_base64":"{{file_base64}}","filename":"{{filename}}"}</textarea>
                           <div class="status">not called yet</div>`;
+    case "code_editor": return `<iframe class="code-frame" src="codeEditor.html" title="Code Editor" loading="lazy"></iframe>`;
     case "result": return `<div style="margin-bottom:6px;font-size:11px"><label><input type="radio" class="out-mode" value="pretty" checked> Pretty</label> <label style="margin-left:8px"><input type="radio" class="out-mode" value="raw"> Raw</label></div><div class="out">—</div>`;
     case "output_grid":
     case "output_form": return `<div class="status">waiting for workflow result</div>
@@ -1557,7 +1572,7 @@ function createNode(type, x, y, { autoLoad = true } = {}) {
   const id = "n" + ++nodeSeq;
   const instanceNumber = typeInstanceCounts[type] = (typeInstanceCounts[type] || 0) + 1;
   const el = document.createElement("div");
-  el.className = "node";
+  el.className = type === "code_editor" ? "node code-editor-node" : "node";
   el.dataset.id = id;
   el.style.left = Math.max(0, x) + "px";
   el.style.top  = Math.max(0, y) + "px";
@@ -1605,6 +1620,7 @@ function wireNode(node) {
     if (e.button !== 0 || e.target.closest(".del")) return;
     e.preventDefault();
     select(node);
+    document.body.classList.add("node-dragging");
     const p = stagePoint(e);
     dragState = { node, dx: p.x - node.x, dy: p.y - node.y };
   });
@@ -1636,12 +1652,14 @@ function wireNode(node) {
     const startW = el.offsetWidth, startH = el.offsetHeight;
     el.classList.add("sized");
     el.style.height = startH + "px";
+    document.body.classList.add("node-dragging");
     const move = (ev) => {
       el.style.width  = Math.max(160, startW + (ev.clientX - startX) / canvasZoom) + "px";
       el.style.height = Math.max(90,  startH + (ev.clientY - startY) / canvasZoom) + "px";
       drawEdges(); updateStageSize();
     };
     const up = () => {
+      document.body.classList.remove("node-dragging");
       handle.removeEventListener("pointermove", move);
       handle.removeEventListener("pointerup", up);
       handle.removeEventListener("pointercancel", up);
@@ -2162,6 +2180,8 @@ function endPointerInteraction(e) {
   }
   dragState = null;
 }
+document.addEventListener("pointerup", () => document.body.classList.remove("node-dragging"));
+document.addEventListener("pointercancel", () => document.body.classList.remove("node-dragging"));
 document.addEventListener("pointerup", endPointerInteraction);
 document.addEventListener("pointercancel", (e) => {
   if (connecting) {
