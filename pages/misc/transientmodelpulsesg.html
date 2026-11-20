@@ -1728,7 +1728,6 @@
             <button type="button" id="ground-map-zoom-out" aria-label="Zoom out">&minus;</button>
         </div>
         <a id="ground-map-street-view" target="_blank" rel="noopener noreferrer">Street View &#8599;</a>
-        <button type="button" class="toolbar-btn" id="ground-map-vehicle" title="Simulate a vehicle on a demo loop around the view center">Start vehicle</button>
     </div>
     <dialog id="leaflet-map-dialog" aria-labelledby="leaflet-map-title">
         <div class="leaflet-map-heading">
@@ -1833,6 +1832,7 @@
                 <span class="toolbar-sep"></span>
                
                 <!-- ANIMATION CONTROLS -->
+                <button type="button" class="toolbar-btn" id="btn-vehicle" title="Simulate a vehicle on a demo loop around the view center">Start vehicle</button>
                 <button class="toolbar-btn" id="btn-play-anim" title="Play/Pause Construction Sequence" style="border-color: var(--neon-green); color: var(--neon-green);">
                     <span class="tb-icon">▶️</span><span class="label">Play</span>
                 </button>
@@ -2633,19 +2633,19 @@
         const groundMapTraffic = document.getElementById('ground-map-traffic');
         const groundMapStreetView = document.getElementById('ground-map-street-view');
         const groundMapLocate = document.getElementById('ground-map-locate');
-        const groundMapVehicle = document.getElementById('ground-map-vehicle');
+        const btnVehicle = document.getElementById('btn-vehicle');
         let locationRequest = 0;
 
         function stopVehicleSimulation() {
             vehicleSimulation.stop();
-            groundMapVehicle.textContent = 'Start vehicle';
+            btnVehicle.textContent = 'Start vehicle';
         }
-        groundMapVehicle.addEventListener('click', () => {
+        btnVehicle.addEventListener('click', () => {
             if (vehicleSimulation.running) {
                 stopVehicleSimulation();
             } else {
                 vehicleSimulation.start(controls.target);
-                groundMapVehicle.textContent = 'Stop vehicle';
+                btnVehicle.textContent = 'Stop vehicle';
             }
         });
 

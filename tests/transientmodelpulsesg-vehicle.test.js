@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import vm from 'node:vm';
 import { createVehicleSimulation } from '../pages/misc/transientmodelpulsesg-vehicle.js';
 
 function createTestVehicle() {
@@ -17,6 +19,39 @@ function createTestVehicle() {
     }, scene, -0.15);
     return { simulation, vehicle: scene.children[0] };
 }
+
+test('the main toolbar can start and stop the vehicle without applying a ground map', () => {
+    const page = readFileSync(new URL('../pages/misc/transientmodelpulsesg.html', import.meta.url), 'utf8');
+    const toolbarGroup = page.match(/<div class="toolbar">\s*<div class="toolbar-group">([\s\S]*?)<\/div>/)?.[1];
+    const buttonMarkup = toolbarGroup?.match(/<button\b([^>]*\bid="btn-vehicle"[^>]*)>([^<]+)<\/button>/);
+    assert.ok(buttonMarkup, 'vehicle button belongs to the main toolbar');
+    assert.doesNotMatch(buttonMarkup[1], /\b(?:hidden|disabled)\b/);
+
+    const button = {
+        textContent: buttonMarkup[2],
+        addEventListener(type, handler) {
+            assert.equal(type, 'click');
+            this.click = handler;
+        }
+    };
+    const { simulation, vehicle } = createTestVehicle();
+    const start = page.indexOf('        const btnVehicle =');
+    const end = page.indexOf('        function updateGroundMapLinks()', start);
+    assert.ok(start >= 0 && end > start);
+    vm.runInNewContext(page.slice(start, end), {
+        document: { getElementById: id => id === 'btn-vehicle' ? button : null },
+        vehicleSimulation: simulation,
+        controls: { target: { x: 0, z: 0 } }
+    });
+
+    assert.equal(button.textContent, 'Start vehicle');
+    button.click();
+    assert.equal(vehicle.visible, true);
+    assert.equal(button.textContent, 'Stop vehicle');
+    button.click();
+    assert.equal(vehicle.visible, false);
+    assert.equal(button.textContent, 'Start vehicle');
+});
 
 test('the 3D demo advances at the same speed across frame rates and faces its direction of travel', () => {
     function run(fps) {

@@ -92,11 +92,11 @@ The lower-right controls zoom the model camera or move it to **My location** wit
 the map alignment. **Traffic** and **Street View** open Google Maps at the camera's focus
 in a new tab; they do not add live traffic or panoramas to the 3D scene.
 
-Select **Start vehicle** in the ground map controls to drive a 3D pickup around a demo loop
-centered on the current view. The vehicle moves on the same ground plane as the map and
-stays in place as you pan, zoom, or orbit. Use **Stop vehicle** to remove it. Hiding or
-reapplying the map also stops the simulation. The demo does not follow roads or check for
-collisions with the model.
+Select **Start vehicle** in the main toolbar, next to **Play**, to drive a 3D pickup around
+a demo loop centered on the current view. No ground map is required. The vehicle moves on
+the same ground plane as the map, and its route stays in place as you pan, zoom, or orbit.
+Use **Stop vehicle** to remove it. Hiding or applying the map also stops the simulation.
+The demo does not follow roads or check for collisions with the model.
 
 For an interactive 2D map, select **Map** in the toolbar. Pick **Street**, **Satellite**,
 **Transit**, or **Terrain** in the lower left. **Traffic** opens live traffic in Google Maps
