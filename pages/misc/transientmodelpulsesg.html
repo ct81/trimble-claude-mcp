@@ -2101,6 +2101,21 @@
         controls.target.set(0, 10, 0);
         controls.update();
 
+        // Render at reduced resolution while the camera moves (zoom/orbit/pan), then restore when idle.
+        const basePixelRatio = Math.min(window.devicePixelRatio, 1.5);
+        const interactivePixelRatio = Math.max(0.5, basePixelRatio * 0.6);
+        let restoreResolutionTimer = null;
+        const beginInteraction = () => {
+            clearTimeout(restoreResolutionTimer);
+            if (renderer.getPixelRatio() !== interactivePixelRatio) renderer.setPixelRatio(interactivePixelRatio);
+        };
+        const endInteraction = () => {
+            clearTimeout(restoreResolutionTimer);
+            restoreResolutionTimer = setTimeout(() => renderer.setPixelRatio(basePixelRatio), 300);
+        };
+        controls.addEventListener('start', beginInteraction);
+        controls.addEventListener('end', endInteraction);
+
         const gridHelper = new THREE.GridHelper(500, 250, 0x00f0ff, 0x1a2a44); gridHelper.position.y = -0.1; gridHelper.material.opacity = 0.2; gridHelper.material.transparent = true; scene.add(gridHelper);
 
         const selectionBoxes = new THREE.Group();
@@ -2276,6 +2291,8 @@
             right.setFromMatrixColumn(camera.matrixWorld, 0);
             up.setFromMatrixColumn(camera.matrixWorld, 1);
             const offset = right.multiplyScalar(-dx * panSpeed).add(up.multiplyScalar(dy * panSpeed));
+            beginInteraction();
+            endInteraction();
             camera.position.add(offset);
             controls.target.add(offset);
             controls.update();
@@ -2962,6 +2979,7 @@
                 colorByMaterials = [];
                 statusColoredMeshes.clear();
                 guidToMeshMap.clear();
+                elementPsetCache.clear();
                 renderer.renderLists.dispose();
 
                 if (hadPreviousModel) {
@@ -3585,14 +3603,16 @@
             tabContentContainer.innerHTML = '<div class="spinner-container"><div class="spinner"></div><span>Extracting Data...</span></div>';
             searchInput.value = '';
 
-            await new Promise(r => setTimeout(r, 50));
+            await new Promise(r => setTimeout(r, 0));
             tabContentContainer.innerHTML = '';
 
             const attrBtn = document.createElement('div'); attrBtn.className = 'tab-btn active'; attrBtn.innerText = 'Attributes'; attrBtn.dataset.tab = 'tab-attributes'; tabNav.appendChild(attrBtn);
             const attrContent = document.createElement('div'); attrContent.className = 'tab-content active'; attrContent.id = 'tab-attributes'; tabContentContainer.appendChild(attrContent);
 
+            // flatten=true would recursively resolve placement/geometry, which is very slow; inverse gives IsDefinedBy/IsTypedBy.
             let ifcLine = null;
-            try { ifcLine = ifcAPI.GetLine(modelID, safeId, true); } catch (e) { }
+            try { ifcLine = ifcAPI.GetLine(modelID, safeId, false, true); } catch (e) { }
+            if (!ifcLine) { try { ifcLine = ifcAPI.GetLine(modelID, safeId, false); } catch (e) { } }
 
             const addAttributeRow = (key, value) => {
                 if (value === undefined || value === null || value === "") return;
@@ -3614,7 +3634,11 @@
                     const dataUrl = qr.createDataURL(4, 8);
                     const row = document.createElement('div');
                     row.className = 'prop-row';
-                    row.innerHTML = `<div class="prop-key">QR Code</div><div class="prop-val"><img class="qr-img" src="${dataUrl}" alt="QR code for ${text}" title="${text}"></div>`;
+                    const keyElement = document.createElement('div'); keyElement.className = 'prop-key'; keyElement.textContent = 'QR Code';
+                    const valueElement = document.createElement('div'); valueElement.className = 'prop-val';
+                    const img = document.createElement('img'); img.className = 'qr-img'; img.src = dataUrl; img.alt = `QR code for ${text}`; img.title = String(text);
+                    valueElement.appendChild(img);
+                    row.append(keyElement, valueElement);
                     attrContent.appendChild(row);
                 } catch (e) { console.warn('[QR] Failed to generate QR code:', e); }
             };
@@ -3655,55 +3679,73 @@
             }
 
             try {
-                const uniquePsets = new Map();
-                const rawElement = ifcLine || (() => { try { return ifcAPI.GetLine(modelID, safeId, false); } catch (e) { return null; } })();
-                const addPset = (handle) => {
-                    const psetID = safeExpressID(handle); if (psetID < 0) return;
-                    let pset = null; try { pset = ifcAPI.GetLine(modelID, psetID, false); } catch (e) { return; }
-                    if (!pset || !pset.Name) return;
-                    if (!uniquePsets.has(pset.expressID)) uniquePsets.set(pset.expressID, pset);
-                };
-                if (rawElement) {
-                    try { const apiPsets = ifcAPI.properties.getPropertySets(modelID, safeId, true); const awaited = apiPsets instanceof Promise ? await apiPsets : apiPsets; if (awaited) iterateCollection(awaited, pset => addPset(pset)); } catch (e) { }
-                    try { iterateCollection(rawElement.IsDefinedBy, relHandle => { const relId = safeExpressID(relHandle); if (relId < 0) return; let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch (e) { return; } if (rel && rel.RelatingPropertyDefinition) addPset(rel.RelatingPropertyDefinition); }); } catch (e) { }
-                    try { iterateCollection(rawElement.IsTypedBy, relHandle => { const relId = safeExpressID(relHandle); if (relId < 0) return; let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch (e) { return; } if (rel && rel.RelatingType) { const typeId = safeExpressID(rel.RelatingType); if (typeId < 0) return; let typeObj = null; try { typeObj = ifcAPI.GetLine(modelID, typeId, false); } catch (e) { return; } if (typeObj && typeObj.HasPropertySets) iterateCollection(typeObj.HasPropertySets, psetHandle => addPset(psetHandle)); } }); } catch (e) { }
+                const cacheKey = `${modelID}:${safeId}`;
+                let psetTabs = elementPsetCache.get(cacheKey);
+                if (!psetTabs) {
+                    const uniquePsets = new Map();
+                    const addPset = (handle) => {
+                        const psetID = safeExpressID(handle); if (psetID < 0) return;
+                        if (uniquePsets.has(psetID)) return;
+                        let pset = null; try { pset = ifcAPI.GetLine(modelID, psetID, false); } catch (e) { return; }
+                        if (!pset || !pset.Name) return;
+                        uniquePsets.set(psetID, pset);
+                    };
+                    const rawElement = ifcLine;
+                    if (rawElement) {
+                        try { iterateCollection(rawElement.IsDefinedBy, relHandle => { const relId = safeExpressID(relHandle); if (relId < 0) return; let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch (e) { return; } if (rel && rel.RelatingPropertyDefinition) addPset(rel.RelatingPropertyDefinition); }); } catch (e) { }
+                        try { iterateCollection(rawElement.IsTypedBy, relHandle => { const relId = safeExpressID(relHandle); if (relId < 0) return; let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch (e) { return; } if (rel && rel.RelatingType) { const typeId = safeExpressID(rel.RelatingType); if (typeId < 0) return; let typeObj = null; try { typeObj = ifcAPI.GetLine(modelID, typeId, false); } catch (e) { return; } if (typeObj && typeObj.HasPropertySets) iterateCollection(typeObj.HasPropertySets, psetHandle => addPset(psetHandle)); } }); } catch (e) { }
+                        // getPropertySets scans every relation in the model, so only use it when inverse links are unavailable.
+                        if (uniquePsets.size === 0 && !rawElement.IsDefinedBy) {
+                            try { const apiPsets = ifcAPI.properties.getPropertySets(modelID, safeId, true); const awaited = apiPsets instanceof Promise ? await apiPsets : apiPsets; if (awaited) iterateCollection(awaited, pset => addPset(pset)); } catch (e) { }
+                        }
+                    }
+
+                    psetTabs = [];
+                    uniquePsets.forEach((pset) => {
+                        const isQto = pset.type === "IFCELEMENTQUANTITY";
+                        const title = isQto ? `[Qto] ${pset.Name?.value || 'Unnamed'}` : (pset.Name?.value || 'Unnamed');
+                        const rows = [];
+                        if (pset.HasProperties) {
+                            iterateCollection(pset.HasProperties, propHandle => {
+                                const propID = safeExpressID(propHandle); if (propID < 0) return;
+                                let prop = null; try { prop = ifcAPI.GetLine(modelID, propID, false); } catch (e) { return; }
+                                if (prop && prop.Name) {
+                                    let val = 'N/A'; try { val = extractValue(prop) || 'N/A'; } catch (e) { val = 'N/A'; }
+                                    rows.push([prop.Name.value, val]);
+                                }
+                            });
+                        }
+                        psetTabs.push({ title, rows });
+                    });
+                    elementPsetCache.set(cacheKey, psetTabs);
                 }
 
-                let psetIndex = 0;
-                uniquePsets.forEach((pset) => {
-                    const isQto = pset.type === "IFCELEMENTQUANTITY";
-                    const tabId = `tab-pset-${psetIndex++}`;
-                    const tabTitle = isQto ? `[Qto] ${pset.Name?.value || 'Unnamed'}` : (pset.Name?.value || 'Unnamed');
-                    const btn = document.createElement('div'); btn.className = 'tab-btn'; btn.innerText = tabTitle; btn.dataset.tab = tabId; tabNav.appendChild(btn);
+                psetTabs.forEach(({ title, rows }, psetIndex) => {
+                    const tabId = `tab-pset-${psetIndex}`;
+                    const btn = document.createElement('div'); btn.className = 'tab-btn'; btn.innerText = title; btn.dataset.tab = tabId; tabNav.appendChild(btn);
                     const content = document.createElement('div'); content.className = 'tab-content'; content.id = tabId; tabContentContainer.appendChild(content);
-                    let hasProps = false;
-                    if (pset.HasProperties) {
-                        iterateCollection(pset.HasProperties, propHandle => {
-                            const propID = safeExpressID(propHandle); if (propID < 0) return;
-                            let prop = null; try { prop = ifcAPI.GetLine(modelID, propID, false); } catch (e) { return; }
-                            if (prop && prop.Name) {
-                                hasProps = true;
-                                let val = 'N/A'; try { val = extractValue(prop) || 'N/A'; } catch (e) { val = 'N/A'; }
-                                const row = document.createElement('div'); row.className = 'prop-row';
-                                row.innerHTML = `<div class="prop-key">${prop.Name.value}</div><div class="prop-val">${val}</div>`;
-                                content.appendChild(row);
-                            }
-                        });
-                    }
-                    if (!hasProps) content.innerHTML = '<div style="color:var(--text-muted); font-size:0.8rem; margin-top:10px;">No properties in this set.</div>';
+                    rows.forEach(([key, val]) => {
+                        const row = document.createElement('div'); row.className = 'prop-row';
+                        const keyElement = document.createElement('div'); keyElement.className = 'prop-key'; keyElement.textContent = key;
+                        const valueElement = document.createElement('div'); valueElement.className = 'prop-val'; valueElement.textContent = val;
+                        row.append(keyElement, valueElement);
+                        content.appendChild(row);
+                    });
+                    if (rows.length === 0) content.innerHTML = '<div style="color:var(--text-muted); font-size:0.8rem; margin-top:10px;">No properties in this set.</div>';
                 });
             } catch (psetErr) { }
 
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                    e.target.classList.add('active');
-                    document.getElementById(e.target.dataset.tab)?.classList.add('active');
-                    searchInput.dispatchEvent(new Event('input'));
-                });
-            });
+            tabNav.onclick = (e) => {
+                const btn = e.target.closest('.tab-btn'); if (!btn) return;
+                tabNav.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                tabContentContainer.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.tab)?.classList.add('active');
+                searchInput.dispatchEvent(new Event('input'));
+            };
         }
+
+        const elementPsetCache = new Map();
 
         async function runSGValidation(expressIDs) {
             // ──────────────────────────────────────────────────────────────────────────
