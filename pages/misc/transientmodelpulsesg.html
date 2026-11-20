@@ -71,15 +71,42 @@
             pointer-events: none;
         }
 
-        #map-attribution {
+        .ground-map-controls {
             position: absolute;
-            bottom: 4px;
-            left: 4px;
+            bottom: 10px;
             z-index: 20;
-            padding: 2px 6px;
+            padding: 6px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
             background: var(--panel-bg);
             color: var(--text-main);
-            font-size: 0.7rem;
+            font-size: 0.75rem;
+        }
+
+        .ground-map-controls:not([hidden]) {
+            display: grid;
+            gap: 5px;
+        }
+
+        .ground-map-controls :is(button, select, a) {
+            font: inherit;
+        }
+
+        .ground-map-controls a {
+            color: var(--neon-blue);
+        }
+
+        #ground-map-layers {
+            left: 10px;
+            max-width: 46vw;
+        }
+
+        #ground-map-tools {
+            right: 10px;
+        }
+
+        #map-attribution {
+            font-size: 0.65rem;
         }
 
         #leaflet-map-dialog {
@@ -1683,9 +1710,25 @@
 
     <div id="canvas-container"></div>
     <div id="map-tile-source" aria-hidden="true" inert></div>
-    <a id="map-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" hidden>
-        &copy; OpenStreetMap contributors
-    </a>
+    <div id="ground-map-layers" class="ground-map-controls" role="group" aria-label="Ground map layers" hidden>
+        <label for="ground-map-layer">Ground map layer</label>
+        <select id="ground-map-layer">
+            <option>Street</option>
+            <option>Satellite</option>
+            <option>Transit</option>
+            <option>Terrain</option>
+        </select>
+        <a id="ground-map-traffic" target="_blank" rel="noopener noreferrer">Traffic &#8599;</a>
+        <span id="map-attribution"></span>
+    </div>
+    <div id="ground-map-tools" class="ground-map-controls" role="group" aria-label="Ground map navigation" hidden>
+        <button type="button" class="toolbar-btn" id="ground-map-locate">My location</button>
+        <div>
+            <button type="button" id="ground-map-zoom-in" aria-label="Zoom in">+</button>
+            <button type="button" id="ground-map-zoom-out" aria-label="Zoom out">&minus;</button>
+        </div>
+        <a id="ground-map-street-view" target="_blank" rel="noopener noreferrer">Street View &#8599;</a>
+    </div>
     <dialog id="leaflet-map-dialog" aria-labelledby="leaflet-map-title">
         <div class="leaflet-map-heading">
             <h4 id="leaflet-map-title">Leaflet Map</h4>
@@ -1724,7 +1767,7 @@
             <div class="settings-row"><label for="map-lng">Longitude</label><input id="map-lng" type="number" step="any" min="-180" max="180" placeholder="103.8198" required></div>
             <div class="settings-row"><label for="map-x">Model X (m)</label><input id="map-x" type="number" step="any" value="0" required></div>
             <div class="settings-row"><label for="map-z">Model Z (m)</label><input id="map-z" type="number" step="any" value="0" required></div>
-            <p>Match a latitude and longitude to a point on the grid. North is -Z. Applying loads tiles from OpenStreetMap.</p>
+            <p>Match a latitude and longitude to a point on the grid. North is -Z. Map tiles require an internet connection.</p>
             <div class="settings-row">
                 <button type="submit">Apply Ground Map</button>
                 <button type="button" id="hide-ground-map" hidden>Hide Map</button>
@@ -2195,6 +2238,8 @@
     <div id="minimized-dock"></div>
 
     <script type="module" id="leaflet-map-script">
+        import { getMapLayer, getMapLinks } from './transientmodelpulsesg-ground-map.js';
+
         const dialog = document.getElementById('leaflet-map-dialog');
         const container = document.getElementById('leaflet-map');
         const status = document.getElementById('leaflet-map-status');
@@ -2216,23 +2261,12 @@
             map = L.map(container, { zoomControl: false, minZoom: 2, maxZoom: 19, worldCopyJump: true })
                 .setView([1.3521, 103.8198], 13);
             L.control.zoom({ position: 'bottomright' }).addTo(map);
-            const osm = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>';
-            const layers = {
-                Street: L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: osm }),
-                Satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                    attribution: 'Imagery &copy; <a href="https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9">Esri and imagery providers</a>'
-                }),
-                Transit: L.tileLayer('https://tile.memomaps.de/tilegen/{z}/{x}/{y}.png', {
-                    maxNativeZoom: 18,
-                    attribution: `Map &copy; <a href="https://www.memomaps.de/">MemoMaps</a> (<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC BY-SA</a>) | ${osm}`
-                }),
-                Terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-                    maxNativeZoom: 17,
-                    attribution: `${osm}, SRTM | <a href="https://opentopomap.org/">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC BY-SA</a>)`
-                })
-            };
             const controls = document.getElementById('leaflet-map-controls').content.cloneNode(true);
             const select = controls.querySelector('#leaflet-base-layer');
+            const layers = Object.fromEntries(Array.from(select.options, ({ value }) => {
+                const { url, ...options } = getMapLayer(value);
+                return [value, L.tileLayer(url, options)];
+            }));
             const traffic = controls.querySelector('#leaflet-traffic');
             const streetView = controls.querySelector('#leaflet-street-view');
             const locate = controls.querySelector('#leaflet-locate');
@@ -2260,15 +2294,9 @@
             });
 
             function updateLinks() {
-                const { lat, lng } = map.getCenter().wrap();
-                const center = `${lat.toFixed(6)},${lng.toFixed(6)}`;
-                const mapsUrl = 'https://www.google.com/maps/@?';
-                traffic.href = mapsUrl + new URLSearchParams({
-                    api: '1', map_action: 'map', center, zoom: String(map.getZoom()), layer: 'traffic'
-                });
-                streetView.href = mapsUrl + new URLSearchParams({
-                    api: '1', map_action: 'pano', viewpoint: center
-                });
+                const links = getMapLinks(map.getCenter(), map.getZoom());
+                traffic.href = links.traffic;
+                streetView.href = links.streetView;
             }
             map.on('moveend', updateLinks);
             updateLinks();
@@ -2306,7 +2334,7 @@
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { IfcAPI } from 'web-ifc';
-        import { createGroundMap } from './transientmodelpulsesg-ground-map.js';
+        import { createGroundMap, getMapLayer } from './transientmodelpulsesg-ground-map.js';
 
         const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
@@ -2594,21 +2622,87 @@
             if (!settingsPopup.contains(e.target) && !e.target.closest('#btn-settings')) settingsPopup.classList.remove('open');
         });
         const hideGroundMap = document.getElementById('hide-ground-map');
+        const groundMapLayers = document.getElementById('ground-map-layers');
+        const groundMapTools = document.getElementById('ground-map-tools');
+        const groundMapLayer = document.getElementById('ground-map-layer');
         const mapAttribution = document.getElementById('map-attribution');
-        mapAttribution.addEventListener('click', (e) => e.stopPropagation());
+        const groundMapTraffic = document.getElementById('ground-map-traffic');
+        const groundMapStreetView = document.getElementById('ground-map-street-view');
+        const groundMapLocate = document.getElementById('ground-map-locate');
+        let locationRequest = 0;
+
+        function updateGroundMapLinks() {
+            const links = groundMap.getLinks(controls.target);
+            groundMapTraffic.href = links.traffic;
+            groundMapStreetView.href = links.streetView;
+        }
+
+        function resetGroundMapLocation() {
+            locationRequest++;
+            groundMapLocate.disabled = false;
+        }
+
+        function updateGroundMapAttribution() {
+            mapAttribution.innerHTML = getMapLayer(groundMapLayer.value, true).attribution;
+        }
+
         document.getElementById('map-settings').addEventListener('submit', (e) => {
             e.preventDefault();
             const [lat, lng, x, z] = ['map-lat', 'map-lng', 'map-x', 'map-z']
                 .map(id => document.getElementById(id).valueAsNumber);
-            if (groundMap.show({ lat, lng, x, z })) {
-                hideGroundMap.hidden = false;
-                mapAttribution.hidden = false;
+            if (groundMap.show({ lat, lng, x, z }, groundMapLayer.value)) {
+                resetGroundMapLocation();
+                hideGroundMap.hidden = groundMapLayers.hidden = groundMapTools.hidden = false;
+                updateGroundMapAttribution();
+                updateGroundMapLinks();
             }
         });
         hideGroundMap.addEventListener('click', () => {
             groundMap.hide();
-            hideGroundMap.hidden = true;
-            mapAttribution.hidden = true;
+            resetGroundMapLocation();
+            hideGroundMap.hidden = groundMapLayers.hidden = groundMapTools.hidden = true;
+        });
+        groundMapLayer.addEventListener('change', () => {
+            groundMap.setLayer(groundMapLayer.value);
+            updateGroundMapAttribution();
+        });
+
+        function zoomGroundMap(factor) {
+            const distance = camera.position.distanceTo(controls.target);
+            if (!distance) return;
+            const zoomedDistance = THREE.MathUtils.clamp(distance * factor, controls.minDistance, controls.maxDistance);
+            camera.position.lerp(controls.target, 1 - zoomedDistance / distance);
+            controls.update();
+        }
+        document.getElementById('ground-map-zoom-in').addEventListener('click', () => zoomGroundMap(0.8));
+        document.getElementById('ground-map-zoom-out').addEventListener('click', () => zoomGroundMap(1.25));
+
+        groundMapLocate.addEventListener('click', () => {
+            if (!window.isSecureContext || !navigator.geolocation) {
+                showToast('Location is unavailable. Use HTTPS or localhost in a browser with location support.', 'error');
+                return;
+            }
+            const request = ++locationRequest;
+            groundMapLocate.disabled = true;
+            navigator.geolocation.getCurrentPosition(({ coords: { latitude: lat, longitude: lng } }) => {
+                if (request !== locationRequest) return;
+                groundMapLocate.disabled = false;
+                if (Math.abs(lat) > 85.05112878) {
+                    showToast('Your location is outside the ground map coverage.', 'error');
+                    return;
+                }
+                const { x, z } = groundMap.fromLatLng({ lat, lng }, controls.target);
+                const offset = new THREE.Vector3(x - controls.target.x, 0, z - controls.target.z);
+                camera.position.add(offset);
+                controls.target.add(offset);
+                controls.update();
+            }, ({ code }) => {
+                if (request !== locationRequest) return;
+                groundMapLocate.disabled = false;
+                showToast(code === 1
+                    ? 'Location access was denied. Allow location access in your browser and try again.'
+                    : 'Could not find your location. Check your location settings and try again.', 'error');
+            }, { timeout: 10000 });
         });
         document.getElementById('set-grid').addEventListener('change', (e) => { gridHelper.visible = e.target.checked; });
         document.getElementById('set-fog').addEventListener('change', (e) => { scene.fog = e.target.checked ? new THREE.FogExp2(0x05070a, 0.001) : null; });
@@ -3429,7 +3523,7 @@
         let areaStart = { x: 0, y: 0 };
 
         window.addEventListener('pointerdown', (e) => {
-            if (e.target.closest('#leaflet-map-dialog')) return;
+            if (e.target.closest('#leaflet-map-dialog, .ground-map-controls')) return;
             pointerDownPos = { x: e.clientX, y: e.clientY };
             if (selectionMode === 'area' && currentIfcModel) {
                 if (e.button !== 0) return;
@@ -3458,7 +3552,7 @@
         });
 
         window.addEventListener('pointerup', (event) => {
-            if (event.target.closest('#leaflet-map-dialog')) return;
+            if (event.target.closest('#leaflet-map-dialog') || (!isAreaSelecting && event.target.closest('.ground-map-controls'))) return;
             if (isAreaSelecting) {
                 isAreaSelecting = false;
                 const x1 = Math.min(event.clientX, areaStart.x);
@@ -4392,7 +4486,7 @@
         function animate() {
             requestAnimationFrame(animate);
             controls.update();
-            groundMap.update(camera);
+            if (groundMap.update(camera)) updateGroundMapLinks();
             renderer.render(scene, camera);
         }
         animate();

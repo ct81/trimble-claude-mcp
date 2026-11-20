@@ -82,9 +82,15 @@ ID and message as `-ChatId` and `-Message` arguments.
 In [Transient Model Pulse SG](pages/misc/transientmodelpulsesg.html), open **Settings → Ground Map**.
 Enter a latitude and longitude in decimal degrees, and the matching model X and Z in metres
 (leave both at `0` to place the map at the grid origin). Select **Apply Ground Map** to show
-OpenStreetMap below the grid. East is +X and north is −Z; the map stays fixed to the grid
+the street map below the grid. East is +X and north is −Z; the map stays fixed to the grid
 as you pan, zoom, or orbit. Use **Hide Map** to turn it off. This places the map visually
-without changing the IFC file or its coordinates. Tiles load from OpenStreetMap and require an internet connection.
+without changing the IFC file or its coordinates. Map tiles require an internet connection.
+
+While the ground map is visible, the lower-left controls switch between **Street**,
+**Satellite**, **Transit** (CARTO Voyager rail and station styling), and **Terrain**.
+The lower-right controls zoom the model camera or move it to **My location** without changing
+the map alignment. **Traffic** and **Street View** open Google Maps at the camera's focus
+in a new tab; they do not add live traffic or panoramas to the 3D scene.
 
 For an interactive 2D map, select **Map** in the toolbar. Pick **Street**, **Satellite**,
 **Transit**, or **Terrain** in the lower left. **Traffic** opens live traffic in Google Maps

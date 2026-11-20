@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createMapPlacement, getGroundBounds } from '../pages/misc/transientmodelpulsesg-ground-map.js';
+import { createMapPlacement, getGroundBounds, getMapLinks } from '../pages/misc/transientmodelpulsesg-ground-map.js';
 
 const mercator = {
     latLngToPoint({ lat, lng }, zoom) {
@@ -51,4 +51,28 @@ test('tile coverage uses the intersection of the camera frustum and the grid pla
     ];
     assert.deepEqual(getGroundBounds(frustum, 0), { minX: -4, minZ: -4, maxX: 4, maxZ: 4 });
     assert.equal(getGroundBounds(frustum, -2), null);
+});
+
+test('location navigation round-trips through the model grid with a nonzero anchor', () => {
+    const placement = createMapPlacement(mercator, { lat: 1.3521, lng: 103.8198, x: -40, z: 120 });
+    const location = { lat: 1.3531, lng: 103.8208 };
+    const focus = placement.fromLatLng(location);
+    assert.ok(Math.abs(focus.x - 71.29) < 0.05);
+    assert.ok(Math.abs(focus.z - 8.68) < 0.05);
+    const result = placement.toLatLng(focus);
+    assert.ok(Math.abs(result.lat - location.lat) < 1e-9);
+    assert.ok(Math.abs(result.lng - location.lng) < 1e-9);
+});
+
+test('location navigation uses the nearby world copy and links wrap the camera focus', () => {
+    const placement = createMapPlacement(mercator, { lat: 0, lng: 179.999, x: 0, z: 0 });
+    const focus = placement.fromLatLng({ lat: 0, lng: -179.999 });
+    assert.ok(Math.abs(focus.x - 222.64) < 0.05);
+    const links = getMapLinks(placement.toLatLng(focus), 17);
+    assert.deepEqual(Object.fromEntries(new URL(links.traffic).searchParams), {
+        api: '1', map_action: 'map', center: '0.000000,-179.999000', zoom: '17', layer: 'traffic'
+    });
+    assert.deepEqual(Object.fromEntries(new URL(links.streetView).searchParams), {
+        api: '1', map_action: 'pano', viewpoint: '0.000000,-179.999000'
+    });
 });
