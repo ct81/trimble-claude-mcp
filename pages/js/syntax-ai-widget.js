@@ -586,7 +586,7 @@ button,input { font:inherit; }
 <div class="${floating ? "floating-widget" : "widget"}" id="widget">
 
   <button class="launcher" id="launcher" aria-label="Open Syntax AI">
-    S:
+    C:
   </button>
 
   <div class="stage" id="stage">
@@ -595,7 +595,7 @@ button,input { font:inherit; }
     <section class="card" aria-label="Syntax AI chat">
 
       <header class="header">
-        <div class="logo">S:</div>
+        <div class="logo">C:</div>
 
         <div class="brand">
           <h3>${this.escapeHTML(this.title)}</h3>
@@ -623,7 +623,7 @@ button,input { font:inherit; }
       <main class="messages" id="messages" aria-live="polite">
 
   <div class="message ai">
-    <div class="avatar">S:</div>
+    <div class="avatar">C:</div>
     <div class="bubble">
       Hello! 👋 I'm your personal AI assistant.
 
@@ -680,7 +680,7 @@ button,input { font:inherit; }
           <input
             type="text"
             id="messageInput"
-            placeholder="Message Syntax AI..."
+            placeholder="Message Chester AI..."
             autocomplete="off"
           >
 
