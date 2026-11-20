@@ -8,6 +8,7 @@
 
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
         :root {
@@ -56,6 +57,28 @@
             height: 100dvh;
             z-index: 1;
             background-image: radial-gradient(circle at 50% 50%, #101626 0%, #05070a 100%);
+        }
+
+        #map-tile-source {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1280px;
+            height: 1280px;
+            overflow: hidden;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        #map-attribution {
+            position: absolute;
+            bottom: 4px;
+            left: 4px;
+            z-index: 20;
+            padding: 2px 6px;
+            background: var(--panel-bg);
+            color: var(--text-main);
+            font-size: 0.7rem;
         }
 
         .ui-layer {
@@ -1370,6 +1393,8 @@
             box-shadow: 0 0 25px rgba(157, 78, 221, 0.3);
             backdrop-filter: blur(20px);
             width: 260px;
+            max-height: calc(100dvh - var(--header-height) - var(--toolbar-height) - 16px);
+            overflow-y: auto;
             padding: 14px;
             display: none;
             flex-direction: column;
@@ -1445,6 +1470,20 @@
 
         .settings-row button:hover {
             background: rgba(157, 78, 221, 0.25);
+        }
+
+        #map-settings input[type="number"] {
+            width: 120px;
+            padding: 4px;
+            background: var(--bg-color);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+
+        #map-settings p {
+            color: var(--text-muted);
+            font-size: 0.7rem;
         }
 
         @media (max-width: 1200px) {
@@ -1598,6 +1637,10 @@
 <body>
 
     <div id="canvas-container"></div>
+    <div id="map-tile-source" aria-hidden="true" inert></div>
+    <a id="map-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" hidden>
+        &copy; OpenStreetMap contributors
+    </a>
     <div id="toast-container"></div>
     <div id="area-select-box"></div>
 
@@ -1606,6 +1649,18 @@
         <div class="settings-row"><label>Show Grid</label><input type="checkbox" id="set-grid" checked></div>
         <div class="settings-row"><label>Show Fog</label><input type="checkbox" id="set-fog" checked></div>
         <div class="settings-row"><label>Selection Box</label><input type="checkbox" id="set-selbox" checked></div>
+        <form id="map-settings">
+            <h4>Ground Map</h4>
+            <div class="settings-row"><label for="map-lat">Latitude</label><input id="map-lat" type="number" step="any" min="-85.05112878" max="85.05112878" placeholder="1.3521" required></div>
+            <div class="settings-row"><label for="map-lng">Longitude</label><input id="map-lng" type="number" step="any" min="-180" max="180" placeholder="103.8198" required></div>
+            <div class="settings-row"><label for="map-x">Model X (m)</label><input id="map-x" type="number" step="any" value="0" required></div>
+            <div class="settings-row"><label for="map-z">Model Z (m)</label><input id="map-z" type="number" step="any" value="0" required></div>
+            <p>Match a latitude and longitude to a point on the grid. North is -Z. Applying loads tiles from OpenStreetMap.</p>
+            <div class="settings-row">
+                <button type="submit">Apply Ground Map</button>
+                <button type="button" id="hide-ground-map" hidden>Hide Map</button>
+            </div>
+        </form>
         <div class="settings-row schema-row">
             <label for="set-required-schema">Required Schema (JSON)</label>
             <textarea id="set-required-schema" spellcheck="false"></textarea>
@@ -2071,6 +2126,7 @@
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { IfcAPI } from 'web-ifc';
+        import { createGroundMap } from './transientmodelpulsesg-ground-map.js';
 
         const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
@@ -2117,6 +2173,8 @@
         controls.addEventListener('end', endInteraction);
 
         const gridHelper = new THREE.GridHelper(500, 250, 0x00f0ff, 0x1a2a44); gridHelper.position.y = -0.1; gridHelper.material.opacity = 0.2; gridHelper.material.transparent = true; scene.add(gridHelper);
+
+        const groundMap = createGroundMap(THREE, scene, gridHelper.position.y - 0.05, showToast);
 
         const selectionBoxes = new THREE.Group();
         scene.add(selectionBoxes);
@@ -2354,6 +2412,23 @@
         });
         document.addEventListener('click', (e) => {
             if (!settingsPopup.contains(e.target) && !e.target.closest('#btn-settings')) settingsPopup.classList.remove('open');
+        });
+        const hideGroundMap = document.getElementById('hide-ground-map');
+        const mapAttribution = document.getElementById('map-attribution');
+        mapAttribution.addEventListener('click', (e) => e.stopPropagation());
+        document.getElementById('map-settings').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const [lat, lng, x, z] = ['map-lat', 'map-lng', 'map-x', 'map-z']
+                .map(id => document.getElementById(id).valueAsNumber);
+            if (groundMap.show({ lat, lng, x, z })) {
+                hideGroundMap.hidden = false;
+                mapAttribution.hidden = false;
+            }
+        });
+        hideGroundMap.addEventListener('click', () => {
+            groundMap.hide();
+            hideGroundMap.hidden = true;
+            mapAttribution.hidden = true;
         });
         document.getElementById('set-grid').addEventListener('change', (e) => { gridHelper.visible = e.target.checked; });
         document.getElementById('set-fog').addEventListener('change', (e) => { scene.fog = e.target.checked ? new THREE.FogExp2(0x05070a, 0.001) : null; });
@@ -4132,7 +4207,13 @@
             reader.readAsArrayBuffer(file);
         });
 
-        function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); } animate();
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            groundMap.update(camera);
+            renderer.render(scene, camera);
+        }
+        animate();
         window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
         setInterval(() => { const clockEl = document.getElementById('clock'); if (clockEl) { const now = new Date(); let hours = now.getHours(); const ampm = hours >= 12 ? 'PM' : 'AM'; hours = hours % 12 || 12; clockEl.textContent = `${hours}:${String(now.getMinutes()).padStart(2, '0')} ${ampm}`; } }, 1000);
     </script>

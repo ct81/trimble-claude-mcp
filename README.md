@@ -77,6 +77,15 @@ environment when set, prompts for missing values, then securely prompts for
 the GREEN-API Telegram token, chat ID, and message. You can also pass the chat
 ID and message as `-ChatId` and `-Message` arguments.
 
+## Ground map in Transient Model Pulse SG
+
+In [Transient Model Pulse SG](pages/misc/transientmodelpulsesg.html), open **Settings → Ground Map**.
+Enter a latitude and longitude in decimal degrees, and the matching model X and Z in metres
+(leave both at `0` to place the map at the grid origin). Select **Apply Ground Map** to show
+OpenStreetMap below the grid. East is +X and north is −Z; the map stays fixed to the grid
+as you pan, zoom, or orbit. Use **Hide Map** to turn it off. This places the map visually
+without changing the IFC file or its coordinates. Tiles load from OpenStreetMap and require an internet connection.
+
 ## Available integrations
 
 The MCP tool catalog includes Trimble Connect operations for users, regions,
