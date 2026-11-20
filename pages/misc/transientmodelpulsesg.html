@@ -2079,7 +2079,7 @@
         camera.position.set(40, 30, 40);
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
         container.appendChild(renderer.domElement);
 
         scene.add(new THREE.AmbientLight(0xffffff, 0.6));
@@ -2111,8 +2111,17 @@
         const craneGroup = new THREE.Group();
         scene.add(craneGroup);
 
-        const ifcAPI = new IfcAPI();
+        let ifcAPI = new IfcAPI();
         ifcAPI.SetWasmPath('https://unpkg.com/web-ifc@0.0.78/', true);
+
+        // WASM heap never shrinks, so a fresh engine instance is the only way to release memory between loads.
+        async function resetIfcEngine() {
+            try { ifcAPI.CloseAllModels(); } catch (e) { }
+            ifcAPI = new IfcAPI();
+            ifcAPI.SetWasmPath('https://unpkg.com/web-ifc@0.0.78/', true);
+            try { if (typeof ifcAPI.SetLogLevel === 'function') ifcAPI.SetLogLevel(0); } catch (e) { }
+            await ifcAPI.Init();
+        }
 
         let currentIfcModel = null; let currentModelID = -1;
 
@@ -2133,7 +2142,9 @@
         const statusPlaybackOriginals = new Map();
         const statusPlaybackMaterials = new Map();
 
-        const sharedDefaultMaterial = new THREE.MeshPhysicalMaterial({ color: 0x00f0ff, emissive: 0x003366, metalness: 0.8, roughness: 0.2, transmission: 0.5, thickness: 0.5, transparent: true, opacity: 0.7, side: THREE.DoubleSide });
+        // Transmission forces an extra full-scene render pass every frame, so a plain transparent material is used instead.
+        const sharedDefaultMaterial = new THREE.MeshStandardMaterial({ color: 0x00f0ff, emissive: 0x003366, metalness: 0.8, roughness: 0.2, transparent: true, opacity: 0.7, side: THREE.DoubleSide });
+        let colorByMaterials = [];
         const selectedMaterial = new THREE.MeshPhysicalMaterial({ color: 0xff007f, emissive: 0x44001a, metalness: 0.9, roughness: 0.1, transparent: true, opacity: 0.9, side: THREE.DoubleSide });
 
         const loadingOverlay = document.getElementById('loading-overlay'); const loadStatus = document.getElementById('load-status'); const loadTitle = document.getElementById('load-title');
@@ -2933,11 +2944,30 @@
             updatePlayButton();
 
             try {
+                const hadPreviousModel = currentModelID !== -1 || !!currentIfcModel;
                 if (currentModelID !== -1) { try { ifcAPI.CloseModel(currentModelID); } catch (e) { } currentModelID = -1; }
-                if (currentIfcModel) { scene.remove(currentIfcModel); currentIfcModel.traverse((child) => { if (child.isMesh) child.geometry.dispose(); }); currentIfcModel = null; }
+                clearSelection();
+                if (currentIfcModel) {
+                    scene.remove(currentIfcModel);
+                    const disposedMaterials = new Set();
+                    currentIfcModel.traverse((child) => {
+                        if (!child.isMesh) return;
+                        child.geometry.dispose();
+                        const mat = child.material;
+                        if (mat && mat !== sharedDefaultMaterial && mat !== selectedMaterial && !disposedMaterials.has(mat)) { disposedMaterials.add(mat); mat.dispose(); }
+                    });
+                    currentIfcModel = null;
+                }
+                colorByMaterials.forEach(m => m.dispose());
+                colorByMaterials = [];
                 statusColoredMeshes.clear();
-                await new Promise(r => setTimeout(r, 100));
-                if (window.gc) { try { window.gc(); } catch (e) { } }
+                guidToMeshMap.clear();
+                renderer.renderLists.dispose();
+
+                if (hadPreviousModel) {
+                    showLoading("Resetting Engine...", "Releasing memory from previous model...");
+                    await resetIfcEngine();
+                }
 
                 showLoading("Parsing WASM Geometry...", "Opening IFC Model (This may take a moment)...");
                 await new Promise(r => setTimeout(r, 50));
@@ -2946,43 +2976,47 @@
                 const openBytes = new Uint8Array(arrayBuffer);
                 try { opened = ifcAPI.OpenModel(openBytes, { optimizeGeometry: true, COORDINATE_TO_ORIGIN: true }); }
                 catch (err) {
-                    try { ifcAPI.CloseAllModels(); } catch (e) { }
-                    await new Promise(r => setTimeout(r, 500));
-                    if (window.gc) { try { window.gc(); } catch (e) { } }
+                    await resetIfcEngine();
                     try { opened = ifcAPI.OpenModel(openBytes, { optimizeGeometry: true, COORDINATE_TO_ORIGIN: true }); }
                     catch (err2) { showToast("Model is too large for browser memory. Try a smaller IFC or a desktop viewer.", 'error'); throw err2; }
                 }
                 if (opened === -1) throw new Error("OpenModel failed (heap exhausted).");
                 currentModelID = opened;
+                arrayBuffer = null;
 
                 showLoading("Extracting Geometry...", "Reading mesh data from WASM...");
                 await new Promise(r => setTimeout(r, 50));
 
+                const modelID = currentModelID;
                 const rawGeometries = [];
-                guidToMeshMap.clear();
 
                 try {
-                    ifcAPI.StreamAllMeshes(currentModelID, (mesh) => {
+                    ifcAPI.StreamAllMeshes(modelID, (mesh) => {
                         try {
                             const placedGeometry = mesh.geometries;
-                            for (let i = 0; i < placedGeometry.size(); i++) {
+                            const count = placedGeometry.size();
+                            for (let i = 0; i < count; i++) {
+                                let geometry = null;
                                 try {
                                     const placedGeometryData = placedGeometry.get(i);
-                                    const geometry = ifcAPI.GetGeometry(currentModelID, placedGeometryData.geometryExpressID);
+                                    geometry = ifcAPI.GetGeometry(modelID, placedGeometryData.geometryExpressID);
                                     if (!geometry) continue;
-                                    let verts, indices;
-                                    try {
-                                        verts = sanitizeVertexArray(ifcAPI.GetVertexArray(geometry.GetVertexData(), geometry.GetVertexDataSize()));
-                                        indices = sanitizeIndexArray(ifcAPI.GetIndexArray(geometry.GetIndexData(), geometry.GetIndexDataSize()));
-                                    } catch (e) { continue; }
-                                    if (!verts || verts.length === 0 || !indices || indices.length === 0) continue;
-                                    if (verts.length % 6 !== 0) continue;
+                                    let verts = sanitizeVertexArray(ifcAPI.GetVertexArray(geometry.GetVertexData(), geometry.GetVertexDataSize()));
+                                    let indices = sanitizeIndexArray(ifcAPI.GetIndexArray(geometry.GetIndexData(), geometry.GetIndexDataSize()));
+                                    if (!verts.length || !indices.length || verts.length % 6 !== 0) continue;
+                                    // Must own the data before geometry.delete() frees the WASM memory.
+                                    const heap = ifcAPI.wasmModule && ifcAPI.wasmModule.HEAPU8;
+                                    if (heap && verts.buffer === heap.buffer) verts = verts.slice();
+                                    if (heap && indices.buffer === heap.buffer) indices = indices.slice();
                                     rawGeometries.push({
                                         verts, indices,
                                         expressID: mesh.expressID,
-                                        matrix: placedGeometryData.flatTransformation ? new THREE.Matrix4().fromArray(placedGeometryData.flatTransformation) : null
+                                        matrix: placedGeometryData.flatTransformation ? Array.from(placedGeometryData.flatTransformation) : null
                                     });
-                                } catch (placeErr) { }
+                                } catch (placeErr) {
+                                } finally {
+                                    if (geometry && typeof geometry.delete === 'function') { try { geometry.delete(); } catch (e) { } }
+                                }
                             }
                         } catch (meshErr) { }
                     });
@@ -2991,60 +3025,63 @@
                     showToast(`Streaming stopped early at ${rawGeometries.length} meshes.`, 'error');
                 }
 
-                arrayBuffer = null;
-                const modelID = currentModelID;
-
-                showLoading("Building 3D Scene...", `Generating ${rawGeometries.length} meshes...`);
+                const total = rawGeometries.length;
+                showLoading("Building 3D Scene...", `Generating ${total} meshes...`);
                 progressContainer.style.display = 'block'; progressBar.style.width = '0%';
                 await new Promise(r => setTimeout(r, 50));
 
                 const group = new THREE.Group();
-                const CHUNK_SIZE = 500;
+                const CHUNK_SIZE = 2000;
+                const guidByEid = new Map();
+                const tmpMatrix = new THREE.Matrix4();
+                const tmpBox = new THREE.Box3();
 
-                for (let i = 0; i < rawGeometries.length; i += CHUNK_SIZE) {
-                    const chunk = rawGeometries.slice(i, i + CHUNK_SIZE);
-                    chunk.forEach(data => {
-                        try {
-                            const safeVerts = data.verts instanceof Float32Array ? data.verts : sanitizeVertexArray(data.verts);
-                            const safeIndices = data.indices instanceof Uint32Array ? data.indices : sanitizeIndexArray(data.indices);
-                            if (!safeVerts || safeVerts.length === 0 || safeVerts.length % 6 !== 0) return;
-                            if (!safeIndices || safeIndices.length === 0) return;
+                for (let i = 0; i < total; i++) {
+                    const data = rawGeometries[i];
+                    rawGeometries[i] = null;
+                    try {
+                        // Interleaved buffer avoids copying IFC's [x,y,z,nx,ny,nz] layout into two arrays.
+                        const interleaved = new THREE.InterleavedBuffer(data.verts, 6);
+                        const bufferGeometry = new THREE.BufferGeometry();
+                        bufferGeometry.setAttribute('position', new THREE.InterleavedBufferAttribute(interleaved, 3, 0));
+                        bufferGeometry.setAttribute('normal', new THREE.InterleavedBufferAttribute(interleaved, 3, 3));
+                        bufferGeometry.setIndex(new THREE.BufferAttribute(data.indices, 1));
+                        bufferGeometry.computeBoundingBox();
+                        bufferGeometry.computeBoundingSphere();
 
-                            const bufferGeometry = new THREE.BufferGeometry();
-                            const posArray = new Float32Array(safeVerts.length / 2);
-                            const normalArray = new Float32Array(safeVerts.length / 2);
-                            for (let j = 0; j < safeVerts.length; j += 6) {
-                                posArray[j / 2] = safeVerts[j]; posArray[j / 2 + 1] = safeVerts[j + 1]; posArray[j / 2 + 2] = safeVerts[j + 2];
-                                normalArray[j / 2] = safeVerts[j + 3]; normalArray[j / 2 + 1] = safeVerts[j + 4]; normalArray[j / 2 + 2] = safeVerts[j + 5];
-                            }
-                            bufferGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-                            bufferGeometry.setAttribute('normal', new THREE.BufferAttribute(normalArray, 3));
-                            bufferGeometry.setIndex(new THREE.BufferAttribute(safeIndices, 1));
+                        const mesh3D = new THREE.Mesh(bufferGeometry, sharedDefaultMaterial);
+                        mesh3D.userData.expressID = data.expressID;
+                        if (data.matrix) mesh3D.applyMatrix4(tmpMatrix.fromArray(data.matrix));
+                        // Static geometry: skip per-frame matrix recomputation.
+                        mesh3D.matrixAutoUpdate = false;
+                        mesh3D.updateMatrix();
 
-                            const mesh3D = new THREE.Mesh(bufferGeometry, sharedDefaultMaterial);
-                            mesh3D.userData.expressID = data.expressID;
-                            if (data.matrix) mesh3D.applyMatrix4(data.matrix);
-                           
-                            // --- ANIMATION PREP: Calculate bounding box to find lowest Y ---
-                            const bbox = new THREE.Box3().setFromObject(mesh3D);
-                            animMeshes.push({ mesh: mesh3D, y: bbox.min.y });
-                           
-                            group.add(mesh3D);
+                        tmpBox.copy(bufferGeometry.boundingBox).applyMatrix4(mesh3D.matrix);
+                        animMeshes.push({ mesh: mesh3D, y: tmpBox.min.y });
 
-                            const eid = safeExpressID(data.expressID);
-                            if (eid >= 0) {
+                        group.add(mesh3D);
+
+                        const eid = safeExpressID(data.expressID);
+                        if (eid >= 0) {
+                            let guid = guidByEid.get(eid);
+                            if (guid === undefined) {
+                                guid = null;
                                 try {
-                                    const line = ifcAPI.GetLine(modelID, eid, true);
-                                    if (line && line.GlobalId && line.GlobalId.value) guidToMeshMap.set(line.GlobalId.value, mesh3D);
+                                    const line = ifcAPI.GetLine(modelID, eid, false);
+                                    if (line && line.GlobalId && line.GlobalId.value) guid = line.GlobalId.value;
                                 } catch (e) { }
+                                guidByEid.set(eid, guid);
                             }
-                        } catch (meshErr) { }
-                    });
+                            if (guid) guidToMeshMap.set(guid, mesh3D);
+                        }
+                    } catch (meshErr) { }
 
-                    const percent = Math.min(100, Math.round(((i + CHUNK_SIZE) / rawGeometries.length) * 100));
-                    progressBar.style.width = `${percent}%`;
-                    loadStatus.innerText = `Building 3D Scene: ${percent}% (${Math.min(i + CHUNK_SIZE, rawGeometries.length)} / ${rawGeometries.length})`;
-                    await new Promise(r => setTimeout(r, 0));
+                    if ((i + 1) % CHUNK_SIZE === 0 || i === total - 1) {
+                        const percent = Math.round(((i + 1) / total) * 100);
+                        progressBar.style.width = `${percent}%`;
+                        loadStatus.innerText = `Building 3D Scene: ${percent}% (${i + 1} / ${total})`;
+                        await new Promise(r => setTimeout(r, 0));
+                    }
                 }
 
                 // --- ANIMATION PREP: Sort by ground-up and create chunks ---
@@ -3965,11 +4002,15 @@
             const mode = e.target.value;
             if (!currentIfcModel || currentModelID === -1) return;
             resetStatusPlayback();
+            const previousColorByMaterials = colorByMaterials;
+            colorByMaterials = [];
             if (mode === 'default') {
                 currentIfcModel.traverse(child => { if (child.isMesh && !selectedMeshes.has(child.userData.expressID)) child.material = sharedDefaultMaterial; });
+                previousColorByMaterials.forEach(m => m.dispose());
                 return;
             }
             const typeColors = {};
+            const typeMaterials = {};
             currentIfcModel.traverse(child => {
                 if (child.isMesh) {
                     let key = "Unknown";
@@ -3999,14 +4040,19 @@
                     }
                     if (!typeColors[key]) typeColors[key] = new THREE.Color().setHSL(Math.random(), 0.8, 0.5);
                     if (!selectedMeshes.has(child.userData.expressID)) {
-                        const newMat = sharedDefaultMaterial.clone();
-                        newMat.color = typeColors[key];
-                        newMat.emissive = typeColors[key].clone().multiplyScalar(0.2);
-                        newMat.opacity = 0.9;
-                        child.material = newMat;
+                        if (!typeMaterials[key]) {
+                            const newMat = sharedDefaultMaterial.clone();
+                            newMat.color = typeColors[key];
+                            newMat.emissive = typeColors[key].clone().multiplyScalar(0.2);
+                            newMat.opacity = 0.9;
+                            typeMaterials[key] = newMat;
+                            colorByMaterials.push(newMat);
+                        }
+                        child.material = typeMaterials[key];
                     }
                 }
             });
+            previousColorByMaterials.forEach(m => m.dispose());
         });
 
         async function startApp() {
@@ -4038,7 +4084,8 @@
             };
             reader.onload = async function (e) {
                 await processAndAddModel(e.target.result);
-                document.querySelector('.breadcrumbs').innerHTML = `DIGITAL TWIN | Project: <span style="color:var(--neon-blue)">${file.name}</span> | SITE STATUS: <span>ON TRACK</span> | <span id="clock">${new Date().toLocaleTimeString()}</span>`;
+                document.querySelector('.breadcrumbs').innerHTML = `DIGITAL TWIN | Project: <span id="project-name" style="color:var(--neon-blue)"></span> | SITE STATUS: <span>ON TRACK</span> | <span id="clock">${new Date().toLocaleTimeString()}</span>`;
+                document.getElementById('project-name').textContent = file.name;
             };
             reader.readAsArrayBuffer(file);
         });
