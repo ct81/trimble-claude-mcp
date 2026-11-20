@@ -1,0 +1,2255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tekla EC2 Concrete Design (Multi-storey, 3D, Reports)</title>
+    <style>
+        :root {
+            --grid-color: #e2e8f0; --grid-major: #cbd5e1; --bg-color: #f8fafc; --primary: #eab308;
+            --wire-normal: #1e293b; --wire-failed: #ef4444;
+            --beam-normal: #94a3b8; --beam-danger: #ef4444; --pillar-color: #475569;
+            --panel-bg: #f1f5f9;
+        }
+        * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+        body { margin: 0; font-family: system-ui, -apple-system, sans-serif; overflow: hidden; background-color: var(--bg-color); overscroll-behavior: none; }
+        
+        /* Viewport and Infinite Grid */
+        #viewport { 
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; 
+            overflow: hidden; touch-action: none; cursor: grab; 
+            background-color: var(--bg-color); 
+            background-image: 
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 60px 60px; 
+        }
+        #viewport:active { cursor: grabbing; }
+        #world { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform-origin: 0 0; }
+        #wire-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; overflow: visible; }
+        
+        /* Wires (Connectivity) */
+        .wire { stroke-width: 6; fill: none; stroke-linecap: round; pointer-events: stroke; cursor: pointer; transition: stroke 0.3s; }
+        .wire.normal { stroke: var(--wire-normal); }
+        .wire.failed { stroke: var(--wire-failed); stroke-dasharray: 10, 10; }
+        
+        /* Nodes */
+        .node { position: absolute; will-change: transform; cursor: grab; z-index: 10; display: flex; flex-direction: column; align-items: center; touch-action: none; }
+        .node:active { cursor: grabbing; z-index: 20; }
+
+        .component-body { background: #fff; border: 3px solid #333; border-radius: 6px; padding: 6px; box-shadow: 3px 5px 0px rgba(0,0,0,0.15); text-align: center; font-size: 11px; font-weight: bold; pointer-events: none; transition: background 0.3s; }
+        
+        /* Plan view style columns */
+        .comp-pillar .component-body { background: var(--pillar-color); color: white; width: 50px; height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 4px; }
+        .comp-pillar.failed .component-body { background: var(--beam-danger); animation: shake 0.5s infinite; }
+        
+        /* Plan view style beams */
+        .comp-beam .component-body { background: var(--beam-normal); width: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .comp-beam.failed .component-body { background: var(--beam-danger); color: white; animation: shake 0.5s infinite; }
+        .comp-beam.unstable .component-body { background: #fef3c7; border-color: #d97706; }
+        
+        /* Status Badges */
+        .status-badge { font-size: 9px; padding: 2px 4px; border-radius: 10px; margin-top: 2px; background: #fff; border: 1px solid #333; color: #333;}
+        .status-safe { background: #d1fae5; color: #065f46; }
+        .status-warn { background: #fef3c7; color: #92400e; }
+        .status-fail { background: #fee2e2; color: #b91c1c; }
+
+        /* Ports */
+        .port { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #333; position: absolute; cursor: crosshair; z-index: 15; background: #fff; }
+        .port.left { left: -12px; top: 50%; transform: translateY(-50%); }
+        .port.right { right: -12px; top: 50%; transform: translateY(-50%); }
+        .port.top { top: -12px; left: 50%; transform: translateX(-50%); }
+
+        /* Delete Mode */
+        body.delete-mode #viewport { cursor: crosshair; }
+        body.delete-mode .wire:hover { stroke-width: 12; stroke: #ef4444 !important; }
+        body.delete-mode .node:hover .component-body { border-color: #ef4444; box-shadow: 0 0 10px #ef4444; }
+
+        /* UI Overlays */
+        #multimeter { position: absolute; top: 20px; left: 20px; background: var(--primary); border: 4px solid #333; border-radius: 12px; padding: 15px; width: 220px; z-index: 100; box-shadow: 4px 4px 0px rgba(0,0,0,0.2); transition: background 0.3s; }
+        #multimeter.danger { background: #ef4444; color: white; }
+        .lcd-screen { background: #d1fae5; border: 3px solid #333; border-radius: 6px; padding: 8px; text-align: right; font-family: monospace; font-size: 24px; font-weight: bold; margin-bottom: 5px; transition: color 0.3s, background 0.3s; }
+        .lcd-screen.danger { color: #ef4444; background: #fee2e2; }
+        
+        /* Properties Panel */
+        #properties-panel { position: absolute; top: 20px; right: 20px; background: #fff; border: 3px solid #333; border-radius: 12px; padding: 15px; width: 320px; z-index: 900; box-shadow: 4px 4px 0px rgba(0,0,0,0.2); display: none; max-height: 90vh; overflow-y: auto; }
+        
+        .section-title { font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: bold; margin: 12px 0 6px 0; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; letter-spacing: 0.5px; }
+        .prop-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px; }
+        .prop-label { color: #475569; font-weight: 500; }
+        .prop-val { font-family: monospace; font-weight: bold; color: #111; }
+        
+        /* Editable Inputs */
+        .prop-input { width: 80px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-family: monospace; font-weight: bold; text-align: right; font-size: 12px; transition: border-color 0.2s; }
+        .prop-input:focus { outline: none; border-color: #3b82f6; background: #eff6ff; }
+        
+        .check-box { border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; margin-bottom: 8px; background: var(--panel-bg); }
+        .check-header { display: flex; justify-content: space-between; font-weight: bold; font-size: 12px; margin-bottom: 4px; }
+        
+        /* Close & Save Buttons */
+        .close-x { position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; background: #ef4444; color: white; border: 2px solid #333; border-radius: 50%; font-size: 18px; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 2px 2px 0px #333; z-index: 10; }
+        .close-x:active { transform: translate(2px, 2px); box-shadow: none; }
+        
+        .save-btn { width: 100%; padding: 10px; margin-top: 10px; background: #10b981; color: white; font-weight: bold; border: 2px solid #047857; border-radius: 8px; box-shadow: 2px 2px 0px #047857; cursor: pointer; }
+        .save-btn:active { transform: translate(2px, 2px); box-shadow: none; }
+
+        /* Toolbar */
+        #toolbar { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: #fff; padding: 10px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: flex; gap: 8px; z-index: 100; flex-wrap: wrap; justify-content: center; max-width: 700px; width: 95%; }
+        .tool-btn { padding: 10px 15px; border: 2px solid #333; border-radius: 8px; background: #fff; font-weight: bold; font-size: 12px; box-shadow: 2px 2px 0px #333; cursor: pointer; transition: transform 0.1s; }
+        .tool-btn:active { transform: translate(2px, 2px); box-shadow: none; }
+        .tool-btn.primary { background: #3b82f6; color: white; border-color: #1e3a8a; }
+        .tool-btn.success { background: #10b981; color: white; border-color: #047857; }
+        .tool-btn.active-delete { background: #ef4444; color: white; border-color: #7f1d1d; box-shadow: inset 2px 2px 5px rgba(0,0,0,0.3); transform: translateY(2px); }
+
+        /* Zoom Controls */
+        #zoom-controls { position: absolute; top: 120px; left: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 100; }
+        .zoom-btn { width: 44px; height: 44px; border-radius: 50%; background: #fff; border: 2px solid #333; font-size: 24px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 2px 2px 0px #333; cursor: pointer; }
+        .zoom-btn:active { transform: translate(2px, 2px); box-shadow: none; }
+
+        @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-3px) rotate(-1deg); } 50% { transform: translateX(3px) rotate(1deg); } 75% { transform: translateX(-3px) rotate(-1deg); } 100% { transform: translateX(0); } }
+
+        /* Modal */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-content { background: #fff; border: 4px solid #333; border-radius: 12px; padding: 20px; width: 90%; max-width: 400px; box-shadow: 8px 8px 0px rgba(0,0,0,0.2); position: relative; transform: translateY(20px); transition: transform 0.2s; }
+        .modal-overlay.active .modal-content { transform: translateY(0); }
+        .modal-title { margin: 0 0 10px 0; font-size: 18px; font-weight: bold; color: #333; border-bottom: 2px solid #ccc; padding-bottom: 10px; padding-right: 35px; }
+        .modal-body { font-size: 14px; line-height: 1.5; color: #475569; margin-bottom: 20px; }
+
+        /* --- v2 additions --- */
+        .wire.failed { stroke: var(--wire-failed); stroke-dasharray: none; stroke-width: 7; }
+        .wire.warn { stroke: #f59e0b; stroke-dasharray: 10, 10; }
+        .node.geo-warn .component-body { outline: 3px dashed #f59e0b; outline-offset: 2px; }
+        .node.unstable .component-body { background: #fef3c7; border-color: #d97706; }
+        .check-box.governing { border: 2px solid #333; background: #fff; box-shadow: 2px 2px 0 rgba(0,0,0,0.2); }
+        .alert-box { font-size: 11px; line-height: 1.4; border-radius: 6px; padding: 8px; margin: 6px 0; }
+        .alert-box.warn { background: #fef3c7; border: 1px solid #d97706; color: #92400e; }
+        .alert-box.fail { background: #fee2e2; border: 1px solid #b91c1c; color: #7f1d1d; }
+        #mm-note { text-align: center; font-size: 10px; font-weight: bold; margin-top: 6px; line-height: 1.4; }
+        details.trace { margin-top: 10px; font-size: 11px; }
+        details.trace summary { cursor: pointer; font-weight: bold; color: #334155; }
+        #calc-trace { white-space: pre-wrap; font-size: 10px; background: #0f172a; color: #e2e8f0; padding: 8px; border-radius: 6px; margin: 6px 0 0 0; user-select: text; -webkit-user-select: text; }
+        #gov-tag { font-weight: normal; text-transform: none; color: #334155; }
+        #view3d { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 50; display: none; touch-action: none; cursor: grab; }
+        #view3d:active { cursor: grabbing; }
+        #hint3d { position: absolute; bottom: 175px; left: 50%; transform: translateX(-50%); z-index: 60; display: none; background: #fff; border: 2px solid #333; border-radius: 10px; padding: 6px 10px; font-size: 11px; font-weight: bold; box-shadow: 2px 2px 0 #333; white-space: nowrap; }
+        #hint3d button { margin-left: 6px; border: 2px solid #333; border-radius: 6px; background: #f1f5f9; font-weight: bold; font-size: 11px; padding: 2px 6px; cursor: pointer; }
+        .tool-btn:disabled { opacity: 0.35; pointer-events: none; }
+        .tool-btn.active-view { background: #8b5cf6; color: #fff; border-color: #4c1d95; }
+
+        /* --- v3: new element types --- */
+        .port.bottom { bottom: -12px; left: 50%; transform: translateX(-50%); }
+        .comp-wall .component-body, .comp-panel .component-body, .comp-slab .component-body, .comp-footing .component-body, .comp-pile .component-body { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2px; overflow: visible; }
+        .comp-wall .component-body { background: #a8a29e; color: #111; }
+        .comp-panel .component-body { background: #bae6fd; color: #0c4a6e; }
+        .comp-slab { z-index: 1; }
+        .comp-footing { z-index: 1; }
+        .comp-slab .component-body { background: rgba(203,213,225,0.45); border-style: dashed; color: #334155; }
+        .comp-footing .component-body { background: rgba(120,113,108,0.35); border-style: dashed; color: #292524; justify-content: flex-start; align-items: flex-start; padding: 4px; }
+        .comp-pile .status-badge { font-size: 7px; padding: 1px 3px; }
+        .comp-pile .component-body { background: #b45309; color: #fff; border-radius: 50%; font-size: 8px; }
+        .node.failed .component-body { background: var(--beam-danger) !important; color: #fff; animation: shake 0.5s infinite; }
+        .comp-slab.failed .component-body, .comp-footing.failed .component-body { background: rgba(239,68,68,0.45) !important; color: #7f1d1d; animation: none; }
+        .node.unstable .component-body { background: #fef3c7 !important; border-color: #d97706; color: #92400e; animation: none; }
+        .alert-box.info { background: #e0f2fe; border: 1px solid #0284c7; color: #075985; }
+        #add-wrap { position: relative; }
+        #add-menu { display: none; position: absolute; bottom: calc(100% + 14px); left: 50%; transform: translateX(-50%); background: #fff; border: 3px solid #333; border-radius: 12px; padding: 8px; gap: 6px; flex-wrap: wrap; justify-content: center; width: 250px; box-shadow: 4px 4px 0 rgba(0,0,0,0.2); z-index: 120; }
+        #add-menu.open { display: flex; }
+        #add-menu .tool-btn { flex: 1 1 100px; padding: 8px 6px; }
+
+        /* --- v4 --- */
+        .node.ghost { opacity: 0.28; pointer-events: none; z-index: 0; }
+        .node.ghost .port, .node.ghost .status-badge { display: none; }
+        .node.ghost .component-body { animation: none !important; }
+        .node.lp-dim { opacity: 0.22; }
+        .node.lp-up .component-body { outline: 4px solid #f59e0b; outline-offset: 2px; }
+        .node.lp-down .component-body { outline: 4px solid #7c3aed; outline-offset: 2px; }
+        .node.lp-sel .component-body { outline: 4px solid #2563eb; outline-offset: 2px; }
+        #level-bar { position: absolute; top: 20px; right: 10px; z-index: 100; display: flex; flex-direction: column; align-items: center; gap: 5px; width: 58px; }
+        .lvl-chip { width: 52px; padding: 7px 0; border: 2px solid #333; border-radius: 8px; background: #fff; font-weight: bold; font-size: 12px; box-shadow: 2px 2px 0 #333; cursor: pointer; }
+        .lvl-chip.on { background: #3b82f6; color: #fff; border-color: #1e3a8a; }
+        .lvl-chip.sm { padding: 4px 0; font-size: 11px; }
+        .lvl-row { display: flex; gap: 4px; }
+        .lvl-row .lvl-chip { width: 24px; }
+        .lvl-h { font-size: 10px; font-weight: bold; text-align: center; background: #fff; border: 2px solid #333; border-radius: 8px; padding: 3px; width: 52px; }
+        .lvl-h input { width: 46px; font-size: 11px; padding: 2px; border: 1px solid #cbd5e1; border-radius: 4px; text-align: right; font-family: monospace; }
+        #ctl3d { position: absolute; bottom: 175px; left: 50%; transform: translateX(-50%); z-index: 60; display: none; background: #fff; border: 2px solid #333; border-radius: 10px; padding: 6px 8px; box-shadow: 2px 2px 0 #333; width: 94%; max-width: 560px; text-align: center; }
+        #ctl3d .hint { font-size: 10px; font-weight: bold; margin-bottom: 4px; }
+        #ctl3d button { margin: 2px; border: 2px solid #333; border-radius: 6px; background: #f1f5f9; font-weight: bold; font-size: 10.5px; padding: 4px 7px; cursor: pointer; }
+        #ctl3d button.on { background: #8b5cf6; color: #fff; border-color: #4c1d95; }
+        #file-wrap { position: relative; }
+        #file-menu { display: none; position: absolute; bottom: calc(100% + 14px); left: 50%; transform: translateX(-50%); background: #fff; border: 3px solid #333; border-radius: 12px; padding: 8px; flex-direction: column; gap: 6px; width: 230px; box-shadow: 4px 4px 0 rgba(0,0,0,0.2); z-index: 120; }
+        #file-menu.open { display: flex; }
+        #file-menu .tool-btn { text-align: left; }
+        .modal-content.big { max-width: 560px; max-height: 88vh; overflow-y: auto; }
+        .modal-content.big .small, .small { font-size: 11px; color: #475569; }
+        .btnrow { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+        .btnrow.col { flex-direction: column; }
+        .btnrow button { padding: 8px 10px; border: 2px solid #333; border-radius: 8px; background: #fff; font-weight: bold; font-size: 12px; box-shadow: 2px 2px 0 #333; cursor: pointer; }
+        .btnrow button.go { background: #10b981; color: #fff; border-color: #047857; }
+        .btnrow button:disabled { opacity: 0.4; pointer-events: none; }
+        .slot { border: 2px solid #cbd5e1; border-radius: 8px; padding: 8px; margin-bottom: 8px; background: #f8fafc; }
+        .chk { display: block; font-size: 13px; margin: 6px 0; }
+        table.cmp { border-collapse: collapse; width: 100%; font-size: 12px; margin: 6px 0; }
+        table.cmp th, table.cmp td { border: 1px solid #cbd5e1; padding: 4px 6px; text-align: left; }
+        table.cmp th { background: #e2e8f0; }
+        table.cmp td.good { color: #047857; font-weight: bold; } table.cmp td.bad { color: #b91c1c; font-weight: bold; }
+        .scroll { max-height: 280px; overflow: auto; }
+        .min-x { position: absolute; top: 10px; right: 48px; width: 30px; height: 30px; background: #fff; border: 2px solid #333; border-radius: 50%; font-size: 15px; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 2px 2px 0 #333; z-index: 10; }
+        #properties-panel.min > *:not(h4):not(.close-x):not(.min-x):not(.keep-min) { display: none !important; }
+        #properties-panel.min { max-height: 45vh; }
+        .alert-box.lp { background: #faf5ff; border: 1px solid #7c3aed; color: #4c1d95; }
+    </style>
+</head>
+<body>
+
+    <div id="multimeter">
+        <div class="lcd-screen" id="lcd"><span id="metric-value">0</span> <span class="lcd-unit">%</span></div>
+        <div class="mm-label" style="text-align:center; font-weight:bold; font-size:11px;">GOVERNING UTILIZATION</div>
+        <div id="mm-note"></div>
+    </div>
+
+    <div id="zoom-controls">
+        <button class="zoom-btn" onclick="zoomIn()">+</button>
+        <button class="zoom-btn" onclick="zoomOut()">−</button>
+        <button class="zoom-btn" style="font-size:16px;" onclick="resetView()">⌂</button>
+    </div>
+
+    <!-- Properties Panel -->
+    <div id="properties-panel">
+        <div class="close-x" onclick="closeProperties()">×</div>
+        <div class="min-x" id="min-x" onclick="togglePanelMin()" title="Collapse so you can see the model">▾</div>
+        <h4 id="panel-title" style="margin: 0 0 10px 0; border-bottom: 2px solid #333; padding-bottom: 5px; padding-right: 25px;">Element Report</h4>
+        
+        <div class="section-title">1. Tekla Model Data</div>
+        <div class="prop-row"><span class="prop-label">GUID:</span> <span class="prop-val" id="p-guid" style="font-size:10px; color:#3b82f6;">-</span></div>
+        <div class="prop-row"><span class="prop-label">Center (X,Y):</span> <span class="prop-val" id="p-xy">-</span></div>
+        
+        <div class="section-title">2. Editable Properties</div>
+        <div id="edit-fields"></div>
+        <button class="save-btn" onclick="saveComponentProperties()">Save Changes & Recalculate</button>
+
+        <div class="section-title">3. Supports &amp; Geometry</div>
+        <div class="prop-row"><span class="prop-label">Support / type:</span> <span class="prop-val" id="p-support" style="font-size:11px; text-align:right;">-</span></div>
+        <div class="prop-row"><span class="prop-label" id="p-span-label">Span:</span> <span class="prop-val" id="p-span">-</span></div>
+        <div class="prop-row"><span class="prop-label">Connected to:</span> <span class="prop-val" id="p-conn" style="font-size:11px; text-align:right;">-</span></div>
+        <div id="geo-box" class="alert-box warn" style="display:none;"></div>
+        <div id="loadpath-box" class="alert-box fail" style="display:none;"></div>
+        <div id="note-box" class="alert-box info" style="display:none;"></div>
+        <div id="lp-box" class="alert-box lp keep-min" style="display:none;"></div>
+
+        <div class="section-title">4. EC2 Design Checks <span id="gov-tag"></span></div>
+        <div id="checks"></div>
+
+        <div class="prop-row keep-min" style="margin-top: 15px; border-top: 1px solid #ccc; padding-top: 10px; font-size: 14px;">
+            <span class="prop-label">Overall Status:</span> <span class="prop-val" id="p-status" style="font-size: 12px; text-align:right;">-</span>
+        </div>
+
+        <details class="trace">
+            <summary>Hand-check (calculation trace)</summary>
+            <pre id="calc-trace"></pre>
+        </details>
+    </div>
+
+    <div id="viewport">
+        <div id="world"><svg id="wire-layer"></svg></div>
+    </div>
+    <canvas id="view3d"></canvas>
+    <div id="level-bar"></div>
+    <div id="ctl3d"><div class="hint">Drag: rotate · Pinch: zoom · Tap: select (shows its load path)</div>
+        <button id="lbl-btn" onclick="toggleLabels3D()">Labels: ON</button><button id="heat-btn" onclick="toggleHeat3D()">Heatmap: OFF</button><button id="fail-btn" onclick="toggleFail3D()">Failures only: OFF</button><button id="iso-btn" onclick="cycleLevel3D()">Level: All</button><button id="lp3-btn" onclick="toggleLoadPath()">Load path: ON</button></div>
+    <input type="file" id="file-input" accept=".json,application/json" style="display:none">
+    <div id="big-modal" class="modal-overlay" onclick="if(event.target===this)closeBig()"><div class="modal-content big"><div class="close-x" onclick="closeBig()">×</div><h3 id="big-title" class="modal-title"></h3><div id="big-body"></div></div></div>
+
+    <div id="toolbar">
+        <button class="tool-btn" id="undo-btn" onclick="undo()" title="Undo" disabled>↶</button>
+        <button class="tool-btn" id="redo-btn" onclick="redo()" title="Redo" disabled>↷</button>
+        <button class="tool-btn primary" onclick="syncTeklaData()">Sync Tekla Data</button>
+        <button class="tool-btn" id="view-btn" onclick="toggle3D()">3D View</button>
+        <div id="add-wrap">
+            <button class="tool-btn edit-tool" onclick="toggleAddMenu()">+ Add ▾</button>
+            <div id="add-menu">
+                <button class="tool-btn" onclick="addComponent('beam')">Beam</button>
+                <button class="tool-btn" onclick="addComponent('pillar')">Column</button>
+                <button class="tool-btn" onclick="addComponent('wall')">Wall</button>
+                <button class="tool-btn" onclick="addComponent('panel')">Panel</button>
+                <button class="tool-btn" onclick="addComponent('slab')">Slab</button>
+                <button class="tool-btn" onclick="addComponent('footing')">Footing</button>
+                <button class="tool-btn" onclick="addComponent('pile')">Pile</button>
+            </div>
+        </div>
+        <button class="tool-btn edit-tool" id="delete-btn" onclick="toggleDeleteMode()">Delete: OFF</button>
+        <button class="tool-btn" id="units-btn" onclick="toggleUnits()">Units: kN, mm</button>
+        <div id="file-wrap">
+            <button class="tool-btn" onclick="toggleFileMenu()">File ▾</button>
+            <div id="file-menu">
+                <button class="tool-btn" onclick="openExport()">Export report (PDF / Word)</button>
+                <button class="tool-btn" onclick="openScenarios(); document.getElementById('file-menu').classList.remove('open')">Scenarios A vs B…</button>
+                <button class="tool-btn" onclick="saveScenarioFile()">Save model file (.json)</button>
+                <button class="tool-btn" onclick="pickFile('current')">Load model file…</button>
+            </div>
+        </div>
+        <button class="tool-btn success" onclick="pushToMCP()">Push UDAs to Tekla</button>
+    </div>
+
+    <div class="modal-overlay" id="custom-modal">
+        <div class="modal-content">
+            <div class="close-x" onclick="closeModal()">×</div>
+            <h3 class="modal-title" id="modal-title">Success</h3>
+            <div class="modal-body" id="modal-body">Results prepared for MCP update.</div>
+            <button class="tool-btn primary" onclick="closeModal()" style="width: 100%; padding: 12px;">OK, Close</button>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. STATE MANAGEMENT
+        // ==========================================
+        const viewport = document.getElementById('viewport');
+        const world = document.getElementById('world');
+        const wireLayer = document.getElementById('wire-layer');
+
+        const PIXELS_PER_METER = 60;
+        const PILLAR_PX = 50;               // drawn width of a column
+        const mmToPx = v => (v / 1000) * PIXELS_PER_METER;
+
+        let scale = 1, panX = 0, panY = 0;
+        let isPanning = false, startPan = {x:0,y:0};
+        let activeNode = null, startTransform = {x:0,y:0}, pointerStart = {x:0,y:0};
+        let isDeleteMode = false, connections = [], isDrawingWire = false, currentWire = null, startPort = null;
+        let elementsData = {};
+        let selectedNodeId = null;
+
+        let pointers = new Map();
+        let lastPinchDist = 0;
+
+        // ==========================================
+        // 2. SAMPLE DATA
+        // x / y are the CENTRE of each element (mm).
+        // Screen Y grows downward, so y=1000 is the TOP of the frame.
+        // ==========================================
+        
+
+        // ==========================================
+        // 3. ENGINEERING MATH ENGINES (EC2, simplified)
+        // ==========================================
+        const f1 = v => (Number.isFinite(v) ? v.toFixed(1) : '-');
+
+        function calculateBeamDesign(b, h, As, M_Ed, V_Ed, f_ck, f_yk, span, supportType) {
+            const gamma_c = 1.5, gamma_s = 1.15;
+            const f_cd = f_ck / gamma_c, f_yd = f_yk / gamma_s;
+            const d = h - 40;
+            const trace = [];
+
+            // --- Flexure (singly reinforced, rectangular block) ---
+            const x = (As * f_yd) / (0.8 * b * f_cd);
+            const x_lim = 0.45 * d;                      // EC2 ductility limit x/d <= 0.45
+            let M_Rd, flexNote = "";
+            if (x > x_lim) {
+                const z_lim = d - 0.4 * x_lim;
+                M_Rd = (0.8 * x_lim * b * f_cd * z_lim) / 1e6;
+                flexNote = "over-reinforced: capped at x/d = 0.45";
+            } else {
+                const z = d - 0.4 * x;
+                M_Rd = (As * f_yd * z) / 1e6;
+            }
+            const utilFlex = M_Ed > 0 ? (M_Ed / M_Rd) * 100 : 0;
+            trace.push(`f_cd = ${f_ck}/1.5 = ${f1(f_cd)} MPa ; f_yd = ${f_yk}/1.15 = ${f1(f_yd)} MPa`);
+            trace.push(`d = h - 40 = ${d} mm`);
+            trace.push(`x = As·f_yd / (0.8·b·f_cd) = ${f1(x)} mm  (x/d = ${(x/d).toFixed(2)}${flexNote ? ', ' + flexNote : ''})`);
+            trace.push(`M_Rd = ${f1(M_Rd)} kNm ; M_Ed = ${f1(M_Ed)} kNm -> ${Math.round(utilFlex)}%`);
+
+            // --- Shear (no links counted: V_Rd,c) ---
+            const k = Math.min(1 + Math.sqrt(200 / d), 2.0);
+            const rho = Math.min(As / (b * d), 0.02);
+            const v1 = 0.12 * k * Math.pow(100 * rho * f_ck, 1/3);
+            const v_min = 0.035 * Math.pow(k, 1.5) * Math.sqrt(f_ck);
+            const V_Rd_c = (Math.max(v1, v_min) * b * d) / 1000;
+            const utilShear = V_Ed > 0 ? (V_Ed / V_Rd_c) * 100 : 0;
+            trace.push(`k = ${k.toFixed(3)} ; rho = ${rho.toFixed(4)} ; v_min = ${v_min.toFixed(3)} MPa`);
+            trace.push(`V_Rd,c = ${f1(V_Rd_c)} kN ; V_Ed = ${f1(V_Ed)} kN -> ${Math.round(utilShear)}%`);
+
+            // --- Deflection: span/depth (EC2 7.4.2, simplified) ---
+            let ld_limit = 0, ld_actual = 0, utilDefl = 0;
+            if (span > 0) {
+                const rho_real = As / (b * d);
+                const rho0 = Math.sqrt(f_ck) / 1000;
+                const K = supportType === "Cantilever" ? 0.4 : 1.0;
+                const sq = Math.sqrt(f_ck);
+                let basic;
+                if (rho_real <= rho0) basic = 11 + 1.5 * sq * (rho0 / rho_real) + 3.2 * sq * Math.pow(rho0 / rho_real - 1, 1.5);
+                else basic = 11 + 1.5 * sq * (rho0 / rho_real);
+                ld_limit = K * basic;
+                ld_actual = (span * 1000) / d;
+                utilDefl = (ld_actual / ld_limit) * 100;
+                trace.push(`l/d actual = ${f1(ld_actual)} ; l/d limit = K·basic = ${K}·${f1(basic)} = ${f1(ld_limit)} -> ${Math.round(utilDefl)}%`);
+            }
+            trace.push(`Not checked: shear links (V_Rd,s), cracking, 310/σs deflection modifier.`);
+
+            const checks = [
+                { key: 'M', label: 'Flexure', util: utilFlex },
+                { key: 'V', label: 'Shear', util: utilShear },
+                { key: 'D', label: 'Deflection', util: utilDefl }
+            ];
+            const gov = checks.reduce((a, c) => (c.util > a.util ? c : a), checks[0]);
+            const maxUtil = gov.util;
+            let status = "PASS", badgeClass = "status-safe";
+            if (maxUtil > 100) { status = "FAILED"; badgeClass = "status-fail"; }
+            else if (maxUtil > 85) { status = "WARNING"; badgeClass = "status-warn"; }
+
+            return {
+                checks: [
+                    { key: 'M', label: 'Flexure', util: utilFlex, rows: [['M_Ed', `${f1(M_Ed)} kNm`], ['M_Rd', `${f1(M_Rd)} kNm`]] },
+                    { key: 'V', label: 'Shear', util: utilShear, rows: [['V_Ed', `${f1(V_Ed)} kN`], ['V_Rd,c', `${f1(V_Rd_c)} kN`]] },
+                    { key: 'D', label: 'Deflection l/d', util: utilDefl, rows: [['l/d actual', ld_actual ? f1(ld_actual) : '-'], ['l/d limit', ld_limit ? f1(ld_limit) : '-']] }
+                ],
+                flex:  { M_Rd, util: utilFlex, x },
+                shear: { V_Rd: V_Rd_c, util: utilShear },
+                defl:  { ld_actual, ld_limit, util: utilDefl },
+                maxUtil, govKey: gov.key, govLabel: gov.label, status, badgeClass, trace
+            };
+        }
+
+        function calculateColumnDesign(b, h, As, f_ck, f_yk, N_Ed, M_beams) {
+            const gamma_c = 1.5, gamma_s = 1.15;
+            const f_cd = f_ck / gamma_c, f_yd = f_yk / gamma_s;
+            const Ac = b * h;
+            const N_Rd = (0.8 * f_cd * Ac) / 1000;
+
+            // EC2 6.1(4): minimum eccentricity e0 = max(h/30, 20 mm)
+            const e0 = Math.max(h / 30, 20);
+            const M_min = (N_Ed * e0) / 1000;               // kNm
+            const M_Ed = M_beams + M_min;
+
+            // Bending capacity ignoring axial benefit: half the steel on the tension face
+            const d = h - 40;
+            const As_t = As / 2;
+            const x = (As_t * f_yd) / (0.8 * b * f_cd);
+            const z = d - 0.4 * Math.min(x, 0.45 * d);
+            const M_Rd = (As_t * f_yd * z) / 1e6;
+
+            const utilAxial = N_Rd > 0 ? (N_Ed / N_Rd) * 100 : 0;
+            const utilBend = M_Rd > 0 ? (M_Ed / M_Rd) * 100 : 0;
+            const utilComb = utilAxial + utilBend;          // conservative linear interaction
+
+            let status = "PASS", badgeClass = "status-safe";
+            if (utilComb > 100) { status = "FAILED"; badgeClass = "status-fail"; }
+            else if (utilComb > 85) { status = "WARNING"; badgeClass = "status-warn"; }
+
+            const trace = [
+                `N_Rd = 0.8·f_cd·Ac = 0.8·${f1(f_cd)}·${Ac} = ${f1(N_Rd)} kN`,
+                `N_Ed (total) = ${f1(N_Ed)} kN -> axial ${Math.round(utilAxial)}%`,
+                `e0 = max(h/30, 20) = ${f1(e0)} mm ; M_min = N_Ed·e0 = ${f1(M_min)} kNm`,
+                `M_Ed = M_beams + M_min = ${f1(M_beams)} + ${f1(M_min)} = ${f1(M_Ed)} kNm`,
+                `M_Rd (As/2 on tension face) = ${f1(M_Rd)} kNm -> bending ${Math.round(utilBend)}%`,
+                `Interaction (linear, conservative): ${Math.round(utilAxial)}% + ${Math.round(utilBend)}% = ${Math.round(utilComb)}%`
+            ];
+
+            return {
+                checks: [
+                    { key: 'N+M', label: 'Axial + Bending', util: utilComb, rows: [['N_Ed', `${f1(N_Ed)} kN`], ['N_Rd', `${f1(N_Rd)} kN`], ['M_Ed', `${f1(M_Ed)} kNm`], ['M_Rd', `${f1(M_Rd)} kNm`], ['Axial part', `${Math.round(utilAxial)}%`], ['Bending part', `${Math.round(utilBend)}%`]] }
+                ],
+                axial: { N_Rd, util: utilAxial },
+                bending: { M_Ed, M_Rd, util: utilBend },
+                maxUtil: utilComb, govKey: 'N+M', govLabel: 'Axial + Bending',
+                status, badgeClass, trace
+            };
+        }
+
+        // ==========================================
+        // 4. TOPOLOGY / GEOMETRY HELPERS
+        // ==========================================
+        // Distinct columns a beam is wired to (max 2: the two furthest apart)
+
+
+        function angleDiff180(a, b) {
+            const n = v => ((v % 180) + 180) % 180;
+            const d = Math.abs(n(a) - n(b));
+            return Math.min(d, 180 - d);
+        }
+
+        // ==========================================
+        // 5. MASTER EVALUATION ENGINE
+        // ==========================================
+
+
+        // ==========================================
+        // 6. UI & CANVAS LOGIC
+        // ==========================================
+        function updateMultimeter(gov, unsupported, geoIssues) {
+            const metricValue = document.getElementById('metric-value');
+            const multimeter = document.getElementById('multimeter');
+            const util = gov.util;
+            metricValue.innerText = Math.round(util);
+
+            if (util > 100) { metricValue.parentElement.classList.add('danger'); multimeter.classList.add('danger'); }
+            else if (util > 85) { metricValue.parentElement.classList.remove('danger'); multimeter.classList.remove('danger'); metricValue.style.color = '#d97706'; }
+            else { metricValue.parentElement.classList.remove('danger'); multimeter.classList.remove('danger'); metricValue.style.color = '#065f46'; }
+
+            const lines = [`Governed by: ${gov.name} - ${gov.check}`];
+            if (unsupported) lines.push(`⚠ ${unsupported} beam(s) with no support (not in %)`);
+            if (geoIssues) lines.push(`⚠ ${geoIssues} geometry / load-path warning(s)`);
+            document.getElementById('mm-note').innerHTML = lines.join('<br>');
+        }
+
+        function updateWorldTransform() {
+            world.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+            const gridSize = PIXELS_PER_METER * scale;
+            viewport.style.backgroundPosition = `${panX}px ${panY}px`;
+            viewport.style.backgroundSize = `${gridSize}px ${gridSize}px`;
+            redrawWires();
+        }
+
+        function resetView() {
+            if (is3D) { reset3D(); return; }
+            // fit every element (plan extents in mm) into the screen
+            const els = Object.values(elementsData);
+            let x0 = 0, y0 = 0, x1 = 5000, y1 = 5000;
+            if (els.length) {
+                const half = d => {
+                    switch (d.type) {
+                        case 'pillar': return [d.b / 2, d.h / 2];
+                        case 'beam': return [(d.span || 2) * 500, 300];
+                        case 'wall': return [d.Lw / 2, d.t / 2];
+                        case 'panel': return [d.Lp / 2, d.t / 2];
+                        case 'slab': return [d.Lx / 2, d.Ly / 2];
+                        case 'footing': return [d.B / 2, d.L / 2];
+                        case 'pile': return [d.D / 2, d.D / 2];
+                    }
+                    return [500, 500];
+                };
+                x0 = Infinity; y0 = Infinity; x1 = -Infinity; y1 = -Infinity;
+                els.forEach(d => {
+                    const [hx, hy] = half(d), r = Math.max(hx, hy);          // rotation-safe radius
+                    x0 = Math.min(x0, d.x - r); x1 = Math.max(x1, d.x + r);
+                    y0 = Math.min(y0, d.y - r); y1 = Math.max(y1, d.y + r);
+                });
+            }
+            const wPx = mmToPx(x1 - x0), hPx = mmToPx(y1 - y0);
+            const availW = window.innerWidth * 0.92, availH = window.innerHeight * 0.62;
+            scale = Math.max(0.2, Math.min(1.2, availW / Math.max(wPx, 1), availH / Math.max(hPx, 1)));
+            const cx = mmToPx((x0 + x1) / 2), cy = mmToPx((y0 + y1) / 2);
+            panX = window.innerWidth / 2 - cx * scale;
+            panY = window.innerHeight * 0.55 - cy * scale;
+            updateWorldTransform();
+        }
+
+        function zoomIn() { if (is3D) { cam.dist = Math.max(2500, cam.dist / 1.2); requestDraw(); return; } scale = Math.min(scale * 1.2, 4); updateWorldTransform(); }
+        function zoomOut() { if (is3D) { cam.dist = Math.min(60000, cam.dist * 1.2); requestDraw(); return; } scale = Math.max(scale / 1.2, 0.2); updateWorldTransform(); }
+
+
+
+        function setBox(id, html) {
+            const el = document.getElementById(id);
+            if (html) { el.innerHTML = html; el.style.display = 'block'; } else { el.style.display = 'none'; }
+        }
+        const utilColor = u => u > 100 ? '#b91c1c' : (u > 85 ? '#d97706' : '#065f46');
+
+
+
+
+
+
+
+        // ==========================================
+        // 7. COMPONENT BUILDER
+        // ==========================================
+        // x/y are element CENTRES, so offset by -50% before rotating about the centre
+        function applyNodeTransform(node, data) {
+            node.style.transform = `translate3d(${mmToPx(data.x)}px, ${mmToPx(data.y)}px, 0) translate(-50%, -50%) rotate(${data.rot || 0}deg)`;
+        }
+
+
+
+        function portCentreWorld(port) {
+            const vRect = viewport.getBoundingClientRect(), r = port.getBoundingClientRect();
+            return { x: (r.left + r.width / 2 - vRect.left - panX) / scale, y: (r.top + r.height / 2 - vRect.top - panY) / scale };
+        }
+
+
+
+
+
+        // Only beam <-> column links, one link per beam end, no duplicates
+
+
+        // Dragging logic
+        viewport.addEventListener('pointermove', (e) => {
+            if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            if (pointers.size === 2) {
+                isPanning = false;
+                const p1 = pointers.values().next().value, p2 = Array.from(pointers.values())[1];
+                const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+                const centerX = (p1.x + p2.x) / 2, centerY = (p1.y + p2.y) / 2;
+                if (lastPinchDist > 0) {
+                    const delta = dist / lastPinchDist;
+                    const newScale = Math.min(Math.max(0.2, scale * delta), 4);
+                    const rect = viewport.getBoundingClientRect();
+                    const mx = centerX - rect.left, my = centerY - rect.top;
+                    const wx = (mx - panX) / scale, wy = (my - panY) / scale;
+                    scale = newScale; panX = mx - wx * scale; panY = my - wy * scale;
+                    updateWorldTransform();
+                }
+                lastPinchDist = dist; return;
+            }
+            if (isPanning) { panX = e.clientX - startPan.x; panY = e.clientY - startPan.y; updateWorldTransform(); }
+
+            if (activeNode) {
+                const dx = (e.clientX - pointerStart.x) / scale, dy = (e.clientY - pointerStart.y) / scale;
+                const d = elementsData[activeNode.dataset.id];
+                d.x = Math.round(((startTransform.x + dx) / PIXELS_PER_METER) * 1000);
+                d.y = Math.round(((startTransform.y + dy) / PIXELS_PER_METER) * 1000);
+                applyNodeTransform(activeNode, d);
+                dragMoved = true;
+                evaluateStrength();
+            }
+            if (isDrawingWire && currentWire && startPort) {
+                const sp = portCentreWorld(startPort), vRect = viewport.getBoundingClientRect();
+                const endX = (e.clientX - vRect.left - panX) / scale, endY = (e.clientY - vRect.top - panY) / scale;
+                currentWire.setAttribute('d', `M ${sp.x} ${sp.y} L ${endX} ${endY}`);
+            }
+        });
+
+        viewport.addEventListener('pointerdown', (e) => {
+            pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            if (e.target === viewport || e.target === world || e.target === wireLayer) {
+                closeProperties();
+                if (pointers.size === 1) { isPanning = true; startPan = { x: e.clientX - panX, y: e.clientY - panY }; }
+            }
+        });
+
+        viewport.addEventListener('pointerup', (e) => {
+            pointers.delete(e.pointerId);
+            if (pointers.size < 2) lastPinchDist = 0;
+            if (isPanning) isPanning = false;
+            if (activeNode) { activeNode.style.zIndex = ''; activeNode = null; evaluateStrength(); if (dragMoved) { dragMoved = false; commit(); } }
+            if (isDrawingWire) {
+                isDrawingWire = false;
+                const targetPort = document.elementFromPoint(e.clientX, e.clientY);
+                let rejected = null;
+                if (targetPort && targetPort.classList.contains('port') && targetPort !== startPort) {
+                    const sNode = startPort.closest('.node'), eNode = targetPort.closest('.node');
+                    rejected = validateConnection(startPort, targetPort, sNode, eNode);
+                    if (!rejected) {
+                        connections.push({ element: currentWire, startPort, endPort: targetPort, startNode: sNode, endNode: eNode });
+                        evaluateStrength(); commit();
+                    }
+                } else { rejected = ''; }
+                if (rejected !== null) { if (currentWire) currentWire.remove(); if (rejected) showModal("Connection not allowed", rejected); }
+                currentWire = null; startPort = null;
+            }
+        });
+
+        viewport.addEventListener('pointercancel', (e) => {
+            pointers.delete(e.pointerId);
+            if (pointers.size < 2) lastPinchDist = 0;
+            isPanning = false;
+        });
+
+        viewport.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const rect = viewport.getBoundingClientRect();
+            const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+            const wx = (mx - panX) / scale, wy = (my - panY) / scale;
+            scale = Math.min(Math.max(0.2, scale * (e.deltaY > 0 ? 0.9 : 1.1)), 4);
+            panX = mx - wx * scale; panY = my - wy * scale;
+            updateWorldTransform();
+        }, { passive: false });
+
+        world.addEventListener('pointerdown', (e) => {
+            const wire = e.target.closest('.wire'), node = e.target.closest('.node'), port = e.target.closest('.port');
+            if (isDeleteMode) {
+                if (wire) { wire.remove(); connections = connections.filter(c => c.element !== wire); evaluateStrength(); commit(); return; }
+                if (node) {
+                    connections.filter(c => c.startNode === node || c.endNode === node).forEach(c => c.element.remove());
+                    connections = connections.filter(c => c.startNode !== node && c.endNode !== node);
+                    delete elementsData[node.dataset.id];
+                    node.remove(); evaluateStrength(); closeProperties(); commit(); return;
+                }
+            }
+            if (node && !port) {
+                activeNode = node; activeNode.style.zIndex = 100;
+                pointerStart.x = e.clientX; pointerStart.y = e.clientY;
+                const d = elementsData[node.dataset.id];
+                startTransform = { x: mmToPx(d.x), y: mmToPx(d.y) };
+            }
+            if (port && !isDeleteMode) {
+                e.preventDefault(); isDrawingWire = true; startPort = port;
+                const newWire = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                newWire.classList.add('wire', 'normal');
+                wireLayer.appendChild(newWire); currentWire = newWire;
+            }
+        });
+
+
+
+        function toggleDeleteMode() {
+            isDeleteMode = !isDeleteMode;
+            const btn = document.getElementById('delete-btn');
+            if (isDeleteMode) { document.body.classList.add('delete-mode'); btn.classList.add('active-delete'); btn.innerText = "Delete: ON"; }
+            else { document.body.classList.remove('delete-mode'); btn.classList.remove('active-delete'); btn.innerText = "Delete: OFF"; }
+        }
+
+
+
+        // ==========================================
+        // 8. PUSH TO TEKLA (UDAs)
+        // ==========================================
+        function showModal(title, message) { document.getElementById('modal-title').innerText = title; document.getElementById('modal-body').innerText = message; document.getElementById('custom-modal').classList.add('active'); }
+        function closeModal() { document.getElementById('custom-modal').classList.remove('active'); }
+        document.getElementById('custom-modal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+
+
+
+        // ==========================================
+        // 9. 3D VIEW (self-contained canvas renderer, no libraries needed)
+        // Drag = rotate | Pinch / wheel = zoom | Tap a member = open its report
+        // ==========================================
+        const cv = document.getElementById('view3d');
+        const ctx3 = cv.getContext('2d');
+        const STOREY_H = 3000;                       // column height (mm)
+        let is3D = false, drawQueued = false, labels3D = true;
+        const cam = { yaw: 0.75, pitch: 0.5, dist: 11000, tx: 2500, ty: 1200, tz: 2500 };
+        let faces3D = [];                            // last drawn faces, for tap hit-testing
+
+        function resize3D() {
+            const dpr = window.devicePixelRatio || 1;
+            cv.width = Math.round(window.innerWidth * dpr);
+            cv.height = Math.round(window.innerHeight * dpr);
+            ctx3.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+
+        function requestDraw() {
+            if (!is3D || drawQueued) return;
+            drawQueued = true;
+            requestAnimationFrame(() => { drawQueued = false; draw3D(); });
+        }
+
+
+
+
+        // ---- geometry ----
+
+
+
+        function shade(hex, k) {
+            const n = parseInt(hex.slice(1), 16);
+            const c = v => Math.max(0, Math.min(255, Math.round(v * k)));
+            return `rgb(${c(n >> 16)},${c((n >> 8) & 255)},${c(n & 255)})`;
+        }
+
+        // ---- camera / projection ----
+        function makeCamera() {
+            const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+            const pos = [cam.tx + cam.dist * cp * Math.sin(cam.yaw), cam.ty + cam.dist * sp, cam.tz + cam.dist * cp * Math.cos(cam.yaw)];
+            let f = [cam.tx - pos[0], cam.ty - pos[1], cam.tz - pos[2]];
+            const fl = Math.hypot(...f); f = f.map(v => v / fl);
+            let r = [-f[2], 0, f[0]];                    // cross(f, up=(0,1,0))
+            const rl = Math.hypot(...r); r = r.map(v => v / rl);
+            const u = [r[1]*f[2]-r[2]*f[1], r[2]*f[0]-r[0]*f[2], r[0]*f[1]-r[1]*f[0]]; // cross(r, f)
+            return { pos, f, r, up: u };
+        }
+        function project(c, p, w, h) {
+            const dx = p[0]-c.pos[0], dy = p[1]-c.pos[1], dz = p[2]-c.pos[2];
+            const x = dx*c.r[0] + dy*c.r[1] + dz*c.r[2];
+            const y = dx*c.up[0] + dy*c.up[1] + dz*c.up[2];
+            const z = dx*c.f[0] + dy*c.f[1] + dz*c.f[2];
+            const focal = Math.min(w, h) * 1.15;
+            return { x: w / 2 + focal * x / z, y: h / 2 - focal * y / z, z };
+        }
+
+
+
+        // ---- interaction ----
+        const pts3 = new Map(); let down3 = null, lastPinch3 = 0;
+        function pointInPoly(x, y, poly) {
+            let inside = false;
+            for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+                const a = poly[i], b = poly[j];
+                if (((a.y > y) !== (b.y > y)) && (x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x)) inside = !inside;
+            }
+            return inside;
+        }
+        cv.addEventListener('pointerdown', e => {
+            cv.setPointerCapture(e.pointerId);
+            pts3.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            down3 = pts3.size === 1 ? { x: e.clientX, y: e.clientY, moved: false } : null;
+            lastPinch3 = 0;
+        });
+        cv.addEventListener('pointermove', e => {
+            const prev = pts3.get(e.pointerId);
+            if (!prev) return;
+            const cur = { x: e.clientX, y: e.clientY };
+            pts3.set(e.pointerId, cur);
+            if (pts3.size === 1) {
+                if (down3 && Math.hypot(cur.x - down3.x, cur.y - down3.y) > 6) down3.moved = true;
+                if (down3 && down3.moved) {
+                    cam.yaw -= (cur.x - prev.x) * 0.008;
+                    cam.pitch = Math.max(0.05, Math.min(1.5, cam.pitch + (cur.y - prev.y) * 0.008));
+                    requestDraw();
+                }
+            } else if (pts3.size === 2) {
+                const [a, b] = Array.from(pts3.values());
+                const dist = Math.hypot(a.x - b.x, a.y - b.y);
+                if (lastPinch3 > 0) { cam.dist = Math.max(2500, Math.min(60000, cam.dist * lastPinch3 / dist)); requestDraw(); }
+                lastPinch3 = dist;
+            }
+        });
+        function end3(e, allowTap) {
+            pts3.delete(e.pointerId);
+            lastPinch3 = 0;
+            if (allowTap && down3 && !down3.moved && pts3.size === 0) {
+                let hit = null;
+                for (let i = faces3D.length - 1; i >= 0; i--) {
+                    if (pointInPoly(e.clientX, e.clientY, faces3D[i].pts)) { hit = faces3D[i].box.id; break; }
+                }
+                if (hit) { const hd = elementsData[hit]; if (hd && hd.lvl !== activeLevel) setActiveLevel(hd.lvl, true); showProperties(hit); } else closeProperties();
+                requestDraw();
+            }
+            if (pts3.size === 0) down3 = null;
+        }
+        cv.addEventListener('pointerup', e => end3(e, true));
+        cv.addEventListener('pointercancel', e => end3(e, false));
+        cv.addEventListener('wheel', e => {
+            e.preventDefault();
+            cam.dist = Math.max(2500, Math.min(60000, cam.dist * (e.deltaY > 0 ? 1.1 : 0.9)));
+            requestDraw();
+        }, { passive: false });
+        window.addEventListener('resize', () => { if (is3D) { resize3D(); requestDraw(); } });
+
+        // ==========================================
+        // SAMPLE MODEL v3 (all element types)
+        // Plan coordinates in mm, x/y = element CENTRE, y grows downward on screen.
+        // ==========================================
+        
+
+        // ==========================================
+        // ELEMENT CATALOGUE (fields shown in the panel, defaults for new elements, rules)
+        // ==========================================
+        const TYPE_TITLE = { beam: 'Beam Design Report', pillar: 'Column Design Report', wall: 'Wall Design Report', panel: 'Panel Design Report', slab: 'Slab Design Report', footing: 'Footing / Pile Cap Report', pile: 'Pile Design Report' };
+        const TYPE_PREFIX = { beam: 'B', pillar: 'Col ', wall: 'W', panel: 'PN', slab: 'S', footing: 'F', pile: 'Pile ' };
+        const FIELDS = {
+            beam:    [['b','Width (b)','mm'],['h','Depth (h)','mm'],['f_ck','Concrete (f_ck)','MPa'],['f_yk','Steel (f_yk)','MPa'],['As_prov','Rebar (As)','mm²'],['udl','UDL own + other (ULS)','kN/m'],['length','Length (cantilever)','m'],['rot','Rotation','deg']],
+            pillar:  [['b','Width (b)','mm'],['h','Depth (h)','mm'],['f_ck','Concrete (f_ck)','MPa'],['f_yk','Steel (f_yk)','MPa'],['As_prov','Rebar (As)','mm²'],['N_Ed','Axial from above','kN'],['rot','Rotation','deg']],
+            wall:    [['Lw','Length (Lw)','mm'],['t','Thickness (t)','mm'],['Hw','Height (Hw)','mm'],['f_ck','Concrete (f_ck)','MPa'],['f_yk','Steel (f_yk)','MPa'],['As_prov','Vert. rebar, both faces','mm²/m'],['N_Ed','Load from above','kN/m'],['rot','Rotation','deg']],
+            panel:   [['Lp','Length (Lp)','mm'],['t','Thickness (t)','mm'],['Hp','Height / span (Hp)','mm'],['f_ck','Concrete (f_ck)','MPa'],['f_yk','Steel (f_yk)','MPa'],['As_prov','Rebar, central layer','mm²/m'],['q_w','Wind pressure (ULS)','kPa'],['rot','Rotation','deg']],
+            slab:    [['Lx','Size X (Lx)','mm'],['Ly','Size Y (Ly)','mm'],['t','Thickness (t)','mm'],['f_ck','Concrete (f_ck)','MPa'],['f_yk','Steel (f_yk)','MPa'],['As_prov','Main rebar (As)','mm²/m'],['q','Pressure (ULS, total)','kPa'],['rot','Rotation','deg']],
+            footing: [['B','Size B (local x)','mm'],['L','Size L (local y)','mm'],['t','Thickness (t)','mm'],['f_ck','Concrete (f_ck)','MPa'],['f_yk','Steel (f_yk)','MPa'],['As_prov','Rebar each way','mm²/m'],['q_Rd','Soil resistance (ULS)','kPa'],['rot','Rotation','deg']],
+            pile:    [['D','Diameter (D)','mm'],['len','Length','m'],['f_ck','Concrete (f_ck)','MPa'],['f_yk','Steel (f_yk)','MPa'],['As_prov','Long. rebar (total)','mm²'],['R_cd','Geotech. resistance','kN']]
+        };
+        const DEFAULTS = {
+            beam:    { b: 300, h: 500, As_prov: 1000, As_shear: 150, udl: 20, length: 1.5, f_ck: 30, f_yk: 500 },
+            pillar:  { b: 400, h: 400, f_ck: 40, f_yk: 500, As_prov: 1600, N_Ed: 1000 },
+            wall:    { Lw: 3000, t: 250, Hw: 3000, f_ck: 30, f_yk: 500, As_prov: 754, N_Ed: 300 },
+            panel:   { Lp: 3000, t: 150, Hp: 3000, f_ck: 40, f_yk: 500, As_prov: 335, q_w: 1.5 },
+            slab:    { Lx: 3000, Ly: 3000, t: 200, f_ck: 30, f_yk: 500, As_prov: 393, q: 15 },
+            footing: { B: 2000, L: 2000, t: 600, f_ck: 30, f_yk: 500, As_prov: 1005, q_Rd: 300 },
+            pile:    { D: 450, len: 6, f_ck: 35, f_yk: 500, As_prov: 1257, R_cd: 800 }
+        };
+        // Which element types each port circle accepts
+        const PORT_RULES = {
+            beam:    { left: ['pillar'], right: ['pillar'], top: ['slab', 'panel'], bottom: ['slab', 'panel'] },
+            pillar:  { top: ['beam'] },
+            wall:    { top: ['slab'] },
+            panel:   { top: ['beam'] },
+            slab:    { top: ['beam', 'wall'], bottom: ['beam', 'wall'], left: ['beam', 'wall'], right: ['beam', 'wall'] },
+            footing: { top: ['pile'] },
+            pile:    { top: ['footing'] }
+        };
+        const PORTS_OF = {
+            beam: ['left', 'right', 'top', 'bottom'], pillar: ['top'], wall: ['top'], panel: ['top'],
+            slab: ['top', 'bottom', 'left', 'right'], footing: ['top'], pile: ['top']
+        };
+
+        // ==========================================
+        // SHARED EC2 HELPERS (simplified)
+        // ==========================================
+        const G_C = 1.5, G_S = 1.15;
+        const U = v => (Number.isFinite(v) ? Math.min(Math.max(v, 0), 999) : 999);
+        const kN = v => `${f1(v)} kN`, kNm = v => `${f1(v)} kNm`;
+
+        function statusOf(u) { return u > 100 ? ['FAILED', 'status-fail'] : (u > 85 ? ['WARNING', 'status-warn'] : ['PASS', 'status-safe']); }
+        function pack(checks, trace, extra) {
+            checks.forEach(c => { c.util = U(c.util); });
+            const g = checks.reduce((a, c) => (c.util > a.util ? c : a), checks[0]);
+            const [status, badgeClass] = statusOf(g.util);
+            return Object.assign({ checks, maxUtil: g.util, govKey: g.key, govLabel: g.label, status, badgeClass, trace }, extra || {});
+        }
+        function flexCap(b, d, As, fck, fyk) {
+            const fcd = fck / G_C, fyd = fyk / G_S;
+            const x = (As * fyd) / (0.8 * b * fcd), xl = 0.45 * d;
+            let M, capped = false;
+            if (x > xl) { M = (0.8 * xl * b * fcd * (d - 0.4 * xl)) / 1e6; capped = true; }
+            else M = (As * fyd * (d - 0.4 * x)) / 1e6;
+            return { M_Rd: M, x, capped, fcd, fyd };
+        }
+        function shearCap(b, d, As, fck) {
+            const k = Math.min(1 + Math.sqrt(200 / d), 2.0);
+            const rho = Math.min(As / (b * d), 0.02);
+            const v1 = 0.12 * k * Math.cbrt(100 * rho * fck);
+            const vmin = 0.035 * Math.pow(k, 1.5) * Math.sqrt(fck);
+            const v = Math.max(v1, vmin);
+            return { v_Rdc: v, V_Rdc: (v * b * d) / 1000, k, rho, vmin };
+        }
+        function ldLimit(fck, rho, K) {
+            const rho0 = Math.sqrt(fck) / 1000, sq = Math.sqrt(fck);
+            const basic = rho <= rho0 ? 11 + 1.5 * sq * (rho0 / rho) + 3.2 * sq * Math.pow(rho0 / rho - 1, 1.5) : 11 + 1.5 * sq * (rho0 / rho);
+            return { limit: K * basic, basic };
+        }
+        const fctmOf = fck => (fck <= 50 ? 0.30 * Math.pow(fck, 2 / 3) : 2.12 * Math.log(1 + (fck + 8) / 10));
+
+        // ---------- Slab (one-way / two-way) and wind-loaded panel strip, per metre width ----------
+        function calculateStripDesign(o) {
+            const b = 1000, d = o.d, { As, q, fck, fyk } = o;
+            let share = 1;
+            if (o.twoWay) { const a = Math.pow(o.lx, 4), c = Math.pow(o.ly, 4); share = c / (a + c); }   // Marcus, simply supported
+            const w = q * share, M = (w * o.lx * o.lx) / 8, V = (w * o.lx) / 2;
+            const fc = flexCap(b, d, As, fck, fyk), sh = shearCap(b, d, As, fck);
+            const uM = (M / fc.M_Rd) * 100, uV = (V / sh.V_Rdc) * 100;
+            const rho = As / (b * d), ld = As > 0 ? ldLimit(fck, rho, 1.0) : { limit: Infinity, basic: 0 };
+            const ldAct = (o.lx * 1000) / d, uD = (ldAct / ld.limit) * 100;
+            const Amin = Math.max(0.26 * fctmOf(fck) / fyk * b * d, 0.0013 * b * d), uA = (Amin / As) * 100;
+            const trace = [
+                o.twoWay ? `Two-way (Marcus, simply supported): lx = ${f1(o.lx)} m, ly = ${f1(o.ly)} m -> share in lx = ${share.toFixed(3)}` : `One-way strip spanning ${f1(o.lx)} m`,
+                `q = ${f1(q)} kPa -> w = ${f1(w)} kN/m per m`,
+                `d = ${f1(d)} mm ; x = ${f1(fc.x)} mm${fc.capped ? ' (capped at 0.45d)' : ''}`,
+                `M_Ed = w·l²/8 = ${f1(M)} kNm/m ; M_Rd = ${f1(fc.M_Rd)} kNm/m -> ${Math.round(uM)}%`,
+                `V_Ed = w·l/2 = ${f1(V)} kN/m ; V_Rd,c = ${f1(sh.V_Rdc)} kN/m -> ${Math.round(uV)}%`,
+                `l/d = ${f1(ldAct)} ; limit = ${f1(ld.limit)} -> ${Math.round(uD)}%`,
+                `As,min = max(0.26·fctm/fyk·b·d, 0.0013·b·d) = ${f1(Amin)} mm²/m ; As,prov = ${f1(As)} -> ${Math.round(uA)}%`,
+                `Not checked: punching at supports, cracking, 310/σs modifier.`
+            ];
+            const checks = [
+                { key: 'M', label: 'Flexure', util: uM, rows: [['M_Ed', `${f1(M)} kNm/m`], ['M_Rd', `${f1(fc.M_Rd)} kNm/m`]] },
+                { key: 'V', label: 'Shear', util: uV, rows: [['V_Ed', `${f1(V)} kN/m`], ['V_Rd,c', `${f1(sh.V_Rdc)} kN/m`]] },
+                { key: 'D', label: 'Deflection l/d', util: uD, rows: [['l/d actual', f1(ldAct)], ['l/d limit', f1(ld.limit)]] },
+                { key: 'A', label: 'Min. reinforcement', util: uA, rows: [['As,min', `${f1(Amin)} mm²/m`], ['As,prov', `${f1(As)} mm²/m`]] }
+            ];
+            return pack(checks, trace, { M_Ed: M, V_Ed: V });
+        }
+
+        // ---------- Wall (EC2 12.6.5.2 plain-wall method, steel ignored for capacity) ----------
+        function calculateWallDesign(w, n_total) {
+            const t = w.t, H = w.Hw, l0 = 1.0 * H;                         // braced, pinned top & bottom (beta = 1.0)
+            const e_tot = Math.max(t / 30, 20) + l0 / 400;                 // min. eccentricity + imperfection
+            const phi_raw = 1.14 * (1 - (2 * e_tot) / t) - 0.02 * (l0 / t);
+            const phi = Math.min(phi_raw, 1 - (2 * e_tot) / t);
+            const fcd_pl = (0.8 * w.f_ck) / G_C;
+            const n_Rd = phi > 0 ? phi * fcd_pl * t : 0;                   // kN per metre run
+            const uN = n_Rd > 0 ? (n_total / n_Rd) * 100 : 999;
+            const lam = (l0 * Math.sqrt(12)) / t, uS = (lam / 86) * 100;
+            const As_min = 0.002 * 1000 * t, As_max = 0.04 * 1000 * t;
+            const uA = (As_min / w.As_prov) * 100;
+            const trace = [
+                `l0 = ${f1(l0)} mm (beta = 1.0) ; e_tot = max(t/30, 20) + l0/400 = ${f1(e_tot)} mm`,
+                `Phi = min(1.14(1-2e/t) - 0.02·l0/t, 1-2e/t) = ${phi.toFixed(3)}`,
+                `n_Rd = Phi·f_cd,pl·t = ${phi.toFixed(3)}·${f1(fcd_pl)}·${t} = ${f1(n_Rd)} kN/m`,
+                `n_Ed = ${f1(n_total)} kN/m -> ${Math.round(uN)}%`,
+                `Slenderness = l0·√12/t = ${f1(lam)} ; limit 86 -> ${Math.round(uS)}%`,
+                `As,min = 0.002·Ac = ${f1(As_min)} mm²/m ; As,prov = ${f1(w.As_prov)} -> ${Math.round(uA)}%${w.As_prov > As_max ? ' (exceeds 4% max!)' : ''}`,
+                `Not checked: in-plane shear, out-of-plane wind/eccentric loads, bracing assumption.`
+            ];
+            const checks = [
+                { key: 'N', label: 'Axial (per metre)', util: uN, rows: [['n_Ed', `${f1(n_total)} kN/m`], ['n_Rd', `${f1(n_Rd)} kN/m`]] },
+                { key: 'S', label: 'Slenderness', util: uS, rows: [['λ', f1(lam)], ['limit', '86']] },
+                { key: 'A', label: 'Min. reinforcement', util: uA + (w.As_prov > As_max ? 1000 : 0), rows: [['As,min', `${f1(As_min)} mm²/m`], ['As,prov', `${f1(w.As_prov)} mm²/m`]] }
+            ];
+            return pack(checks, trace, { n_total });
+        }
+
+        // ---------- Pile (structural + geotechnical + min. steel) ----------
+        function calculatePileDesign(p, N) {
+            const Ac = (Math.PI * p.D * p.D) / 4;
+            const fcd = p.f_ck / G_C;
+            const N_Rd = (0.8 * 0.85 * fcd * Ac) / 1000;                   // 0.85: cast-in-situ pile factor (EC2 2.4.2.5)
+            const As_min = 0.005 * Ac;
+            const uN = (N / N_Rd) * 100, uG = (N / p.R_cd) * 100, uA = (As_min / p.As_prov) * 100;
+            const trace = [
+                `Ac = π·D²/4 = ${f1(Ac)} mm² ; f_cd = ${f1(fcd)} MPa`,
+                `N_Rd (structural) = 0.8·0.85·f_cd·Ac = ${f1(N_Rd)} kN ; N_Ed = ${f1(N)} kN -> ${Math.round(uN)}%`,
+                `R_c,d (geotechnical, input) = ${f1(p.R_cd)} kN -> ${Math.round(uG)}%`,
+                `As,min = 0.005·Ac = ${f1(As_min)} mm² ; As,prov = ${f1(p.As_prov)} -> ${Math.round(uA)}%`,
+                `Not checked: lateral load / pile-head moment, buckling in soft soil, group effects.`
+            ];
+            const checks = [
+                { key: 'N', label: 'Structural axial', util: uN, rows: [['N_Ed', kN(N)], ['N_Rd', kN(N_Rd)]] },
+                { key: 'G', label: 'Geotechnical', util: uG, rows: [['N_Ed', kN(N)], ['R_c,d', kN(p.R_cd)]] },
+                { key: 'A', label: 'Min. reinforcement', util: uA, rows: [['As,min', `${f1(As_min)} mm²`], ['As,prov', `${f1(p.As_prov)} mm²`]] }
+            ];
+            return pack(checks, trace, { N_Ed: N });
+        }
+
+        // ---------- Footing: pad on soil OR pile cap (when piles are connected) ----------
+        function calculateFootingDesign(f, supported, piles) {
+            const B = f.B, L = f.L, t = f.t, d = Math.max(t - 60, 50);
+            const fck = f.f_ck, fyk = f.f_yk || 500, As = f.As_prov;
+            const th = ((f.rot || 0) * Math.PI) / 180, cs = Math.cos(th), sn = Math.sin(th);
+            const toLocal = (x, y) => ({ x: (x - f.x) * cs + (y - f.y) * sn, y: -(x - f.x) * sn + (y - f.y) * cs });
+            const union = (a, b) => a ? { x0: Math.min(a.x0, b.x0), x1: Math.max(a.x1, b.x1), y0: Math.min(a.y0, b.y0), y1: Math.max(a.y1, b.y1) } : { ...b };
+            const area = (B / 1000) * (L / 1000), sw = 1.35 * 25 * area * (t / 1000);
+            const warns = [], notes = [], trace = [];
+            const isCap = piles.length > 0;
+
+            let Nsup = 0, Msup = 0, Npil = 0, box = null, pbox = null, mx = 0, my = 0;
+            supported.forEach(s => {
+                Nsup += s.N; Msup += s.M || 0;
+                const phi = (((s.d.rot || 0) - (f.rot || 0)) * Math.PI) / 180, c = Math.abs(Math.cos(phi)), si = Math.abs(Math.sin(phi));
+                const wx = c * s.w + si * s.h, wy = si * s.w + c * s.h, p = toLocal(s.d.x, s.d.y);
+                const bb = { x0: p.x - wx / 2, x1: p.x + wx / 2, y0: p.y - wy / 2, y1: p.y + wy / 2 };
+                box = union(box, bb);
+                if (s.d.type === 'pillar') { pbox = union(pbox, bb); Npil += s.N; }
+                mx += s.N * p.x; my += s.N * p.y;
+            });
+            const Ntot = Nsup + sw;
+            trace.push(`Footing ${B} x ${L} x ${t} mm, d = t - 60 = ${d} mm`);
+            trace.push(`Supported load = ${f1(Nsup)} kN ; self-weight (1.35·25·V) = ${f1(sw)} kN ; total = ${f1(Ntot)} kN`);
+
+            if (box) {
+                if (box.x0 < -B / 2 || box.x1 > B / 2 || box.y0 < -L / 2 || box.y1 > L / 2) warns.push('Supported element(s) extend beyond the footing edge.');
+                const cx = Nsup > 0 ? mx / Nsup : 0, cy = Nsup > 0 ? my / Nsup : 0;   // load centroid
+                if (Math.hypot(cx, cy) > Math.max(150, 0.05 * Math.max(B, L))) warns.push(`Supported load is ${Math.round(Math.hypot(cx, cy))} mm off the footing centre (eccentric).`);
+            } else notes.push('Nothing is connected on top of this footing (column / wall / panel).');
+
+            const checks = [];
+            let pileReaction = 0;
+            const sh = shearCap(1000, d, As, fck), fc = flexCap(1000, d, As, fck, fyk);
+
+            if (!isCap) {
+                // ---- Bearing (with eccentricity of the load centroid + column moments) ----
+                const exm = Ntot > 0 ? (mx / Ntot) / 1000 : 0, eym = Ntot > 0 ? (my / Ntot) / 1000 : 0;
+                const Bm = B / 1000, Lm = L / 1000;
+                const mom = (6 * Ntot * Math.abs(exm)) / (Lm * Bm * Bm) + (6 * Ntot * Math.abs(eym)) / (Bm * Lm * Lm) + (6 * Msup) / (Bm * Lm * Math.min(Bm, Lm));
+                const q0 = Ntot / area, qmax = q0 + mom, qmin = q0 - mom;
+                if (qmin < 0) notes.push('Partial uplift under the footing (resultant outside the middle third) - bearing is approximate.');
+                const uB = (qmax / f.q_Rd) * 100;
+                trace.push(`Bearing: q_max = N/A + moment terms = ${f1(q0)} + ${f1(mom)} = ${f1(qmax)} kPa ; q_Rd = ${f1(f.q_Rd)} kPa -> ${Math.round(uB)}%`);
+                checks.push({ key: 'B', label: 'Soil bearing', util: uB, rows: [['q_max', `${f1(qmax)} kPa`], ['q_Rd', `${f1(f.q_Rd)} kPa`], ['N (load + SW)', kN(Ntot)]] });
+
+                if (box) {
+                    const qn = Nsup / area;
+                    const ax = Math.max(B / 2 - box.x1, box.x0 + B / 2, 0), ay = Math.max(L / 2 - box.y1, box.y0 + L / 2, 0);
+                    const M = (qn * Math.pow(Math.max(ax, ay) / 1000, 2)) / 2, uM = (M / fc.M_Rd) * 100;
+                    const Vd = qn * Math.max(Math.max(ax, ay) - d, 0) / 1000, uV = (Vd / sh.V_Rdc) * 100;
+                    trace.push(`Net pressure q_net = ${f1(qn)} kPa ; projection a = ${f1(Math.max(ax, ay))} mm`);
+                    trace.push(`Flexure at face: M_Ed = q·a²/2 = ${f1(M)} kNm/m ; M_Rd = ${f1(fc.M_Rd)} -> ${Math.round(uM)}%`);
+                    trace.push(`One-way shear at d: V_Ed = ${f1(Vd)} kN/m ; V_Rd,c = ${f1(sh.V_Rdc)} -> ${Math.round(uV)}%`);
+                    checks.push({ key: 'M', label: 'Flexure (at face)', util: uM, rows: [['M_Ed', `${f1(M)} kNm/m`], ['M_Rd', `${f1(fc.M_Rd)} kNm/m`]] });
+                    checks.push({ key: 'V', label: 'Shear (at d)', util: uV, rows: [['V_Ed', `${f1(Vd)} kN/m`], ['V_Rd,c', `${f1(sh.V_Rdc)} kN/m`]] });
+                    if (pbox) {
+                        const c1 = pbox.x1 - pbox.x0, c2 = pbox.y1 - pbox.y0, u = 2 * (c1 + c2) + 4 * Math.PI * d;
+                        const Vr = Math.max(Npil - (qn * (c1 + 2 * d) * (c2 + 2 * d)) / 1e6, 0);
+                        const v = (1.15 * Vr * 1000) / (u * d), uP = (v / sh.v_Rdc) * 100;
+                        if (c1 + 4 * d > B || c2 + 4 * d > L) warns.push('Punching perimeter (2d) reaches past the footing edge - punching result is approximate.');
+                        trace.push(`Punching at 2d: u = ${f1(u)} mm ; V_red = ${f1(Vr)} kN ; v_Ed = β·V/(u·d) = ${v.toFixed(3)} MPa ; v_Rd,c = ${sh.v_Rdc.toFixed(3)} MPa -> ${Math.round(uP)}%`);
+                        checks.push({ key: 'P', label: 'Punching (2d)', util: uP, rows: [['v_Ed', `${v.toFixed(3)} MPa`], ['v_Rd,c', `${sh.v_Rdc.toFixed(3)} MPa`]] });
+                    }
+                }
+            } else {
+                // ---- Pile cap: equal pile reactions, flexure from pile lever arms ----
+                const n = piles.length; pileReaction = Ntot / n;
+                const pts = piles.map(p => toLocal(p.x, p.y));
+                const Dp = piles.reduce((s, p) => s + p.D, 0) / n;
+                pts.forEach((p, i) => { if (Math.abs(p.x) > B / 2 || Math.abs(p.y) > L / 2) warns.push(`${piles[i].label} is outside the cap footprint.`); });
+                let minSp = Infinity;
+                for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) minSp = Math.min(minSp, Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y));
+                if (n > 1 && minSp < 3 * Dp) warns.push(`Pile spacing ${Math.round(minSp)} mm is below 3×D (${Math.round(3 * Dp)} mm).`);
+                trace.push(`Pile cap on ${n} piles: reaction per pile = ${f1(pileReaction)} kN (equal share, moments ignored)`);
+                checks.push({ key: 'R', label: 'Pile reaction', util: 0, rows: [['Per pile', kN(pileReaction)], ['Piles', String(n)]] });
+
+                if (box) {
+                    const sum = (arr, face, sign) => arr.reduce((s, p) => s + (sign * (p - face) > 0 ? pileReaction * Math.abs(p - face) / 1000 : 0), 0);
+                    const Mx = Math.max(sum(pts.map(p => p.x), box.x1, 1), sum(pts.map(p => p.x), box.x0, -1)) / (L / 1000);
+                    const My = Math.max(sum(pts.map(p => p.y), box.y1, 1), sum(pts.map(p => p.y), box.y0, -1)) / (B / 1000);
+                    const M = Math.max(Mx, My), uM = (M / fc.M_Rd) * 100;
+                    trace.push(`Flexure at column face: M_Ed = Σ R·arm / width = ${f1(M)} kNm/m ; M_Rd = ${f1(fc.M_Rd)} -> ${Math.round(uM)}%`);
+                    checks.push({ key: 'M', label: 'Flexure (pile arms)', util: uM, rows: [['M_Ed', `${f1(M)} kNm/m`], ['M_Rd', `${f1(fc.M_Rd)} kNm/m`]] });
+                    if (pbox) {
+                        const c1 = pbox.x1 - pbox.x0, c2 = pbox.y1 - pbox.y0, u = 2 * (c1 + c2) + 4 * Math.PI * d;
+                        const v = (1.15 * Npil * 1000) / (u * d), uP = (v / sh.v_Rdc) * 100;
+                        trace.push(`Punching (conservative, no relief from piles inside 2d): v_Ed = ${v.toFixed(3)} MPa ; v_Rd,c = ${sh.v_Rdc.toFixed(3)} MPa -> ${Math.round(uP)}%`);
+                        checks.push({ key: 'P', label: 'Punching (conservative)', util: uP, rows: [['v_Ed', `${v.toFixed(3)} MPa`], ['v_Rd,c', `${sh.v_Rdc.toFixed(3)} MPa`]] });
+                    }
+                }
+                notes.push('Pile cap uses a simplified bending check - strut-and-tie, pile shear and pile-head moments are not checked.');
+            }
+            if (!checks.some(c => c.util > 0) && checks.length === 0) checks.push({ key: '-', label: 'No load', util: 0, rows: [['Load', kN(Ntot)]] });
+            trace.push('Not checked: settlement, sliding, uplift combinations, anchorage.');
+            return { res: pack(checks, trace, { pileReaction, N_total: Ntot }), warns, notes, pileReaction };
+        }
+
+        // ==========================================
+        // LINKS / TOPOLOGY
+        // ==========================================
+        function linked(id, type) {
+            const out = [];
+            connections.forEach(c => {
+                const a = c.startNode.dataset, b = c.endNode.dataset;
+                const o = a.id === id ? b : (b.id === id ? a : null);
+                if (!o) return;
+                const od = elementsData[o.id];
+                if (od && (!type || od.type === type) && !out.includes(od)) out.push(od);
+            });
+            return out;
+        }
+        function getBeamSupports(beamId) {
+            const bm = elementsData[beamId]; let ids = linked(beamId, 'pillar').filter(p => !bm || p.lvl === bm.lvl).map(p => p.id);
+            if (ids.length > 2) {
+                let best = [ids[0], ids[1]], bestD = -1;
+                for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
+                    const A = elementsData[ids[i]], B = elementsData[ids[j]], dist = Math.hypot(A.x - B.x, A.y - B.y);
+                    if (dist > bestD) { bestD = dist; best = [ids[i], ids[j]]; }
+                }
+                ids = best;
+            }
+            return ids;
+        }
+
+        // Plan-view size of each node (mm -> px)
+        function applyPlanSize(node, d) {
+            const body = node.querySelector('.component-body'), px = v => (v / 1000) * PIXELS_PER_METER;
+            const set = (w, h) => { body.style.width = w + 'px'; body.style.height = h + 'px'; };
+            switch (d.type) {
+                case 'wall':    set(Math.max(px(d.Lw), 50), Math.max(px(d.t), 40)); break;
+                case 'panel':   set(Math.max(px(d.Lp), 50), Math.max(px(d.t), 40)); break;
+                case 'slab':    set(Math.max(px(d.Lx), 60), Math.max(px(d.Ly), 60)); break;
+                case 'footing': set(Math.max(px(d.B), 60), Math.max(px(d.L), 60)); break;
+                case 'pile':    { const s = Math.max(px(d.D), 30); set(s, s); break; }
+            }
+        }
+
+        function setBadge(node, d, res, text) {
+            const body = node.querySelector('.component-body');
+            let badge = node.querySelector('.status-badge');
+            if (!badge) { badge = document.createElement('div'); badge.className = 'status-badge'; body.appendChild(badge); }
+            badge.className = `status-badge ${res.badgeClass}`;
+            badge.style.fontSize = (d.type === 'pillar' || d.type === 'pile') ? '8px' : '';
+            badge.innerText = text;
+        }
+
+        // ==========================================
+        // MASTER EVALUATION ENGINE
+        // ==========================================
+
+
+        // ==========================================
+        // PROPERTIES PANEL (built per element type)
+        // ==========================================
+        
+
+
+
+
+
+
+        // ==========================================
+        // NODE BUILDER / CONNECTIONS
+        // ==========================================
+
+        const portSide = p => ['left', 'right', 'top', 'bottom'].find(c => p.classList.contains(c));
+
+        function pickPort(node, other, used) {
+            const t = node.dataset.type, ot = other.dataset.type;
+            const ports = Array.from(node.querySelectorAll('.port'));
+            const by = c => ports.find(p => p.classList.contains(c));
+            if (t === 'pillar') return ot === 'footing' ? by('bottom') : by('top');
+            if (t === 'footing') return ot === 'pile' ? by('top') : by('bottom');
+            if (t === 'wall' || t === 'panel') return ot === 'footing' ? by('bottom') : by('top');
+            if (t === 'pile') return by('top');
+            const od = elementsData[other.dataset.id], oc = { x: mmToPx(od.x), y: mmToPx(od.y) };
+            let cand = ports;
+            if (t === 'beam') cand = ports.filter(p => (ot === 'pillar' ? ['left', 'right'] : ['top', 'bottom']).includes(portSide(p)) && (ot !== 'pillar' || !used.has(p)));
+            let best = null, bd = Infinity;
+            cand.forEach(p => { const c = portCentreWorld(p), dist = Math.hypot(c.x - oc.x, c.y - oc.y); if (dist < bd) { bd = dist; best = p; } });
+            return best;
+        }
+
+
+
+
+
+        // Port rules: every port circle only accepts certain element types
+
+
+
+
+
+
+
+        // ==========================================
+        // 3D GEOMETRY FOR ALL ELEMENT TYPES
+        // ==========================================
+
+
+
+
+
+
+        // Faces of a box (rotated about the vertical axis) or an 10-sided prism (piles)
+
+
+
+
+        let dragMoved = false;
+        // ==========================================
+        // v4: LEVELS (multi-storey) + SAMPLE MODEL
+        // Level 0 = foundation (footings, piles). Level k >= 1 = storey k:
+        // its columns / walls / panels stand on the level below, its beams & slab form floor k.
+        // ==========================================
+        let levels = [{ name: 'Foundation', h: 0 }, { name: 'Level 1', h: 3000 }, { name: 'Level 2', h: 3000 }];
+        let activeLevel = 1;
+        const levelH = k => (levels[k] ? levels[k].h : 3000);
+        const elevBase = k => { let z = 0; for (let i = 1; i < k; i++) z += levelH(i); return z; };   // bottom of storey k
+        const elevTop = k => elevBase(k) + levelH(k);
+        const lvlName = k => (k === 0 ? 'Foundation' : `Level ${k}`);
+        const lvlShort = k => (k === 0 ? 'Fnd' : 'L' + k);
+        const defaultLvl = t => ((t === 'footing' || t === 'pile') ? 0 : 1);
+
+        const sampleData = (() => {
+            const N = (id, type, x, y, rot, label, extra) => Object.assign({ id, type, x, y, rot, label, guid: 'GUID-' + id.toUpperCase(), lvl: defaultLvl(type) }, extra);
+            const col = (id, x, y, label) => N(id, 'pillar', x, y, 0, label, { b: 400, h: 400, f_ck: 40, f_yk: 500, As_prov: 1600, N_Ed: 600 });
+            const beam = (id, x, y, rot, label, udl) => N(id, 'beam', x, y, rot, label, { b: 300, h: 500, As_prov: 1256, As_shear: 200, udl, length: 1.5, f_ck: 30, f_yk: 500 });
+            const pile = (id, x, y, label) => N(id, 'pile', x, y, 0, label, { D: 450, len: 6, f_ck: 35, f_yk: 500, As_prov: 1257, R_cd: 800 });
+            const pad = (id, x, y, label) => N(id, 'footing', x, y, 0, label, { B: 2600, L: 2600, t: 600, f_ck: 30, f_yk: 500, As_prov: 2011, q_Rd: 350 });
+            const nodes = [
+                col('p1', 1000, 1000, 'Col 1'), col('p2', 4000, 1000, 'Col 2'), col('p3', 4000, 4000, 'Col 3'), col('p4', 1000, 4000, 'Col 4'),
+                beam('b1', 2500, 1000, 0, 'B1 (Top)', 20), beam('b2', 4000, 2500, 90, 'B2 (Right)', 30), beam('b3', 2500, 4000, 0, 'B3 (Bottom)', 15), beam('b4', 1000, 2500, 90, 'B4 (Left)', 20),
+                N('s1', 'slab', 2500, 2500, 0, 'S1', { Lx: 3000, Ly: 3000, t: 200, f_ck: 30, f_yk: 500, As_prov: 393, q: 15 }),
+                N('f1', 'footing', 1000, 1000, 0, 'F1 (cap)', { B: 2000, L: 2000, t: 800, f_ck: 30, f_yk: 500, As_prov: 2011, q_Rd: 350 }),
+                pad('f2', 4000, 1000, 'F2'), pad('f3', 4000, 4000, 'F3'), pad('f4', 1000, 4000, 'F4'),
+                pile('pl1', 300, 300, 'Pile 1'), pile('pl2', 1700, 300, 'Pile 2'), pile('pl3', 300, 1700, 'Pile 3'), pile('pl4', 1700, 1700, 'Pile 4'),
+                N('w1', 'wall', 6400, 2500, 90, 'W1', { Lw: 3000, t: 250, Hw: 3000, f_ck: 30, f_yk: 500, As_prov: 754, N_Ed: 450 }),
+                N('pn1', 'panel', 7100, 2500, 90, 'PN1', { Lp: 3000, t: 200, Hp: 2400, f_ck: 40, f_yk: 500, As_prov: 335, q_w: 1.5 }),
+                N('f5', 'footing', 6400, 2500, 90, 'F5 (strip)', { B: 3400, L: 1800, t: 600, f_ck: 30, f_yk: 500, As_prov: 1005, q_Rd: 350 })
+            ];
+            const conns = [
+                { from: 'p1', to: 'b1' }, { from: 'b1', to: 'p2' }, { from: 'p2', to: 'b2' }, { from: 'b2', to: 'p3' },
+                { from: 'p3', to: 'b3' }, { from: 'b3', to: 'p4' }, { from: 'p4', to: 'b4' }, { from: 'b4', to: 'p1' },
+                { from: 's1', to: 'b1' }, { from: 's1', to: 'b2' }, { from: 's1', to: 'b3' }, { from: 's1', to: 'b4' },
+                { from: 'f1', to: 'pl1' }, { from: 'f1', to: 'pl2' }, { from: 'f1', to: 'pl3' }, { from: 'f1', to: 'pl4' }
+            ];
+            // Level 2 = copy of the Level 1 frame (columns, beams, slab)
+            const map = {};
+            nodes.filter(d => d.lvl === 1 && ['pillar', 'beam', 'slab'].includes(d.type)).slice().forEach(d => {
+                const n = JSON.parse(JSON.stringify(d));
+                n.id = d.id + '_2'; n.lvl = 2; n.label = d.label + ' L2'; n.guid = d.guid + '-L2';
+                map[d.id] = n.id; nodes.push(n);
+            });
+            conns.slice().forEach(c => { if (map[c.from] && map[c.to]) conns.push({ from: map[c.from], to: map[c.to] }); });
+            return { nodes, connections: conns };
+        })();
+
+        // ==========================================
+        // UNITS (SI: kN, mm  |  Imperial: kip, in)  - calculations stay SI internally
+        // ==========================================
+        let unitSys = 'SI';
+        const UT = {
+            'mm': { f: 1 / 25.4, u: 'in', d: 2 }, 'm': { f: 3.28084, u: 'ft', d: 2 }, 'MPa': { f: 0.145038, u: 'ksi', d: 3 },
+            'kN': { f: 0.224809, u: 'kip', d: 1 }, 'kN/m': { f: 0.0685218, u: 'kip/ft', d: 2 }, 'kPa': { f: 20.8854, u: 'psf', d: 0 },
+            'mm²': { f: 0.00155, u: 'in²', d: 2 }, 'mm²/m': { f: 0.000472, u: 'in²/ft', d: 3 },
+            'kNm': { f: 0.737562, u: 'kip-ft', d: 1 }, 'kNm/m': { f: 0.224809, u: 'kip-ft/ft', d: 1 }, 'm³': { f: 35.3147, u: 'ft³', d: 1 }
+        };
+        const cu = u => (unitSys === 'SI' || !UT[u] ? u : UT[u].u);
+        const toDisp = (v, u) => (unitSys === 'SI' || !UT[u] ? v : v * UT[u].f);
+        const fromDisp = (v, u) => (unitSys === 'SI' || !UT[u] ? v : v / UT[u].f);
+        const fmtField = (v, u) => String(+toDisp(v, u).toPrecision(5));
+        const dispVal = (v, u) => { const x = toDisp(v, u); return (unitSys === 'SI' || !UT[u]) ? String(+x.toPrecision(5)) : x.toFixed(UT[u].d); };
+        const UNIT_RE = /(-?\d+(?:\.\d+)?)\s*(mm²\/m|mm²|kNm\/m|kNm|kN\/m|kN|MPa|kPa|mm|m³|m)(?![A-Za-z²])/g;
+        const convText = str => (unitSys === 'SI' || typeof str !== 'string') ? str : str.replace(UNIT_RE, (m, n, u) => `${(+n * UT[u].f).toFixed(UT[u].d)} ${UT[u].u}`);
+        function toggleUnits() {
+            unitSys = unitSys === 'SI' ? 'IMP' : 'SI';
+            document.getElementById('units-btn').innerText = unitSys === 'SI' ? 'Units: kN, mm' : 'Units: kip, in';
+            panelBuiltFor = null;
+            evaluateStrength(); renderLevelBar();
+        }
+        const dimsText = arr => arr.map(v => dispVal(v, 'mm')).join(' × ') + ' ' + cu('mm');
+
+        // ==========================================
+        // HISTORY (undo / redo) + MODEL SNAPSHOTS
+        // ==========================================
+        const PERSIST = (() => { const s = new Set(['id', 'type', 'x', 'y', 'rot', 'label', 'guid', 'lvl', 'As_shear']); Object.values(FIELDS).forEach(f => f.forEach(r => s.add(r[0]))); return Array.from(s); })();
+        function getModel() {
+            return {
+                version: 4, levels: levels.map(l => ({ ...l })), active: activeLevel,
+                nodes: Object.values(elementsData).map(d => { const o = {}; PERSIST.forEach(k => { if (d[k] !== undefined) o[k] = d[k]; }); return o; }),
+                conns: connections.map(c => ({ a: c.startNode.dataset.id, pa: portSide(c.startPort), b: c.endNode.dataset.id, pb: portSide(c.endPort) }))
+            };
+        }
+        function loadModel(m) {
+            world.querySelectorAll('.node').forEach(n => n.remove());
+            wireLayer.innerHTML = ''; connections = []; elementsData = {};
+            levels = (m.levels && m.levels.length ? m.levels : [{ name: 'Foundation', h: 0 }, { name: 'Level 1', h: 3000 }]).map(l => ({ ...l }));
+            const nodeEls = {};
+            (m.nodes || []).forEach(d => {
+                if (!FIELDS[d.type]) return;
+                const nd = JSON.parse(JSON.stringify(d)); nd.rot = nd.rot || 0;
+                if (nd.lvl === undefined) nd.lvl = defaultLvl(nd.type);
+                while (levels.length <= nd.lvl) levels.push({ name: 'Level ' + levels.length, h: 3000 });
+                elementsData[nd.id] = nd; nodeEls[nd.id] = buildNode(nd); applyPlanSize(nodeEls[nd.id], nd);
+            });
+            (m.conns || []).forEach(c => {
+                const a = nodeEls[c.a], b = nodeEls[c.b];
+                if (!a || !b) return;
+                const pa = a.querySelector('.port.' + c.pa), pb = b.querySelector('.port.' + c.pb);
+                if (pa && pb) createWire(pa, pb, a, b);
+            });
+            activeLevel = Math.max(0, Math.min(m.active !== undefined ? m.active : 1, levels.length - 1));
+            selectedNodeId = null; panelBuiltFor = null;
+            document.getElementById('properties-panel').style.display = 'none';
+            evaluateStrength(); renderLevelBar(); applyLevelVisibility();
+        }
+        let hist = [], hIdx = -1, restoring = false;
+        function updateUndoButtons() {
+            const u = document.getElementById('undo-btn'), r = document.getElementById('redo-btn');
+            if (u) u.disabled = hIdx <= 0;
+            if (r) r.disabled = hIdx >= hist.length - 1;
+        }
+        function commit() {
+            if (restoring) return;
+            const snap = JSON.stringify(getModel());
+            if (hist[hIdx] === snap) return;
+            hist = hist.slice(0, hIdx + 1); hist.push(snap);
+            if (hist.length > 60) hist.shift();
+            hIdx = hist.length - 1; updateUndoButtons();
+        }
+        function resetHistory() { hist = []; hIdx = -1; commit(); }
+        function restoreSnap(i) { restoring = true; loadModel(JSON.parse(hist[i])); restoring = false; updateUndoButtons(); }
+        function undo() { if (hIdx > 0) { hIdx--; restoreSnap(hIdx); } }
+        function redo() { if (hIdx < hist.length - 1) { hIdx++; restoreSnap(hIdx); } }
+        window.addEventListener('keydown', e => {
+            if (!(e.ctrlKey || e.metaKey) || /INPUT|TEXTAREA/.test((e.target || {}).tagName || '')) return;
+            if (e.key === 'z' || e.key === 'Z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+            else if (e.key === 'y' || e.key === 'Y') { e.preventDefault(); redo(); }
+        });
+
+        // ==========================================
+        // LEVEL BAR / VISIBILITY / LOAD-PATH HIGHLIGHT
+        // ==========================================
+        let lpMode = true;
+        function renderLevelBar() {
+            const bar = document.getElementById('level-bar');
+            let h = '';
+            for (let k = levels.length - 1; k >= 0; k--) h += `<button class="lvl-chip${k === activeLevel ? ' on' : ''}" onclick="setActiveLevel(${k})">${lvlShort(k)}</button>`;
+            h += `<div class="lvl-row"><button class="lvl-chip sm" onclick="addLevel()" title="Add level (copies the top level)">＋</button><button class="lvl-chip sm" onclick="removeTopLevel()" title="Remove top level">－</button></div>`;
+            if (activeLevel >= 1) h += `<div class="lvl-h">H<input id="lvl-h" type="number" step="any" value="${fmtField(levelH(activeLevel), 'mm')}" onchange="setLevelHeight(this.value)"><span>${cu('mm')}</span></div>`;
+            h += `<button class="lvl-chip sm${lpMode ? ' on' : ''}" onclick="toggleLoadPath()" title="Highlight load path of the selected member">Path</button>`;
+            bar.innerHTML = h;
+        }
+        function setLevelHeight(v) {
+            const n = fromDisp(parseFloat(v), 'mm');
+            if (Number.isFinite(n) && n >= 500 && activeLevel >= 1) { levels[activeLevel].h = n; evaluateStrength(); commit(); }
+            renderLevelBar();
+        }
+        function setActiveLevel(k, silent) {
+            activeLevel = Math.max(0, Math.min(k, levels.length - 1));
+            if (!silent) { selectedNodeId = null; document.getElementById('properties-panel').style.display = 'none'; }
+            renderLevelBar(); applyLevelVisibility(); requestDraw();
+        }
+        function applyLevelVisibility() {
+            const ghostLvl = activeLevel === 0 ? 1 : activeLevel - 1;
+            document.querySelectorAll('.node').forEach(n => {
+                const d = elementsData[n.dataset.id]; if (!d) return;
+                const on = d.lvl === activeLevel, ghost = !on && d.lvl === ghostLvl && ['pillar', 'wall', 'panel'].includes(d.type);
+                n.style.display = (on || ghost) ? '' : 'none';
+                n.classList.toggle('ghost', ghost);
+            });
+            redrawWires(); applyLoadPathClasses();
+        }
+        function addLevel() {
+            const top = levels.length - 1, ids = Object.values(elementsData).filter(d => d.lvl === top && top >= 1 && ['pillar', 'beam', 'slab', 'wall', 'panel'].includes(d.type)).map(d => d.id);
+            const newLvl = levels.length, map = {};
+            levels.push({ name: 'Level ' + newLvl, h: top >= 1 ? levelH(top) : 3000 });
+            ids.forEach(id => {
+                const d = JSON.parse(JSON.stringify(elementsData[id]));
+                d.id = id.replace(/_L\d+$/, '') + '_L' + newLvl + '_' + Math.floor(Math.random() * 1000); d.lvl = newLvl;
+                d.label = d.label.replace(/ L\d+$/, '') + ' L' + newLvl; d.guid = 'NEW-' + d.type.toUpperCase() + '-' + Math.floor(Math.random() * 1e6);
+                map[id] = d.id; elementsData[d.id] = d; applyPlanSize(buildNode(d), d);
+            });
+            connections.slice().forEach(c => {
+                const a = map[c.startNode.dataset.id], b = map[c.endNode.dataset.id];
+                if (!a || !b) return;
+                const na = document.querySelector(`.node[data-id="${a}"]`), nb = document.querySelector(`.node[data-id="${b}"]`);
+                createWire(na.querySelector('.port.' + portSide(c.startPort)), nb.querySelector('.port.' + portSide(c.endPort)), na, nb);
+            });
+            setActiveLevel(newLvl); evaluateStrength(); commit();
+        }
+        function removeTopLevel() {
+            if (levels.length <= 2) { showModal('Cannot remove', 'Keep at least the Foundation and Level 1.'); return; }
+            const top = levels.length - 1;
+            Object.values(elementsData).filter(d => d.lvl === top).forEach(d => removeElement(d.id));
+            levels.pop(); setActiveLevel(Math.min(activeLevel, levels.length - 1)); evaluateStrength(); commit();
+        }
+        function removeElement(id) {
+            const node = document.querySelector(`.node[data-id="${id}"]`);
+            if (node) {
+                connections.filter(c => c.startNode === node || c.endNode === node).forEach(c => c.element.remove());
+                connections = connections.filter(c => c.startNode !== node && c.endNode !== node);
+                node.remove();
+            }
+            delete elementsData[id];
+        }
+
+        function lpSets(id) {
+            const up = new Set(), down = new Set();
+            const walk = (i, key, set) => { const d = elementsData[i]; if (!d) return; (d[key] || []).forEach(n => { if (!set.has(n) && n !== id) { set.add(n); walk(n, key, set); } }); };
+            walk(id, 'srcIds', up); walk(id, 'dstIds', down);
+            return { up, down };
+        }
+        function applyLoadPathClasses() {
+            const sets = (lpMode && selectedNodeId && elementsData[selectedNodeId]) ? lpSets(selectedNodeId) : null;
+            document.querySelectorAll('.node').forEach(n => {
+                const id = n.dataset.id;
+                n.classList.remove('lp-up', 'lp-down', 'lp-sel', 'lp-dim');
+                if (!sets) return;
+                if (id === selectedNodeId) n.classList.add('lp-sel');
+                else if (sets.up.has(id)) n.classList.add('lp-up');
+                else if (sets.down.has(id)) n.classList.add('lp-down');
+                else n.classList.add('lp-dim');
+            });
+        }
+        function toggleLoadPath() { lpMode = !lpMode; renderLevelBar(); applyLoadPathClasses(); update3DButtons(); requestDraw(); }
+        function refreshHighlights() { applyLoadPathClasses(); requestDraw(); }
+        function togglePanelMin() {
+            const pn = document.getElementById('properties-panel'); pn.classList.toggle('min');
+            document.getElementById('min-x').innerText = pn.classList.contains('min') ? '▴' : '▾';
+        }
+        function showProperties(id) {
+            selectedNodeId = id;
+            const pn = document.getElementById('properties-panel');
+            pn.style.display = 'block'; pn.classList.toggle('min', is3D);
+            document.getElementById('min-x').innerText = is3D ? '▴' : '▾';
+            updatePanelDisplay(id); refreshHighlights();
+        }
+        function closeProperties() {
+            document.getElementById('properties-panel').style.display = 'none';
+            selectedNodeId = null; refreshHighlights();
+        }
+        function redrawWires() {
+            connections.forEach(conn => {
+                const a = elementsData[conn.startNode.dataset.id], b = elementsData[conn.endNode.dataset.id];
+                if (!a || !b || a.lvl !== activeLevel || b.lvl !== activeLevel) { conn.element.style.display = 'none'; return; }
+                conn.element.style.display = '';
+                const s = portCentreWorld(conn.startPort), e = portCentreWorld(conn.endPort);
+                conn.element.setAttribute('d', `M ${s.x} ${s.y} L ${e.x} ${e.y}`);
+                const failed = conn.startNode.classList.contains('failed') || conn.endNode.classList.contains('failed');
+                const warn = conn.startNode.classList.contains('geo-warn') || conn.endNode.classList.contains('geo-warn');
+                conn.element.classList.remove('normal', 'failed', 'warn');
+                conn.element.classList.add(failed ? 'failed' : (warn ? 'warn' : 'normal'));
+            });
+        }
+        // ==========================================
+        // MASTER EVALUATION ENGINE (multi-storey, top-down load accumulation)
+        // ==========================================
+        function evaluateStrength() {
+            const gov = { util: 0, name: '-', check: '-' };
+            let unsupported = 0, geoIssues = 0;
+            const nodes = Array.from(document.querySelectorAll('.node'));
+            const nodeOf = {}; nodes.forEach(n => { nodeOf[n.dataset.id] = n; });
+            const all = Object.values(elementsData).filter(d => nodeOf[d.id]);
+            const of = t => all.filter(d => d.type === t);
+            const track = (d, res) => { if (res.maxUtil > gov.util) { gov.util = res.maxUtil; gov.name = d.label; gov.check = res.govLabel; } };
+            const flag = d => d.geoWarnings.length > 0 || (d.failedBeams && d.failedBeams.length > 0);
+            const finish = (d, node, res, text) => {
+                d.results = res;
+                setBadge(node, d, res, text + (flag(d) ? ' ⚠' : ''));
+                node.classList.toggle('failed', res.maxUtil > 100);
+                node.classList.toggle('geo-warn', flag(d));
+                node.classList.remove('unstable');
+                if (flag(d)) geoIssues++;
+                track(d, res);
+            };
+
+            all.forEach(d => {
+                if (d.lvl === undefined) d.lvl = defaultLvl(d.type);
+                d.geoWarnings = []; d.notes = []; d.failedBeams = []; d.supportedBeams = [];
+                d.beamLoad = 0; d.beamMoment = 0; d.slabLoad = 0; d.lineLoad = 0;
+                d.srcIds = []; d.dstIds = []; d.aboveId = null; d.footingId = null; d.ui = {};
+                applyPlanSize(nodeOf[d.id], d);
+            });
+
+            // ---------- PASS 1a: beam topology & geometry (same level only) ----------
+            of('beam').forEach(d => {
+                const supIds = getBeamSupports(d.id);
+                let supportType = 'Unstable', span = 0;
+                if (supIds.length >= 2) {
+                    const A = elementsData[supIds[0]], B = elementsData[supIds[1]];
+                    span = Math.hypot(A.x - B.x, A.y - B.y) / 1000;
+                    supportType = 'Simply Supported';
+                    const midX = (A.x + B.x) / 2, midY = (A.y + B.y) / 2;
+                    const offset = Math.hypot(d.x - midX, d.y - midY), tol = Math.max(250, 0.05 * span * 1000);
+                    if (offset > tol) d.geoWarnings.push(`Beam centre is ${Math.round(offset)} mm off the midpoint between ${A.label} and ${B.label}.`);
+                    const lineAng = (Math.atan2(B.y - A.y, B.x - A.x) * 180) / Math.PI, dAng = angleDiff180(d.rot || 0, lineAng);
+                    if (dAng > 5) d.geoWarnings.push(`Beam axis is ${dAng.toFixed(0)}° off the line between its supports.`);
+                    if (span < 0.5) d.geoWarnings.push(`Supports are only ${(span * 1000).toFixed(0)} mm apart.`);
+                    span = Math.max(span, 0.1);
+                } else if (supIds.length === 1) { supportType = 'Cantilever'; span = d.length > 0 ? d.length : 1.5; }
+                d.supportType = supportType; d.span = span; d.supportIds = supIds;
+                d.supportLabels = supIds.map(i => elementsData[i].label);
+                const body = nodeOf[d.id].querySelector('.component-body');
+                if (supportType === 'Simply Supported') body.style.width = Math.max(span * PIXELS_PER_METER - PILLAR_PX, 50) + 'px';
+                else if (supportType === 'Cantilever') body.style.width = Math.max(span * PIXELS_PER_METER, 50) + 'px';
+                else body.style.width = '120px';
+                d.ui = { support: supportType, spanLabel: 'Span (c/c)', span: span ? `${span.toFixed(2)} m` : '-' };
+            });
+
+            // ---------- PASS 1b: slabs -> line loads on supporting beams / walls ----------
+            of('slab').forEach(s => {
+                const sup = linked(s.id).filter(o => o.lvl === s.lvl && ((o.type === 'beam' && o.supportType !== 'Unstable') || o.type === 'wall'));
+                s.supportIds = sup.map(o => o.id); s.supportLabels = sup.map(o => o.label);
+                const lx = Math.min(s.Lx, s.Ly) / 1000, ly = Math.max(s.Lx, s.Ly) / 1000;
+                s.lx = lx; s.ly = ly;
+                s.action = (sup.length >= 4 && ly / lx <= 2) ? 'Two-way' : 'One-way';
+                s.ui = { support: sup.length < 2 ? 'Unstable' : `${s.action} (${sup.length} supports)`, spanLabel: 'Short span', span: `${lx.toFixed(2)} m` };
+                if (sup.length < 2) return;
+                const totalLen = sup.reduce((a, o) => a + (o.type === 'beam' ? o.span : o.Lw / 1000), 0);
+                const w = (s.q * (s.Lx / 1000) * (s.Ly / 1000)) / Math.max(totalLen, 0.1);
+                sup.forEach(o => { if (o.type === 'beam') o.slabLoad += w; else o.lineLoad += w; o.srcIds.push(s.id); });
+                s.lineOut = w;
+                if (ly / lx <= 2 && sup.length < 4) s.notes.push(`Only ${sup.length} supports connected: designed as one-way spanning the short side (${lx.toFixed(2)} m).`);
+                const cx = sup.reduce((a, o) => a + o.x, 0) / sup.length, cy = sup.reduce((a, o) => a + o.y, 0) / sup.length;
+                const off = Math.hypot(s.x - cx, s.y - cy);
+                if (off > 0.1 * Math.max(s.Lx, s.Ly) + 250) s.geoWarnings.push(`Slab centre is ${Math.round(off)} mm off the centroid of its supports.`);
+            });
+
+            // ---------- PASS 1c: beam design ----------
+            of('beam').forEach(d => {
+                const node = nodeOf[d.id];
+                if (d.supportType === 'Unstable') {
+                    d.results = { status: 'NO SUPPORT', badgeClass: 'status-fail', maxUtil: 0, govKey: '-', govLabel: 'None', checks: [],
+                        flex: { M_Rd: 0, util: 0 }, shear: { V_Rd: 0, util: 0 }, defl: { ld_actual: 0, ld_limit: 0, util: 0 }, M_Ed: 0, V_Ed: 0,
+                        trace: ['Beam is not wired to any column - no load path, no design done.'] };
+                    setBadge(node, d, d.results, 'NO SUPPORT');
+                    node.classList.add('unstable'); node.classList.remove('failed'); node.classList.toggle('geo-warn', flag(d));
+                    unsupported++; if (flag(d)) geoIssues++;
+                    return;
+                }
+                const wTot = d.udl + d.slabLoad, span = d.span;
+                const M_Ed = d.supportType === 'Simply Supported' ? (wTot * span * span) / 8 : (wTot * span * span) / 2;
+                const V_Ed = d.supportType === 'Simply Supported' ? (wTot * span) / 2 : wTot * span;
+                const res = calculateBeamDesign(d.b, d.h, d.As_prov, M_Ed, V_Ed, d.f_ck, d.f_yk, span, d.supportType);
+                res.M_Ed = M_Ed; res.V_Ed = V_Ed;
+                res.trace.unshift(`w = own/other ${f1(d.udl)} + slab ${f1(d.slabLoad)} = ${f1(wTot)} kN/m`);
+                d.supportIds.forEach(id => {
+                    const col = elementsData[id];
+                    col.beamLoad += V_Ed;
+                    if (d.supportType === 'Cantilever') col.beamMoment += M_Ed;
+                    col.supportedBeams.push(d.label); col.srcIds.push(d.id);
+                    if (res.maxUtil > 100) col.failedBeams.push(d.label);
+                });
+                if (d.slabLoad > 0) d.notes.push(`Carries ${f1(d.slabLoad)} kN/m from connected slab(s) on top of its own UDL.`);
+                d.results = res;
+                setBadge(node, d, res, `${Math.round(res.maxUtil)}% ${res.govKey} | ${res.status}${flag(d) ? ' ⚠' : ''}`);
+                node.classList.remove('unstable');
+                node.classList.toggle('failed', res.maxUtil > 100);
+                node.classList.toggle('geo-warn', flag(d));
+                if (flag(d)) geoIssues++;
+                track(d, res);
+            });
+
+            // ---------- Vertical links: column-on-column, wall-on-wall, element-on-footing ----------
+            const pillars = of('pillar'), walls = of('wall');
+            pillars.forEach(c => {
+                if (c.lvl < 2) return;
+                const tol = Math.max(250, 0.5 * Math.max(c.b, c.h));
+                const below = pillars.find(o => o.lvl === c.lvl - 1 && Math.hypot(o.x - c.x, o.y - c.y) <= tol);
+                if (below) { below.aboveId = c.id; below.srcIds.push(c.id); c.belowId = below.id; }
+                else c.geoWarnings.push(`No column directly below on ${lvlName(c.lvl - 1)} - the load path is interrupted.`);
+            });
+            walls.forEach(c => {
+                if (c.lvl < 2) return;
+                const tol = Math.max(300, 0.25 * c.Lw);
+                const below = walls.find(o => o.lvl === c.lvl - 1 && Math.hypot(o.x - c.x, o.y - c.y) <= tol && angleDiff180(o.rot || 0, c.rot || 0) <= 10);
+                if (below) { below.aboveId = c.id; below.srcIds.push(c.id); c.belowId = below.id; }
+                else c.geoWarnings.push(`No wall directly below on ${lvlName(c.lvl - 1)} - the load path is interrupted.`);
+            });
+            const insideF = (f, x, y) => {
+                const th = ((f.rot || 0) * Math.PI) / 180, cs = Math.cos(th), sn = Math.sin(th);
+                const lx = (x - f.x) * cs + (y - f.y) * sn, ly = -(x - f.x) * sn + (y - f.y) * cs;
+                return Math.abs(lx) <= f.B / 2 && Math.abs(ly) <= f.L / 2;
+            };
+            of('footing').forEach(f => {
+                all.filter(o => o.lvl === 1 && ['pillar', 'wall', 'panel'].includes(o.type) && !o.footingId && insideF(f, o.x, o.y)).forEach(o => { o.footingId = f.id; });
+            });
+
+            // ---------- PASS 2: walls & columns, TOP LEVEL FIRST so loads accumulate downward ----------
+            const maxL = Math.max(1, ...all.map(d => d.lvl));
+            const supportText = d => d.belowId ? elementsData[d.belowId].label : (d.footingId ? elementsData[d.footingId].label : 'None');
+            for (let L = maxL; L >= 1; L--) {
+                walls.filter(w => w.lvl === L).forEach(d => {
+                    const sw = 1.35 * 25 * (d.t / 1000) * (d.Hw / 1000);
+                    const above = d.aboveId ? elementsData[d.aboveId].results.n_total : 0;
+                    const n_total = (d.N_Ed || 0) + d.lineLoad + above + sw;
+                    const res = calculateWallDesign(d, n_total);
+                    res.trace.unshift(`n_Ed = input ${f1(d.N_Ed || 0)} + slab line load ${f1(d.lineLoad)} + wall above ${f1(above)} + self-weight ${f1(sw)} = ${f1(n_total)} kN/m`);
+                    if (above > 0) d.notes.push(`Carries ${f1(above)} kN/m from the wall above.`);
+                    if (d.lvl === 1 && !d.footingId) d.notes.push('Wall is not inside any footing - the load path ends here.');
+                    d.ui = { support: supportText(d), spanLabel: 'Height / l0', span: `${(d.Hw / 1000).toFixed(2)} m` };
+                    finish(d, nodeOf[d.id], res, `${Math.round(res.maxUtil)}% ${res.govKey}`);
+                });
+                pillars.filter(c => c.lvl === L).forEach(d => {
+                    const H = levelH(d.lvl) || 3000;
+                    const sw = 1.35 * 25 * (d.b / 1000) * (d.h / 1000) * (H / 1000);
+                    const above = d.aboveId ? elementsData[d.aboveId].results.N_total : 0;
+                    const N_total = (d.N_Ed || 0) + d.beamLoad + above + sw;
+                    const res = calculateColumnDesign(d.b, d.h, d.As_prov, d.f_ck, d.f_yk || 500, N_total, d.beamMoment);
+                    res.checks[0].rows.unshift(['Self-weight', kN(sw)]);
+                    res.checks[0].rows.unshift(['From column above', kN(above)]);
+                    res.checks[0].rows.unshift(['From beams', kN(d.beamLoad)]);
+                    res.checks[0].rows.unshift(['Input from above', kN(d.N_Ed || 0)]);
+                    res.trace.unshift(`N_Ed = input ${f1(d.N_Ed || 0)} + beams ${f1(d.beamLoad)} + column above ${f1(above)} + self-weight ${f1(sw)} = ${f1(N_total)} kN`);
+                    res.N_total = N_total; res.N_applied = d.N_Ed || 0; res.N_beams = d.beamLoad; res.N_above = above;
+                    if (above > 0) d.notes.push(`Carries ${f1(above)} kN from the column above (${elementsData[d.aboveId].label}).`);
+                    if (d.lvl === 1 && !d.footingId) d.notes.push('Column is not inside any footing - the load path ends here.');
+                    d.ui = { support: supportText(d), spanLabel: 'Storey height', span: `${(H / 1000).toFixed(2)} m` };
+                    finish(d, nodeOf[d.id], res, `${Math.round(res.maxUtil)}%`);
+                });
+            }
+
+            // ---------- PASS 2c: precast / cladding panels ----------
+            of('panel').forEach(d => {
+                d.panelWeight = 1.35 * 25 * (d.t / 1000) * (d.Hp / 1000) * (d.Lp / 1000);
+                const res = calculateStripDesign({ t: d.t, As: d.As_prov, q: d.q_w, lx: d.Hp / 1000, ly: d.Lp / 1000, fck: d.f_ck, fyk: d.f_yk || 500, d: d.t / 2, twoWay: false });
+                res.trace.unshift(`Wind (ULS) ${f1(d.q_w)} kPa on a ${(d.Hp / 1000).toFixed(2)} m vertical span ; d = t/2 (central layer) ; self-weight ${f1(d.panelWeight)} kN goes to its footing`);
+                const sup = linked(d.id).filter(o => o.type === 'beam' && o.lvl === d.lvl);
+                if (d.footingId) sup.push(elementsData[d.footingId]);
+                if (!sup.length) d.notes.push('Panel is not connected to a beam or standing inside a footing.');
+                d.ui = { support: sup.map(o => o.label).join(', ') || 'No support', spanLabel: 'Vertical span', span: `${(d.Hp / 1000).toFixed(2)} m` };
+                finish(d, nodeOf[d.id], res, `${Math.round(res.maxUtil)}% ${res.govKey}`);
+            });
+
+            // ---------- PASS 2d: slabs ----------
+            of('slab').forEach(d => {
+                const node = nodeOf[d.id];
+                if (d.supportIds.length < 2) {
+                    d.results = { status: 'NO SUPPORT', badgeClass: 'status-fail', maxUtil: 0, govKey: '-', govLabel: 'None', checks: [], trace: ['Slab needs at least two supporting beams / walls wired to it.'] };
+                    setBadge(node, d, d.results, 'NO SUPPORT');
+                    node.classList.add('unstable'); node.classList.remove('failed'); node.classList.toggle('geo-warn', flag(d));
+                    unsupported++; if (flag(d)) geoIssues++;
+                    return;
+                }
+                const res = calculateStripDesign({ t: d.t, As: d.As_prov, q: d.q, lx: d.lx, ly: d.ly, fck: d.f_ck, fyk: d.f_yk || 500, d: d.t - 30, twoWay: d.action === 'Two-way' });
+                res.trace.push(`Slab load to supports: q·A / Σ(support length) = ${f1(d.lineOut || 0)} kN/m on each beam / wall`);
+                finish(d, node, res, `${Math.round(res.maxUtil)}% ${res.govKey}`);
+            });
+
+            // ---------- PASS 3: footings / pile caps ----------
+            of('footing').forEach(f => {
+                const sup = [];
+                all.filter(o => o.footingId === f.id && o.results).forEach(o => {
+                    if (o.type === 'pillar') sup.push({ d: o, N: o.results.N_total, M: o.results.bending.M_Ed, w: o.b, h: o.h });
+                    else if (o.type === 'wall') sup.push({ d: o, N: (o.results.n_total * o.Lw) / 1000, M: 0, w: o.Lw, h: o.t });
+                    else if (o.type === 'panel') sup.push({ d: o, N: o.panelWeight || 0, M: 0, w: o.Lp, h: o.t });
+                });
+                f.srcIds = sup.map(s => s.d.id);
+                const piles = linked(f.id, 'pile');
+                const out = calculateFootingDesign(f, sup, piles);
+                f.geoWarnings.push(...out.warns); f.notes.push(...out.notes);
+                piles.forEach(p => { p.axial = out.pileReaction; p.capT = f.t; });
+                f.ui = { support: piles.length ? `Pile cap (${piles.length} piles)` : 'Pad / strip on soil', spanLabel: 'Size B×L×t', span: dimsText([f.B, f.L, f.t]) };
+                finish(f, nodeOf[f.id], out.res, `${Math.round(out.res.maxUtil)}% ${out.res.govKey}`);
+            });
+
+            // ---------- PASS 4: piles ----------
+            of('pile').forEach(p => {
+                const cap = linked(p.id, 'footing')[0];
+                let N = 0;
+                if (cap && cap.results) { N = p.axial || 0; p.srcIds = [cap.id]; cap.geoWarnings.filter(w => w.startsWith(p.label)).forEach(w => p.geoWarnings.push(w)); }
+                else { p.geoWarnings.push('Pile is not connected to a pile cap - it carries no load.'); p.capT = 0; }
+                const res = calculatePileDesign(p, N);
+                p.ui = { support: cap ? cap.label : 'No cap', spanLabel: 'Length / Ø', span: `${p.len} m / ${p.D} mm` };
+                finish(p, nodeOf[p.id], res, `${Math.round(res.maxUtil)}% ${res.govKey}`);
+            });
+
+            // reverse links (who receives my load)
+            all.forEach(d => d.srcIds.forEach(s => { if (elementsData[s] && !elementsData[s].dstIds.includes(d.id)) elementsData[s].dstIds.push(d.id); }));
+
+            nodes.forEach(n => { if (selectedNodeId === n.dataset.id) updatePanelDisplay(n.dataset.id); });
+            updateMultimeter(gov, unsupported, geoIssues);
+            redrawWires(); applyLoadPathClasses();
+            requestDraw();
+        }
+
+        // ==========================================
+        // PROPERTIES PANEL (built per type, unit-aware, with load path)
+        // ==========================================
+        let panelBuiltFor = null;
+        function buildFields(d) {
+            const wrap = document.getElementById('edit-fields');
+            wrap.innerHTML = FIELDS[d.type].map(([key, label, unit]) =>
+                `<div class="prop-row"><span class="prop-label">${label}:</span> <input type="number" step="any" class="prop-input" id="edit-${key}" data-key="${key}" data-unit="${unit}"> <span style="font-size:10px; min-width:40px;">${cu(unit)}</span></div>`).join('');
+            panelBuiltFor = d.id;
+        }
+        function fillFields(d) {
+            FIELDS[d.type].forEach(([key, , unit]) => {
+                const el = document.getElementById('edit-' + key);
+                if (!el || document.activeElement === el) return;
+                const v = d[key] !== undefined ? fmtField(d[key], unit) : (key === 'rot' ? '0' : '');
+                el.value = v; el.dataset.orig = v;
+            });
+        }
+        const listLabels = (ids, max) => {
+            const arr = Array.from(ids).map(i => elementsData[i]).filter(Boolean).sort((a, b) => (a.lvl - b.lvl) || a.label.localeCompare(b.label)).map(e => `${e.label} [${lvlShort(e.lvl)}]`);
+            return arr.length ? arr.slice(0, max).join(', ') + (arr.length > max ? ` … +${arr.length - max} more` : '') : 'nothing';
+        };
+
+        function updatePanelDisplay(id) {
+            const d = elementsData[id];
+            if (!d) return;
+            const $ = s => document.getElementById(s), r = d.results;
+            if (panelBuiltFor !== id) buildFields(d);
+            fillFields(d);
+            $('panel-title').innerText = TYPE_TITLE[d.type];
+            $('p-guid').innerText = d.guid || 'N/A';
+            $('p-xy').innerText = `${lvlName(d.lvl)} · X:${dispVal(d.x, 'mm')} Y:${dispVal(d.y, 'mm')} ${cu('mm')}`;
+            const ui = d.ui || {};
+            $('p-support').innerText = ui.support || '-';
+            $('p-span-label').innerText = (ui.spanLabel || 'Span') + ':';
+            $('p-span').innerText = convText(ui.span || '-');
+            const conn = linked(d.id).map(o => o.label);
+            $('p-conn').innerText = conn.length ? conn.join(', ') : 'none';
+
+            $('gov-tag').innerText = '';
+            if (r && r.checks) {
+                $('checks').innerHTML = r.checks.map(c => `
+                    <div class="check-box${c.key === r.govKey && r.maxUtil > 0 ? ' governing' : ''}">
+                        <div class="check-header"><span>${c.label} (${c.key})</span> <span style="color:${utilColor(c.util)}">${Math.round(c.util)}%</span></div>
+                        ${c.rows.map(([a, b]) => `<div class="prop-row" style="font-size:10px; margin:0;"><span>${a}:</span> <span>${convText(b)}</span></div>`).join('')}
+                    </div>`).join('');
+                if (r.maxUtil > 0) $('gov-tag').innerText = `(governing: ${r.govLabel})`;
+            } else $('checks').innerHTML = '';
+
+            setBox('geo-box', (d.geoWarnings && d.geoWarnings.length) ? '<b>⚠ Connectivity / geometry</b><br>' + d.geoWarnings.map(convText).join('<br>') : '');
+            setBox('loadpath-box', (d.failedBeams && d.failedBeams.length)
+                ? `<b>⚠ Load path</b><br>This column supports overstressed beam(s): ${d.failedBeams.join(', ')}. The reaction used here is the demand, not what a failing beam could actually deliver - redesign the beam first.` : '');
+            setBox('note-box', (d.notes && d.notes.length) ? '<b>ℹ Notes</b><br>' + d.notes.map(convText).join('<br>') : '');
+            const lp = lpSets(d.id);
+            setBox('lp-box', `<b>Load path</b><br><span style="color:#b45309">▲ Receives from (${lp.up.size}):</span> ${listLabels(lp.up, 10)}<br><span style="color:#6d28d9">▼ Delivers to (${lp.down.size}):</span> ${listLabels(lp.down, 10)}`);
+
+            if (r) {
+                const st = $('p-status');
+                st.innerText = `${r.status} (${r.govLabel} ${Math.round(r.maxUtil)}%)`;
+                st.style.color = r.status === 'PASS' ? '#065f46' : (r.status === 'WARNING' ? '#d97706' : '#b91c1c');
+                $('calc-trace').innerText = r.trace.join('\n') + (unitSys === 'IMP' ? '\n\n(Trace is always shown in SI: kN, m, mm, MPa.)' : '');
+            }
+        }
+
+        function saveComponentProperties() {
+            if (!selectedNodeId) return;
+            const d = elementsData[selectedNodeId];
+            if (!d) return;
+            FIELDS[d.type].forEach(([key, , unit]) => {
+                const el = document.getElementById('edit-' + key);
+                if (!el || el.value === el.dataset.orig) return;           // unchanged -> keep exact SI value
+                const v = parseFloat(el.value);
+                if (Number.isFinite(v)) d[key] = fromDisp(v, unit);
+            });
+            const node = document.querySelector(`.node[data-id="${selectedNodeId}"]`);
+            if (node) applyNodeTransform(node, d);
+            panelBuiltFor = null;
+            evaluateStrength(); commit();
+        }
+
+        // ==========================================
+        // NODE BUILDER / CONNECTIONS / ADD / SAMPLE
+        // ==========================================
+        function buildNode(d) {
+            const node = document.createElement('div');
+            node.className = `node comp-${d.type}`;
+            applyNodeTransform(node, d);
+            node.dataset.id = d.id; node.dataset.type = d.type;
+            node.innerHTML = `<div class="component-body">${d.label}</div>` + PORTS_OF[d.type].map(p => `<div class="port ${p}"></div>`).join('');
+            node.addEventListener('click', () => showProperties(d.id));
+            world.appendChild(node);
+            return node;
+        }
+        function createWire(sPort, ePort, sNode, eNode) {
+            const wire = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            wire.classList.add('wire', 'normal');
+            wireLayer.appendChild(wire);
+            connections.push({ element: wire, startPort: sPort, endPort: ePort, startNode: sNode, endNode: eNode });
+        }
+        function syncTeklaData() {
+            loadModel({ levels: [{ name: 'Foundation', h: 0 }, { name: 'Level 1', h: 3000 }, { name: 'Level 2', h: 3000 }], active: 1, nodes: sampleData.nodes, conns: [] });
+            const nodeElements = {}; document.querySelectorAll('.node').forEach(n => { nodeElements[n.dataset.id] = n; });
+            document.querySelectorAll('.node').forEach(n => { n.style.display = ''; });      // port positions need layout
+            const used = new Set();
+            sampleData.connections.forEach(c => {
+                const a = nodeElements[c.from], b = nodeElements[c.to];
+                if (!a || !b) return;
+                const pa = pickPort(a, b, used), pb = pickPort(b, a, used);
+                if (!pa || !pb) return;
+                if (a.dataset.type === 'beam' && ['left', 'right'].includes(portSide(pa))) used.add(pa);
+                if (b.dataset.type === 'beam' && ['left', 'right'].includes(portSide(pb))) used.add(pb);
+                createWire(pa, pb, a, b);
+            });
+            evaluateStrength(); applyLevelVisibility();
+            setTimeout(() => { redrawWires(); resetView(); }, 50);
+            if (hIdx < 0) resetHistory(); else commit();
+        }
+
+        function validateConnection(pA, pB, nA, nB) {
+            if (nA === nB) return 'A member cannot be connected to itself.';
+            const dA = elementsData[nA.dataset.id], dB = elementsData[nB.dataset.id];
+            if (dA && dB && dA.lvl !== dB.lvl) return 'These members are on different levels. Columns, walls and footings stack automatically by plan position - only same-level members are wired.';
+            const tA = nA.dataset.type, tB = nB.dataset.type, sA = portSide(pA), sB = portSide(pB);
+            const okA = (PORT_RULES[tA][sA] || []).includes(tB), okB = (PORT_RULES[tB][sB] || []).includes(tA);
+            if (!okA) return `${tA}: the ${sA} circle only accepts ${(PORT_RULES[tA][sA] || ['nothing']).join(' / ')}.`;
+            if (!okB) return `${tB}: the ${sB} circle only accepts ${(PORT_RULES[tB][sB] || ['nothing']).join(' / ')}.`;
+            const used = p => connections.some(c => c.startPort === p || c.endPort === p);
+            if (tA === 'beam' && ['left', 'right'].includes(sA) && used(pA)) return 'That beam end is already connected to a column.';
+            if (tB === 'beam' && ['left', 'right'].includes(sB) && used(pB)) return 'That beam end is already connected to a column.';
+            if (connections.some(c => (c.startNode === nA && c.endNode === nB) || (c.startNode === nB && c.endNode === nA))) return 'These two members are already connected.';
+            const pileNode = tA === 'pile' ? nA : (tB === 'pile' ? nB : null);
+            if (pileNode && connections.some(c => c.startNode === pileNode || c.endNode === pileNode)) return 'A pile can only belong to one pile cap.';
+            return null;
+        }
+
+        function toggleAddMenu() { document.getElementById('file-menu').classList.remove('open'); document.getElementById('add-menu').classList.toggle('open'); }
+        function toggleFileMenu() { document.getElementById('add-menu').classList.remove('open'); document.getElementById('file-menu').classList.toggle('open'); }
+        function addComponent(type) {
+            document.getElementById('add-menu').classList.remove('open');
+            closeProperties();
+            if (is3D) toggle3D();
+            const lvl = defaultLvl(type) === 0 ? 0 : Math.max(1, activeLevel);
+            if (lvl !== activeLevel) setActiveLevel(lvl);
+            const realX = Math.round(((window.innerWidth / 2 - panX) / scale / PIXELS_PER_METER) * 1000);
+            const realY = Math.round(((window.innerHeight / 2 - panY) / scale / PIXELS_PER_METER) * 1000);
+            const id = type + '_' + Date.now();
+            const count = Object.values(elementsData).filter(e => e.type === type).length + 1;
+            const d = Object.assign({ id, type, x: realX, y: realY, rot: 0, lvl, label: TYPE_PREFIX[type] + count, guid: 'NEW-' + type.toUpperCase() + '-' + Math.floor(Math.random() * 1000000) }, DEFAULTS[type]);
+            elementsData[id] = d;
+            applyPlanSize(buildNode(d), d);
+            evaluateStrength(); applyLevelVisibility(); commit();
+        }
+
+        function pushToMCP() {
+            const payload = [];
+            document.querySelectorAll('.node').forEach(node => {
+                const d = elementsData[node.dataset.id];
+                if (!d || !d.results) return;
+                const r = d.results;
+                const uda = { Guid: d.guid, Type: d.type, Level: d.lvl, X: d.x, Y: d.y, Rotation: d.rot, Status: r.status,
+                              Max_Utilization: parseFloat((r.maxUtil || 0).toFixed(2)), Governing_Check: r.govLabel };
+                (r.checks || []).forEach(c => { uda['Util_' + c.key.replace(/[^A-Za-z0-9]/g, '')] = parseFloat(c.util.toFixed(2)); });
+                if (d.type === 'beam') { uda.Support_Type = d.supportType; uda.Span_m = parseFloat((d.span || 0).toFixed(3)); uda.Slab_Load_kNm = parseFloat((d.slabLoad || 0).toFixed(2)); }
+                if (d.type === 'pillar') { uda.N_Ed_Total = parseFloat(r.N_total.toFixed(1)); uda.N_From_Above = parseFloat((r.N_above || 0).toFixed(1)); uda.Supports_Failed_Beam = (d.failedBeams || []).join(', '); }
+                if (d.type === 'footing') { uda.N_Total = parseFloat((r.N_total || 0).toFixed(1)); uda.Pile_Reaction = parseFloat((r.pileReaction || 0).toFixed(1)); }
+                if (d.type === 'pile') uda.N_Ed = parseFloat((r.N_Ed || 0).toFixed(1));
+                if (d.geoWarnings && d.geoWarnings.length) uda.Geometry_Warnings = d.geoWarnings.join(' | ');
+                payload.push(uda);
+            });
+            console.log('Payload ready for Tekla C# Bridge (UDAs):', JSON.stringify(payload, null, 2));
+            showModal('Push to Tekla Complete', `Calculation results prepared for UDA update.\n\nUpdated ${payload.length} elements.\n\nCheck browser console for the JSON payload structure.`);
+        }
+        // ==========================================
+        // 3D VIEW: levels, heatmap, failures-only, load-path highlight
+        // ==========================================
+        let heat3D = false, failOnly3D = false, isoLevel3D = -1;
+        function update3DButtons() {
+            const set = (id, t, on) => { const b = document.getElementById(id); if (b) { b.innerText = t; b.classList.toggle('on', !!on); } };
+            set('lbl-btn', labels3D ? 'Labels: ON' : 'Labels: OFF', labels3D);
+            set('heat-btn', heat3D ? 'Heatmap: ON' : 'Heatmap: OFF', heat3D);
+            set('fail-btn', failOnly3D ? 'Failures only: ON' : 'Failures only: OFF', failOnly3D);
+            set('iso-btn', isoLevel3D < 0 ? 'Level: All' : 'Level: ' + lvlShort(isoLevel3D), isoLevel3D >= 0);
+            set('lp3-btn', lpMode ? 'Load path: ON' : 'Load path: OFF', lpMode);
+        }
+        function toggleLabels3D() { labels3D = !labels3D; update3DButtons(); requestDraw(); }
+        function toggleHeat3D() { heat3D = !heat3D; update3DButtons(); requestDraw(); }
+        function toggleFail3D() { failOnly3D = !failOnly3D; update3DButtons(); requestDraw(); }
+        function cycleLevel3D() { isoLevel3D = isoLevel3D + 1 >= levels.length ? -1 : isoLevel3D + 1; update3DButtons(); requestDraw(); }
+        function toggle3D() {
+            is3D = !is3D;
+            if (is3D && isDeleteMode) toggleDeleteMode();
+            cv.style.display = is3D ? 'block' : 'none';
+            viewport.style.visibility = is3D ? 'hidden' : 'visible';
+            document.getElementById('ctl3d').style.display = is3D ? 'block' : 'none';
+            const btn = document.getElementById('view-btn');
+            btn.innerText = is3D ? '2D Plan' : '3D View';
+            btn.classList.toggle('active-view', is3D);
+            document.querySelectorAll('.edit-tool').forEach(b => { b.disabled = is3D; });
+            update3DButtons();
+            if (is3D) { resize3D(); reset3D(); } else { redrawWires(); }
+        }
+
+        function buildBoxes() {
+            const boxes = [];
+            Object.values(elementsData).forEach(d => {
+                if (isoLevel3D >= 0 && d.lvl !== isoLevel3D && !(isoLevel3D >= 1 && d.lvl === 0)) return;
+                const rot = d.rot || 0, k = Math.max(d.lvl, d.type === 'footing' || d.type === 'pile' ? 0 : 1);
+                const base = elevBase(k), top = elevTop(k);
+                switch (d.type) {
+                    case 'pillar': boxes.push({ id: d.id, d, kind: 'pillar', cx: d.x, cy: (base + top) / 2, cz: d.y, L: d.b, H: top - base, W: d.h, rot }); break;
+                    case 'beam': {
+                        let L = 2000;
+                        if (d.supportType === 'Simply Supported' && d.supportIds && d.supportIds.length >= 2) {
+                            const A = elementsData[d.supportIds[0]], B = elementsData[d.supportIds[1]];
+                            L = d.span * 1000 - ((A ? A.b : 400) + (B ? B.b : 400)) / 2;
+                        } else if (d.supportType === 'Cantilever') L = d.span * 1000;
+                        boxes.push({ id: d.id, d, kind: 'beam', cx: d.x, cy: top - d.h / 2, cz: d.y, L: Math.max(L, 200), H: d.h, W: d.b, rot });
+                        break;
+                    }
+                    case 'wall':    boxes.push({ id: d.id, d, kind: 'wall',    cx: d.x, cy: base + d.Hw / 2, cz: d.y, L: d.Lw, H: d.Hw, W: d.t, rot }); break;
+                    case 'panel':   boxes.push({ id: d.id, d, kind: 'panel',   cx: d.x, cy: base + d.Hp / 2, cz: d.y, L: d.Lp, H: d.Hp, W: d.t, rot }); break;
+                    case 'slab':    boxes.push({ id: d.id, d, kind: 'slab',    cx: d.x, cy: top + d.t / 2, cz: d.y, L: d.Lx, H: d.t, W: d.Ly, rot }); break;
+                    case 'footing': boxes.push({ id: d.id, d, kind: 'footing', cx: d.x, cy: -d.t / 2, cz: d.y, L: d.B, H: d.t, W: d.L, rot }); break;
+                    case 'pile': {
+                        const tp = -(d.capT || 0), len = (d.len || 6) * 1000;
+                        boxes.push({ id: d.id, d, kind: 'pile', cx: d.x, cz: d.y, R: d.D / 2, top: tp, bottom: tp - len, cy: tp - len / 2, H: len, rot: 0 });
+                        break;
+                    }
+                }
+            });
+            return boxes;
+        }
+
+        const KIND_COLOR = { pillar: '#475569', beam: '#94a3b8', wall: '#a8a29e', panel: '#7dd3fc', slab: '#cbd5e1', footing: '#78716c', pile: '#b45309' };
+        function hslHex(h, s, l) {
+            s /= 100; l /= 100;
+            const a = s * Math.min(l, 1 - l), f = n => { const k = (n + h / 30) % 12; return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)); };
+            const hx = v => Math.round(v * 255).toString(16).padStart(2, '0');
+            return '#' + hx(f(0)) + hx(f(8)) + hx(f(4));
+        }
+        const heatColor = u => (u > 100 ? '#dc2626' : hslHex(120 * (1 - Math.max(0, u) / 100), 75, 46));
+        function boxColor(b) {
+            const d = b.d, r = d.results;
+            if (r && r.status === 'NO SUPPORT') return '#fde68a';
+            if (heat3D) return r ? heatColor(r.maxUtil) : '#94a3b8';
+            if (r) { if (r.maxUtil > 100) return '#ef4444'; if (r.maxUtil > 85) return '#f59e0b'; }
+            return KIND_COLOR[b.kind];
+        }
+        function boxStyle(b, sel, sets) {
+            const d = b.d, r = d.results, fail = r && r.maxUtil > 100, warn = d.geoWarnings && d.geoWarnings.length;
+            const st = { alpha: b.kind === 'slab' ? 0.6 : 1, stroke: '#1e293b', lw: 1.5, dash: [], dim: false };
+            if (failOnly3D && !fail && !(d.failedBeams && d.failedBeams.length)) { st.alpha *= 0.1; st.dim = true; }
+            if (sets) {
+                if (b.id === sel) { st.stroke = '#2563eb'; st.lw = 3.5; st.alpha = Math.max(st.alpha, 0.9); st.dim = false; }
+                else if (sets.up.has(b.id)) { st.stroke = '#f59e0b'; st.lw = 3.5; st.alpha = b.kind === 'slab' ? 0.8 : 1; st.dim = false; }
+                else if (sets.down.has(b.id)) { st.stroke = '#7c3aed'; st.lw = 3.5; st.alpha = 1; st.dim = false; }
+                else { st.alpha *= 0.13; st.dim = true; }
+            } else if (b.id === sel) { st.stroke = '#2563eb'; st.lw = 3; }
+            else if (warn || (d.failedBeams && d.failedBeams.length)) { st.stroke = '#d97706'; st.dash = [6, 4]; }
+            return st;
+        }
+
+        function reset3D() {
+            const boxes = buildBoxes();
+            if (boxes.length) {
+                const xs = boxes.map(b => b.cx), zs = boxes.map(b => b.cz);
+                const tops = boxes.map(b => b.kind === 'pile' ? b.top : b.cy + b.H / 2), bots = boxes.map(b => b.kind === 'pile' ? b.bottom : b.cy - b.H / 2);
+                cam.tx = (Math.min(...xs) + Math.max(...xs)) / 2;
+                cam.tz = (Math.min(...zs) + Math.max(...zs)) / 2;
+                const top = Math.max(...tops), bot = Math.min(...bots);
+                cam.ty = (top + bot) / 2;
+                const ext = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...zs) - Math.min(...zs), (top - bot) * 0.8, 2000);
+                cam.dist = ext * 1.95;
+            }
+            cam.yaw = 0.75; cam.pitch = 0.5;
+            requestDraw();
+        }
+
+        function boxFaces(b, c, w, h, NEAR, light) {
+            const out = [];
+            const push = (pts3, n, fc, base) => {
+                const toFace = fc.map((v, i) => v - c.pos[i]);
+                if (n[0] * toFace[0] + n[1] * toFace[1] + n[2] * toFace[2] >= 0) return;
+                const pts = pts3.map(p => project(c, p, w, h));
+                if (pts.some(p => p.z < NEAR)) return;
+                const lam = Math.max(0, n[0] * light[0] + n[1] * light[1] + n[2] * light[2]);
+                out.push({ pts, depth: Math.hypot(...toFace), color: shade(base, 0.55 + 0.5 * lam), box: b });
+            };
+            const base = boxColor(b);
+            if (b.kind === 'pile') {
+                const N = 10, ring = k => [b.cx + b.R * Math.cos((2 * Math.PI * k) / N), b.cz + b.R * Math.sin((2 * Math.PI * k) / N)];
+                for (let k = 0; k < N; k++) {
+                    const a = ring(k), e = ring(k + 1), am = (2 * Math.PI * (k + 0.5)) / N;
+                    push([[a[0], b.top, a[1]], [e[0], b.top, e[1]], [e[0], b.bottom, e[1]], [a[0], b.bottom, a[1]]],
+                         [Math.cos(am), 0, Math.sin(am)], [(a[0] + e[0]) / 2, (b.top + b.bottom) / 2, (a[1] + e[1]) / 2], base);
+                }
+                push(Array.from({ length: N }, (_, k) => { const r = ring(k); return [r[0], b.top, r[1]]; }), [0, 1, 0], [b.cx, b.top, b.cz], base);
+                return out;
+            }
+            const th = (b.rot * Math.PI) / 180, cs = Math.cos(th), sn = Math.sin(th);
+            const ax = [[cs, 0, sn], [0, 1, 0], [-sn, 0, cs]], half = [b.L / 2, b.H / 2, b.W / 2], centre = [b.cx, b.cy, b.cz];
+            for (let a = 0; a < 3; a++) for (const s of [-1, 1]) {
+                const n = ax[a].map(v => v * s), fc = centre.map((v, i) => v + n[i] * half[a]);
+                const a1 = (a + 1) % 3, a2 = (a + 2) % 3;
+                const corners = [[1, 1], [1, -1], [-1, -1], [-1, 1]].map(([i, j]) => fc.map((v, k) => v + ax[a1][k] * half[a1] * i + ax[a2][k] * half[a2] * j));
+                push(corners, n, fc, base);
+            }
+            return out;
+        }
+
+        function draw3D() {
+            const w = window.innerWidth, h = window.innerHeight, g = ctx3;
+            const bg = g.createLinearGradient(0, 0, 0, h);
+            bg.addColorStop(0, '#e2e8f0'); bg.addColorStop(1, '#f8fafc');
+            g.fillStyle = bg; g.fillRect(0, 0, w, h);
+
+            const c = makeCamera(), boxes = buildBoxes(), NEAR = 100;
+            if (boxes.length) {
+                const xs = boxes.map(b => b.cx), zs = boxes.map(b => b.cz);
+                const x0 = Math.floor((Math.min(...xs) - 2000) / 1000) * 1000, x1 = Math.ceil((Math.max(...xs) + 2000) / 1000) * 1000;
+                const z0 = Math.floor((Math.min(...zs) - 2000) / 1000) * 1000, z1 = Math.ceil((Math.max(...zs) + 2000) / 1000) * 1000;
+                g.lineWidth = 1; g.strokeStyle = '#cbd5e1';
+                const line = (a, b) => {
+                    const p = project(c, a, w, h), q = project(c, b, w, h);
+                    if (p.z < NEAR || q.z < NEAR) return;
+                    g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(q.x, q.y); g.stroke();
+                };
+                for (let x = x0; x <= x1; x += 1000) line([x, 0, z0], [x, 0, z1]);
+                for (let z = z0; z <= z1; z += 1000) line([x0, 0, z], [x1, 0, z]);
+            }
+
+            const sel = selectedNodeId, sets = (lpMode && sel && elementsData[sel]) ? lpSets(sel) : null;
+            const styles = {}; boxes.forEach(b => { styles[b.id] = boxStyle(b, sel, sets); });
+            const L = [0.35, 0.85, 0.4], ll = Math.hypot(...L), light = L.map(v => v / ll);
+            const faces = [];
+            boxes.forEach(b => boxFaces(b, c, w, h, NEAR, light).forEach(f => faces.push(f)));
+            faces.sort((p, q) => q.depth - p.depth);
+            faces3D = faces.filter(f => !styles[f.box.id].dim);
+
+            faces.forEach(f => {
+                const st = styles[f.box.id];
+                g.beginPath();
+                f.pts.forEach((p, i) => (i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y)));
+                g.closePath();
+                g.globalAlpha = st.alpha; g.fillStyle = f.color; g.fill();
+                g.lineJoin = 'round'; g.lineWidth = st.lw; g.strokeStyle = st.stroke; g.setLineDash(st.dash);
+                g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
+            });
+
+            // heatmap legend
+            if (heat3D) {
+                const ctlTop = h - 175 - (document.getElementById('ctl3d').offsetHeight || 150) - 8;
+                const lx = 16, ly = ctlTop - 32, lw = 150;
+                const gr = g.createLinearGradient(lx, 0, lx + lw, 0);
+                for (let i = 0; i <= 10; i++) gr.addColorStop(i / 10, heatColor(i * 10));
+                g.fillStyle = gr; g.fillRect(lx, ly, lw, 12);
+                g.strokeStyle = '#333'; g.lineWidth = 1.5; g.strokeRect(lx, ly, lw, 12);
+                g.fillStyle = '#dc2626'; g.fillRect(lx + lw + 2, ly, 10, 12); g.strokeRect(lx + lw + 2, ly, 10, 12);
+                g.fillStyle = '#111'; g.font = 'bold 9px system-ui, sans-serif'; g.textAlign = 'left'; g.textBaseline = 'top';
+                g.fillText('0%', lx, ly + 15); g.textAlign = 'center'; g.fillText('50%', lx + lw / 2, ly + 15); g.textAlign = 'right'; g.fillText('100%+', lx + lw + 12, ly + 15);
+            }
+            if (sets) {
+                g.font = 'bold 10px system-ui, sans-serif'; g.textAlign = 'left'; g.textBaseline = 'top';
+                const ctlTop2 = h - 175 - (document.getElementById('ctl3d').offsetHeight || 150) - 8;
+                const ly = ctlTop2 - 46 - (heat3D ? 36 : 0), lx = 16;
+                [['#2563eb', 'selected'], ['#f59e0b', 'carries (above / feeding in)'], ['#7c3aed', 'delivers to (below)']].forEach(([col, t], i) => {
+                    g.fillStyle = col; g.fillRect(lx, ly + i * 14, 10, 10); g.fillStyle = '#111'; g.fillText(t, lx + 15, ly + i * 14);
+                });
+            }
+
+            if (!labels3D) return;
+            g.textAlign = 'center'; g.textBaseline = 'middle';
+            boxes.forEach(b => {
+                if (styles[b.id].dim) return;
+                if (b.kind === 'pile' && b.id !== sel && !(sets && (sets.up.has(b.id) || sets.down.has(b.id)))) return;
+                const topY = b.kind === 'pile' ? b.top : b.cy + b.H / 2;
+                const p = project(c, [b.cx, topY + 150, b.cz], w, h);
+                if (p.z < NEAR) return;
+                const r = b.d.results;
+                const short = b.d.label.replace(/\s*\(.*?\)/, '');
+                const txt = r && r.checks && r.checks.length ? `${short} ${Math.round(r.maxUtil)}%` : short;
+                g.font = 'bold 10px system-ui, sans-serif';
+                const tw = g.measureText(txt).width + 10, fail = r && r.maxUtil > 100;
+                g.fillStyle = fail ? '#fee2e2' : '#ffffffee'; g.strokeStyle = r ? utilColor(r.maxUtil) : '#333'; g.lineWidth = 1.5;
+                g.beginPath(); g.roundRect ? g.roundRect(p.x - tw / 2, p.y - 9, tw, 18, 5) : g.rect(p.x - tw / 2, p.y - 9, tw, 18);
+                g.fill(); g.stroke();
+                g.fillStyle = '#111'; g.fillText(txt, p.x, p.y);
+            });
+        }
+
+        // ==========================================
+        // FILES / SCENARIOS (A vs B) / COMPARE
+        // ==========================================
+        const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        function openBig(title, html) { document.getElementById('big-title').innerText = title; document.getElementById('big-body').innerHTML = html; document.getElementById('big-modal').classList.add('active'); }
+        function closeBig() { document.getElementById('big-modal').classList.remove('active'); }
+        function downloadBlob(name, mime, text) {
+            const url = URL.createObjectURL(new Blob([text], { type: mime }));
+            const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click();
+            setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1500);
+        }
+        const stamp = () => new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+        const wrapFile = (name, model) => JSON.stringify({ app: 'tekla-ec2-checker', version: 4, name, saved: new Date().toISOString(), units: unitSys, model }, null, 1);
+        function saveScenarioFile(name) {
+            document.getElementById('file-menu').classList.remove('open');
+            const nm = name || 'scenario';
+            downloadBlob(`ec2-${nm}-${stamp()}.json`, 'application/json', wrapFile(nm, getModel()));
+        }
+        let pendingLoadTarget = null;
+        function pickFile(target) {
+            document.getElementById('file-menu').classList.remove('open');
+            pendingLoadTarget = target;
+            const inp = document.getElementById('file-input'); inp.value = ''; inp.click();
+        }
+        function parseModelFile(text) {
+            const j = JSON.parse(text);
+            const m = j.model || j;
+            if (!m || !Array.isArray(m.nodes)) throw new Error('Not a scenario file (no model.nodes).');
+            return { name: j.name || 'scenario', model: m };
+        }
+        document.getElementById('file-input').addEventListener('change', e => {
+            const f = e.target.files && e.target.files[0]; if (!f) return;
+            const rd = new FileReader();
+            rd.onload = () => {
+                try {
+                    const { name, model } = parseModelFile(rd.result);
+                    if (pendingLoadTarget === 'A' || pendingLoadTarget === 'B') { setSlot(pendingLoadTarget, name, model); openScenarios(); }
+                    else { loadModel(model); resetHistory(); resetView(); showModal('Scenario loaded', `"${name}" - ${model.nodes.length} members loaded. Undo history was reset.`); }
+                } catch (err) { showModal('Could not load file', String(err.message || err)); }
+            };
+            rd.readAsText(f);
+        });
+
+        let slots = { A: null, B: null };
+        try { const s = JSON.parse(localStorage.getItem('tekla_ec2_slots') || 'null'); if (s) slots = s; } catch (e) { /* storage may be blocked on file:// */ }
+        function persistSlots() { try { localStorage.setItem('tekla_ec2_slots', JSON.stringify(slots)); } catch (e) { /* ignore */ } }
+        function setSlot(k, name, model) { slots[k] = { name, model, time: new Date().toLocaleTimeString() }; persistSlots(); }
+        function slotSaveCurrent(k) { setSlot(k, 'Option ' + k, getModel()); openScenarios(); }
+        function slotOpen(k) { if (!slots[k]) return; loadModel(slots[k].model); commit(); closeBig(); resetView(); }
+        function slotDownload(k) { if (slots[k]) downloadBlob(`ec2-option-${k}-${stamp()}.json`, 'application/json', wrapFile('Option ' + k, slots[k].model)); }
+
+        function elemVolume(d) {   // m³
+            const m = v => v / 1000;
+            switch (d.type) {
+                case 'pillar': return m(d.b) * m(d.h) * m(levelH(d.lvl) || 3000);
+                case 'beam': return m(d.b) * m(d.h) * (d.span || 2);
+                case 'slab': return m(d.Lx) * m(d.Ly) * m(d.t);
+                case 'wall': return m(d.Lw) * m(d.t) * m(d.Hw);
+                case 'panel': return m(d.Lp) * m(d.t) * m(d.Hp);
+                case 'footing': return m(d.B) * m(d.L) * m(d.t);
+                case 'pile': return Math.PI / 4 * m(d.D) * m(d.D) * d.len;
+            }
+            return 0;
+        }
+        function summarise() {
+            const els = Object.values(elementsData).filter(d => d.results);
+            const rows = els.map(d => ({ key: d.guid || d.id, label: d.label, type: d.type, lvl: d.lvl, util: d.results.maxUtil || 0, gov: d.results.govLabel, status: d.results.status }));
+            const top = rows.reduce((a, r) => (r.util > a.util ? r : a), { util: 0, label: '-' });
+            return { rows, count: rows.length, maxUtil: top.util, maxName: top.label, failed: rows.filter(r => r.util > 100 || r.status === 'NO SUPPORT').length, warn: rows.filter(r => r.util > 85 && r.util <= 100).length, volume: els.reduce((a, d) => a + elemVolume(d), 0) };
+        }
+        function analyseModel(model) {
+            const cur = getModel(), curSel = selectedNodeId;
+            restoring = true;
+            loadModel(model); const s = summarise();
+            loadModel(cur); selectedNodeId = curSel; restoring = false;
+            return s;
+        }
+        function openScenarios() {
+            const slotRow = k => {
+                const s = slots[k];
+                return `<div class="slot"><b>Option ${k}</b> <span class="small">${s ? `${s.model.nodes.length} members · saved ${esc(s.time)}` : 'empty'}</span>
+                    <div class="btnrow"><button onclick="slotSaveCurrent('${k}')">Save current here</button><button onclick="pickFile('${k}')">Load file here</button>
+                    <button onclick="slotOpen('${k}')" ${s ? '' : 'disabled'}>Open in editor</button><button onclick="slotDownload('${k}')" ${s ? '' : 'disabled'}>Download</button></div></div>`;
+            };
+            openBig('Scenarios: Option A vs B', `
+                <p class="small">Save the current model as Option A, change something (section, load, level…), save it as Option B, then compare. Slots survive a reload if your browser allows storage; use Download to keep files.</p>
+                ${slotRow('A')}${slotRow('B')}
+                <div class="btnrow"><button class="go" onclick="compareAB()" ${slots.A && slots.B ? '' : 'disabled'}>Compare A vs B</button>
+                <button onclick="saveScenarioFile('current')">Download current model</button><button onclick="pickFile('current')">Load file into editor</button></div>
+                <div id="cmp-out"></div>`);
+        }
+        function compareAB() {
+            const A = analyseModel(slots.A.model), B = analyseModel(slots.B.model);
+            const key = r => r.key;
+            const mapB = {}; B.rows.forEach(r => { mapB[key(r)] = r; });
+            const seen = new Set();
+            const rows = A.rows.map(a => { const b = mapB[key(a)]; seen.add(key(a)); return { label: a.label, type: a.type, a: a.util, b: b ? b.util : null }; });
+            B.rows.forEach(b => { if (!seen.has(key(b))) rows.push({ label: b.label, type: b.type, a: null, b: b.util }); });
+            const delta = r => (r.a === null || r.b === null) ? 1e9 : Math.abs(r.b - r.a);
+            rows.sort((x, y) => delta(y) - delta(x));
+            const pc = v => v === null ? '—' : Math.round(v) + '%';
+            const col = v => v === null ? '#64748b' : utilColor(v);
+            const volF = v => `${dispVal(v, 'm³')} ${cu('m³')}`;
+            const better = (x, y, lowerIsBetter) => x === y ? '' : ((y < x) === lowerIsBetter ? 'good' : 'bad');
+            const sumRow = (lbl, a, b, lower, fmt) => `<tr><td>${lbl}</td><td>${fmt(a)}</td><td>${fmt(b)}</td><td class="${better(a, b, lower)}">${a === b ? '=' : (b > a ? '+' : '−') + fmt(Math.abs(b - a))}</td></tr>`;
+            document.getElementById('cmp-out').innerHTML = `
+                <h4>Summary</h4>
+                <table class="cmp"><tr><th></th><th>A</th><th>B</th><th>B − A</th></tr>
+                ${sumRow('Governing utilization', A.maxUtil, B.maxUtil, true, v => Math.round(v) + '%')}
+                ${sumRow('Members failing', A.failed, B.failed, true, v => String(v))}
+                ${sumRow('Members above 85%', A.warn, B.warn, true, v => String(v))}
+                ${sumRow('Concrete volume', A.volume, B.volume, true, volF)}
+                ${sumRow('Members', A.count, B.count, false, v => String(v))}
+                <tr><td>Governing member</td><td>${esc(A.maxName)}</td><td>${esc(B.maxName)}</td><td></td></tr></table>
+                <h4>Member by member (largest change first)</h4>
+                <div class="scroll"><table class="cmp"><tr><th>Member</th><th>A</th><th>B</th><th>Δ</th></tr>
+                ${rows.slice(0, 60).map(r => `<tr><td>${esc(r.label)} <span class="small">${r.type}</span></td><td style="color:${col(r.a)}">${pc(r.a)}</td><td style="color:${col(r.b)}">${pc(r.b)}</td><td>${r.a === null || r.b === null ? 'new/removed' : (r.b - r.a >= 0 ? '+' : '') + Math.round(r.b - r.a) + '%'}</td></tr>`).join('')}
+                </table></div>`;
+        }
+
+        // ==========================================
+        // HAND-CHECK REPORT (PDF via print, Word .doc, or open as page)
+        // ==========================================
+        const TYPE_ORDER = ['footing', 'pile', 'pillar', 'wall', 'beam', 'slab', 'panel'];
+        function buildReportHTML(opts, forWord) {
+            opts = opts || {};
+            const now = new Date();
+            const sum = summarise();
+            let members = Object.values(elementsData).filter(d => d.results);
+            if (opts.onlyHigh) members = members.filter(d => (d.results.maxUtil || 0) > 85 || d.results.status === 'NO SUPPORT');
+            members.sort((a, b) => (a.lvl - b.lvl) || (TYPE_ORDER.indexOf(a.type) - TYPE_ORDER.indexOf(b.type)) || a.label.localeCompare(b.label));
+            const cls = r => r.status === 'PASS' ? 'pass' : (r.status === 'WARNING' ? 'warn' : 'fail');
+            const css = `body{font-family:Arial,Helvetica,sans-serif;font-size:10.5pt;color:#111;margin:18px}h1{font-size:18pt;margin:0 0 4px}h2{font-size:13pt;border-bottom:2px solid #333;padding-bottom:3px;margin-top:22px}h3{font-size:11.5pt;margin:0 0 4px}table{border-collapse:collapse;width:100%;margin:6px 0}th,td{border:1px solid #999;padding:3px 6px;text-align:left;font-size:9.5pt;vertical-align:top}th{background:#e5e7eb}.pass{color:#047857;font-weight:bold}.warn{color:#b45309;font-weight:bold}.fail{color:#b91c1c;font-weight:bold}.member{page-break-inside:avoid;margin-top:14px;border:1px solid #bbb;padding:8px}pre{background:#f1f5f9;border:1px solid #cbd5e1;padding:6px;font-size:8.5pt;white-space:pre-wrap;font-family:Consolas,monospace}.small{font-size:9pt;color:#444}.box{background:#fef3c7;border:1px solid #d97706;padding:5px;margin:5px 0;font-size:9.5pt}.note{background:#e0f2fe;border:1px solid #0284c7;padding:5px;margin:5px 0;font-size:9.5pt}`;
+            const summaryRows = members.map(d => `<tr><td>${esc(d.label)}</td><td>${d.type}</td><td>${lvlName(d.lvl)}</td><td>${Math.round(d.results.maxUtil || 0)}%</td><td>${esc(d.results.govLabel)}</td><td class="${cls(d.results)}">${d.results.status}</td></tr>`).join('');
+            const detail = members.map(d => {
+                const r = d.results;
+                const inputs = FIELDS[d.type].map(([k, lab, u]) => `<tr><td>${esc(lab)}</td><td>${esc(dispVal(d[k] !== undefined ? d[k] : 0, u))} ${esc(cu(u))}</td></tr>`).join('');
+                const checks = (r.checks || []).map(c => `<tr><td><b>${esc(c.label)} (${esc(c.key)})</b></td><td>${Math.round(c.util)}%</td><td>${c.rows.map(([a, b]) => `${esc(a)}: ${esc(convText(b))}`).join('<br>')}</td></tr>`).join('');
+                const lp = lpSets(d.id);
+                return `<div class="member"><h3>${esc(d.label)} — ${esc(TYPE_TITLE[d.type].replace(' Report', ''))} — ${lvlName(d.lvl)}</h3>
+                    <div class="small">GUID ${esc(d.guid || '-')} · X ${esc(dispVal(d.x, 'mm'))} / Y ${esc(dispVal(d.y, 'mm'))} ${esc(cu('mm'))} · ${esc((d.ui && d.ui.support) || '')}</div>
+                    <p><span class="${cls(r)}">${r.status}</span> — governing: ${esc(r.govLabel)} at <b>${Math.round(r.maxUtil || 0)}%</b></p>
+                    <table><tr><th colspan="2">Inputs</th></tr>${inputs}</table>
+                    ${checks ? `<table><tr><th>Check</th><th>Util.</th><th>Values</th></tr>${checks}</table>` : ''}
+                    ${(d.geoWarnings || []).length ? `<div class="box"><b>Geometry / connectivity:</b> ${d.geoWarnings.map(x => esc(convText(x))).join(' ')}</div>` : ''}
+                    ${(d.notes || []).length ? `<div class="note"><b>Notes:</b> ${d.notes.map(x => esc(convText(x))).join(' ')}</div>` : ''}
+                    <div class="small">Receives load from: ${esc(listLabels(lp.up, 14))}<br>Delivers load to: ${esc(listLabels(lp.down, 14))}</div>
+                    ${opts.noTrace ? '' : `<p class="small"><b>Calculation trace (SI: kN, m, mm, MPa)</b></p><pre>${esc(r.trace.join('\n'))}</pre>`}</div>`;
+            }).join('');
+            const levelsTxt = levels.map((l, k) => k === 0 ? 'Foundation (0)' : `${lvlName(k)} (storey ${dispVal(l.h, 'mm')} ${cu('mm')})`).join(' · ');
+            const body = `<h1>Concrete member hand-check report</h1>
+                <div class="small">Generated ${esc(now.toLocaleString())} · Units: ${unitSys === 'SI' ? 'kN, mm' : 'kip, in'} · Eurocode 2 (simplified checks)</div>
+                <h2>1. Model summary</h2>
+                <table><tr><th>Levels</th><td>${esc(levelsTxt)}</td></tr><tr><th>Members checked</th><td>${sum.count}${opts.onlyHigh ? ` (report lists those above 85%: ${members.length})` : ''}</td></tr>
+                <tr><th>Governing</th><td><b>${Math.round(sum.maxUtil)}%</b> — ${esc(sum.maxName)}</td></tr><tr><th>Failing / above 85%</th><td>${sum.failed} / ${sum.warn}</td></tr>
+                <tr><th>Concrete volume</th><td>${esc(dispVal(sum.volume, 'm³'))} ${esc(cu('m³'))}</td></tr></table>
+                <h2>2. Utilization table</h2>
+                <table><tr><th>Member</th><th>Type</th><th>Level</th><th>Util.</th><th>Governing check</th><th>Status</th></tr>${summaryRows}</table>
+                <h2>3. Member calculations</h2>${detail}
+                <h2>4. Assumptions and limits</h2>
+                <p class="small">Simplified Eurocode 2 checks for checking and communication. Ultimate loads are entered by the user. Beams are treated as simply supported or cantilever with slab load shared by line length; columns use axial + minimum-eccentricity bending with a linear interaction; walls use the plain-wall method; pile caps use equal pile reactions. Not checked: shear links, cracking, 310/σs deflection modifier, pile lateral load, settlement, seismic and second-order effects. This is not a substitute for full design: verify against the governing analysis model and the project specification.</p>`;
+            const head = forWord
+                ? `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>Hand-check report</title><style>${css}</style></head><body>`
+                : `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hand-check report</title><style>${css}@page{margin:14mm}</style></head><body>`;
+            return head + body + '</body></html>';
+        }
+        function reportOpts() { return { onlyHigh: document.getElementById('rep-high').checked, noTrace: !document.getElementById('rep-trace').checked }; }
+        function openExport() {
+            document.getElementById('file-menu').classList.remove('open');
+            openBig('Export hand-check report', `
+                <p class="small">One report with a summary table, then every member's inputs, checks, warnings and full calculation trace - ready to hand to a checker.</p>
+                <label class="chk"><input type="checkbox" id="rep-trace" checked> Include calculation traces</label>
+                <label class="chk"><input type="checkbox" id="rep-high"> Only members above 85% / unsupported</label>
+                <div class="btnrow col"><button class="go" onclick="exportPrint()">Print / Save as PDF</button><button onclick="exportWord()">Download Word (.doc)</button><button onclick="exportOpen()">Open report page (print or share from browser menu)</button></div>`);
+        }
+        function exportPrint() {
+            const html = buildReportHTML(reportOpts(), false);
+            const old = document.getElementById('print-frame'); if (old) old.remove();
+            const fr = document.createElement('iframe'); fr.id = 'print-frame';
+            fr.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;';
+            document.body.appendChild(fr);
+            fr.onload = () => { try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (e) { showModal('Print not available here', 'Use "Open report page" and print / share from your browser menu, or download the Word file.'); } };
+            fr.srcdoc = html;
+        }
+        function exportWord() { downloadBlob(`ec2-hand-check-${stamp()}.doc`, 'application/msword', buildReportHTML(reportOpts(), true)); }
+        function exportOpen() {
+            const url = URL.createObjectURL(new Blob([buildReportHTML(reportOpts(), false)], { type: 'text/html' }));
+            const w = window.open(url, '_blank');
+            if (!w) showModal('Pop-up blocked', 'Allow pop-ups for this page, or use the Word download.');
+        }
+
+        window.onload = () => { syncTeklaData(); };
+    </script>
+</body>
+</html>
