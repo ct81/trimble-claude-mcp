@@ -3381,6 +3381,18 @@
                 return;
             }
             reopenPanel('explorer-panel');
+            const timelinePanel = document.getElementById('left-panel');
+            if (timelinePanel.style.display !== 'none') {
+                const timelineRect = timelinePanel.getBoundingClientRect();
+                const gap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dashboard-gap'));
+                const left = timelineRect.right + gap;
+                const availableWidth = window.innerWidth - left - gap;
+                if (availableWidth >= 160) {
+                    explorerPanel.style.left = `${left}px`;
+                    explorerPanel.style.top = `${timelineRect.top}px`;
+                    explorerPanel.style.maxWidth = `${availableWidth}px`;
+                }
+            }
             if (!explorerTree) refreshExplorer();
         });
         explorerSearch.addEventListener('input', renderExplorer);

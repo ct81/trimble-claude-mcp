@@ -77,10 +77,14 @@ test('opens, searches, selects geometryless items and refreshes for another mode
     const button = new Element('button');
     const search = new Element('input');
     const tree = new Element();
-    const elements = { 'explorer-panel': panel, 'btn-explorer': button, 'explorer-search': search, 'explorer-tree': tree };
+    const timeline = new Element();
+    timeline.getBoundingClientRect = () => ({ right: 360, top: 134 });
+    const elements = { 'explorer-panel': panel, 'btn-explorer': button, 'explorer-search': search, 'explorer-tree': tree, 'left-panel': timeline };
     const selected = [];
     const context = vm.createContext({
         document: { getElementById: id => elements[id], createElement: tag => new Element(tag), createTextNode: text => ({ textContent: text }) },
+        window: { innerWidth: 1200 },
+        getComputedStyle: () => ({ getPropertyValue: () => '20px' }),
         MutationObserver: class { observe() {} },
         currentModelID: 0,
         currentIfcModel: { children: [] },
@@ -88,7 +92,7 @@ test('opens, searches, selects geometryless items and refreshes for another mode
         buildExplorerTree: (_api, id, filename) => ({
             name: filename, children: [{ name: 'Space (1)', children: [{ id: id + 10, type: 'IfcSpace', name: 'Office', children: [] }] }]
         }),
-        reopenPanel: () => { panel.style.display = 'flex'; },
+        reopenPanel: () => { panel.style = { display: 'flex' }; },
         clearSelection: () => selected.push('clear'),
         addMeshToSelection: () => selected.push('mesh'),
         showElementProperties: (model, id) => selected.push([model, id]),
@@ -101,6 +105,9 @@ test('opens, searches, selects geometryless items and refreshes for another mode
     vm.runInContext(page.slice(start, end), context);
     button.click();
     assert.equal(panel.style.display, 'flex');
+    assert.equal(panel.style.left, '380px');
+    assert.equal(panel.style.top, '134px');
+    assert.equal(panel.style.maxWidth, '800px');
     search.value = 'office';
     search.listeners.input();
     const findButton = node => node.tag === 'button' ? node : node.children?.map(findButton).find(Boolean);
@@ -110,4 +117,20 @@ test('opens, searches, selects geometryless items and refreshes for another mode
     assert.equal(tree.children[0].children[0].children[0].textContent, 'new.ifc');
     findButton(tree).click();
     assert.deepEqual(selected.at(-1), [1, 11]);
+    button.click();
+    timeline.getBoundingClientRect = () => ({ right: 520, top: 160 });
+    context.window.innerWidth = 750;
+    button.click();
+    assert.equal(panel.style.left, '540px');
+    assert.equal(panel.style.top, '160px');
+    assert.equal(panel.style.maxWidth, '190px');
+    button.click();
+    context.window.innerWidth = 650;
+    button.click();
+    assert.equal(panel.style.left, undefined);
+    assert.equal(panel.style.maxWidth, undefined);
+    button.click();
+    timeline.style.display = 'none';
+    button.click();
+    assert.equal(panel.style.left, undefined);
 });
