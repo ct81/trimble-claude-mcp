@@ -1721,13 +1721,14 @@
         <a id="ground-map-traffic" target="_blank" rel="noopener noreferrer">Traffic &#8599;</a>
         <span id="map-attribution"></span>
     </div>
-    <div id="ground-map-tools" class="ground-map-controls" role="group" aria-label="Ground map navigation" hidden>
+    <div id="ground-map-tools" class="ground-map-controls" role="group" aria-label="Ground map tools" hidden>
         <button type="button" class="toolbar-btn" id="ground-map-locate">My location</button>
         <div>
             <button type="button" id="ground-map-zoom-in" aria-label="Zoom in">+</button>
             <button type="button" id="ground-map-zoom-out" aria-label="Zoom out">&minus;</button>
         </div>
         <a id="ground-map-street-view" target="_blank" rel="noopener noreferrer">Street View &#8599;</a>
+        <button type="button" class="toolbar-btn" id="ground-map-vehicle" title="Simulate a vehicle on a demo loop around the view center">Start vehicle</button>
     </div>
     <dialog id="leaflet-map-dialog" aria-labelledby="leaflet-map-title">
         <div class="leaflet-map-heading">
@@ -2335,6 +2336,7 @@
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { IfcAPI } from 'web-ifc';
         import { createGroundMap, getMapLayer } from './transientmodelpulsesg-ground-map.js';
+        import { createVehicleSimulation } from './transientmodelpulsesg-vehicle.js';
 
         const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
@@ -2382,7 +2384,9 @@
 
         const gridHelper = new THREE.GridHelper(500, 250, 0x00f0ff, 0x1a2a44); gridHelper.position.y = -0.1; gridHelper.material.opacity = 0.2; gridHelper.material.transparent = true; scene.add(gridHelper);
 
-        const groundMap = createGroundMap(THREE, scene, gridHelper.position.y - 0.05, showToast);
+        const groundY = gridHelper.position.y - 0.05;
+        const groundMap = createGroundMap(THREE, scene, groundY, showToast);
+        const vehicleSimulation = createVehicleSimulation(THREE, scene, groundY);
 
         const selectionBoxes = new THREE.Group();
         scene.add(selectionBoxes);
@@ -2629,7 +2633,21 @@
         const groundMapTraffic = document.getElementById('ground-map-traffic');
         const groundMapStreetView = document.getElementById('ground-map-street-view');
         const groundMapLocate = document.getElementById('ground-map-locate');
+        const groundMapVehicle = document.getElementById('ground-map-vehicle');
         let locationRequest = 0;
+
+        function stopVehicleSimulation() {
+            vehicleSimulation.stop();
+            groundMapVehicle.textContent = 'Start vehicle';
+        }
+        groundMapVehicle.addEventListener('click', () => {
+            if (vehicleSimulation.running) {
+                stopVehicleSimulation();
+            } else {
+                vehicleSimulation.start(controls.target);
+                groundMapVehicle.textContent = 'Stop vehicle';
+            }
+        });
 
         function updateGroundMapLinks() {
             const links = groundMap.getLinks(controls.target);
@@ -2651,6 +2669,7 @@
             const [lat, lng, x, z] = ['map-lat', 'map-lng', 'map-x', 'map-z']
                 .map(id => document.getElementById(id).valueAsNumber);
             if (groundMap.show({ lat, lng, x, z }, groundMapLayer.value)) {
+                stopVehicleSimulation();
                 resetGroundMapLocation();
                 hideGroundMap.hidden = groundMapLayers.hidden = groundMapTools.hidden = false;
                 updateGroundMapAttribution();
@@ -2659,6 +2678,7 @@
         });
         hideGroundMap.addEventListener('click', () => {
             groundMap.hide();
+            stopVehicleSimulation();
             resetGroundMapLocation();
             hideGroundMap.hidden = groundMapLayers.hidden = groundMapTools.hidden = true;
         });
@@ -4483,13 +4503,14 @@
             reader.readAsArrayBuffer(file);
         });
 
-        function animate() {
+        function animate(time) {
             requestAnimationFrame(animate);
             controls.update();
             if (groundMap.update(camera)) updateGroundMapLinks();
+            vehicleSimulation.update(time);
             renderer.render(scene, camera);
         }
-        animate();
+        requestAnimationFrame(animate);
         window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
         setInterval(() => { const clockEl = document.getElementById('clock'); if (clockEl) { const now = new Date(); let hours = now.getHours(); const ampm = hours >= 12 ? 'PM' : 'AM'; hours = hours % 12 || 12; clockEl.textContent = `${hours}:${String(now.getMinutes()).padStart(2, '0')} ${ampm}`; } }, 1000);
     </script>
