@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>R2G-StrengthSync</title>
+    <title>Tekla EC2 Concrete Design (Multi-storey, 3D, Reports)</title>
     <style>
         :root {
             --grid-color: #e2e8f0; --grid-major: #cbd5e1; --bg-color: #f8fafc; --primary: #eab308;
@@ -156,6 +156,49 @@
         #add-menu { display: none; position: absolute; bottom: calc(100% + 14px); left: 50%; transform: translateX(-50%); background: #fff; border: 3px solid #333; border-radius: 12px; padding: 8px; gap: 6px; flex-wrap: wrap; justify-content: center; width: 250px; box-shadow: 4px 4px 0 rgba(0,0,0,0.2); z-index: 120; }
         #add-menu.open { display: flex; }
         #add-menu .tool-btn { flex: 1 1 100px; padding: 8px 6px; }
+
+        /* --- v4 --- */
+        .node.ghost { opacity: 0.28; pointer-events: none; z-index: 0; }
+        .node.ghost .port, .node.ghost .status-badge { display: none; }
+        .node.ghost .component-body { animation: none !important; }
+        .node.lp-dim { opacity: 0.22; }
+        .node.lp-up .component-body { outline: 4px solid #f59e0b; outline-offset: 2px; }
+        .node.lp-down .component-body { outline: 4px solid #7c3aed; outline-offset: 2px; }
+        .node.lp-sel .component-body { outline: 4px solid #2563eb; outline-offset: 2px; }
+        #level-bar { position: absolute; top: 20px; right: 10px; z-index: 100; display: flex; flex-direction: column; align-items: center; gap: 5px; width: 58px; }
+        .lvl-chip { width: 52px; padding: 7px 0; border: 2px solid #333; border-radius: 8px; background: #fff; font-weight: bold; font-size: 12px; box-shadow: 2px 2px 0 #333; cursor: pointer; }
+        .lvl-chip.on { background: #3b82f6; color: #fff; border-color: #1e3a8a; }
+        .lvl-chip.sm { padding: 4px 0; font-size: 11px; }
+        .lvl-row { display: flex; gap: 4px; }
+        .lvl-row .lvl-chip { width: 24px; }
+        .lvl-h { font-size: 10px; font-weight: bold; text-align: center; background: #fff; border: 2px solid #333; border-radius: 8px; padding: 3px; width: 52px; }
+        .lvl-h input { width: 46px; font-size: 11px; padding: 2px; border: 1px solid #cbd5e1; border-radius: 4px; text-align: right; font-family: monospace; }
+        #ctl3d { position: absolute; bottom: 175px; left: 50%; transform: translateX(-50%); z-index: 60; display: none; background: #fff; border: 2px solid #333; border-radius: 10px; padding: 6px 8px; box-shadow: 2px 2px 0 #333; width: 94%; max-width: 560px; text-align: center; }
+        #ctl3d .hint { font-size: 10px; font-weight: bold; margin-bottom: 4px; }
+        #ctl3d button { margin: 2px; border: 2px solid #333; border-radius: 6px; background: #f1f5f9; font-weight: bold; font-size: 10.5px; padding: 4px 7px; cursor: pointer; }
+        #ctl3d button.on { background: #8b5cf6; color: #fff; border-color: #4c1d95; }
+        #file-wrap { position: relative; }
+        #file-menu { display: none; position: absolute; bottom: calc(100% + 14px); left: 50%; transform: translateX(-50%); background: #fff; border: 3px solid #333; border-radius: 12px; padding: 8px; flex-direction: column; gap: 6px; width: 230px; box-shadow: 4px 4px 0 rgba(0,0,0,0.2); z-index: 120; }
+        #file-menu.open { display: flex; }
+        #file-menu .tool-btn { text-align: left; }
+        .modal-content.big { max-width: 560px; max-height: 88vh; overflow-y: auto; }
+        .modal-content.big .small, .small { font-size: 11px; color: #475569; }
+        .btnrow { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+        .btnrow.col { flex-direction: column; }
+        .btnrow button { padding: 8px 10px; border: 2px solid #333; border-radius: 8px; background: #fff; font-weight: bold; font-size: 12px; box-shadow: 2px 2px 0 #333; cursor: pointer; }
+        .btnrow button.go { background: #10b981; color: #fff; border-color: #047857; }
+        .btnrow button:disabled { opacity: 0.4; pointer-events: none; }
+        .slot { border: 2px solid #cbd5e1; border-radius: 8px; padding: 8px; margin-bottom: 8px; background: #f8fafc; }
+        .chk { display: block; font-size: 13px; margin: 6px 0; }
+        table.cmp { border-collapse: collapse; width: 100%; font-size: 12px; margin: 6px 0; }
+        table.cmp th, table.cmp td { border: 1px solid #cbd5e1; padding: 4px 6px; text-align: left; }
+        table.cmp th { background: #e2e8f0; }
+        table.cmp td.good { color: #047857; font-weight: bold; } table.cmp td.bad { color: #b91c1c; font-weight: bold; }
+        .scroll { max-height: 280px; overflow: auto; }
+        .min-x { position: absolute; top: 10px; right: 48px; width: 30px; height: 30px; background: #fff; border: 2px solid #333; border-radius: 50%; font-size: 15px; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 2px 2px 0 #333; z-index: 10; }
+        #properties-panel.min > *:not(h4):not(.close-x):not(.min-x):not(.keep-min) { display: none !important; }
+        #properties-panel.min { max-height: 45vh; }
+        .alert-box.lp { background: #faf5ff; border: 1px solid #7c3aed; color: #4c1d95; }
     </style>
 </head>
 <body>
@@ -175,6 +218,7 @@
     <!-- Properties Panel -->
     <div id="properties-panel">
         <div class="close-x" onclick="closeProperties()">×</div>
+        <div class="min-x" id="min-x" onclick="togglePanelMin()" title="Collapse so you can see the model">▾</div>
         <h4 id="panel-title" style="margin: 0 0 10px 0; border-bottom: 2px solid #333; padding-bottom: 5px; padding-right: 25px;">Element Report</h4>
         
         <div class="section-title">1. Tekla Model Data</div>
@@ -192,11 +236,12 @@
         <div id="geo-box" class="alert-box warn" style="display:none;"></div>
         <div id="loadpath-box" class="alert-box fail" style="display:none;"></div>
         <div id="note-box" class="alert-box info" style="display:none;"></div>
+        <div id="lp-box" class="alert-box lp keep-min" style="display:none;"></div>
 
         <div class="section-title">4. EC2 Design Checks <span id="gov-tag"></span></div>
         <div id="checks"></div>
 
-        <div class="prop-row" style="margin-top: 15px; border-top: 1px solid #ccc; padding-top: 10px; font-size: 14px;">
+        <div class="prop-row keep-min" style="margin-top: 15px; border-top: 1px solid #ccc; padding-top: 10px; font-size: 14px;">
             <span class="prop-label">Overall Status:</span> <span class="prop-val" id="p-status" style="font-size: 12px; text-align:right;">-</span>
         </div>
 
@@ -210,9 +255,15 @@
         <div id="world"><svg id="wire-layer"></svg></div>
     </div>
     <canvas id="view3d"></canvas>
-    <div id="hint3d"><span>Drag: rotate · Pinch: zoom · Tap: select</span> <button id="lbl-btn" onclick="toggleLabels3D()">Labels: ON</button></div>
+    <div id="level-bar"></div>
+    <div id="ctl3d"><div class="hint">Drag: rotate · Pinch: zoom · Tap: select (shows its load path)</div>
+        <button id="lbl-btn" onclick="toggleLabels3D()">Labels: ON</button><button id="heat-btn" onclick="toggleHeat3D()">Heatmap: OFF</button><button id="fail-btn" onclick="toggleFail3D()">Failures only: OFF</button><button id="iso-btn" onclick="cycleLevel3D()">Level: All</button><button id="lp3-btn" onclick="toggleLoadPath()">Load path: ON</button></div>
+    <input type="file" id="file-input" accept=".json,application/json" style="display:none">
+    <div id="big-modal" class="modal-overlay" onclick="if(event.target===this)closeBig()"><div class="modal-content big"><div class="close-x" onclick="closeBig()">×</div><h3 id="big-title" class="modal-title"></h3><div id="big-body"></div></div></div>
 
     <div id="toolbar">
+        <button class="tool-btn" id="undo-btn" onclick="undo()" title="Undo" disabled>↶</button>
+        <button class="tool-btn" id="redo-btn" onclick="redo()" title="Redo" disabled>↷</button>
         <button class="tool-btn primary" onclick="syncTeklaData()">Sync Tekla Data</button>
         <button class="tool-btn" id="view-btn" onclick="toggle3D()">3D View</button>
         <div id="add-wrap">
@@ -228,6 +279,16 @@
             </div>
         </div>
         <button class="tool-btn edit-tool" id="delete-btn" onclick="toggleDeleteMode()">Delete: OFF</button>
+        <button class="tool-btn" id="units-btn" onclick="toggleUnits()">Units: kN, mm</button>
+        <div id="file-wrap">
+            <button class="tool-btn" onclick="toggleFileMenu()">File ▾</button>
+            <div id="file-menu">
+                <button class="tool-btn" onclick="openExport()">Export report (PDF / Word)</button>
+                <button class="tool-btn" onclick="openScenarios(); document.getElementById('file-menu').classList.remove('open')">Scenarios A vs B…</button>
+                <button class="tool-btn" onclick="saveScenarioFile()">Save model file (.json)</button>
+                <button class="tool-btn" onclick="pickFile('current')">Load model file…</button>
+            </div>
+        </div>
         <button class="tool-btn success" onclick="pushToMCP()">Push UDAs to Tekla</button>
     </div>
 
@@ -438,7 +499,7 @@
             viewport.style.backgroundSize = `${gridSize}px ${gridSize}px`;
             redrawWires();
         }
-        
+
         function resetView() {
             if (is3D) { reset3D(); return; }
             // fit every element (plan extents in mm) into the screen
@@ -476,11 +537,7 @@
         function zoomIn() { if (is3D) { cam.dist = Math.max(2500, cam.dist / 1.2); requestDraw(); return; } scale = Math.min(scale * 1.2, 4); updateWorldTransform(); }
         function zoomOut() { if (is3D) { cam.dist = Math.min(60000, cam.dist * 1.2); requestDraw(); return; } scale = Math.max(scale / 1.2, 0.2); updateWorldTransform(); }
 
-        function showProperties(id) {
-            selectedNodeId = id;
-            document.getElementById('properties-panel').style.display = 'block';
-            updatePanelDisplay(id);
-        }
+
 
         function setBox(id, html) {
             const el = document.getElementById(id);
@@ -492,10 +549,7 @@
 
 
 
-        function closeProperties() {
-            document.getElementById('properties-panel').style.display = 'none';
-            selectedNodeId = null;
-        }
+
 
         // ==========================================
         // 7. COMPONENT BUILDER
@@ -546,6 +600,7 @@
                 d.x = Math.round(((startTransform.x + dx) / PIXELS_PER_METER) * 1000);
                 d.y = Math.round(((startTransform.y + dy) / PIXELS_PER_METER) * 1000);
                 applyNodeTransform(activeNode, d);
+                dragMoved = true;
                 evaluateStrength();
             }
             if (isDrawingWire && currentWire && startPort) {
@@ -567,7 +622,7 @@
             pointers.delete(e.pointerId);
             if (pointers.size < 2) lastPinchDist = 0;
             if (isPanning) isPanning = false;
-            if (activeNode) { activeNode.style.zIndex = ''; activeNode = null; evaluateStrength(); }
+            if (activeNode) { activeNode.style.zIndex = ''; activeNode = null; evaluateStrength(); if (dragMoved) { dragMoved = false; commit(); } }
             if (isDrawingWire) {
                 isDrawingWire = false;
                 const targetPort = document.elementFromPoint(e.clientX, e.clientY);
@@ -577,7 +632,7 @@
                     rejected = validateConnection(startPort, targetPort, sNode, eNode);
                     if (!rejected) {
                         connections.push({ element: currentWire, startPort, endPort: targetPort, startNode: sNode, endNode: eNode });
-                        evaluateStrength();
+                        evaluateStrength(); commit();
                     }
                 } else { rejected = ''; }
                 if (rejected !== null) { if (currentWire) currentWire.remove(); if (rejected) showModal("Connection not allowed", rejected); }
@@ -604,12 +659,12 @@
         world.addEventListener('pointerdown', (e) => {
             const wire = e.target.closest('.wire'), node = e.target.closest('.node'), port = e.target.closest('.port');
             if (isDeleteMode) {
-                if (wire) { wire.remove(); connections = connections.filter(c => c.element !== wire); evaluateStrength(); return; }
+                if (wire) { wire.remove(); connections = connections.filter(c => c.element !== wire); evaluateStrength(); commit(); return; }
                 if (node) {
                     connections.filter(c => c.startNode === node || c.endNode === node).forEach(c => c.element.remove());
                     connections = connections.filter(c => c.startNode !== node && c.endNode !== node);
                     delete elementsData[node.dataset.id];
-                    node.remove(); evaluateStrength(); closeProperties(); return;
+                    node.remove(); evaluateStrength(); closeProperties(); commit(); return;
                 }
             }
             if (node && !port) {
@@ -626,16 +681,7 @@
             }
         });
 
-        function redrawWires() {
-            connections.forEach(conn => {
-                const s = portCentreWorld(conn.startPort), e = portCentreWorld(conn.endPort);
-                conn.element.setAttribute('d', `M ${s.x} ${s.y} L ${e.x} ${e.y}`);
-                const failed = conn.startNode.classList.contains('failed') || conn.endNode.classList.contains('failed');
-                const warn = conn.startNode.classList.contains('geo-warn') || conn.endNode.classList.contains('geo-warn');
-                conn.element.classList.remove('normal', 'failed', 'warn');
-                conn.element.classList.add(failed ? 'failed' : (warn ? 'warn' : 'normal'));
-            });
-        }
+
 
         function toggleDeleteMode() {
             isDeleteMode = !isDeleteMode;
@@ -679,23 +725,8 @@
             requestAnimationFrame(() => { drawQueued = false; draw3D(); });
         }
 
-        function toggleLabels3D() {
-            labels3D = !labels3D;
-            document.getElementById('lbl-btn').innerText = labels3D ? 'Labels: ON' : 'Labels: OFF';
-            requestDraw();
-        }
-        function toggle3D() {
-            is3D = !is3D;
-            if (is3D && isDeleteMode) toggleDeleteMode();
-            cv.style.display = is3D ? 'block' : 'none';
-            viewport.style.visibility = is3D ? 'hidden' : 'visible';
-            document.getElementById('hint3d').style.display = is3D ? 'block' : 'none';
-            const btn = document.getElementById('view-btn');
-            btn.innerText = is3D ? '2D Plan' : '3D View';
-            btn.classList.toggle('active-view', is3D);
-            document.querySelectorAll('.edit-tool').forEach(b => b.disabled = is3D);
-            if (is3D) { resize3D(); reset3D(); } else { redrawWires(); }
-        }
+
+
 
         // ---- geometry ----
 
@@ -772,7 +803,7 @@
                 for (let i = faces3D.length - 1; i >= 0; i--) {
                     if (pointInPoly(e.clientX, e.clientY, faces3D[i].pts)) { hit = faces3D[i].box.id; break; }
                 }
-                if (hit) showProperties(hit); else closeProperties();
+                if (hit) { const hd = elementsData[hit]; if (hd && hd.lvl !== activeLevel) setActiveLevel(hd.lvl, true); showProperties(hit); } else closeProperties();
                 requestDraw();
             }
             if (pts3.size === 0) down3 = null;
@@ -790,46 +821,7 @@
         // SAMPLE MODEL v3 (all element types)
         // Plan coordinates in mm, x/y = element CENTRE, y grows downward on screen.
         // ==========================================
-        const sampleData = {
-            nodes: [
-                // --- frame columns ---
-                { id: "p1", type: "pillar", x: 1000, y: 1000, rot: 0, label: "Col 1", guid: "GUID-C1", b: 400, h: 400, f_ck: 40, f_yk: 500, As_prov: 1600, N_Ed: 1500 },
-                { id: "p2", type: "pillar", x: 4000, y: 1000, rot: 0, label: "Col 2", guid: "GUID-C2", b: 400, h: 400, f_ck: 40, f_yk: 500, As_prov: 1600, N_Ed: 1500 },
-                { id: "p3", type: "pillar", x: 4000, y: 4000, rot: 0, label: "Col 3", guid: "GUID-C3", b: 400, h: 400, f_ck: 40, f_yk: 500, As_prov: 1600, N_Ed: 1500 },
-                { id: "p4", type: "pillar", x: 1000, y: 4000, rot: 0, label: "Col 4", guid: "GUID-C4", b: 400, h: 400, f_ck: 40, f_yk: 500, As_prov: 1600, N_Ed: 1500 },
-                // --- frame beams ---
-                { id: "b1", type: "beam", x: 2500, y: 1000, rot: 0,  label: "B1 (Top)",    guid: "GUID-B1", b: 300, h: 500, As_prov: 1256, As_shear: 200, udl: 20, length: 1.5, f_ck: 30, f_yk: 500 },
-                { id: "b2", type: "beam", x: 4000, y: 2500, rot: 90, label: "B2 (Right)",  guid: "GUID-B2", b: 300, h: 500, As_prov: 1256, As_shear: 200, udl: 30, length: 1.5, f_ck: 30, f_yk: 500 },
-                { id: "b3", type: "beam", x: 2500, y: 4000, rot: 0,  label: "B3 (Bottom)", guid: "GUID-B3", b: 300, h: 500, As_prov: 1256, As_shear: 200, udl: 15, length: 1.5, f_ck: 30, f_yk: 500 },
-                { id: "b4", type: "beam", x: 1000, y: 2500, rot: 90, label: "B4 (Left)",   guid: "GUID-B4", b: 300, h: 500, As_prov: 1256, As_shear: 200, udl: 20, length: 1.5, f_ck: 30, f_yk: 500 },
-                // --- slab spanning the frame (ULS pressure incl. self-weight) ---
-                { id: "s1", type: "slab", x: 2500, y: 2500, rot: 0, label: "S1", guid: "GUID-S1", Lx: 3000, Ly: 3000, t: 200, f_ck: 30, f_yk: 500, As_prov: 393, q: 15 },
-                // --- foundations: pile cap under Col 1, pad footings under Cols 2-4 ---
-                { id: "f1", type: "footing", x: 1000, y: 1000, rot: 0, label: "F1 (cap)", guid: "GUID-F1", B: 2000, L: 2000, t: 800, f_ck: 30, f_yk: 500, As_prov: 2011, q_Rd: 350 },
-                { id: "f2", type: "footing", x: 4000, y: 1000, rot: 0, label: "F2", guid: "GUID-F2", B: 2600, L: 2600, t: 600, f_ck: 30, f_yk: 500, As_prov: 2011, q_Rd: 350 },
-                { id: "f3", type: "footing", x: 4000, y: 4000, rot: 0, label: "F3", guid: "GUID-F3", B: 2600, L: 2600, t: 600, f_ck: 30, f_yk: 500, As_prov: 2011, q_Rd: 350 },
-                { id: "f4", type: "footing", x: 1000, y: 4000, rot: 0, label: "F4", guid: "GUID-F4", B: 2600, L: 2600, t: 600, f_ck: 30, f_yk: 500, As_prov: 2011, q_Rd: 350 },
-                // --- piles under cap F1 ---
-                { id: "pl1", type: "pile", x: 300,  y: 300,  rot: 0, label: "Pile 1", guid: "GUID-PL1", D: 450, len: 6, f_ck: 35, f_yk: 500, As_prov: 1257, R_cd: 800 },
-                { id: "pl2", type: "pile", x: 1700, y: 300,  rot: 0, label: "Pile 2", guid: "GUID-PL2", D: 450, len: 6, f_ck: 35, f_yk: 500, As_prov: 1257, R_cd: 800 },
-                { id: "pl3", type: "pile", x: 300,  y: 1700, rot: 0, label: "Pile 3", guid: "GUID-PL3", D: 450, len: 6, f_ck: 35, f_yk: 500, As_prov: 1257, R_cd: 800 },
-                { id: "pl4", type: "pile", x: 1700, y: 1700, rot: 0, label: "Pile 4", guid: "GUID-PL4", D: 450, len: 6, f_ck: 35, f_yk: 500, As_prov: 1257, R_cd: 800 },
-                // --- load-bearing wall + precast cladding panel on a strip footing ---
-                { id: "w1",  type: "wall",    x: 6400, y: 2500, rot: 90, label: "W1",  guid: "GUID-W1",  Lw: 3000, t: 250, Hw: 3000, f_ck: 30, f_yk: 500, As_prov: 754, N_Ed: 450 },
-                { id: "pn1", type: "panel",   x: 7100, y: 2500, rot: 90, label: "PN1", guid: "GUID-PN1", Lp: 3000, t: 200, Hp: 2400, f_ck: 40, f_yk: 500, As_prov: 335, q_w: 1.5 },
-                { id: "f5",  type: "footing", x: 6400, y: 2500, rot: 90, label: "F5 (strip)", guid: "GUID-F5", B: 3400, L: 1800, t: 600, f_ck: 30, f_yk: 500, As_prov: 1005, q_Rd: 350 }
-            ],
-            connections: [
-                { from: "p1", to: "b1" }, { from: "b1", to: "p2" },
-                { from: "p2", to: "b2" }, { from: "b2", to: "p3" },
-                { from: "p3", to: "b3" }, { from: "b3", to: "p4" },
-                { from: "p4", to: "b4" }, { from: "b4", to: "p1" },
-                { from: "s1", to: "b1" }, { from: "s1", to: "b2" }, { from: "s1", to: "b3" }, { from: "s1", to: "b4" },
-                { from: "p1", to: "f1" }, { from: "p2", to: "f2" }, { from: "p3", to: "f3" }, { from: "p4", to: "f4" },
-                { from: "f1", to: "pl1" }, { from: "f1", to: "pl2" }, { from: "f1", to: "pl3" }, { from: "f1", to: "pl4" },
-                { from: "w1", to: "f5" }, { from: "pn1", to: "f5" }
-            ]
-        };
+        
 
         // ==========================================
         // ELEMENT CATALOGUE (fields shown in the panel, defaults for new elements, rules)
@@ -857,16 +849,16 @@
         // Which element types each port circle accepts
         const PORT_RULES = {
             beam:    { left: ['pillar'], right: ['pillar'], top: ['slab', 'panel'], bottom: ['slab', 'panel'] },
-            pillar:  { top: ['beam'], bottom: ['footing'] },
-            wall:    { top: ['slab'], bottom: ['footing'] },
-            panel:   { top: ['beam'], bottom: ['footing'] },
+            pillar:  { top: ['beam'] },
+            wall:    { top: ['slab'] },
+            panel:   { top: ['beam'] },
             slab:    { top: ['beam', 'wall'], bottom: ['beam', 'wall'], left: ['beam', 'wall'], right: ['beam', 'wall'] },
-            footing: { top: ['pile'], bottom: ['pillar', 'wall', 'panel'] },
+            footing: { top: ['pile'] },
             pile:    { top: ['footing'] }
         };
         const PORTS_OF = {
-            beam: ['left', 'right', 'top', 'bottom'], pillar: ['top', 'bottom'], wall: ['top', 'bottom'], panel: ['top', 'bottom'],
-            slab: ['top', 'bottom', 'left', 'right'], footing: ['top', 'bottom'], pile: ['top']
+            beam: ['left', 'right', 'top', 'bottom'], pillar: ['top'], wall: ['top'], panel: ['top'],
+            slab: ['top', 'bottom', 'left', 'right'], footing: ['top'], pile: ['top']
         };
 
         // ==========================================
@@ -1100,7 +1092,7 @@
             return out;
         }
         function getBeamSupports(beamId) {
-            let ids = linked(beamId, 'pillar').map(p => p.id);
+            const bm = elementsData[beamId]; let ids = linked(beamId, 'pillar').filter(p => !bm || p.lvl === bm.lvl).map(p => p.id);
             if (ids.length > 2) {
                 let best = [ids[0], ids[1]], bestD = -1;
                 for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
@@ -1137,6 +1129,316 @@
         // ==========================================
         // MASTER EVALUATION ENGINE
         // ==========================================
+
+
+        // ==========================================
+        // PROPERTIES PANEL (built per element type)
+        // ==========================================
+        
+
+
+
+
+
+
+        // ==========================================
+        // NODE BUILDER / CONNECTIONS
+        // ==========================================
+
+        const portSide = p => ['left', 'right', 'top', 'bottom'].find(c => p.classList.contains(c));
+
+        function pickPort(node, other, used) {
+            const t = node.dataset.type, ot = other.dataset.type;
+            const ports = Array.from(node.querySelectorAll('.port'));
+            const by = c => ports.find(p => p.classList.contains(c));
+            if (t === 'pillar') return ot === 'footing' ? by('bottom') : by('top');
+            if (t === 'footing') return ot === 'pile' ? by('top') : by('bottom');
+            if (t === 'wall' || t === 'panel') return ot === 'footing' ? by('bottom') : by('top');
+            if (t === 'pile') return by('top');
+            const od = elementsData[other.dataset.id], oc = { x: mmToPx(od.x), y: mmToPx(od.y) };
+            let cand = ports;
+            if (t === 'beam') cand = ports.filter(p => (ot === 'pillar' ? ['left', 'right'] : ['top', 'bottom']).includes(portSide(p)) && (ot !== 'pillar' || !used.has(p)));
+            let best = null, bd = Infinity;
+            cand.forEach(p => { const c = portCentreWorld(p), dist = Math.hypot(c.x - oc.x, c.y - oc.y); if (dist < bd) { bd = dist; best = p; } });
+            return best;
+        }
+
+
+
+
+
+        // Port rules: every port circle only accepts certain element types
+
+
+
+
+
+
+
+        // ==========================================
+        // 3D GEOMETRY FOR ALL ELEMENT TYPES
+        // ==========================================
+
+
+
+
+
+
+        // Faces of a box (rotated about the vertical axis) or an 10-sided prism (piles)
+
+
+
+
+        let dragMoved = false;
+        // ==========================================
+        // v4: LEVELS (multi-storey) + SAMPLE MODEL
+        // Level 0 = foundation (footings, piles). Level k >= 1 = storey k:
+        // its columns / walls / panels stand on the level below, its beams & slab form floor k.
+        // ==========================================
+        let levels = [{ name: 'Foundation', h: 0 }, { name: 'Level 1', h: 3000 }, { name: 'Level 2', h: 3000 }];
+        let activeLevel = 1;
+        const levelH = k => (levels[k] ? levels[k].h : 3000);
+        const elevBase = k => { let z = 0; for (let i = 1; i < k; i++) z += levelH(i); return z; };   // bottom of storey k
+        const elevTop = k => elevBase(k) + levelH(k);
+        const lvlName = k => (k === 0 ? 'Foundation' : `Level ${k}`);
+        const lvlShort = k => (k === 0 ? 'Fnd' : 'L' + k);
+        const defaultLvl = t => ((t === 'footing' || t === 'pile') ? 0 : 1);
+
+        const sampleData = (() => {
+            const N = (id, type, x, y, rot, label, extra) => Object.assign({ id, type, x, y, rot, label, guid: 'GUID-' + id.toUpperCase(), lvl: defaultLvl(type) }, extra);
+            const col = (id, x, y, label) => N(id, 'pillar', x, y, 0, label, { b: 400, h: 400, f_ck: 40, f_yk: 500, As_prov: 1600, N_Ed: 600 });
+            const beam = (id, x, y, rot, label, udl) => N(id, 'beam', x, y, rot, label, { b: 300, h: 500, As_prov: 1256, As_shear: 200, udl, length: 1.5, f_ck: 30, f_yk: 500 });
+            const pile = (id, x, y, label) => N(id, 'pile', x, y, 0, label, { D: 450, len: 6, f_ck: 35, f_yk: 500, As_prov: 1257, R_cd: 800 });
+            const pad = (id, x, y, label) => N(id, 'footing', x, y, 0, label, { B: 2600, L: 2600, t: 600, f_ck: 30, f_yk: 500, As_prov: 2011, q_Rd: 350 });
+            const nodes = [
+                col('p1', 1000, 1000, 'Col 1'), col('p2', 4000, 1000, 'Col 2'), col('p3', 4000, 4000, 'Col 3'), col('p4', 1000, 4000, 'Col 4'),
+                beam('b1', 2500, 1000, 0, 'B1 (Top)', 20), beam('b2', 4000, 2500, 90, 'B2 (Right)', 30), beam('b3', 2500, 4000, 0, 'B3 (Bottom)', 15), beam('b4', 1000, 2500, 90, 'B4 (Left)', 20),
+                N('s1', 'slab', 2500, 2500, 0, 'S1', { Lx: 3000, Ly: 3000, t: 200, f_ck: 30, f_yk: 500, As_prov: 393, q: 15 }),
+                N('f1', 'footing', 1000, 1000, 0, 'F1 (cap)', { B: 2000, L: 2000, t: 800, f_ck: 30, f_yk: 500, As_prov: 2011, q_Rd: 350 }),
+                pad('f2', 4000, 1000, 'F2'), pad('f3', 4000, 4000, 'F3'), pad('f4', 1000, 4000, 'F4'),
+                pile('pl1', 300, 300, 'Pile 1'), pile('pl2', 1700, 300, 'Pile 2'), pile('pl3', 300, 1700, 'Pile 3'), pile('pl4', 1700, 1700, 'Pile 4'),
+                N('w1', 'wall', 6400, 2500, 90, 'W1', { Lw: 3000, t: 250, Hw: 3000, f_ck: 30, f_yk: 500, As_prov: 754, N_Ed: 450 }),
+                N('pn1', 'panel', 7100, 2500, 90, 'PN1', { Lp: 3000, t: 200, Hp: 2400, f_ck: 40, f_yk: 500, As_prov: 335, q_w: 1.5 }),
+                N('f5', 'footing', 6400, 2500, 90, 'F5 (strip)', { B: 3400, L: 1800, t: 600, f_ck: 30, f_yk: 500, As_prov: 1005, q_Rd: 350 })
+            ];
+            const conns = [
+                { from: 'p1', to: 'b1' }, { from: 'b1', to: 'p2' }, { from: 'p2', to: 'b2' }, { from: 'b2', to: 'p3' },
+                { from: 'p3', to: 'b3' }, { from: 'b3', to: 'p4' }, { from: 'p4', to: 'b4' }, { from: 'b4', to: 'p1' },
+                { from: 's1', to: 'b1' }, { from: 's1', to: 'b2' }, { from: 's1', to: 'b3' }, { from: 's1', to: 'b4' },
+                { from: 'f1', to: 'pl1' }, { from: 'f1', to: 'pl2' }, { from: 'f1', to: 'pl3' }, { from: 'f1', to: 'pl4' }
+            ];
+            // Level 2 = copy of the Level 1 frame (columns, beams, slab)
+            const map = {};
+            nodes.filter(d => d.lvl === 1 && ['pillar', 'beam', 'slab'].includes(d.type)).slice().forEach(d => {
+                const n = JSON.parse(JSON.stringify(d));
+                n.id = d.id + '_2'; n.lvl = 2; n.label = d.label + ' L2'; n.guid = d.guid + '-L2';
+                map[d.id] = n.id; nodes.push(n);
+            });
+            conns.slice().forEach(c => { if (map[c.from] && map[c.to]) conns.push({ from: map[c.from], to: map[c.to] }); });
+            return { nodes, connections: conns };
+        })();
+
+        // ==========================================
+        // UNITS (SI: kN, mm  |  Imperial: kip, in)  - calculations stay SI internally
+        // ==========================================
+        let unitSys = 'SI';
+        const UT = {
+            'mm': { f: 1 / 25.4, u: 'in', d: 2 }, 'm': { f: 3.28084, u: 'ft', d: 2 }, 'MPa': { f: 0.145038, u: 'ksi', d: 3 },
+            'kN': { f: 0.224809, u: 'kip', d: 1 }, 'kN/m': { f: 0.0685218, u: 'kip/ft', d: 2 }, 'kPa': { f: 20.8854, u: 'psf', d: 0 },
+            'mm²': { f: 0.00155, u: 'in²', d: 2 }, 'mm²/m': { f: 0.000472, u: 'in²/ft', d: 3 },
+            'kNm': { f: 0.737562, u: 'kip-ft', d: 1 }, 'kNm/m': { f: 0.224809, u: 'kip-ft/ft', d: 1 }, 'm³': { f: 35.3147, u: 'ft³', d: 1 }
+        };
+        const cu = u => (unitSys === 'SI' || !UT[u] ? u : UT[u].u);
+        const toDisp = (v, u) => (unitSys === 'SI' || !UT[u] ? v : v * UT[u].f);
+        const fromDisp = (v, u) => (unitSys === 'SI' || !UT[u] ? v : v / UT[u].f);
+        const fmtField = (v, u) => String(+toDisp(v, u).toPrecision(5));
+        const dispVal = (v, u) => { const x = toDisp(v, u); return (unitSys === 'SI' || !UT[u]) ? String(+x.toPrecision(5)) : x.toFixed(UT[u].d); };
+        const UNIT_RE = /(-?\d+(?:\.\d+)?)\s*(mm²\/m|mm²|kNm\/m|kNm|kN\/m|kN|MPa|kPa|mm|m³|m)(?![A-Za-z²])/g;
+        const convText = str => (unitSys === 'SI' || typeof str !== 'string') ? str : str.replace(UNIT_RE, (m, n, u) => `${(+n * UT[u].f).toFixed(UT[u].d)} ${UT[u].u}`);
+        function toggleUnits() {
+            unitSys = unitSys === 'SI' ? 'IMP' : 'SI';
+            document.getElementById('units-btn').innerText = unitSys === 'SI' ? 'Units: kN, mm' : 'Units: kip, in';
+            panelBuiltFor = null;
+            evaluateStrength(); renderLevelBar();
+        }
+        const dimsText = arr => arr.map(v => dispVal(v, 'mm')).join(' × ') + ' ' + cu('mm');
+
+        // ==========================================
+        // HISTORY (undo / redo) + MODEL SNAPSHOTS
+        // ==========================================
+        const PERSIST = (() => { const s = new Set(['id', 'type', 'x', 'y', 'rot', 'label', 'guid', 'lvl', 'As_shear']); Object.values(FIELDS).forEach(f => f.forEach(r => s.add(r[0]))); return Array.from(s); })();
+        function getModel() {
+            return {
+                version: 4, levels: levels.map(l => ({ ...l })), active: activeLevel,
+                nodes: Object.values(elementsData).map(d => { const o = {}; PERSIST.forEach(k => { if (d[k] !== undefined) o[k] = d[k]; }); return o; }),
+                conns: connections.map(c => ({ a: c.startNode.dataset.id, pa: portSide(c.startPort), b: c.endNode.dataset.id, pb: portSide(c.endPort) }))
+            };
+        }
+        function loadModel(m) {
+            world.querySelectorAll('.node').forEach(n => n.remove());
+            wireLayer.innerHTML = ''; connections = []; elementsData = {};
+            levels = (m.levels && m.levels.length ? m.levels : [{ name: 'Foundation', h: 0 }, { name: 'Level 1', h: 3000 }]).map(l => ({ ...l }));
+            const nodeEls = {};
+            (m.nodes || []).forEach(d => {
+                if (!FIELDS[d.type]) return;
+                const nd = JSON.parse(JSON.stringify(d)); nd.rot = nd.rot || 0;
+                if (nd.lvl === undefined) nd.lvl = defaultLvl(nd.type);
+                while (levels.length <= nd.lvl) levels.push({ name: 'Level ' + levels.length, h: 3000 });
+                elementsData[nd.id] = nd; nodeEls[nd.id] = buildNode(nd); applyPlanSize(nodeEls[nd.id], nd);
+            });
+            (m.conns || []).forEach(c => {
+                const a = nodeEls[c.a], b = nodeEls[c.b];
+                if (!a || !b) return;
+                const pa = a.querySelector('.port.' + c.pa), pb = b.querySelector('.port.' + c.pb);
+                if (pa && pb) createWire(pa, pb, a, b);
+            });
+            activeLevel = Math.max(0, Math.min(m.active !== undefined ? m.active : 1, levels.length - 1));
+            selectedNodeId = null; panelBuiltFor = null;
+            document.getElementById('properties-panel').style.display = 'none';
+            evaluateStrength(); renderLevelBar(); applyLevelVisibility();
+        }
+        let hist = [], hIdx = -1, restoring = false;
+        function updateUndoButtons() {
+            const u = document.getElementById('undo-btn'), r = document.getElementById('redo-btn');
+            if (u) u.disabled = hIdx <= 0;
+            if (r) r.disabled = hIdx >= hist.length - 1;
+        }
+        function commit() {
+            if (restoring) return;
+            const snap = JSON.stringify(getModel());
+            if (hist[hIdx] === snap) return;
+            hist = hist.slice(0, hIdx + 1); hist.push(snap);
+            if (hist.length > 60) hist.shift();
+            hIdx = hist.length - 1; updateUndoButtons();
+        }
+        function resetHistory() { hist = []; hIdx = -1; commit(); }
+        function restoreSnap(i) { restoring = true; loadModel(JSON.parse(hist[i])); restoring = false; updateUndoButtons(); }
+        function undo() { if (hIdx > 0) { hIdx--; restoreSnap(hIdx); } }
+        function redo() { if (hIdx < hist.length - 1) { hIdx++; restoreSnap(hIdx); } }
+        window.addEventListener('keydown', e => {
+            if (!(e.ctrlKey || e.metaKey) || /INPUT|TEXTAREA/.test((e.target || {}).tagName || '')) return;
+            if (e.key === 'z' || e.key === 'Z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+            else if (e.key === 'y' || e.key === 'Y') { e.preventDefault(); redo(); }
+        });
+
+        // ==========================================
+        // LEVEL BAR / VISIBILITY / LOAD-PATH HIGHLIGHT
+        // ==========================================
+        let lpMode = true;
+        function renderLevelBar() {
+            const bar = document.getElementById('level-bar');
+            let h = '';
+            for (let k = levels.length - 1; k >= 0; k--) h += `<button class="lvl-chip${k === activeLevel ? ' on' : ''}" onclick="setActiveLevel(${k})">${lvlShort(k)}</button>`;
+            h += `<div class="lvl-row"><button class="lvl-chip sm" onclick="addLevel()" title="Add level (copies the top level)">＋</button><button class="lvl-chip sm" onclick="removeTopLevel()" title="Remove top level">－</button></div>`;
+            if (activeLevel >= 1) h += `<div class="lvl-h">H<input id="lvl-h" type="number" step="any" value="${fmtField(levelH(activeLevel), 'mm')}" onchange="setLevelHeight(this.value)"><span>${cu('mm')}</span></div>`;
+            h += `<button class="lvl-chip sm${lpMode ? ' on' : ''}" onclick="toggleLoadPath()" title="Highlight load path of the selected member">Path</button>`;
+            bar.innerHTML = h;
+        }
+        function setLevelHeight(v) {
+            const n = fromDisp(parseFloat(v), 'mm');
+            if (Number.isFinite(n) && n >= 500 && activeLevel >= 1) { levels[activeLevel].h = n; evaluateStrength(); commit(); }
+            renderLevelBar();
+        }
+        function setActiveLevel(k, silent) {
+            activeLevel = Math.max(0, Math.min(k, levels.length - 1));
+            if (!silent) { selectedNodeId = null; document.getElementById('properties-panel').style.display = 'none'; }
+            renderLevelBar(); applyLevelVisibility(); requestDraw();
+        }
+        function applyLevelVisibility() {
+            const ghostLvl = activeLevel === 0 ? 1 : activeLevel - 1;
+            document.querySelectorAll('.node').forEach(n => {
+                const d = elementsData[n.dataset.id]; if (!d) return;
+                const on = d.lvl === activeLevel, ghost = !on && d.lvl === ghostLvl && ['pillar', 'wall', 'panel'].includes(d.type);
+                n.style.display = (on || ghost) ? '' : 'none';
+                n.classList.toggle('ghost', ghost);
+            });
+            redrawWires(); applyLoadPathClasses();
+        }
+        function addLevel() {
+            const top = levels.length - 1, ids = Object.values(elementsData).filter(d => d.lvl === top && top >= 1 && ['pillar', 'beam', 'slab', 'wall', 'panel'].includes(d.type)).map(d => d.id);
+            const newLvl = levels.length, map = {};
+            levels.push({ name: 'Level ' + newLvl, h: top >= 1 ? levelH(top) : 3000 });
+            ids.forEach(id => {
+                const d = JSON.parse(JSON.stringify(elementsData[id]));
+                d.id = id.replace(/_L\d+$/, '') + '_L' + newLvl + '_' + Math.floor(Math.random() * 1000); d.lvl = newLvl;
+                d.label = d.label.replace(/ L\d+$/, '') + ' L' + newLvl; d.guid = 'NEW-' + d.type.toUpperCase() + '-' + Math.floor(Math.random() * 1e6);
+                map[id] = d.id; elementsData[d.id] = d; applyPlanSize(buildNode(d), d);
+            });
+            connections.slice().forEach(c => {
+                const a = map[c.startNode.dataset.id], b = map[c.endNode.dataset.id];
+                if (!a || !b) return;
+                const na = document.querySelector(`.node[data-id="${a}"]`), nb = document.querySelector(`.node[data-id="${b}"]`);
+                createWire(na.querySelector('.port.' + portSide(c.startPort)), nb.querySelector('.port.' + portSide(c.endPort)), na, nb);
+            });
+            setActiveLevel(newLvl); evaluateStrength(); commit();
+        }
+        function removeTopLevel() {
+            if (levels.length <= 2) { showModal('Cannot remove', 'Keep at least the Foundation and Level 1.'); return; }
+            const top = levels.length - 1;
+            Object.values(elementsData).filter(d => d.lvl === top).forEach(d => removeElement(d.id));
+            levels.pop(); setActiveLevel(Math.min(activeLevel, levels.length - 1)); evaluateStrength(); commit();
+        }
+        function removeElement(id) {
+            const node = document.querySelector(`.node[data-id="${id}"]`);
+            if (node) {
+                connections.filter(c => c.startNode === node || c.endNode === node).forEach(c => c.element.remove());
+                connections = connections.filter(c => c.startNode !== node && c.endNode !== node);
+                node.remove();
+            }
+            delete elementsData[id];
+        }
+
+        function lpSets(id) {
+            const up = new Set(), down = new Set();
+            const walk = (i, key, set) => { const d = elementsData[i]; if (!d) return; (d[key] || []).forEach(n => { if (!set.has(n) && n !== id) { set.add(n); walk(n, key, set); } }); };
+            walk(id, 'srcIds', up); walk(id, 'dstIds', down);
+            return { up, down };
+        }
+        function applyLoadPathClasses() {
+            const sets = (lpMode && selectedNodeId && elementsData[selectedNodeId]) ? lpSets(selectedNodeId) : null;
+            document.querySelectorAll('.node').forEach(n => {
+                const id = n.dataset.id;
+                n.classList.remove('lp-up', 'lp-down', 'lp-sel', 'lp-dim');
+                if (!sets) return;
+                if (id === selectedNodeId) n.classList.add('lp-sel');
+                else if (sets.up.has(id)) n.classList.add('lp-up');
+                else if (sets.down.has(id)) n.classList.add('lp-down');
+                else n.classList.add('lp-dim');
+            });
+        }
+        function toggleLoadPath() { lpMode = !lpMode; renderLevelBar(); applyLoadPathClasses(); update3DButtons(); requestDraw(); }
+        function refreshHighlights() { applyLoadPathClasses(); requestDraw(); }
+        function togglePanelMin() {
+            const pn = document.getElementById('properties-panel'); pn.classList.toggle('min');
+            document.getElementById('min-x').innerText = pn.classList.contains('min') ? '▴' : '▾';
+        }
+        function showProperties(id) {
+            selectedNodeId = id;
+            const pn = document.getElementById('properties-panel');
+            pn.style.display = 'block'; pn.classList.toggle('min', is3D);
+            document.getElementById('min-x').innerText = is3D ? '▴' : '▾';
+            updatePanelDisplay(id); refreshHighlights();
+        }
+        function closeProperties() {
+            document.getElementById('properties-panel').style.display = 'none';
+            selectedNodeId = null; refreshHighlights();
+        }
+        function redrawWires() {
+            connections.forEach(conn => {
+                const a = elementsData[conn.startNode.dataset.id], b = elementsData[conn.endNode.dataset.id];
+                if (!a || !b || a.lvl !== activeLevel || b.lvl !== activeLevel) { conn.element.style.display = 'none'; return; }
+                conn.element.style.display = '';
+                const s = portCentreWorld(conn.startPort), e = portCentreWorld(conn.endPort);
+                conn.element.setAttribute('d', `M ${s.x} ${s.y} L ${e.x} ${e.y}`);
+                const failed = conn.startNode.classList.contains('failed') || conn.endNode.classList.contains('failed');
+                const warn = conn.startNode.classList.contains('geo-warn') || conn.endNode.classList.contains('geo-warn');
+                conn.element.classList.remove('normal', 'failed', 'warn');
+                conn.element.classList.add(failed ? 'failed' : (warn ? 'warn' : 'normal'));
+            });
+        }
+        // ==========================================
+        // MASTER EVALUATION ENGINE (multi-storey, top-down load accumulation)
+        // ==========================================
         function evaluateStrength() {
             const gov = { util: 0, name: '-', check: '-' };
             let unsupported = 0, geoIssues = 0;
@@ -1157,12 +1459,14 @@
             };
 
             all.forEach(d => {
+                if (d.lvl === undefined) d.lvl = defaultLvl(d.type);
                 d.geoWarnings = []; d.notes = []; d.failedBeams = []; d.supportedBeams = [];
-                d.beamLoad = 0; d.beamMoment = 0; d.slabLoad = 0; d.lineLoad = 0; d.ui = {};
+                d.beamLoad = 0; d.beamMoment = 0; d.slabLoad = 0; d.lineLoad = 0;
+                d.srcIds = []; d.dstIds = []; d.aboveId = null; d.footingId = null; d.ui = {};
                 applyPlanSize(nodeOf[d.id], d);
             });
 
-            // ---------- PASS 1a: beam topology & geometry ----------
+            // ---------- PASS 1a: beam topology & geometry (same level only) ----------
             of('beam').forEach(d => {
                 const supIds = getBeamSupports(d.id);
                 let supportType = 'Unstable', span = 0;
@@ -1189,7 +1493,7 @@
 
             // ---------- PASS 1b: slabs -> line loads on supporting beams / walls ----------
             of('slab').forEach(s => {
-                const sup = linked(s.id).filter(o => (o.type === 'beam' && o.supportType !== 'Unstable') || o.type === 'wall');
+                const sup = linked(s.id).filter(o => o.lvl === s.lvl && ((o.type === 'beam' && o.supportType !== 'Unstable') || o.type === 'wall'));
                 s.supportIds = sup.map(o => o.id); s.supportLabels = sup.map(o => o.label);
                 const lx = Math.min(s.Lx, s.Ly) / 1000, ly = Math.max(s.Lx, s.Ly) / 1000;
                 s.lx = lx; s.ly = ly;
@@ -1197,8 +1501,8 @@
                 s.ui = { support: sup.length < 2 ? 'Unstable' : `${s.action} (${sup.length} supports)`, spanLabel: 'Short span', span: `${lx.toFixed(2)} m` };
                 if (sup.length < 2) return;
                 const totalLen = sup.reduce((a, o) => a + (o.type === 'beam' ? o.span : o.Lw / 1000), 0);
-                const w = (s.q * (s.Lx / 1000) * (s.Ly / 1000)) / Math.max(totalLen, 0.1);   // kN/m on every support (equilibrium)
-                sup.forEach(o => { if (o.type === 'beam') o.slabLoad += w; else o.lineLoad += w; });
+                const w = (s.q * (s.Lx / 1000) * (s.Ly / 1000)) / Math.max(totalLen, 0.1);
+                sup.forEach(o => { if (o.type === 'beam') o.slabLoad += w; else o.lineLoad += w; o.srcIds.push(s.id); });
                 s.lineOut = w;
                 if (ly / lx <= 2 && sup.length < 4) s.notes.push(`Only ${sup.length} supports connected: designed as one-way spanning the short side (${lx.toFixed(2)} m).`);
                 const cx = sup.reduce((a, o) => a + o.x, 0) / sup.length, cy = sup.reduce((a, o) => a + o.y, 0) / sup.length;
@@ -1228,7 +1532,7 @@
                     const col = elementsData[id];
                     col.beamLoad += V_Ed;
                     if (d.supportType === 'Cantilever') col.beamMoment += M_Ed;
-                    col.supportedBeams.push(d.label);
+                    col.supportedBeams.push(d.label); col.srcIds.push(d.id);
                     if (res.maxUtil > 100) col.failedBeams.push(d.label);
                 });
                 if (d.slabLoad > 0) d.notes.push(`Carries ${f1(d.slabLoad)} kN/m from connected slab(s) on top of its own UDL.`);
@@ -1241,35 +1545,73 @@
                 track(d, res);
             });
 
-            // ---------- PASS 2a: walls ----------
-            of('wall').forEach(d => {
-                const sw = 1.35 * 25 * (d.t / 1000) * (d.Hw / 1000);
-                const n_total = (d.N_Ed || 0) + d.lineLoad + sw;
-                const res = calculateWallDesign(d, n_total);
-                res.trace.unshift(`n_Ed = above ${f1(d.N_Ed || 0)} + slab line load ${f1(d.lineLoad)} + self-weight ${f1(sw)} = ${f1(n_total)} kN/m`);
-                if (!linked(d.id, 'footing').length) d.notes.push('Wall is not connected to a footing - the load path ends here.');
-                d.ui = { support: linked(d.id, 'footing').map(f => f.label).join(', ') || 'No footing', spanLabel: 'Height / l0', span: `${(d.Hw / 1000).toFixed(2)} m` };
-                finish(d, nodeOf[d.id], res, `${Math.round(res.maxUtil)}% ${res.govKey}`);
+            // ---------- Vertical links: column-on-column, wall-on-wall, element-on-footing ----------
+            const pillars = of('pillar'), walls = of('wall');
+            pillars.forEach(c => {
+                if (c.lvl < 2) return;
+                const tol = Math.max(250, 0.5 * Math.max(c.b, c.h));
+                const below = pillars.find(o => o.lvl === c.lvl - 1 && Math.hypot(o.x - c.x, o.y - c.y) <= tol);
+                if (below) { below.aboveId = c.id; below.srcIds.push(c.id); c.belowId = below.id; }
+                else c.geoWarnings.push(`No column directly below on ${lvlName(c.lvl - 1)} - the load path is interrupted.`);
+            });
+            walls.forEach(c => {
+                if (c.lvl < 2) return;
+                const tol = Math.max(300, 0.25 * c.Lw);
+                const below = walls.find(o => o.lvl === c.lvl - 1 && Math.hypot(o.x - c.x, o.y - c.y) <= tol && angleDiff180(o.rot || 0, c.rot || 0) <= 10);
+                if (below) { below.aboveId = c.id; below.srcIds.push(c.id); c.belowId = below.id; }
+                else c.geoWarnings.push(`No wall directly below on ${lvlName(c.lvl - 1)} - the load path is interrupted.`);
+            });
+            const insideF = (f, x, y) => {
+                const th = ((f.rot || 0) * Math.PI) / 180, cs = Math.cos(th), sn = Math.sin(th);
+                const lx = (x - f.x) * cs + (y - f.y) * sn, ly = -(x - f.x) * sn + (y - f.y) * cs;
+                return Math.abs(lx) <= f.B / 2 && Math.abs(ly) <= f.L / 2;
+            };
+            of('footing').forEach(f => {
+                all.filter(o => o.lvl === 1 && ['pillar', 'wall', 'panel'].includes(o.type) && !o.footingId && insideF(f, o.x, o.y)).forEach(o => { o.footingId = f.id; });
             });
 
-            // ---------- PASS 2b: columns (load = above + beam reactions) ----------
-            of('pillar').forEach(d => {
-                const N_total = (d.N_Ed || 0) + d.beamLoad;
-                const res = calculateColumnDesign(d.b, d.h, d.As_prov, d.f_ck, d.f_yk || 500, N_total, d.beamMoment);
-                res.checks[0].rows.unshift(['N from above / beams', `${f1(d.N_Ed || 0)} + ${f1(d.beamLoad)} kN`]);
-                res.N_total = N_total; res.N_applied = d.N_Ed || 0; res.N_beams = d.beamLoad;
-                if (!linked(d.id, 'footing').length) d.notes.push('Column is not connected to a footing - the load path ends here.');
-                d.ui = { support: linked(d.id, 'footing').map(f => f.label).join(', ') || 'No footing', spanLabel: 'Height', span: `${(STOREY_H / 1000).toFixed(2)} m` };
-                finish(d, nodeOf[d.id], res, `${Math.round(res.maxUtil)}%`);
-            });
+            // ---------- PASS 2: walls & columns, TOP LEVEL FIRST so loads accumulate downward ----------
+            const maxL = Math.max(1, ...all.map(d => d.lvl));
+            const supportText = d => d.belowId ? elementsData[d.belowId].label : (d.footingId ? elementsData[d.footingId].label : 'None');
+            for (let L = maxL; L >= 1; L--) {
+                walls.filter(w => w.lvl === L).forEach(d => {
+                    const sw = 1.35 * 25 * (d.t / 1000) * (d.Hw / 1000);
+                    const above = d.aboveId ? elementsData[d.aboveId].results.n_total : 0;
+                    const n_total = (d.N_Ed || 0) + d.lineLoad + above + sw;
+                    const res = calculateWallDesign(d, n_total);
+                    res.trace.unshift(`n_Ed = input ${f1(d.N_Ed || 0)} + slab line load ${f1(d.lineLoad)} + wall above ${f1(above)} + self-weight ${f1(sw)} = ${f1(n_total)} kN/m`);
+                    if (above > 0) d.notes.push(`Carries ${f1(above)} kN/m from the wall above.`);
+                    if (d.lvl === 1 && !d.footingId) d.notes.push('Wall is not inside any footing - the load path ends here.');
+                    d.ui = { support: supportText(d), spanLabel: 'Height / l0', span: `${(d.Hw / 1000).toFixed(2)} m` };
+                    finish(d, nodeOf[d.id], res, `${Math.round(res.maxUtil)}% ${res.govKey}`);
+                });
+                pillars.filter(c => c.lvl === L).forEach(d => {
+                    const H = levelH(d.lvl) || 3000;
+                    const sw = 1.35 * 25 * (d.b / 1000) * (d.h / 1000) * (H / 1000);
+                    const above = d.aboveId ? elementsData[d.aboveId].results.N_total : 0;
+                    const N_total = (d.N_Ed || 0) + d.beamLoad + above + sw;
+                    const res = calculateColumnDesign(d.b, d.h, d.As_prov, d.f_ck, d.f_yk || 500, N_total, d.beamMoment);
+                    res.checks[0].rows.unshift(['Self-weight', kN(sw)]);
+                    res.checks[0].rows.unshift(['From column above', kN(above)]);
+                    res.checks[0].rows.unshift(['From beams', kN(d.beamLoad)]);
+                    res.checks[0].rows.unshift(['Input from above', kN(d.N_Ed || 0)]);
+                    res.trace.unshift(`N_Ed = input ${f1(d.N_Ed || 0)} + beams ${f1(d.beamLoad)} + column above ${f1(above)} + self-weight ${f1(sw)} = ${f1(N_total)} kN`);
+                    res.N_total = N_total; res.N_applied = d.N_Ed || 0; res.N_beams = d.beamLoad; res.N_above = above;
+                    if (above > 0) d.notes.push(`Carries ${f1(above)} kN from the column above (${elementsData[d.aboveId].label}).`);
+                    if (d.lvl === 1 && !d.footingId) d.notes.push('Column is not inside any footing - the load path ends here.');
+                    d.ui = { support: supportText(d), spanLabel: 'Storey height', span: `${(H / 1000).toFixed(2)} m` };
+                    finish(d, nodeOf[d.id], res, `${Math.round(res.maxUtil)}%`);
+                });
+            }
 
-            // ---------- PASS 2c: precast / cladding panels (wind, one-way vertical strip) ----------
+            // ---------- PASS 2c: precast / cladding panels ----------
             of('panel').forEach(d => {
                 d.panelWeight = 1.35 * 25 * (d.t / 1000) * (d.Hp / 1000) * (d.Lp / 1000);
                 const res = calculateStripDesign({ t: d.t, As: d.As_prov, q: d.q_w, lx: d.Hp / 1000, ly: d.Lp / 1000, fck: d.f_ck, fyk: d.f_yk || 500, d: d.t / 2, twoWay: false });
                 res.trace.unshift(`Wind (ULS) ${f1(d.q_w)} kPa on a ${(d.Hp / 1000).toFixed(2)} m vertical span ; d = t/2 (central layer) ; self-weight ${f1(d.panelWeight)} kN goes to its footing`);
-                const sup = linked(d.id).filter(o => o.type === 'footing' || o.type === 'beam');
-                if (!sup.length) d.notes.push('Panel is not connected to a footing or beam.');
+                const sup = linked(d.id).filter(o => o.type === 'beam' && o.lvl === d.lvl);
+                if (d.footingId) sup.push(elementsData[d.footingId]);
+                if (!sup.length) d.notes.push('Panel is not connected to a beam or standing inside a footing.');
                 d.ui = { support: sup.map(o => o.label).join(', ') || 'No support', spanLabel: 'Vertical span', span: `${(d.Hp / 1000).toFixed(2)} m` };
                 finish(d, nodeOf[d.id], res, `${Math.round(res.maxUtil)}% ${res.govKey}`);
             });
@@ -1292,16 +1634,17 @@
             // ---------- PASS 3: footings / pile caps ----------
             of('footing').forEach(f => {
                 const sup = [];
-                linked(f.id).forEach(o => {
-                    if (o.type === 'pillar' && o.results) sup.push({ d: o, N: o.results.N_total, M: o.results.bending.M_Ed, w: o.b, h: o.h });
-                    else if (o.type === 'wall' && o.results) sup.push({ d: o, N: (o.results.n_total * o.Lw) / 1000, M: 0, w: o.Lw, h: o.t });
+                all.filter(o => o.footingId === f.id && o.results).forEach(o => {
+                    if (o.type === 'pillar') sup.push({ d: o, N: o.results.N_total, M: o.results.bending.M_Ed, w: o.b, h: o.h });
+                    else if (o.type === 'wall') sup.push({ d: o, N: (o.results.n_total * o.Lw) / 1000, M: 0, w: o.Lw, h: o.t });
                     else if (o.type === 'panel') sup.push({ d: o, N: o.panelWeight || 0, M: 0, w: o.Lp, h: o.t });
                 });
+                f.srcIds = sup.map(s => s.d.id);
                 const piles = linked(f.id, 'pile');
                 const out = calculateFootingDesign(f, sup, piles);
                 f.geoWarnings.push(...out.warns); f.notes.push(...out.notes);
                 piles.forEach(p => { p.axial = out.pileReaction; p.capT = f.t; });
-                f.ui = { support: piles.length ? `Pile cap (${piles.length} piles)` : 'Pad / strip on soil', spanLabel: 'Size B×L×t', span: `${f.B}×${f.L}×${f.t}` };
+                f.ui = { support: piles.length ? `Pile cap (${piles.length} piles)` : 'Pad / strip on soil', spanLabel: 'Size B×L×t', span: dimsText([f.B, f.L, f.t]) };
                 finish(f, nodeOf[f.id], out.res, `${Math.round(out.res.maxUtil)}% ${out.res.govKey}`);
             });
 
@@ -1309,39 +1652,44 @@
             of('pile').forEach(p => {
                 const cap = linked(p.id, 'footing')[0];
                 let N = 0;
-                if (cap && cap.results) { N = p.axial || 0; }
-                else p.geoWarnings.push('Pile is not connected to a pile cap - it carries no load.');
-                if (cap) {
-                    // inherit cap warnings that name this pile
-                    cap.geoWarnings.filter(w => w.startsWith(p.label)).forEach(w => p.geoWarnings.push(w));
-                } else p.capT = 0;
+                if (cap && cap.results) { N = p.axial || 0; p.srcIds = [cap.id]; cap.geoWarnings.filter(w => w.startsWith(p.label)).forEach(w => p.geoWarnings.push(w)); }
+                else { p.geoWarnings.push('Pile is not connected to a pile cap - it carries no load.'); p.capT = 0; }
                 const res = calculatePileDesign(p, N);
                 p.ui = { support: cap ? cap.label : 'No cap', spanLabel: 'Length / Ø', span: `${p.len} m / ${p.D} mm` };
                 finish(p, nodeOf[p.id], res, `${Math.round(res.maxUtil)}% ${res.govKey}`);
             });
 
+            // reverse links (who receives my load)
+            all.forEach(d => d.srcIds.forEach(s => { if (elementsData[s] && !elementsData[s].dstIds.includes(d.id)) elementsData[s].dstIds.push(d.id); }));
+
             nodes.forEach(n => { if (selectedNodeId === n.dataset.id) updatePanelDisplay(n.dataset.id); });
             updateMultimeter(gov, unsupported, geoIssues);
-            redrawWires();
+            redrawWires(); applyLoadPathClasses();
             requestDraw();
         }
 
         // ==========================================
-        // PROPERTIES PANEL (built per element type)
+        // PROPERTIES PANEL (built per type, unit-aware, with load path)
         // ==========================================
         let panelBuiltFor = null;
         function buildFields(d) {
             const wrap = document.getElementById('edit-fields');
             wrap.innerHTML = FIELDS[d.type].map(([key, label, unit]) =>
-                `<div class="prop-row"><span class="prop-label">${label}:</span> <input type="number" step="any" class="prop-input" id="edit-${key}" data-key="${key}"> <span style="font-size:10px; min-width:34px;">${unit}</span></div>`).join('');
+                `<div class="prop-row"><span class="prop-label">${label}:</span> <input type="number" step="any" class="prop-input" id="edit-${key}" data-key="${key}" data-unit="${unit}"> <span style="font-size:10px; min-width:40px;">${cu(unit)}</span></div>`).join('');
             panelBuiltFor = d.id;
         }
         function fillFields(d) {
-            FIELDS[d.type].forEach(([key]) => {
+            FIELDS[d.type].forEach(([key, , unit]) => {
                 const el = document.getElementById('edit-' + key);
-                if (el && document.activeElement !== el) el.value = d[key] !== undefined ? d[key] : (key === 'rot' ? 0 : '');
+                if (!el || document.activeElement === el) return;
+                const v = d[key] !== undefined ? fmtField(d[key], unit) : (key === 'rot' ? '0' : '');
+                el.value = v; el.dataset.orig = v;
             });
         }
+        const listLabels = (ids, max) => {
+            const arr = Array.from(ids).map(i => elementsData[i]).filter(Boolean).sort((a, b) => (a.lvl - b.lvl) || a.label.localeCompare(b.label)).map(e => `${e.label} [${lvlShort(e.lvl)}]`);
+            return arr.length ? arr.slice(0, max).join(', ') + (arr.length > max ? ` … +${arr.length - max} more` : '') : 'nothing';
+        };
 
         function updatePanelDisplay(id) {
             const d = elementsData[id];
@@ -1351,11 +1699,11 @@
             fillFields(d);
             $('panel-title').innerText = TYPE_TITLE[d.type];
             $('p-guid').innerText = d.guid || 'N/A';
-            $('p-xy').innerText = `X:${Math.round(d.x)} Y:${Math.round(d.y)}`;
+            $('p-xy').innerText = `${lvlName(d.lvl)} · X:${dispVal(d.x, 'mm')} Y:${dispVal(d.y, 'mm')} ${cu('mm')}`;
             const ui = d.ui || {};
             $('p-support').innerText = ui.support || '-';
             $('p-span-label').innerText = (ui.spanLabel || 'Span') + ':';
-            $('p-span').innerText = ui.span || '-';
+            $('p-span').innerText = convText(ui.span || '-');
             const conn = linked(d.id).map(o => o.label);
             $('p-conn').innerText = conn.length ? conn.join(', ') : 'none';
 
@@ -1364,21 +1712,23 @@
                 $('checks').innerHTML = r.checks.map(c => `
                     <div class="check-box${c.key === r.govKey && r.maxUtil > 0 ? ' governing' : ''}">
                         <div class="check-header"><span>${c.label} (${c.key})</span> <span style="color:${utilColor(c.util)}">${Math.round(c.util)}%</span></div>
-                        ${c.rows.map(([a, b]) => `<div class="prop-row" style="font-size:10px; margin:0;"><span>${a}:</span> <span>${b}</span></div>`).join('')}
+                        ${c.rows.map(([a, b]) => `<div class="prop-row" style="font-size:10px; margin:0;"><span>${a}:</span> <span>${convText(b)}</span></div>`).join('')}
                     </div>`).join('');
                 if (r.maxUtil > 0) $('gov-tag').innerText = `(governing: ${r.govLabel})`;
             } else $('checks').innerHTML = '';
 
-            setBox('geo-box', (d.geoWarnings && d.geoWarnings.length) ? '<b>⚠ Connectivity / geometry</b><br>' + d.geoWarnings.join('<br>') : '');
+            setBox('geo-box', (d.geoWarnings && d.geoWarnings.length) ? '<b>⚠ Connectivity / geometry</b><br>' + d.geoWarnings.map(convText).join('<br>') : '');
             setBox('loadpath-box', (d.failedBeams && d.failedBeams.length)
                 ? `<b>⚠ Load path</b><br>This column supports overstressed beam(s): ${d.failedBeams.join(', ')}. The reaction used here is the demand, not what a failing beam could actually deliver - redesign the beam first.` : '');
-            setBox('note-box', (d.notes && d.notes.length) ? '<b>ℹ Notes</b><br>' + d.notes.join('<br>') : '');
+            setBox('note-box', (d.notes && d.notes.length) ? '<b>ℹ Notes</b><br>' + d.notes.map(convText).join('<br>') : '');
+            const lp = lpSets(d.id);
+            setBox('lp-box', `<b>Load path</b><br><span style="color:#b45309">▲ Receives from (${lp.up.size}):</span> ${listLabels(lp.up, 10)}<br><span style="color:#6d28d9">▼ Delivers to (${lp.down.size}):</span> ${listLabels(lp.down, 10)}`);
 
             if (r) {
                 const st = $('p-status');
                 st.innerText = `${r.status} (${r.govLabel} ${Math.round(r.maxUtil)}%)`;
                 st.style.color = r.status === 'PASS' ? '#065f46' : (r.status === 'WARNING' ? '#d97706' : '#b91c1c');
-                $('calc-trace').innerText = r.trace.join('\n');
+                $('calc-trace').innerText = r.trace.join('\n') + (unitSys === 'IMP' ? '\n\n(Trace is always shown in SI: kN, m, mm, MPa.)' : '');
             }
         }
 
@@ -1386,17 +1736,20 @@
             if (!selectedNodeId) return;
             const d = elementsData[selectedNodeId];
             if (!d) return;
-            FIELDS[d.type].forEach(([key]) => {
-                const v = parseFloat(document.getElementById('edit-' + key).value);
-                if (Number.isFinite(v)) d[key] = v;
+            FIELDS[d.type].forEach(([key, , unit]) => {
+                const el = document.getElementById('edit-' + key);
+                if (!el || el.value === el.dataset.orig) return;           // unchanged -> keep exact SI value
+                const v = parseFloat(el.value);
+                if (Number.isFinite(v)) d[key] = fromDisp(v, unit);
             });
             const node = document.querySelector(`.node[data-id="${selectedNodeId}"]`);
             if (node) applyNodeTransform(node, d);
-            evaluateStrength();
+            panelBuiltFor = null;
+            evaluateStrength(); commit();
         }
 
         // ==========================================
-        // NODE BUILDER / CONNECTIONS
+        // NODE BUILDER / CONNECTIONS / ADD / SAMPLE
         // ==========================================
         function buildNode(d) {
             const node = document.createElement('div');
@@ -1408,42 +1761,16 @@
             world.appendChild(node);
             return node;
         }
-        const portSide = p => ['left', 'right', 'top', 'bottom'].find(c => p.classList.contains(c));
-
-        function pickPort(node, other, used) {
-            const t = node.dataset.type, ot = other.dataset.type;
-            const ports = Array.from(node.querySelectorAll('.port'));
-            const by = c => ports.find(p => p.classList.contains(c));
-            if (t === 'pillar') return ot === 'footing' ? by('bottom') : by('top');
-            if (t === 'footing') return ot === 'pile' ? by('top') : by('bottom');
-            if (t === 'wall' || t === 'panel') return ot === 'footing' ? by('bottom') : by('top');
-            if (t === 'pile') return by('top');
-            const od = elementsData[other.dataset.id], oc = { x: mmToPx(od.x), y: mmToPx(od.y) };
-            let cand = ports;
-            if (t === 'beam') cand = ports.filter(p => (ot === 'pillar' ? ['left', 'right'] : ['top', 'bottom']).includes(portSide(p)) && (ot !== 'pillar' || !used.has(p)));
-            let best = null, bd = Infinity;
-            cand.forEach(p => { const c = portCentreWorld(p), dist = Math.hypot(c.x - oc.x, c.y - oc.y); if (dist < bd) { bd = dist; best = p; } });
-            return best;
-        }
-
         function createWire(sPort, ePort, sNode, eNode) {
             const wire = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             wire.classList.add('wire', 'normal');
             wireLayer.appendChild(wire);
             connections.push({ element: wire, startPort: sPort, endPort: ePort, startNode: sNode, endNode: eNode });
         }
-
         function syncTeklaData() {
-            world.querySelectorAll('.node').forEach(n => n.remove());
-            wireLayer.innerHTML = '';
-            connections = []; elementsData = {};
-            const nodeElements = {};
-            sampleData.nodes.forEach(d => {
-                const nd = JSON.parse(JSON.stringify(d)); nd.rot = nd.rot || 0;
-                elementsData[d.id] = nd;
-                nodeElements[d.id] = buildNode(nd);
-                applyPlanSize(nodeElements[d.id], nd);
-            });
+            loadModel({ levels: [{ name: 'Foundation', h: 0 }, { name: 'Level 1', h: 3000 }, { name: 'Level 2', h: 3000 }], active: 1, nodes: sampleData.nodes, conns: [] });
+            const nodeElements = {}; document.querySelectorAll('.node').forEach(n => { nodeElements[n.dataset.id] = n; });
+            document.querySelectorAll('.node').forEach(n => { n.style.display = ''; });      // port positions need layout
             const used = new Set();
             sampleData.connections.forEach(c => {
                 const a = nodeElements[c.from], b = nodeElements[c.to];
@@ -1454,14 +1781,15 @@
                 if (b.dataset.type === 'beam' && ['left', 'right'].includes(portSide(pb))) used.add(pb);
                 createWire(pa, pb, a, b);
             });
-            evaluateStrength();
+            evaluateStrength(); applyLevelVisibility();
             setTimeout(() => { redrawWires(); resetView(); }, 50);
-            if (selectedNodeId) updatePanelDisplay(selectedNodeId);
+            if (hIdx < 0) resetHistory(); else commit();
         }
 
-        // Port rules: every port circle only accepts certain element types
         function validateConnection(pA, pB, nA, nB) {
             if (nA === nB) return 'A member cannot be connected to itself.';
+            const dA = elementsData[nA.dataset.id], dB = elementsData[nB.dataset.id];
+            if (dA && dB && dA.lvl !== dB.lvl) return 'These members are on different levels. Columns, walls and footings stack automatically by plan position - only same-level members are wired.';
             const tA = nA.dataset.type, tB = nB.dataset.type, sA = portSide(pA), sB = portSide(pB);
             const okA = (PORT_RULES[tA][sA] || []).includes(tB), okB = (PORT_RULES[tB][sB] || []).includes(tA);
             if (!okA) return `${tA}: the ${sA} circle only accepts ${(PORT_RULES[tA][sA] || ['nothing']).join(' / ')}.`;
@@ -1475,18 +1803,22 @@
             return null;
         }
 
-        function toggleAddMenu() { document.getElementById('add-menu').classList.toggle('open'); }
+        function toggleAddMenu() { document.getElementById('file-menu').classList.remove('open'); document.getElementById('add-menu').classList.toggle('open'); }
+        function toggleFileMenu() { document.getElementById('add-menu').classList.remove('open'); document.getElementById('file-menu').classList.toggle('open'); }
         function addComponent(type) {
             document.getElementById('add-menu').classList.remove('open');
             closeProperties();
+            if (is3D) toggle3D();
+            const lvl = defaultLvl(type) === 0 ? 0 : Math.max(1, activeLevel);
+            if (lvl !== activeLevel) setActiveLevel(lvl);
             const realX = Math.round(((window.innerWidth / 2 - panX) / scale / PIXELS_PER_METER) * 1000);
             const realY = Math.round(((window.innerHeight / 2 - panY) / scale / PIXELS_PER_METER) * 1000);
             const id = type + '_' + Date.now();
             const count = Object.values(elementsData).filter(e => e.type === type).length + 1;
-            const d = Object.assign({ id, type, x: realX, y: realY, rot: 0, label: TYPE_PREFIX[type] + count, guid: 'NEW-' + type.toUpperCase() + '-' + Math.floor(Math.random() * 1000000) }, DEFAULTS[type]);
+            const d = Object.assign({ id, type, x: realX, y: realY, rot: 0, lvl, label: TYPE_PREFIX[type] + count, guid: 'NEW-' + type.toUpperCase() + '-' + Math.floor(Math.random() * 1000000) }, DEFAULTS[type]);
             elementsData[id] = d;
             applyPlanSize(buildNode(d), d);
-            evaluateStrength();
+            evaluateStrength(); applyLevelVisibility(); commit();
         }
 
         function pushToMCP() {
@@ -1495,11 +1827,11 @@
                 const d = elementsData[node.dataset.id];
                 if (!d || !d.results) return;
                 const r = d.results;
-                const uda = { Guid: d.guid, Type: d.type, X: d.x, Y: d.y, Rotation: d.rot, Status: r.status,
+                const uda = { Guid: d.guid, Type: d.type, Level: d.lvl, X: d.x, Y: d.y, Rotation: d.rot, Status: r.status,
                               Max_Utilization: parseFloat((r.maxUtil || 0).toFixed(2)), Governing_Check: r.govLabel };
                 (r.checks || []).forEach(c => { uda['Util_' + c.key.replace(/[^A-Za-z0-9]/g, '')] = parseFloat(c.util.toFixed(2)); });
                 if (d.type === 'beam') { uda.Support_Type = d.supportType; uda.Span_m = parseFloat((d.span || 0).toFixed(3)); uda.Slab_Load_kNm = parseFloat((d.slabLoad || 0).toFixed(2)); }
-                if (d.type === 'pillar') { uda.N_Ed_Total = parseFloat(r.N_total.toFixed(1)); uda.Supports_Failed_Beam = (d.failedBeams || []).join(', '); }
+                if (d.type === 'pillar') { uda.N_Ed_Total = parseFloat(r.N_total.toFixed(1)); uda.N_From_Above = parseFloat((r.N_above || 0).toFixed(1)); uda.Supports_Failed_Beam = (d.failedBeams || []).join(', '); }
                 if (d.type === 'footing') { uda.N_Total = parseFloat((r.N_total || 0).toFixed(1)); uda.Pile_Reaction = parseFloat((r.pileReaction || 0).toFixed(1)); }
                 if (d.type === 'pile') uda.N_Ed = parseFloat((r.N_Ed || 0).toFixed(1));
                 if (d.geoWarnings && d.geoWarnings.length) uda.Geometry_Warnings = d.geoWarnings.join(' | ');
@@ -1508,32 +1840,60 @@
             console.log('Payload ready for Tekla C# Bridge (UDAs):', JSON.stringify(payload, null, 2));
             showModal('Push to Tekla Complete', `Calculation results prepared for UDA update.\n\nUpdated ${payload.length} elements.\n\nCheck browser console for the JSON payload structure.`);
         }
+        // ==========================================
+        // 3D VIEW: levels, heatmap, failures-only, load-path highlight
+        // ==========================================
+        let heat3D = false, failOnly3D = false, isoLevel3D = -1;
+        function update3DButtons() {
+            const set = (id, t, on) => { const b = document.getElementById(id); if (b) { b.innerText = t; b.classList.toggle('on', !!on); } };
+            set('lbl-btn', labels3D ? 'Labels: ON' : 'Labels: OFF', labels3D);
+            set('heat-btn', heat3D ? 'Heatmap: ON' : 'Heatmap: OFF', heat3D);
+            set('fail-btn', failOnly3D ? 'Failures only: ON' : 'Failures only: OFF', failOnly3D);
+            set('iso-btn', isoLevel3D < 0 ? 'Level: All' : 'Level: ' + lvlShort(isoLevel3D), isoLevel3D >= 0);
+            set('lp3-btn', lpMode ? 'Load path: ON' : 'Load path: OFF', lpMode);
+        }
+        function toggleLabels3D() { labels3D = !labels3D; update3DButtons(); requestDraw(); }
+        function toggleHeat3D() { heat3D = !heat3D; update3DButtons(); requestDraw(); }
+        function toggleFail3D() { failOnly3D = !failOnly3D; update3DButtons(); requestDraw(); }
+        function cycleLevel3D() { isoLevel3D = isoLevel3D + 1 >= levels.length ? -1 : isoLevel3D + 1; update3DButtons(); requestDraw(); }
+        function toggle3D() {
+            is3D = !is3D;
+            if (is3D && isDeleteMode) toggleDeleteMode();
+            cv.style.display = is3D ? 'block' : 'none';
+            viewport.style.visibility = is3D ? 'hidden' : 'visible';
+            document.getElementById('ctl3d').style.display = is3D ? 'block' : 'none';
+            const btn = document.getElementById('view-btn');
+            btn.innerText = is3D ? '2D Plan' : '3D View';
+            btn.classList.toggle('active-view', is3D);
+            document.querySelectorAll('.edit-tool').forEach(b => { b.disabled = is3D; });
+            update3DButtons();
+            if (is3D) { resize3D(); reset3D(); } else { redrawWires(); }
+        }
 
-        // ==========================================
-        // 3D GEOMETRY FOR ALL ELEMENT TYPES
-        // ==========================================
         function buildBoxes() {
             const boxes = [];
             Object.values(elementsData).forEach(d => {
-                const rot = d.rot || 0;
+                if (isoLevel3D >= 0 && d.lvl !== isoLevel3D && !(isoLevel3D >= 1 && d.lvl === 0)) return;
+                const rot = d.rot || 0, k = Math.max(d.lvl, d.type === 'footing' || d.type === 'pile' ? 0 : 1);
+                const base = elevBase(k), top = elevTop(k);
                 switch (d.type) {
-                    case 'pillar': boxes.push({ id: d.id, d, kind: 'pillar', cx: d.x, cy: STOREY_H / 2, cz: d.y, L: d.b, H: STOREY_H, W: d.h, rot }); break;
+                    case 'pillar': boxes.push({ id: d.id, d, kind: 'pillar', cx: d.x, cy: (base + top) / 2, cz: d.y, L: d.b, H: top - base, W: d.h, rot }); break;
                     case 'beam': {
                         let L = 2000;
                         if (d.supportType === 'Simply Supported' && d.supportIds && d.supportIds.length >= 2) {
                             const A = elementsData[d.supportIds[0]], B = elementsData[d.supportIds[1]];
                             L = d.span * 1000 - ((A ? A.b : 400) + (B ? B.b : 400)) / 2;
                         } else if (d.supportType === 'Cantilever') L = d.span * 1000;
-                        boxes.push({ id: d.id, d, kind: 'beam', cx: d.x, cy: STOREY_H - d.h / 2, cz: d.y, L: Math.max(L, 200), H: d.h, W: d.b, rot });
+                        boxes.push({ id: d.id, d, kind: 'beam', cx: d.x, cy: top - d.h / 2, cz: d.y, L: Math.max(L, 200), H: d.h, W: d.b, rot });
                         break;
                     }
-                    case 'wall':    boxes.push({ id: d.id, d, kind: 'wall',    cx: d.x, cy: d.Hw / 2, cz: d.y, L: d.Lw, H: d.Hw, W: d.t, rot }); break;
-                    case 'panel':   boxes.push({ id: d.id, d, kind: 'panel',   cx: d.x, cy: d.Hp / 2, cz: d.y, L: d.Lp, H: d.Hp, W: d.t, rot }); break;
-                    case 'slab':    boxes.push({ id: d.id, d, kind: 'slab',    cx: d.x, cy: STOREY_H + d.t / 2, cz: d.y, L: d.Lx, H: d.t, W: d.Ly, rot }); break;
+                    case 'wall':    boxes.push({ id: d.id, d, kind: 'wall',    cx: d.x, cy: base + d.Hw / 2, cz: d.y, L: d.Lw, H: d.Hw, W: d.t, rot }); break;
+                    case 'panel':   boxes.push({ id: d.id, d, kind: 'panel',   cx: d.x, cy: base + d.Hp / 2, cz: d.y, L: d.Lp, H: d.Hp, W: d.t, rot }); break;
+                    case 'slab':    boxes.push({ id: d.id, d, kind: 'slab',    cx: d.x, cy: top + d.t / 2, cz: d.y, L: d.Lx, H: d.t, W: d.Ly, rot }); break;
                     case 'footing': boxes.push({ id: d.id, d, kind: 'footing', cx: d.x, cy: -d.t / 2, cz: d.y, L: d.B, H: d.t, W: d.L, rot }); break;
                     case 'pile': {
-                        const top = -(d.capT || 0), len = (d.len || 6) * 1000;
-                        boxes.push({ id: d.id, d, kind: 'pile', cx: d.x, cz: d.y, R: d.D / 2, top, bottom: top - len, cy: top - len / 2, H: len, rot: 0 });
+                        const tp = -(d.capT || 0), len = (d.len || 6) * 1000;
+                        boxes.push({ id: d.id, d, kind: 'pile', cx: d.x, cz: d.y, R: d.D / 2, top: tp, bottom: tp - len, cy: tp - len / 2, H: len, rot: 0 });
                         break;
                     }
                 }
@@ -1542,11 +1902,32 @@
         }
 
         const KIND_COLOR = { pillar: '#475569', beam: '#94a3b8', wall: '#a8a29e', panel: '#7dd3fc', slab: '#cbd5e1', footing: '#78716c', pile: '#b45309' };
+        function hslHex(h, s, l) {
+            s /= 100; l /= 100;
+            const a = s * Math.min(l, 1 - l), f = n => { const k = (n + h / 30) % 12; return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)); };
+            const hx = v => Math.round(v * 255).toString(16).padStart(2, '0');
+            return '#' + hx(f(0)) + hx(f(8)) + hx(f(4));
+        }
+        const heatColor = u => (u > 100 ? '#dc2626' : hslHex(120 * (1 - Math.max(0, u) / 100), 75, 46));
         function boxColor(b) {
             const d = b.d, r = d.results;
             if (r && r.status === 'NO SUPPORT') return '#fde68a';
+            if (heat3D) return r ? heatColor(r.maxUtil) : '#94a3b8';
             if (r) { if (r.maxUtil > 100) return '#ef4444'; if (r.maxUtil > 85) return '#f59e0b'; }
             return KIND_COLOR[b.kind];
+        }
+        function boxStyle(b, sel, sets) {
+            const d = b.d, r = d.results, fail = r && r.maxUtil > 100, warn = d.geoWarnings && d.geoWarnings.length;
+            const st = { alpha: b.kind === 'slab' ? 0.6 : 1, stroke: '#1e293b', lw: 1.5, dash: [], dim: false };
+            if (failOnly3D && !fail && !(d.failedBeams && d.failedBeams.length)) { st.alpha *= 0.1; st.dim = true; }
+            if (sets) {
+                if (b.id === sel) { st.stroke = '#2563eb'; st.lw = 3.5; st.alpha = Math.max(st.alpha, 0.9); st.dim = false; }
+                else if (sets.up.has(b.id)) { st.stroke = '#f59e0b'; st.lw = 3.5; st.alpha = b.kind === 'slab' ? 0.8 : 1; st.dim = false; }
+                else if (sets.down.has(b.id)) { st.stroke = '#7c3aed'; st.lw = 3.5; st.alpha = 1; st.dim = false; }
+                else { st.alpha *= 0.13; st.dim = true; }
+            } else if (b.id === sel) { st.stroke = '#2563eb'; st.lw = 3; }
+            else if (warn || (d.failedBeams && d.failedBeams.length)) { st.stroke = '#d97706'; st.dash = [6, 4]; }
+            return st;
         }
 
         function reset3D() {
@@ -1565,7 +1946,6 @@
             requestDraw();
         }
 
-        // Faces of a box (rotated about the vertical axis) or an 10-sided prism (piles)
         function boxFaces(b, c, w, h, NEAR, light) {
             const out = [];
             const push = (pts3, n, fc, base) => {
@@ -1619,35 +1999,55 @@
                 for (let z = z0; z <= z1; z += 1000) line([x0, 0, z], [x1, 0, z]);
             }
 
+            const sel = selectedNodeId, sets = (lpMode && sel && elementsData[sel]) ? lpSets(sel) : null;
+            const styles = {}; boxes.forEach(b => { styles[b.id] = boxStyle(b, sel, sets); });
             const L = [0.35, 0.85, 0.4], ll = Math.hypot(...L), light = L.map(v => v / ll);
             const faces = [];
             boxes.forEach(b => boxFaces(b, c, w, h, NEAR, light).forEach(f => faces.push(f)));
             faces.sort((p, q) => q.depth - p.depth);
-            faces3D = faces;
+            faces3D = faces.filter(f => !styles[f.box.id].dim);
 
             faces.forEach(f => {
+                const st = styles[f.box.id];
                 g.beginPath();
                 f.pts.forEach((p, i) => (i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y)));
                 g.closePath();
-                g.globalAlpha = f.box.kind === 'slab' ? 0.6 : 1;
-                g.fillStyle = f.color; g.fill();
-                g.globalAlpha = 1;
-                const d = f.box.d, sel = f.box.id === selectedNodeId, warn = d.geoWarnings && d.geoWarnings.length;
-                g.lineJoin = 'round'; g.lineWidth = sel ? 3 : 1.5;
-                g.strokeStyle = sel ? '#2563eb' : (warn || (d.failedBeams && d.failedBeams.length) ? '#d97706' : '#1e293b');
-                g.setLineDash(!sel && warn ? [6, 4] : []);
-                g.stroke(); g.setLineDash([]);
+                g.globalAlpha = st.alpha; g.fillStyle = f.color; g.fill();
+                g.lineJoin = 'round'; g.lineWidth = st.lw; g.strokeStyle = st.stroke; g.setLineDash(st.dash);
+                g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
             });
+
+            // heatmap legend
+            if (heat3D) {
+                const ctlTop = h - 175 - (document.getElementById('ctl3d').offsetHeight || 150) - 8;
+                const lx = 16, ly = ctlTop - 32, lw = 150;
+                const gr = g.createLinearGradient(lx, 0, lx + lw, 0);
+                for (let i = 0; i <= 10; i++) gr.addColorStop(i / 10, heatColor(i * 10));
+                g.fillStyle = gr; g.fillRect(lx, ly, lw, 12);
+                g.strokeStyle = '#333'; g.lineWidth = 1.5; g.strokeRect(lx, ly, lw, 12);
+                g.fillStyle = '#dc2626'; g.fillRect(lx + lw + 2, ly, 10, 12); g.strokeRect(lx + lw + 2, ly, 10, 12);
+                g.fillStyle = '#111'; g.font = 'bold 9px system-ui, sans-serif'; g.textAlign = 'left'; g.textBaseline = 'top';
+                g.fillText('0%', lx, ly + 15); g.textAlign = 'center'; g.fillText('50%', lx + lw / 2, ly + 15); g.textAlign = 'right'; g.fillText('100%+', lx + lw + 12, ly + 15);
+            }
+            if (sets) {
+                g.font = 'bold 10px system-ui, sans-serif'; g.textAlign = 'left'; g.textBaseline = 'top';
+                const ctlTop2 = h - 175 - (document.getElementById('ctl3d').offsetHeight || 150) - 8;
+                const ly = ctlTop2 - 46 - (heat3D ? 36 : 0), lx = 16;
+                [['#2563eb', 'selected'], ['#f59e0b', 'carries (above / feeding in)'], ['#7c3aed', 'delivers to (below)']].forEach(([col, t], i) => {
+                    g.fillStyle = col; g.fillRect(lx, ly + i * 14, 10, 10); g.fillStyle = '#111'; g.fillText(t, lx + 15, ly + i * 14);
+                });
+            }
 
             if (!labels3D) return;
             g.textAlign = 'center'; g.textBaseline = 'middle';
             boxes.forEach(b => {
-                if (b.kind === 'pile' && b.id !== selectedNodeId) return;       // piles: tap to read
+                if (styles[b.id].dim) return;
+                if (b.kind === 'pile' && b.id !== sel && !(sets && (sets.up.has(b.id) || sets.down.has(b.id)))) return;
                 const topY = b.kind === 'pile' ? b.top : b.cy + b.H / 2;
                 const p = project(c, [b.cx, topY + 150, b.cz], w, h);
                 if (p.z < NEAR) return;
                 const r = b.d.results;
-                const short = b.d.label.replace(/\s*\(.*\)/, '');
+                const short = b.d.label.replace(/\s*\(.*?\)/, '');
                 const txt = r && r.checks && r.checks.length ? `${short} ${Math.round(r.maxUtil)}%` : short;
                 g.font = 'bold 10px system-ui, sans-serif';
                 const tw = g.measureText(txt).width + 10, fail = r && r.maxUtil > 100;
@@ -1656,6 +2056,197 @@
                 g.fill(); g.stroke();
                 g.fillStyle = '#111'; g.fillText(txt, p.x, p.y);
             });
+        }
+
+        // ==========================================
+        // FILES / SCENARIOS (A vs B) / COMPARE
+        // ==========================================
+        const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        function openBig(title, html) { document.getElementById('big-title').innerText = title; document.getElementById('big-body').innerHTML = html; document.getElementById('big-modal').classList.add('active'); }
+        function closeBig() { document.getElementById('big-modal').classList.remove('active'); }
+        function downloadBlob(name, mime, text) {
+            const url = URL.createObjectURL(new Blob([text], { type: mime }));
+            const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click();
+            setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1500);
+        }
+        const stamp = () => new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+        const wrapFile = (name, model) => JSON.stringify({ app: 'tekla-ec2-checker', version: 4, name, saved: new Date().toISOString(), units: unitSys, model }, null, 1);
+        function saveScenarioFile(name) {
+            document.getElementById('file-menu').classList.remove('open');
+            const nm = name || 'scenario';
+            downloadBlob(`ec2-${nm}-${stamp()}.json`, 'application/json', wrapFile(nm, getModel()));
+        }
+        let pendingLoadTarget = null;
+        function pickFile(target) {
+            document.getElementById('file-menu').classList.remove('open');
+            pendingLoadTarget = target;
+            const inp = document.getElementById('file-input'); inp.value = ''; inp.click();
+        }
+        function parseModelFile(text) {
+            const j = JSON.parse(text);
+            const m = j.model || j;
+            if (!m || !Array.isArray(m.nodes)) throw new Error('Not a scenario file (no model.nodes).');
+            return { name: j.name || 'scenario', model: m };
+        }
+        document.getElementById('file-input').addEventListener('change', e => {
+            const f = e.target.files && e.target.files[0]; if (!f) return;
+            const rd = new FileReader();
+            rd.onload = () => {
+                try {
+                    const { name, model } = parseModelFile(rd.result);
+                    if (pendingLoadTarget === 'A' || pendingLoadTarget === 'B') { setSlot(pendingLoadTarget, name, model); openScenarios(); }
+                    else { loadModel(model); resetHistory(); resetView(); showModal('Scenario loaded', `"${name}" - ${model.nodes.length} members loaded. Undo history was reset.`); }
+                } catch (err) { showModal('Could not load file', String(err.message || err)); }
+            };
+            rd.readAsText(f);
+        });
+
+        let slots = { A: null, B: null };
+        try { const s = JSON.parse(localStorage.getItem('tekla_ec2_slots') || 'null'); if (s) slots = s; } catch (e) { /* storage may be blocked on file:// */ }
+        function persistSlots() { try { localStorage.setItem('tekla_ec2_slots', JSON.stringify(slots)); } catch (e) { /* ignore */ } }
+        function setSlot(k, name, model) { slots[k] = { name, model, time: new Date().toLocaleTimeString() }; persistSlots(); }
+        function slotSaveCurrent(k) { setSlot(k, 'Option ' + k, getModel()); openScenarios(); }
+        function slotOpen(k) { if (!slots[k]) return; loadModel(slots[k].model); commit(); closeBig(); resetView(); }
+        function slotDownload(k) { if (slots[k]) downloadBlob(`ec2-option-${k}-${stamp()}.json`, 'application/json', wrapFile('Option ' + k, slots[k].model)); }
+
+        function elemVolume(d) {   // m³
+            const m = v => v / 1000;
+            switch (d.type) {
+                case 'pillar': return m(d.b) * m(d.h) * m(levelH(d.lvl) || 3000);
+                case 'beam': return m(d.b) * m(d.h) * (d.span || 2);
+                case 'slab': return m(d.Lx) * m(d.Ly) * m(d.t);
+                case 'wall': return m(d.Lw) * m(d.t) * m(d.Hw);
+                case 'panel': return m(d.Lp) * m(d.t) * m(d.Hp);
+                case 'footing': return m(d.B) * m(d.L) * m(d.t);
+                case 'pile': return Math.PI / 4 * m(d.D) * m(d.D) * d.len;
+            }
+            return 0;
+        }
+        function summarise() {
+            const els = Object.values(elementsData).filter(d => d.results);
+            const rows = els.map(d => ({ key: d.guid || d.id, label: d.label, type: d.type, lvl: d.lvl, util: d.results.maxUtil || 0, gov: d.results.govLabel, status: d.results.status }));
+            const top = rows.reduce((a, r) => (r.util > a.util ? r : a), { util: 0, label: '-' });
+            return { rows, count: rows.length, maxUtil: top.util, maxName: top.label, failed: rows.filter(r => r.util > 100 || r.status === 'NO SUPPORT').length, warn: rows.filter(r => r.util > 85 && r.util <= 100).length, volume: els.reduce((a, d) => a + elemVolume(d), 0) };
+        }
+        function analyseModel(model) {
+            const cur = getModel(), curSel = selectedNodeId;
+            restoring = true;
+            loadModel(model); const s = summarise();
+            loadModel(cur); selectedNodeId = curSel; restoring = false;
+            return s;
+        }
+        function openScenarios() {
+            const slotRow = k => {
+                const s = slots[k];
+                return `<div class="slot"><b>Option ${k}</b> <span class="small">${s ? `${s.model.nodes.length} members · saved ${esc(s.time)}` : 'empty'}</span>
+                    <div class="btnrow"><button onclick="slotSaveCurrent('${k}')">Save current here</button><button onclick="pickFile('${k}')">Load file here</button>
+                    <button onclick="slotOpen('${k}')" ${s ? '' : 'disabled'}>Open in editor</button><button onclick="slotDownload('${k}')" ${s ? '' : 'disabled'}>Download</button></div></div>`;
+            };
+            openBig('Scenarios: Option A vs B', `
+                <p class="small">Save the current model as Option A, change something (section, load, level…), save it as Option B, then compare. Slots survive a reload if your browser allows storage; use Download to keep files.</p>
+                ${slotRow('A')}${slotRow('B')}
+                <div class="btnrow"><button class="go" onclick="compareAB()" ${slots.A && slots.B ? '' : 'disabled'}>Compare A vs B</button>
+                <button onclick="saveScenarioFile('current')">Download current model</button><button onclick="pickFile('current')">Load file into editor</button></div>
+                <div id="cmp-out"></div>`);
+        }
+        function compareAB() {
+            const A = analyseModel(slots.A.model), B = analyseModel(slots.B.model);
+            const key = r => r.key;
+            const mapB = {}; B.rows.forEach(r => { mapB[key(r)] = r; });
+            const seen = new Set();
+            const rows = A.rows.map(a => { const b = mapB[key(a)]; seen.add(key(a)); return { label: a.label, type: a.type, a: a.util, b: b ? b.util : null }; });
+            B.rows.forEach(b => { if (!seen.has(key(b))) rows.push({ label: b.label, type: b.type, a: null, b: b.util }); });
+            const delta = r => (r.a === null || r.b === null) ? 1e9 : Math.abs(r.b - r.a);
+            rows.sort((x, y) => delta(y) - delta(x));
+            const pc = v => v === null ? '—' : Math.round(v) + '%';
+            const col = v => v === null ? '#64748b' : utilColor(v);
+            const volF = v => `${dispVal(v, 'm³')} ${cu('m³')}`;
+            const better = (x, y, lowerIsBetter) => x === y ? '' : ((y < x) === lowerIsBetter ? 'good' : 'bad');
+            const sumRow = (lbl, a, b, lower, fmt) => `<tr><td>${lbl}</td><td>${fmt(a)}</td><td>${fmt(b)}</td><td class="${better(a, b, lower)}">${a === b ? '=' : (b > a ? '+' : '−') + fmt(Math.abs(b - a))}</td></tr>`;
+            document.getElementById('cmp-out').innerHTML = `
+                <h4>Summary</h4>
+                <table class="cmp"><tr><th></th><th>A</th><th>B</th><th>B − A</th></tr>
+                ${sumRow('Governing utilization', A.maxUtil, B.maxUtil, true, v => Math.round(v) + '%')}
+                ${sumRow('Members failing', A.failed, B.failed, true, v => String(v))}
+                ${sumRow('Members above 85%', A.warn, B.warn, true, v => String(v))}
+                ${sumRow('Concrete volume', A.volume, B.volume, true, volF)}
+                ${sumRow('Members', A.count, B.count, false, v => String(v))}
+                <tr><td>Governing member</td><td>${esc(A.maxName)}</td><td>${esc(B.maxName)}</td><td></td></tr></table>
+                <h4>Member by member (largest change first)</h4>
+                <div class="scroll"><table class="cmp"><tr><th>Member</th><th>A</th><th>B</th><th>Δ</th></tr>
+                ${rows.slice(0, 60).map(r => `<tr><td>${esc(r.label)} <span class="small">${r.type}</span></td><td style="color:${col(r.a)}">${pc(r.a)}</td><td style="color:${col(r.b)}">${pc(r.b)}</td><td>${r.a === null || r.b === null ? 'new/removed' : (r.b - r.a >= 0 ? '+' : '') + Math.round(r.b - r.a) + '%'}</td></tr>`).join('')}
+                </table></div>`;
+        }
+
+        // ==========================================
+        // HAND-CHECK REPORT (PDF via print, Word .doc, or open as page)
+        // ==========================================
+        const TYPE_ORDER = ['footing', 'pile', 'pillar', 'wall', 'beam', 'slab', 'panel'];
+        function buildReportHTML(opts, forWord) {
+            opts = opts || {};
+            const now = new Date();
+            const sum = summarise();
+            let members = Object.values(elementsData).filter(d => d.results);
+            if (opts.onlyHigh) members = members.filter(d => (d.results.maxUtil || 0) > 85 || d.results.status === 'NO SUPPORT');
+            members.sort((a, b) => (a.lvl - b.lvl) || (TYPE_ORDER.indexOf(a.type) - TYPE_ORDER.indexOf(b.type)) || a.label.localeCompare(b.label));
+            const cls = r => r.status === 'PASS' ? 'pass' : (r.status === 'WARNING' ? 'warn' : 'fail');
+            const css = `body{font-family:Arial,Helvetica,sans-serif;font-size:10.5pt;color:#111;margin:18px}h1{font-size:18pt;margin:0 0 4px}h2{font-size:13pt;border-bottom:2px solid #333;padding-bottom:3px;margin-top:22px}h3{font-size:11.5pt;margin:0 0 4px}table{border-collapse:collapse;width:100%;margin:6px 0}th,td{border:1px solid #999;padding:3px 6px;text-align:left;font-size:9.5pt;vertical-align:top}th{background:#e5e7eb}.pass{color:#047857;font-weight:bold}.warn{color:#b45309;font-weight:bold}.fail{color:#b91c1c;font-weight:bold}.member{page-break-inside:avoid;margin-top:14px;border:1px solid #bbb;padding:8px}pre{background:#f1f5f9;border:1px solid #cbd5e1;padding:6px;font-size:8.5pt;white-space:pre-wrap;font-family:Consolas,monospace}.small{font-size:9pt;color:#444}.box{background:#fef3c7;border:1px solid #d97706;padding:5px;margin:5px 0;font-size:9.5pt}.note{background:#e0f2fe;border:1px solid #0284c7;padding:5px;margin:5px 0;font-size:9.5pt}`;
+            const summaryRows = members.map(d => `<tr><td>${esc(d.label)}</td><td>${d.type}</td><td>${lvlName(d.lvl)}</td><td>${Math.round(d.results.maxUtil || 0)}%</td><td>${esc(d.results.govLabel)}</td><td class="${cls(d.results)}">${d.results.status}</td></tr>`).join('');
+            const detail = members.map(d => {
+                const r = d.results;
+                const inputs = FIELDS[d.type].map(([k, lab, u]) => `<tr><td>${esc(lab)}</td><td>${esc(dispVal(d[k] !== undefined ? d[k] : 0, u))} ${esc(cu(u))}</td></tr>`).join('');
+                const checks = (r.checks || []).map(c => `<tr><td><b>${esc(c.label)} (${esc(c.key)})</b></td><td>${Math.round(c.util)}%</td><td>${c.rows.map(([a, b]) => `${esc(a)}: ${esc(convText(b))}`).join('<br>')}</td></tr>`).join('');
+                const lp = lpSets(d.id);
+                return `<div class="member"><h3>${esc(d.label)} — ${esc(TYPE_TITLE[d.type].replace(' Report', ''))} — ${lvlName(d.lvl)}</h3>
+                    <div class="small">GUID ${esc(d.guid || '-')} · X ${esc(dispVal(d.x, 'mm'))} / Y ${esc(dispVal(d.y, 'mm'))} ${esc(cu('mm'))} · ${esc((d.ui && d.ui.support) || '')}</div>
+                    <p><span class="${cls(r)}">${r.status}</span> — governing: ${esc(r.govLabel)} at <b>${Math.round(r.maxUtil || 0)}%</b></p>
+                    <table><tr><th colspan="2">Inputs</th></tr>${inputs}</table>
+                    ${checks ? `<table><tr><th>Check</th><th>Util.</th><th>Values</th></tr>${checks}</table>` : ''}
+                    ${(d.geoWarnings || []).length ? `<div class="box"><b>Geometry / connectivity:</b> ${d.geoWarnings.map(x => esc(convText(x))).join(' ')}</div>` : ''}
+                    ${(d.notes || []).length ? `<div class="note"><b>Notes:</b> ${d.notes.map(x => esc(convText(x))).join(' ')}</div>` : ''}
+                    <div class="small">Receives load from: ${esc(listLabels(lp.up, 14))}<br>Delivers load to: ${esc(listLabels(lp.down, 14))}</div>
+                    ${opts.noTrace ? '' : `<p class="small"><b>Calculation trace (SI: kN, m, mm, MPa)</b></p><pre>${esc(r.trace.join('\n'))}</pre>`}</div>`;
+            }).join('');
+            const levelsTxt = levels.map((l, k) => k === 0 ? 'Foundation (0)' : `${lvlName(k)} (storey ${dispVal(l.h, 'mm')} ${cu('mm')})`).join(' · ');
+            const body = `<h1>Concrete member hand-check report</h1>
+                <div class="small">Generated ${esc(now.toLocaleString())} · Units: ${unitSys === 'SI' ? 'kN, mm' : 'kip, in'} · Eurocode 2 (simplified checks)</div>
+                <h2>1. Model summary</h2>
+                <table><tr><th>Levels</th><td>${esc(levelsTxt)}</td></tr><tr><th>Members checked</th><td>${sum.count}${opts.onlyHigh ? ` (report lists those above 85%: ${members.length})` : ''}</td></tr>
+                <tr><th>Governing</th><td><b>${Math.round(sum.maxUtil)}%</b> — ${esc(sum.maxName)}</td></tr><tr><th>Failing / above 85%</th><td>${sum.failed} / ${sum.warn}</td></tr>
+                <tr><th>Concrete volume</th><td>${esc(dispVal(sum.volume, 'm³'))} ${esc(cu('m³'))}</td></tr></table>
+                <h2>2. Utilization table</h2>
+                <table><tr><th>Member</th><th>Type</th><th>Level</th><th>Util.</th><th>Governing check</th><th>Status</th></tr>${summaryRows}</table>
+                <h2>3. Member calculations</h2>${detail}
+                <h2>4. Assumptions and limits</h2>
+                <p class="small">Simplified Eurocode 2 checks for checking and communication. Ultimate loads are entered by the user. Beams are treated as simply supported or cantilever with slab load shared by line length; columns use axial + minimum-eccentricity bending with a linear interaction; walls use the plain-wall method; pile caps use equal pile reactions. Not checked: shear links, cracking, 310/σs deflection modifier, pile lateral load, settlement, seismic and second-order effects. This is not a substitute for full design: verify against the governing analysis model and the project specification.</p>`;
+            const head = forWord
+                ? `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>Hand-check report</title><style>${css}</style></head><body>`
+                : `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hand-check report</title><style>${css}@page{margin:14mm}</style></head><body>`;
+            return head + body + '</body></html>';
+        }
+        function reportOpts() { return { onlyHigh: document.getElementById('rep-high').checked, noTrace: !document.getElementById('rep-trace').checked }; }
+        function openExport() {
+            document.getElementById('file-menu').classList.remove('open');
+            openBig('Export hand-check report', `
+                <p class="small">One report with a summary table, then every member's inputs, checks, warnings and full calculation trace - ready to hand to a checker.</p>
+                <label class="chk"><input type="checkbox" id="rep-trace" checked> Include calculation traces</label>
+                <label class="chk"><input type="checkbox" id="rep-high"> Only members above 85% / unsupported</label>
+                <div class="btnrow col"><button class="go" onclick="exportPrint()">Print / Save as PDF</button><button onclick="exportWord()">Download Word (.doc)</button><button onclick="exportOpen()">Open report page (print or share from browser menu)</button></div>`);
+        }
+        function exportPrint() {
+            const html = buildReportHTML(reportOpts(), false);
+            const old = document.getElementById('print-frame'); if (old) old.remove();
+            const fr = document.createElement('iframe'); fr.id = 'print-frame';
+            fr.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;';
+            document.body.appendChild(fr);
+            fr.onload = () => { try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (e) { showModal('Print not available here', 'Use "Open report page" and print / share from your browser menu, or download the Word file.'); } };
+            fr.srcdoc = html;
+        }
+        function exportWord() { downloadBlob(`ec2-hand-check-${stamp()}.doc`, 'application/msword', buildReportHTML(reportOpts(), true)); }
+        function exportOpen() {
+            const url = URL.createObjectURL(new Blob([buildReportHTML(reportOpts(), false)], { type: 'text/html' }));
+            const w = window.open(url, '_blank');
+            if (!w) showModal('Pop-up blocked', 'Allow pop-ups for this page, or use the Word download.');
         }
 
         window.onload = () => { syncTeklaData(); };
