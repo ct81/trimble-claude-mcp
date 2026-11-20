@@ -336,6 +336,16 @@
             line-height: 1;
         }
 
+        .toolbar-btn.explorer {
+            border-color: rgba(0, 240, 255, 0.5);
+            color: var(--neon-blue);
+        }
+
+        .toolbar-btn.explorer:hover {
+            background: rgba(0, 240, 255, 0.15);
+            color: var(--neon-blue);
+        }
+
         .toolbar-btn.settings {
             border-color: rgba(157, 78, 221, 0.5);
             color: var(--neon-purple);
@@ -1885,11 +1895,11 @@
                 <button class="toolbar-btn reopen" data-panel="data-color-panel" style="display:none;"
                     title="Reopen Data &amp; Color"><span class="tb-icon">🎨</span><span
                         class="label">Data</span></button>
-                <button class="toolbar-btn" type="button" id="btn-explorer" aria-controls="explorer-panel" aria-expanded="false">Explorer</button>
+                <button class="toolbar-btn explorer" type="button" id="btn-explorer" title="Explorer" aria-label="Explorer" aria-controls="explorer-panel" aria-expanded="false"><span class="tb-icon" aria-hidden="true">📁</span><span class="label">Explorer</span></button>
                 <span class="toolbar-hint" id="toolbar-hint">Single selection — click any element</span>
             </div>
             <div class="toolbar-group">
-                <button type="button" class="toolbar-btn" id="btn-vehicle" title="Simulate a vehicle on a demo loop around the view center">Start vehicle</button>
+                <button type="button" class="toolbar-btn" id="btn-vehicle" title="Start vehicle" aria-label="Start vehicle">▶</button>
                 <button class="toolbar-btn" type="button" id="open-leaflet-map" aria-haspopup="dialog" title="Open Leaflet Map">
                     <span class="tb-icon" aria-hidden="true">🗺</span><span class="label">Map</span>
                 </button>
@@ -2685,14 +2695,18 @@
 
         function stopVehicleSimulation() {
             vehicleSimulation.stop();
-            btnVehicle.textContent = 'Start vehicle';
+            btnVehicle.textContent = '▶';
+            btnVehicle.title = 'Start vehicle';
+            btnVehicle.setAttribute('aria-label', 'Start vehicle');
         }
         btnVehicle.addEventListener('click', () => {
             if (vehicleSimulation.running) {
                 stopVehicleSimulation();
             } else {
                 vehicleSimulation.start(controls.target);
-                btnVehicle.textContent = 'Stop vehicle';
+                btnVehicle.textContent = '■';
+                btnVehicle.title = 'Stop vehicle';
+                btnVehicle.setAttribute('aria-label', 'Stop vehicle');
             }
         });
 

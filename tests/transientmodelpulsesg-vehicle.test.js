@@ -22,13 +22,17 @@ function createTestVehicle() {
 
 test('the main toolbar can start and stop the vehicle without applying a ground map', () => {
     const page = readFileSync(new URL('../pages/misc/transientmodelpulsesg.html', import.meta.url), 'utf8');
-    const toolbarGroup = page.match(/<div class="toolbar">\s*<div class="toolbar-group">([\s\S]*?)<\/div>/)?.[1];
-    const buttonMarkup = toolbarGroup?.match(/<button\b([^>]*\bid="btn-vehicle"[^>]*)>([^<]+)<\/button>/);
-    assert.ok(buttonMarkup, 'vehicle button belongs to the main toolbar');
+    const toolbar = page.match(/<div class="toolbar">([\s\S]*?)\n        <\/div>/)?.[1];
+    const buttonMarkup = toolbar?.match(/<button\b([^>]*\bid="btn-vehicle"[^>]*)>([^<]+)<\/button>\s*<button\b[^>]*\bid="open-leaflet-map"/);
+    assert.ok(buttonMarkup, 'vehicle button immediately precedes Map in the toolbar');
     assert.doesNotMatch(buttonMarkup[1], /\b(?:hidden|disabled)\b/);
+    assert.match(buttonMarkup[1], /title="Start vehicle"/);
+    assert.match(buttonMarkup[1], /aria-label="Start vehicle"/);
 
     const button = {
         textContent: buttonMarkup[2],
+        title: 'Start vehicle',
+        setAttribute(name, value) { this[name] = value; },
         addEventListener(type, handler) {
             assert.equal(type, 'click');
             this.click = handler;
@@ -38,19 +42,30 @@ test('the main toolbar can start and stop the vehicle without applying a ground 
     const start = page.indexOf('        const btnVehicle =');
     const end = page.indexOf('        function updateGroundMapLinks()', start);
     assert.ok(start >= 0 && end > start);
-    vm.runInNewContext(page.slice(start, end), {
+    const context = vm.createContext({
         document: { getElementById: id => id === 'btn-vehicle' ? button : null },
         vehicleSimulation: simulation,
         controls: { target: { x: 0, z: 0 } }
     });
+    vm.runInContext(page.slice(start, end), context);
 
-    assert.equal(button.textContent, 'Start vehicle');
+    assert.equal(button.textContent, '▶');
     button.click();
     assert.equal(vehicle.visible, true);
-    assert.equal(button.textContent, 'Stop vehicle');
+    assert.equal(button.textContent, '■');
+    assert.equal(button.title, 'Stop vehicle');
+    assert.equal(button['aria-label'], 'Stop vehicle');
     button.click();
     assert.equal(vehicle.visible, false);
-    assert.equal(button.textContent, 'Start vehicle');
+    assert.equal(button.textContent, '▶');
+    assert.equal(button.title, 'Start vehicle');
+    assert.equal(button['aria-label'], 'Start vehicle');
+    button.click();
+    vm.runInContext('stopVehicleSimulation()', context);
+    assert.equal(vehicle.visible, false);
+    assert.equal(button.textContent, '▶');
+    assert.equal(button.title, 'Start vehicle');
+    assert.equal(button['aria-label'], 'Start vehicle');
 });
 
 test('the 3D demo advances at the same speed across frame rates and faces its direction of travel', () => {
