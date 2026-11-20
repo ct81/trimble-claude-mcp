@@ -86,6 +86,13 @@ OpenStreetMap below the grid. East is +X and north is −Z; the map stays fixed 
 as you pan, zoom, or orbit. Use **Hide Map** to turn it off. This places the map visually
 without changing the IFC file or its coordinates. Tiles load from OpenStreetMap and require an internet connection.
 
+For an interactive 2D map, select **Map** in the toolbar. Pick **Street**, **Satellite**,
+**Transit**, or **Terrain** in the lower left. **Traffic** opens live traffic in Google Maps
+at the current map center. In the lower right, use **My location**, **+ / −** to zoom, or
+**Street View** to open imagery near the map center in a new tab where coverage is available.
+Location requires browser permission and HTTPS (or localhost). No API key is needed; the
+Leaflet map starts in Singapore and does not change model coordinates.
+
 ## Available integrations
 
 The MCP tool catalog includes Trimble Connect operations for users, regions,

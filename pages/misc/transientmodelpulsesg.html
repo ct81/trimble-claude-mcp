@@ -8,6 +8,7 @@
 
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
@@ -79,6 +80,50 @@
             background: var(--panel-bg);
             color: var(--text-main);
             font-size: 0.7rem;
+        }
+
+        #leaflet-map-dialog {
+            margin: auto;
+            width: min(900px, calc(100vw - 24px));
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--panel-bg);
+            color: var(--text-main);
+        }
+
+        #leaflet-map-dialog::backdrop {
+            background: rgba(5, 7, 10, 0.6);
+        }
+
+        .leaflet-map-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+        }
+
+        #leaflet-map-status:not(:empty) {
+            padding: 0 12px 8px;
+            font-size: 0.85rem;
+        }
+
+        #leaflet-map {
+            height: min(65dvh, 560px);
+            color: #222;
+        }
+
+        #leaflet-map .leaflet-map-control {
+            display: grid;
+            gap: 4px;
+            padding: 4px;
+            border: 2px solid rgba(0, 0, 0, 0.2);
+            border-radius: 5px;
+            background: white;
+        }
+
+        #leaflet-map .leaflet-map-control :is(button, select, a) {
+            padding: 5px 6px;
+            font: inherit;
         }
 
         .ui-layer {
@@ -1641,6 +1686,30 @@
     <a id="map-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" hidden>
         &copy; OpenStreetMap contributors
     </a>
+    <dialog id="leaflet-map-dialog" aria-labelledby="leaflet-map-title">
+        <div class="leaflet-map-heading">
+            <h4 id="leaflet-map-title">Leaflet Map</h4>
+            <form method="dialog"><button class="toolbar-btn" type="submit" autofocus>Close Map</button></form>
+        </div>
+        <p id="leaflet-map-status" role="status"></p>
+        <div id="leaflet-map" role="region" aria-label="Interactive map" hidden></div>
+        <template id="leaflet-map-controls">
+            <div class="leaflet-map-control" id="leaflet-map-layers">
+                <label for="leaflet-base-layer">Map layer</label>
+                <select id="leaflet-base-layer">
+                    <option>Street</option>
+                    <option>Satellite</option>
+                    <option>Transit</option>
+                    <option>Terrain</option>
+                </select>
+                <a id="leaflet-traffic" target="_blank" rel="noopener noreferrer">Traffic &#8599;</a>
+            </div>
+            <div class="leaflet-map-control" id="leaflet-map-tools">
+                <button type="button" id="leaflet-locate">My location</button>
+                <a id="leaflet-street-view" target="_blank" rel="noopener noreferrer">Street View &#8599;</a>
+            </div>
+        </template>
+    </dialog>
     <div id="toast-container"></div>
     <div id="area-select-box"></div>
 
@@ -1746,6 +1815,9 @@
                 <span class="toolbar-hint" id="toolbar-hint">Single selection — click any element</span>
             </div>
             <div class="toolbar-group">
+                <button class="toolbar-btn" type="button" id="open-leaflet-map" aria-haspopup="dialog" title="Open Leaflet Map">
+                    <span class="tb-icon" aria-hidden="true">🗺</span><span class="label">Map</span>
+                </button>
                 <button class="toolbar-btn settings" id="btn-settings" title="Settings"><span
                         class="tb-icon">⚙️</span><span class="label">Settings</span></button>
                 <button class="toolbar-btn fullscreen" id="btn-fullscreen" title="Enter Fullscreen"><span
@@ -2121,6 +2193,114 @@
     </div>
 
     <div id="minimized-dock"></div>
+
+    <script type="module" id="leaflet-map-script">
+        const dialog = document.getElementById('leaflet-map-dialog');
+        const container = document.getElementById('leaflet-map');
+        const status = document.getElementById('leaflet-map-status');
+        let map;
+
+        document.getElementById('open-leaflet-map').addEventListener('click', () => {
+            dialog.showModal();
+            if (map) {
+                map.invalidateSize();
+                return;
+            }
+            const L = globalThis.L;
+            if (!L) {
+                status.textContent = 'Leaflet could not load. Check your connection and reload the page.';
+                return;
+            }
+
+            container.hidden = false;
+            map = L.map(container, { zoomControl: false, minZoom: 2, maxZoom: 19, worldCopyJump: true })
+                .setView([1.3521, 103.8198], 13);
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+            const osm = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>';
+            const layers = {
+                Street: L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: osm }),
+                Satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: 'Imagery &copy; <a href="https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9">Esri and imagery providers</a>'
+                }),
+                Transit: L.tileLayer('https://tile.memomaps.de/tilegen/{z}/{x}/{y}.png', {
+                    maxNativeZoom: 18,
+                    attribution: `Map &copy; <a href="https://www.memomaps.de/">MemoMaps</a> (<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC BY-SA</a>) | ${osm}`
+                }),
+                Terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                    maxNativeZoom: 17,
+                    attribution: `${osm}, SRTM | <a href="https://opentopomap.org/">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC BY-SA</a>)`
+                })
+            };
+            const controls = document.getElementById('leaflet-map-controls').content.cloneNode(true);
+            const select = controls.querySelector('#leaflet-base-layer');
+            const traffic = controls.querySelector('#leaflet-traffic');
+            const streetView = controls.querySelector('#leaflet-street-view');
+            const locate = controls.querySelector('#leaflet-locate');
+            for (const [id, position] of [['leaflet-map-layers', 'bottomleft'], ['leaflet-map-tools', 'bottomright']]) {
+                const element = controls.getElementById(id);
+                L.DomEvent.disableClickPropagation(element);
+                L.DomEvent.disableScrollPropagation(element);
+                const control = L.control({ position });
+                control.onAdd = () => element;
+                control.addTo(map);
+            }
+
+            let activeLayer = layers[select.value];
+            const tileError = 'Some map tiles could not load. Try another layer or check your connection.';
+            for (const layer of Object.values(layers)) {
+                layer.on('tileerror', () => {
+                    if (layer === activeLayer && !status.textContent) status.textContent = tileError;
+                });
+            }
+            activeLayer.addTo(map);
+            select.addEventListener('change', () => {
+                if (status.textContent === tileError) status.textContent = '';
+                map.removeLayer(activeLayer);
+                activeLayer = layers[select.value].addTo(map);
+            });
+
+            function updateLinks() {
+                const { lat, lng } = map.getCenter().wrap();
+                const center = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+                const mapsUrl = 'https://www.google.com/maps/@?';
+                traffic.href = mapsUrl + new URLSearchParams({
+                    api: '1', map_action: 'map', center, zoom: String(map.getZoom()), layer: 'traffic'
+                });
+                streetView.href = mapsUrl + new URLSearchParams({
+                    api: '1', map_action: 'pano', viewpoint: center
+                });
+            }
+            map.on('moveend', updateLinks);
+            updateLinks();
+
+            let locationMarker;
+            locate.addEventListener('click', () => {
+                if (!window.isSecureContext || !navigator.geolocation) {
+                    status.textContent = 'Location is unavailable. Use HTTPS or localhost in a browser with location support.';
+                    return;
+                }
+                locate.disabled = true;
+                status.textContent = 'Finding your location...';
+                map.locate({ setView: true, maxZoom: 17, timeout: 10000 });
+            });
+            map.on('locationfound', ({ latlng }) => {
+                if (locationMarker) locationMarker.setLatLng(latlng);
+                else {
+                    locationMarker = L.circleMarker(latlng, {
+                        radius: 8, color: '#fff', weight: 2, fillColor: '#146eff', fillOpacity: 1
+                    }).addTo(map).bindTooltip('Your location');
+                }
+                locate.disabled = false;
+                status.textContent = '';
+            });
+            map.on('locationerror', ({ code }) => {
+                locate.disabled = false;
+                status.textContent = code === 1
+                    ? 'Location access was denied. Allow location access in your browser and try again.'
+                    : 'Could not find your location. Check your location settings and try again.';
+            });
+        });
+    </script>
 
     <script type="module">
         import * as THREE from 'three';
@@ -3249,6 +3429,7 @@
         let areaStart = { x: 0, y: 0 };
 
         window.addEventListener('pointerdown', (e) => {
+            if (e.target.closest('#leaflet-map-dialog')) return;
             pointerDownPos = { x: e.clientX, y: e.clientY };
             if (selectionMode === 'area' && currentIfcModel) {
                 if (e.button !== 0) return;
@@ -3277,6 +3458,7 @@
         });
 
         window.addEventListener('pointerup', (event) => {
+            if (event.target.closest('#leaflet-map-dialog')) return;
             if (isAreaSelecting) {
                 isAreaSelecting = false;
                 const x1 = Math.min(event.clientX, areaStart.x);
