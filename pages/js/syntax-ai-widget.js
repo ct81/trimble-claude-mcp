@@ -916,7 +916,7 @@ this.shadowRoot
     avatar.className = "avatar " +
       (sender === "user" ? "user-avatar" : "");
 
-    avatar.textContent = sender === "user" ? "👤" : "S:";
+    avatar.textContent = sender === "user" ? "👤" : "C:";
 
     const bubble = document.createElement("div");
     bubble.className = "bubble";
