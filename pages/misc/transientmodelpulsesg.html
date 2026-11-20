@@ -793,6 +793,36 @@
             max-height: calc(100dvh - var(--data-panel-top) - 10px);
         }
 
+        #explorer-panel {
+            top: var(--panel-top);
+            left: 20px;
+            width: min(360px, calc(100vw - 40px));
+            height: min(65dvh, 650px);
+        }
+
+        #explorer-tree {
+            overflow: auto;
+            flex: 1;
+            font-size: 0.75rem;
+        }
+
+        #explorer-tree details { margin-left: 14px; }
+        #explorer-tree > details { margin-left: 0; }
+        #explorer-tree summary { cursor: pointer; padding: 3px 0; }
+        #explorer-tree button {
+            border: 0;
+            padding: 3px 5px;
+            color: var(--text-main);
+            background: transparent;
+            text-align: left;
+            cursor: pointer;
+            font: inherit;
+        }
+        #explorer-tree button:hover, #explorer-tree button.selected {
+            color: var(--neon-blue);
+            background: rgba(0, 240, 255, 0.12);
+        }
+
         #crane-panel .content {
             padding: 10px;
             gap: 7px;
@@ -1855,6 +1885,7 @@
                 <button class="toolbar-btn reopen" data-panel="data-color-panel" style="display:none;"
                     title="Reopen Data &amp; Color"><span class="tb-icon">🎨</span><span
                         class="label">Data</span></button>
+                <button class="toolbar-btn" type="button" id="btn-explorer" aria-controls="explorer-panel" aria-expanded="false">Explorer</button>
                 <span class="toolbar-hint" id="toolbar-hint">Single selection — click any element</span>
             </div>
             <div class="toolbar-group">
@@ -2177,6 +2208,21 @@
             </div>
             <div class="resize-handle" data-resize="data-color-panel"></div>
         </div>
+
+        <div class="floating-controls" id="explorer-panel" style="display: none;">
+            <div class="panel-header">
+                <span>Model Explorer</span>
+                <div class="window-controls">
+                    <div class="win-btn min-btn" data-target="explorer-panel">_</div>
+                    <div class="win-btn close" data-target="explorer-panel">×</div>
+                </div>
+            </div>
+            <div class="content">
+                <input type="search" id="explorer-search" class="search-input" aria-label="Search model explorer" placeholder="Search elements...">
+                <div id="explorer-tree" aria-live="polite">Load an IFC model to explore it.</div>
+            </div>
+            <div class="resize-handle" data-resize="explorer-panel"></div>
+        </div>
     </div>
 
     <div id="inspector-panel">
@@ -2334,9 +2380,10 @@
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-        import { IfcAPI } from 'web-ifc';
+        import { IfcAPI, IFCPROJECT, IFCPRODUCT, IFCRELAGGREGATES, IFCRELNESTS, IFCRELCONTAINEDINSPATIALSTRUCTURE } from 'web-ifc';
         import { createGroundMap, getMapLayer } from './transientmodelpulsesg-ground-map.js';
         import { createVehicleSimulation } from './transientmodelpulsesg-vehicle.js';
+        import { buildExplorerTree } from './transientmodelpulsesg-explorer.js';
 
         const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
@@ -2967,9 +3014,9 @@
             });
         }
 
-        setupWindow('inspector-panel'); setupWindow('validation-results'); setupWindow('floating-controls-panel'); setupWindow('data-color-panel'); setupWindow('crane-panel'); setupWindow('left-panel'); setupWindow('right-panel'); setupWindow('chart-modal');
+        setupWindow('inspector-panel'); setupWindow('validation-results'); setupWindow('floating-controls-panel'); setupWindow('data-color-panel'); setupWindow('explorer-panel'); setupWindow('crane-panel'); setupWindow('left-panel'); setupWindow('right-panel'); setupWindow('chart-modal');
 
-        ['left-panel', 'right-panel', 'floating-controls-panel', 'data-color-panel', 'crane-panel', 'inspector-panel', 'validation-results', 'chart-modal'].forEach(id => {
+        ['left-panel', 'right-panel', 'floating-controls-panel', 'data-color-panel', 'explorer-panel', 'crane-panel', 'inspector-panel', 'validation-results', 'chart-modal'].forEach(id => {
             const el = document.getElementById(id);
             if (el) { makePanelDraggable(el); makePanelResizable(el); }
         });
@@ -3099,10 +3146,19 @@
             else if (prop.VolumeValue && prop.VolumeValue.value !== undefined) val = prop.VolumeValue.value;
             else if (prop.CountValue && prop.CountValue.value !== undefined) val = prop.CountValue.value;
             else if (prop.WeightValue && prop.WeightValue.value !== undefined) val = prop.WeightValue.value;
+            else if (prop.TimeValue && prop.TimeValue.value !== undefined) val = prop.TimeValue.value;
+            else if (prop.EnumerationValues) val = Array.from(prop.EnumerationValues, item => item.value).join(', ');
+            else if (prop.ListValues) val = Array.from(prop.ListValues, item => item.value).join(', ');
+            else if (prop.LowerBoundValue || prop.UpperBoundValue) val = [prop.LowerBoundValue?.value, prop.UpperBoundValue?.value].filter(value => value !== undefined).join(' - ');
+            else if (prop.DefiningValues || prop.DefinedValues) {
+                const formatValues = values => (values || []).map(item => item.value).join(', ');
+                val = `${formatValues(prop.DefiningValues)} → ${formatValues(prop.DefinedValues)}`;
+            }
+            else if (prop.PropertyReference) val = `#${safeExpressID(prop.PropertyReference)}`;
             else if (prop.value !== undefined) val = prop.value;
-            if (prop.HasProperties) {
+            if (prop.HasProperties || prop.HasQuantities) {
                 let nested = [];
-                iterateCollection(prop.HasProperties, nestedPropHandle => {
+                iterateCollection(prop.HasProperties || prop.HasQuantities, nestedPropHandle => {
                     const nid = safeExpressID(nestedPropHandle); if (nid < 0) return;
                     let np = null; try { np = ifcAPI.GetLine(currentModelID, nid, false); } catch (e) { return; }
                     if (np && np.Name) {
@@ -3217,6 +3273,107 @@
             return null;
         }
 
+        const explorerPanel = document.getElementById('explorer-panel');
+        const explorerButton = document.getElementById('btn-explorer');
+        const explorerSearch = document.getElementById('explorer-search');
+        const explorerTreeElement = document.getElementById('explorer-tree');
+        let explorerTree = null;
+        let currentIfcFilename = 'example.ifc';
+
+        function renderExplorer() {
+            explorerTreeElement.replaceChildren();
+            if (!explorerTree) {
+                explorerTreeElement.textContent = 'Load an IFC model to explore it.';
+                return;
+            }
+            const query = explorerSearch.value.trim().toLowerCase();
+            const filter = (node, parentMatches = false) => {
+                const matches = parentMatches || !query || node.name.toLowerCase().includes(query);
+                const children = node.children.map(child => filter(child, matches)).filter(Boolean);
+                return matches || children.length ? { ...node, children } : null;
+            };
+            const root = filter(explorerTree);
+            if (!root) {
+                explorerTreeElement.textContent = 'No matching elements.';
+                return;
+            }
+            const renderNode = (node, parent, open = false) => {
+                const createLabel = () => {
+                    if (node.id === undefined) return document.createTextNode(node.name);
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.textContent = node.name;
+                    button.title = `${node.type} #${node.id}`;
+                    button.addEventListener('click', event => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        explorerTreeElement.querySelectorAll('button.selected').forEach(item => item.classList.remove('selected'));
+                        button.classList.add('selected');
+                        clearSelection();
+                        const mesh = currentIfcModel?.children.find(child => child.isMesh && child.userData.expressID === node.id);
+                        if (mesh) addMeshToSelection(mesh);
+                        showElementProperties(currentModelID, node.id);
+                    });
+                    return button;
+                };
+                if (!node.children.length) {
+                    const row = document.createElement('div');
+                    row.appendChild(createLabel());
+                    parent.appendChild(row);
+                    return;
+                }
+                const details = document.createElement('details');
+                const summary = document.createElement('summary');
+                summary.appendChild(createLabel());
+                details.appendChild(summary);
+                let populated = false;
+                const populate = () => {
+                    if (populated) return;
+                    populated = true;
+                    node.children.forEach(child => renderNode(child, details, !!query));
+                };
+                details.addEventListener('toggle', () => { if (details.open) populate(); });
+                parent.appendChild(details);
+                if (open || query) {
+                    populate();
+                    details.open = true;
+                }
+            };
+            renderNode(root, explorerTreeElement, true);
+        }
+
+        function refreshExplorer() {
+            if (currentModelID === -1) {
+                explorerTree = null;
+                renderExplorer();
+                return;
+            }
+            try {
+                explorerTree = buildExplorerTree(ifcAPI, currentModelID, currentIfcFilename, {
+                    project: IFCPROJECT, product: IFCPRODUCT, aggregates: IFCRELAGGREGATES,
+                    nests: IFCRELNESTS, contains: IFCRELCONTAINEDINSPATIALSTRUCTURE
+                });
+                renderExplorer();
+            } catch (error) {
+                explorerTree = null;
+                console.error('Failed to build IFC explorer:', error);
+                explorerTreeElement.textContent = 'Could not read the IFC hierarchy.';
+                showToast('Could not read the IFC hierarchy.', 'error');
+            }
+        }
+        explorerButton.addEventListener('click', () => {
+            if (explorerPanel.style.display !== 'none') {
+                explorerPanel.querySelector('.close').click();
+                return;
+            }
+            reopenPanel('explorer-panel');
+            if (!explorerTree) refreshExplorer();
+        });
+        explorerSearch.addEventListener('input', renderExplorer);
+        new MutationObserver(() => {
+            explorerButton.setAttribute('aria-expanded', String(explorerPanel.style.display !== 'none'));
+        }).observe(explorerPanel, { attributes: true, attributeFilter: ['style'] });
+
         function _safeGetLine(modelID, id, isType = false) {
             const safeId = safeExpressID(id);
             if (safeId < 0) return null;
@@ -3319,7 +3476,7 @@
             return new Float32Array(0);
         }
 
-        async function processAndAddModel(arrayBuffer) {
+        async function processAndAddModel(arrayBuffer, filename = 'example.ifc') {
             // Reset animation
             resetStatusPlayback();
             clearInterval(animTimer);
@@ -3349,6 +3506,9 @@
                 statusColoredMeshes.clear();
                 guidToMeshMap.clear();
                 elementPsetCache.clear();
+                explorerTree = null;
+                explorerSearch.value = '';
+                renderExplorer();
                 renderer.renderLists.dispose();
 
                 if (hadPreviousModel) {
@@ -3369,6 +3529,7 @@
                 }
                 if (opened === -1) throw new Error("OpenModel failed (heap exhausted).");
                 currentModelID = opened;
+                currentIfcFilename = filename;
                 arrayBuffer = null;
 
                 showLoading("Extracting Geometry...", "Reading mesh data from WASM...");
@@ -3485,6 +3646,7 @@
                 scene.add(group);
                 currentIfcModel = group;
                 clearSelection();
+                if (explorerPanel.style.display !== 'none') refreshExplorer();
 
                 const box = new THREE.Box3().setFromObject(group);
                 const center = box.getCenter(new THREE.Vector3());
@@ -3514,6 +3676,7 @@
         }
 
         function clearSelection() {
+            inspectorPanel.dataset.propertyRequest = String((Number(inspectorPanel.dataset.propertyRequest) || 0) + 1);
             selectedMeshes.forEach((mesh, eid) => {
                 mesh.material = selectedOriginalMaterials.get(eid) || sharedDefaultMaterial;
             });
@@ -3968,6 +4131,8 @@
             const safeId = safeExpressID(expressID);
             if (modelID === -1 || safeId < 0) return;
 
+            const request = String((Number(inspectorPanel.dataset.propertyRequest) || 0) + 1);
+            inspectorPanel.dataset.propertyRequest = request;
             inspectorPanel.style.display = 'flex';
             inspectorPanel.classList.add('open');
             tabNav.innerHTML = '';
@@ -3975,6 +4140,7 @@
             searchInput.value = '';
 
             await new Promise(r => setTimeout(r, 0));
+            if (inspectorPanel.dataset.propertyRequest !== request) return;
             tabContentContainer.innerHTML = '';
 
             const attrBtn = document.createElement('div'); attrBtn.className = 'tab-btn active'; attrBtn.innerText = 'Attributes'; attrBtn.dataset.tab = 'tab-attributes'; tabNav.appendChild(attrBtn);
@@ -4030,10 +4196,28 @@
                     }
                 }
 
-                addAttributeRow("Type", ifcLine.type || ifcLine.constructor.name);
+                const lineType = typeof ifcLine.type === 'number' && typeof ifcAPI.GetNameFromTypeCode === 'function'
+                    ? ifcAPI.GetNameFromTypeCode(ifcLine.type) : ifcLine.type;
+                addAttributeRow("Type", lineType || ifcLine.constructor.name);
                 addAttributeRow("Name", ifcLine.Name ? ifcLine.Name.value : "Unnamed");
-                if (ifcLine.Tag && ifcLine.Tag.value) addAttributeRow("Tag", ifcLine.Tag.value);
-                if (ifcLine.ObjectType && ifcLine.ObjectType.value) addAttributeRow("ObjectType", ifcLine.ObjectType.value);
+                if ('Tag' in ifcLine) addAttributeRow("Tag", ifcLine.Tag?.value ?? '—');
+                if ('ObjectType' in ifcLine) addAttributeRow("ObjectType", ifcLine.ObjectType?.value ?? '—');
+
+                const formatAttribute = value => {
+                    if (value === null || value === undefined) return '';
+                    if (Array.isArray(value)) return value.map(formatAttribute).filter(Boolean).join(', ');
+                    if (typeof value !== 'object') return String(value);
+                    if (value.value !== undefined) {
+                        if (value.type === 5 && typeof value.value === 'number') return `#${value.value}`;
+                        return formatAttribute(value.value);
+                    }
+                    if (value.expressID !== undefined) return `#${value.expressID}`;
+                    return JSON.stringify(value);
+                };
+                const shown = new Set(['expressID', 'type', 'GlobalId', 'Name', 'Tag', 'ObjectType']);
+                Object.entries(ifcLine).forEach(([key, value]) => {
+                    if (!shown.has(key)) addAttributeRow(key, formatAttribute(value) || '—');
+                });
 
                 if (ifcLine.GlobalId && importedDataMap.has(ifcLine.GlobalId.value)) {
                     const records = importedDataMap.get(ifcLine.GlobalId.value);
@@ -4057,40 +4241,61 @@
                     const addPset = (handle) => {
                         const psetID = safeExpressID(handle); if (psetID < 0) return;
                         if (uniquePsets.has(psetID)) return;
-                        let pset = null; try { pset = ifcAPI.GetLine(modelID, psetID, false); } catch (e) { return; }
+                        const pset = ifcAPI.GetLine(modelID, psetID, false);
                         if (!pset || !pset.Name) return;
                         uniquePsets.set(psetID, pset);
                     };
                     const rawElement = ifcLine;
                     if (rawElement) {
-                        try { iterateCollection(rawElement.IsDefinedBy, relHandle => { const relId = safeExpressID(relHandle); if (relId < 0) return; let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch (e) { return; } if (rel && rel.RelatingPropertyDefinition) addPset(rel.RelatingPropertyDefinition); }); } catch (e) { }
-                        try { iterateCollection(rawElement.IsTypedBy, relHandle => { const relId = safeExpressID(relHandle); if (relId < 0) return; let rel = null; try { rel = ifcAPI.GetLine(modelID, relId, false); } catch (e) { return; } if (rel && rel.RelatingType) { const typeId = safeExpressID(rel.RelatingType); if (typeId < 0) return; let typeObj = null; try { typeObj = ifcAPI.GetLine(modelID, typeId, false); } catch (e) { return; } if (typeObj && typeObj.HasPropertySets) iterateCollection(typeObj.HasPropertySets, psetHandle => addPset(psetHandle)); } }); } catch (e) { }
+                        const readDefinition = relHandle => {
+                            const relId = safeExpressID(relHandle);
+                            if (relId < 0) return;
+                            const rel = ifcAPI.GetLine(modelID, relId, false);
+                            if (rel?.RelatingPropertyDefinition) {
+                                const definitions = rel.RelatingPropertyDefinition;
+                                if (Array.isArray(definitions)) definitions.forEach(addPset);
+                                else addPset(definitions);
+                            }
+                            if (rel?.RelatingType) {
+                                const typeId = safeExpressID(rel.RelatingType);
+                                if (typeId < 0) return;
+                                const typeObj = ifcAPI.GetLine(modelID, typeId, false);
+                                if (typeObj?.HasPropertySets) iterateCollection(typeObj.HasPropertySets, addPset);
+                            }
+                        };
+                        iterateCollection(rawElement.IsDefinedBy, readDefinition);
+                        iterateCollection(rawElement.IsTypedBy, readDefinition);
                         // getPropertySets scans every relation in the model, so only use it when inverse links are unavailable.
                         if (uniquePsets.size === 0 && !rawElement.IsDefinedBy) {
-                            try { const apiPsets = ifcAPI.properties.getPropertySets(modelID, safeId, true); const awaited = apiPsets instanceof Promise ? await apiPsets : apiPsets; if (awaited) iterateCollection(awaited, pset => addPset(pset)); } catch (e) { }
+                            const apiPsets = ifcAPI.properties.getPropertySets(modelID, safeId, true);
+                            const awaited = apiPsets instanceof Promise ? await apiPsets : apiPsets;
+                            if (inspectorPanel.dataset.propertyRequest !== request) return;
+                            if (awaited) iterateCollection(awaited, pset => addPset(pset));
                         }
                     }
 
                     psetTabs = [];
                     uniquePsets.forEach((pset) => {
-                        const isQto = pset.type === "IFCELEMENTQUANTITY";
+                        const isQto = !!pset.Quantities || pset.type === "IFCELEMENTQUANTITY";
                         const title = isQto ? `[Qto] ${pset.Name?.value || 'Unnamed'}` : (pset.Name?.value || 'Unnamed');
                         const rows = [];
-                        if (pset.HasProperties) {
-                            iterateCollection(pset.HasProperties, propHandle => {
+                        if (pset.HasProperties || pset.Quantities) {
+                            iterateCollection(pset.HasProperties || pset.Quantities, propHandle => {
                                 const propID = safeExpressID(propHandle); if (propID < 0) return;
-                                let prop = null; try { prop = ifcAPI.GetLine(modelID, propID, false); } catch (e) { return; }
+                                const prop = ifcAPI.GetLine(modelID, propID, false);
                                 if (prop && prop.Name) {
-                                    let val = 'N/A'; try { val = extractValue(prop) || 'N/A'; } catch (e) { val = 'N/A'; }
+                                    const val = extractValue(prop) ?? 'N/A';
                                     rows.push([prop.Name.value, val]);
                                 }
                             });
                         }
                         psetTabs.push({ title, rows });
                     });
+                    if (inspectorPanel.dataset.propertyRequest !== request) return;
                     elementPsetCache.set(cacheKey, psetTabs);
                 }
 
+                if (inspectorPanel.dataset.propertyRequest !== request) return;
                 psetTabs.forEach(({ title, rows }, psetIndex) => {
                     const tabId = `tab-pset-${psetIndex}`;
                     const btn = document.createElement('div'); btn.className = 'tab-btn'; btn.innerText = title; btn.dataset.tab = tabId; tabNav.appendChild(btn);
@@ -4104,7 +4309,10 @@
                     });
                     if (rows.length === 0) content.innerHTML = '<div style="color:var(--text-muted); font-size:0.8rem; margin-top:10px;">No properties in this set.</div>';
                 });
-            } catch (psetErr) { }
+            } catch (psetErr) {
+                console.error('Failed to read IFC property sets:', psetErr);
+                showToast('Could not read all property sets for this element.', 'error');
+            }
 
             tabNav.onclick = (e) => {
                 const btn = e.target.closest('.tab-btn'); if (!btn) return;
@@ -4476,7 +4684,7 @@
                 const defaultIfcURL = 'https://thatopen.github.io/engine_fragment/resources/example.ifc';
                 showLoading("Initializing...", "Downloading default IFC...");
                 const response = await fetch(defaultIfcURL);
-                await processAndAddModel(await response.arrayBuffer());
+                await processAndAddModel(await response.arrayBuffer(), 'example.ifc');
             } catch (error) { showToast("Failed to boot Web-IFC engine.", 'error'); loadTitle.innerText = "Init Error"; loadStatus.innerText = "Failed to boot."; }
         }
         startApp();
@@ -4496,7 +4704,7 @@
                 }
             };
             reader.onload = async function (e) {
-                await processAndAddModel(e.target.result);
+                await processAndAddModel(e.target.result, file.name);
                 document.querySelector('.breadcrumbs').innerHTML = `DIGITAL TWIN | Project: <span id="project-name" style="color:var(--neon-blue)"></span> | SITE STATUS: <span>ON TRACK</span> | <span id="clock">${new Date().toLocaleTimeString()}</span>`;
                 document.getElementById('project-name').textContent = file.name;
             };

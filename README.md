@@ -92,7 +92,7 @@ The lower-right controls zoom the model camera or move it to **My location** wit
 the map alignment. **Traffic** and **Street View** open Google Maps at the camera's focus
 in a new tab; they do not add live traffic or panoramas to the 3D scene.
 
-Select **Start vehicle** in the main toolbar, next to **Play**, to drive a 3D pickup around
+Select **Start vehicle** in the main toolbar, next to **Map**, to drive a 3D pickup around
 a demo loop centered on the current view. No ground map is required. The vehicle moves on
 the same ground plane as the map, and its route stays in place as you pan, zoom, or orbit.
 Use **Stop vehicle** to remove it. Hiding or applying the map also stops the simulation.
@@ -104,6 +104,11 @@ at the current map center. In the lower right, use **My location**, **+ / −** 
 **Street View** to open imagery near the map center in a new tab where coverage is available.
 Location requires browser permission and HTTPS (or localhost). No API key is needed; the
 Leaflet map starts in Singapore and does not change model coordinates.
+
+Select **Explorer** in the toolbar to browse the loaded IFC's spatial hierarchy and
+element types. Search by name or type, expand the tree, and select an item to see its
+attributes and property sets in the Element Properties tabs. The tree also includes
+uncontained products and elements without visible geometry.
 
 ## Available integrations
 

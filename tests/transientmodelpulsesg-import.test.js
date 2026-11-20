@@ -20,6 +20,7 @@ function createHarness() {
         addEventListener() {}
     });
     const tabContentContainer = element();
+    const tabNav = element();
     const mesh = { isMesh: true, userData: { expressID: 1 }, material: { name: 'original' } };
     const elements = {
         'btn-play-status': element(),
@@ -43,7 +44,7 @@ function createHarness() {
         statusPlaybackOriginals: new Map(), statusPlaybackMaterials: new Map(),
         guidToMeshMap: new Map([['guid-1', mesh]]),
         inspectorPanel: element(),
-        tabNav: element(),
+        tabNav,
         tabContentContainer,
         searchInput: {},
         currentModelID: 0,
@@ -67,8 +68,33 @@ function createHarness() {
         section('        async function showElementProperties(', '        async function runSGValidation('),
         context
     );
-    return { context, mesh, tabContentContainer, elements, timers, toasts };
+    return { context, mesh, tabNav, tabContentContainer, elements, timers, toasts };
 }
+
+test('shows IFC attributes, type property sets, and zero quantities in separate tabs', async () => {
+    const { context, tabNav, tabContentContainer } = createHarness();
+    const ref = value => ({ value });
+    const lines = {
+        1: { GlobalId: ref('guid-1'), type: 'IFCWALL', Name: ref('Wall'), Description: ref('External wall'), IsDefinedBy: [ref(10), ref(11)] },
+        10: { RelatingPropertyDefinition: ref(20) },
+        11: { RelatingType: ref(30) },
+        20: { Name: ref('BaseQuantities'), Quantities: [ref(21)] },
+        21: { Name: ref('NetVolume'), VolumeValue: ref(0) },
+        30: { HasPropertySets: [ref(31)] },
+        31: { Name: ref('Pset_WallCommon'), HasProperties: [ref(32)] },
+        32: { Name: ref('LoadBearing'), NominalValue: ref(false) }
+    };
+    context.ifcAPI.GetLine = (_model, id) => lines[id];
+    context.safeExpressID = item => typeof item === 'number' ? item : item.value;
+    context.iterateCollection = (items, callback) => items?.forEach(callback);
+    vm.runInContext(section('        function extractValue(', '        async function getPsetsAsMap('), context);
+    await context.showElementProperties(0, 1);
+    assert.deepEqual(tabNav.children.map(tab => tab.innerText), ['Attributes', '[Qto] BaseQuantities', 'Pset_WallCommon']);
+    const rows = content => content.children.map(row => row.children.map(child => child.textContent));
+    assert.ok(rows(tabContentContainer.children[0]).some(row => row[0] === 'Description' && row[1] === 'External wall'));
+    assert.deepEqual(rows(tabContentContainer.children[1]), [['NetVolume', 0]]);
+    assert.deepEqual(rows(tabContentContainer.children[2]), [['LoadBearing', false]]);
+});
 
 test('preserves matching records, sorts dates, and colors by newest status', async () => {
     const { context, mesh, tabContentContainer } = createHarness();
