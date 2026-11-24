@@ -1570,6 +1570,17 @@
             box-shadow: 0 0 8px rgba(157, 78, 221, 0.4);
         }
 
+        #set-validation-excel {
+            color: var(--text-muted);
+            font-size: 0.7rem;
+        }
+
+        #validation-excel-status {
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            overflow-wrap: anywhere;
+        }
+
         .settings-row button {
             background: rgba(157, 78, 221, 0.1);
             border: 1px solid var(--neon-purple);
@@ -1817,6 +1828,10 @@
             <h4>Model Schema Settings</h4>
             <label for="set-required-schema">Required Schema (JSON)</label>
             <textarea id="set-required-schema" spellcheck="false"></textarea>
+            <label for="set-validation-excel">Validation Excel (matched by Global ID)</label>
+            <input type="file" id="set-validation-excel" accept=".xlsx,.xls">
+            <span id="validation-excel-status" role="status"></span>
+            <button type="button" id="btn-compare-excel" disabled>Compare Selected with Excel</button>
         </div>
         <div class="settings-row"><label for="set-validate-all">Select all and validate SG</label><input type="checkbox" id="set-validate-all"></div>
         <div class="settings-row"><button id="btn-reset-camera">Reset Camera</button></div>
@@ -4624,6 +4639,207 @@
         }
         document.getElementById('header-export-btn').addEventListener('click', exportSelectedToExcel);
         document.getElementById('btn-export-excel').addEventListener('click', exportSelectedToExcel);
+
+        // ─── Compare selected elements with an uploaded Excel workbook, matched by Global ID ───
+        const excelSheetName = name => String(name).replace(/[\[\]:*?\/\\]/g, '_').slice(0, 31);
+        const normalizeHeader = header => String(header).replace(/[\s_]/g, '').toLowerCase();
+
+        function parseValidationWorkbook(workbook, xlsx = XLSX) {
+            const sheets = [];
+            const issues = [];
+            const guids = new Set();
+            for (const sheetName of workbook.SheetNames) {
+                const rows = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '', raw: true });
+                if (!rows.length) continue;
+                const headers = Object.keys(rows[0]).filter(header => !header.startsWith('__EMPTY'));
+                const guidColumn = headers.find(header => ['globalid', 'guid', 'ifcguid'].includes(normalizeHeader(header)));
+                if (!guidColumn) {
+                    issues.push(`Tab "${sheetName}" has no Global ID column and was skipped.`);
+                    continue;
+                }
+                const isAttributes = sheetName.trim().toLowerCase() === 'attributes';
+                const skipped = new Set(['expressid', normalizeHeader(guidColumn), ...(isAttributes ? [] : ['name'])]);
+                const rowsByGuid = new Map();
+                for (const row of rows) {
+                    const guid = String(row[guidColumn] ?? '').trim();
+                    if (!guid) continue;
+                    if (rowsByGuid.has(guid)) {
+                        issues.push(`Tab "${sheetName}" has duplicate Global ID ${guid}; the first row was used.`);
+                        continue;
+                    }
+                    rowsByGuid.set(guid, row);
+                    guids.add(guid);
+                }
+                sheets.push({ name: sheetName, isAttributes, rowsByGuid, columns: headers.filter(header => !skipped.has(normalizeHeader(header))) });
+            }
+            return { sheets, issues, guidCount: guids.size };
+        }
+
+        function normalizeCompareValue(value) {
+            if (value === null || value === undefined) return '';
+            if (typeof value === 'boolean') return String(value);
+            const text = String(value).trim();
+            const upper = text.toUpperCase();
+            if (upper === 'TRUE' || upper === '.T.') return 'true';
+            if (upper === 'FALSE' || upper === '.F.') return 'false';
+            return text;
+        }
+
+        function compareValues(expected, actual, ignoreCase = false) {
+            let excel = normalizeCompareValue(expected);
+            let model = normalizeCompareValue(actual);
+            if (ignoreCase) { excel = excel.toLowerCase(); model = model.toLowerCase(); }
+            if (excel === model) return true;
+            if (excel === '' || model === '') return false;
+            const excelNumber = Number(excel);
+            const modelNumber = Number(model);
+            // Excel stores up to 15 significant digits, so allow tiny floating-point differences.
+            return Number.isFinite(excelNumber) && Number.isFinite(modelNumber) &&
+                Math.abs(excelNumber - modelNumber) <= 1e-9 * Math.max(1, Math.abs(excelNumber), Math.abs(modelNumber));
+        }
+
+        function compareElementWithExcel(element, workbookData) {
+            const errors = [];
+            let matchedTabs = 0;
+            for (const sheet of workbookData.sheets) {
+                const row = sheet.rowsByGuid.get(element.globalId);
+                if (!row) continue;
+                matchedTabs++;
+                const props = sheet.isAttributes ? element.attributes : element.psets.get(sheet.name) ||
+                    [...element.psets].find(([name]) => excelSheetName(name).toLowerCase() === sheet.name.toLowerCase())?.[1];
+                if (!props) {
+                    errors.push({ type: 'Missing Property Set', detail: `Tab "${sheet.name}": property set was not found on the model element.` });
+                    continue;
+                }
+                for (const column of sheet.columns) {
+                    const key = sheet.isAttributes ? [...props.keys()].find(name => normalizeHeader(name) === normalizeHeader(column)) : column;
+                    const expected = row[column];
+                    if (key === undefined || !props.has(key)) {
+                        if (normalizeCompareValue(expected) !== '') {
+                            errors.push({ type: 'Missing Property', detail: `Tab "${sheet.name}": ${column} is "${expected}" in Excel but missing in the model.` });
+                        }
+                        continue;
+                    }
+                    const actual = props.get(key);
+                    if (!compareValues(expected, actual, sheet.isAttributes && normalizeHeader(column) === 'type')) {
+                        errors.push({ type: 'Value Mismatch', detail: `Tab "${sheet.name}": ${column} — Excel "${normalizeCompareValue(expected)}", model "${normalizeCompareValue(actual)}".` });
+                    }
+                }
+            }
+            return { errors, matchedTabs };
+        }
+
+        let validationWorkbook = null;
+        const validationExcelInput = document.getElementById('set-validation-excel');
+        const validationExcelStatus = document.getElementById('validation-excel-status');
+        const compareExcelButton = document.getElementById('btn-compare-excel');
+
+        function showExcelValidationResults(errors, comparedCount, selectedCount) {
+            valContent.replaceChildren();
+            const summary = document.createElement('div');
+            const detail = document.createElement('span');
+            detail.style.cssText = 'display:block; font-size:0.8rem; color:var(--text-muted); font-weight:normal;';
+            if (!errors.length) {
+                summary.className = 'val-success';
+                summary.textContent = '✅ EXCEL DATA MATCHES';
+                detail.textContent = `Compared ${comparedCount} of ${selectedCount} selected element(s) with ${validationWorkbook.fileName}.`;
+                summary.appendChild(detail);
+                valContent.appendChild(summary);
+            } else {
+                summary.style.cssText = 'color:var(--neon-pink); margin-bottom:10px; font-weight:bold;';
+                summary.textContent = `❌ EXCEL MISMATCH - ${errors.length} issue(s) across ${selectedCount} selected element(s)`;
+                detail.textContent = `Source: ${validationWorkbook.fileName}`;
+                summary.appendChild(detail);
+                valContent.appendChild(summary);
+                const groups = new Map();
+                errors.forEach(error => {
+                    if (!groups.has(error.element)) groups.set(error.element, []);
+                    groups.get(error.element).push(error);
+                });
+                groups.forEach((items, element) => {
+                    const header = document.createElement('div');
+                    header.className = 'val-part-header';
+                    header.textContent = element;
+                    valContent.appendChild(header);
+                    items.forEach(error => {
+                        const item = document.createElement('div');
+                        const type = document.createElement('strong');
+                        const text = document.createElement('span');
+                        item.className = 'val-error-item';
+                        type.textContent = `[${error.type}]`;
+                        text.textContent = error.detail;
+                        item.append(type, text);
+                        valContent.appendChild(item);
+                    });
+                });
+            }
+            validationModal.style.display = 'flex';
+            validationModal.classList.add('open');
+        }
+
+        async function compareSelectedWithExcel() {
+            if (!validationWorkbook) return showToast('Upload a validation Excel file first.', 'error');
+            const expressIDs = Array.from(selectedMeshes.keys());
+            if (!expressIDs.length) return showToast('Select element(s) first.', 'error');
+            compareExcelButton.disabled = true;
+            showToast(`Comparing ${expressIDs.length} selected element(s) with Excel...`);
+            try {
+                const errors = validationWorkbook.issues.map(detail => ({ element: 'Excel File', type: 'Workbook Warning', detail }));
+                let comparedCount = 0;
+                for (const expressID of expressIDs) {
+                    const safeId = safeExpressID(expressID);
+                    if (safeId < 0) continue;
+                    let line = null;
+                    try { line = ifcAPI.GetLine(currentModelID, safeId, false); } catch (e) { }
+                    const globalId = line?.GlobalId?.value;
+                    const element = `Element (ID: ${safeId})${globalId ? ` — ${globalId}` : ''}`;
+                    if (!globalId) {
+                        errors.push({ element, type: 'Missing Global ID', detail: 'The selected model element has no Global ID.' });
+                        continue;
+                    }
+                    const attributes = new Map([['Type', resolveIfcTypeName(currentModelID, safeId) || '']]);
+                    for (const [key, attribute] of Object.entries(line)) {
+                        if (['string', 'number', 'boolean'].includes(typeof attribute?.value)) attributes.set(key, attribute.value);
+                    }
+                    const result = compareElementWithExcel({ globalId, attributes, psets: await getPsetsAsMap(currentModelID, safeId) }, validationWorkbook);
+                    if (!result.matchedTabs) {
+                        errors.push({ element, type: 'Not In Excel', detail: 'No Excel tab contains this Global ID.' });
+                        continue;
+                    }
+                    comparedCount++;
+                    result.errors.forEach(error => errors.push({ element, ...error }));
+                }
+                showExcelValidationResults(errors, comparedCount, expressIDs.length);
+            } catch (error) {
+                console.error('Excel comparison failed:', error);
+                showToast(`Excel comparison failed: ${error.message || error}`, 'error');
+            } finally {
+                compareExcelButton.disabled = false;
+            }
+        }
+
+        validationExcelInput.addEventListener('change', async () => {
+            const file = validationExcelInput.files[0];
+            if (!file) return;
+            try {
+                if (typeof XLSX === 'undefined') throw new Error('Excel library not loaded.');
+                const parsed = parseValidationWorkbook(XLSX.read(await file.arrayBuffer(), { type: 'array' }));
+                if (!parsed.sheets.length) throw new Error('No tab with a Global ID column was found.');
+                validationWorkbook = { ...parsed, fileName: file.name };
+                validationExcelStatus.textContent = `${file.name}: ${parsed.sheets.length} tab(s), ${parsed.guidCount} Global ID(s).`;
+                compareExcelButton.disabled = false;
+                if (selectedMeshes.size) await compareSelectedWithExcel();
+                else showToast('Validation Excel loaded. Select element(s), then compare.', 'success');
+            } catch (error) {
+                validationWorkbook = null;
+                validationExcelStatus.textContent = '';
+                compareExcelButton.disabled = true;
+                showToast(`Could not read validation Excel: ${error.message || error}`, 'error');
+            } finally {
+                validationExcelInput.value = '';
+            }
+        });
+        compareExcelButton.addEventListener('click', compareSelectedWithExcel);
 
         searchInput.addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase();

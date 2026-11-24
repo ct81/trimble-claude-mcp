@@ -174,3 +174,60 @@ test('successful IFC loads validate the newly loaded meshes only when enabled', 
     assert.deepEqual(validations, [[2], [3]]);
     assert.ok(toasts.some(([message, type]) => type === 'error' && message.includes('bad IFC')));
 });
+
+test('validation Excel tabs are matched by Global ID and compared with model data', () => {
+    const page = readFileSync(new URL('../pages/misc/transientmodelpulsesg.html', import.meta.url), 'utf8');
+    assert.match(page, /<label for="set-validation-excel">[^<]+<\/label>\s*<input type="file" id="set-validation-excel" accept="\.xlsx,\.xls">/);
+    const start = page.indexOf('        const excelSheetName =');
+    const end = page.indexOf('        let validationWorkbook = null;', start);
+    assert.ok(start >= 0 && end > start);
+    const context = vm.createContext({});
+    vm.runInContext(page.slice(start, end), context);
+
+    const guid = '1lvARv9sHCVhmq2Wt7kpls';
+    const sheets = {
+        Attributes: [{ 'Express ID': 10945, 'Global ID': guid, Type: 'IfcWall', Name: '8LPW1E' }],
+        Pset_WallCommon: [{ 'Express ID': 10945, 'Global ID': guid, Name: '8LPW1E', LoadBearing: true, Reference: 'Concrete_W-1/0(?)' }],
+        'Tekla Common': [{ 'Express ID': 10945, 'Global ID': guid, Name: '8LPW1E', Finish: '', 'Top elevation': ' +32.100', Phase: 1 }],
+        'Tekla Quantity': [{ 'Express ID': 10945, 'Global ID': guid, Name: '8LPW1E', Volume: 2.6, Height: 3179 }],
+        Notes: [{ Comment: 'no GUID' }],
+        Other: [{ 'Global ID': 'other-guid', Value: 1 }, { 'Global ID': 'other-guid', Value: 2 }]
+    };
+    const workbook = context.parseValidationWorkbook(
+        { SheetNames: Object.keys(sheets), Sheets: sheets },
+        { utils: { sheet_to_json: rows => rows } }
+    );
+    assert.equal(workbook.guidCount, 2);
+    assert.deepEqual([...workbook.issues], [
+        'Tab "Notes" has no Global ID column and was skipped.',
+        'Tab "Other" has duplicate Global ID other-guid; the first row was used.'
+    ]);
+    assert.deepEqual([...workbook.sheets[1].columns], ['LoadBearing', 'Reference']);
+
+    const element = (overrides = {}) => ({
+        globalId: guid,
+        attributes: new Map([['Type', 'IFCWALL'], ['Name', '8LPW1E']]),
+        psets: new Map([
+            ['Pset_WallCommon', new Map([['LoadBearing', true], ['Reference', 'Concrete_W-1/0(?)']])],
+            ['Tekla Common', new Map([['Top elevation', ' +32.100'], ['Phase', '1']])],
+            ['Tekla Quantity', new Map([['Volume', 2.6000000000001], ['Height', 3179]])]
+        ]),
+        ...overrides
+    });
+    const matching = context.compareElementWithExcel(element(), workbook);
+    assert.equal(matching.matchedTabs, 4);
+    assert.equal(matching.errors.length, 0);
+
+    const changed = element();
+    changed.attributes.set('Name', 'Changed');
+    changed.psets.get('Pset_WallCommon').set('LoadBearing', false);
+    changed.psets.get('Tekla Common').delete('Phase');
+    changed.psets.delete('Tekla Quantity');
+    assert.deepEqual(JSON.parse(JSON.stringify(context.compareElementWithExcel(changed, workbook).errors)), [
+        { type: 'Value Mismatch', detail: 'Tab "Attributes": Name — Excel "8LPW1E", model "Changed".' },
+        { type: 'Value Mismatch', detail: 'Tab "Pset_WallCommon": LoadBearing — Excel "true", model "false".' },
+        { type: 'Missing Property', detail: 'Tab "Tekla Common": Phase is "1" in Excel but missing in the model.' },
+        { type: 'Missing Property Set', detail: 'Tab "Tekla Quantity": property set was not found on the model element.' }
+    ]);
+    assert.equal(context.compareElementWithExcel(element({ globalId: 'missing' }), workbook).matchedTabs, 0);
+});
