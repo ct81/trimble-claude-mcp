@@ -1814,6 +1814,7 @@
             </div>
         </form>
         <div class="settings-row schema-row">
+            <h4>Model Schema Settings</h4>
             <label for="set-required-schema">Required Schema (JSON)</label>
             <textarea id="set-required-schema" spellcheck="false"></textarea>
         </div>
@@ -2315,14 +2316,19 @@
             }
 
             container.hidden = false;
-            map = L.map(container, { zoomControl: false, minZoom: 2, maxZoom: 19, worldCopyJump: true })
+            map = L.map(container, {
+                zoomControl: false, minZoom: 2, maxZoom: 19, zoomSnap: 0.5, zoomDelta: 0.5,
+                worldCopyJump: true,
+                maxBounds: [[-85.05112878, -Infinity], [85.05112878, Infinity]],
+                maxBoundsViscosity: 1
+            })
                 .setView([1.3521, 103.8198], 13);
             L.control.zoom({ position: 'bottomright' }).addTo(map);
             const controls = document.getElementById('leaflet-map-controls').content.cloneNode(true);
             const select = controls.querySelector('#leaflet-base-layer');
             const layers = Object.fromEntries(Array.from(select.options, ({ value }) => {
                 const { url, ...options } = getMapLayer(value);
-                return [value, L.tileLayer(url, options)];
+                return [value, L.tileLayer(url, { ...options, maxZoom: 19 })];
             }));
             const traffic = controls.querySelector('#leaflet-traffic');
             const streetView = controls.querySelector('#leaflet-street-view');
