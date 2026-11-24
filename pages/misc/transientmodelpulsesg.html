@@ -1818,6 +1818,7 @@
             <label for="set-required-schema">Required Schema (JSON)</label>
             <textarea id="set-required-schema" spellcheck="false"></textarea>
         </div>
+        <div class="settings-row"><label for="set-validate-all">Select all and validate SG</label><input type="checkbox" id="set-validate-all"></div>
         <div class="settings-row"><button id="btn-reset-camera">Reset Camera</button></div>
     </div>
 
@@ -4548,6 +4549,19 @@
         }
         document.getElementById('header-validate-btn').addEventListener('click', () => runSGValidation(Array.from(selectedMeshes.keys())));
         document.getElementById('btn-validate-sg').addEventListener('click', () => runSGValidation(Array.from(selectedMeshes.keys())));
+        document.getElementById('set-validate-all').addEventListener('change', (event) => {
+            if (!event.target.checked) return;
+            if (!currentIfcModel || currentModelID === -1) {
+                event.target.checked = false;
+                showToast('Load a model first.', 'error');
+                return;
+            }
+            clearSelection();
+            currentIfcModel.traverse(child => {
+                if (child.isMesh) addMeshToSelection(child);
+            });
+            runSGValidation(Array.from(selectedMeshes.keys()));
+        });
 
         // ─── Export selected elements' attributes to Excel, one worksheet per Pset ───
         async function exportSelectedToExcel() {

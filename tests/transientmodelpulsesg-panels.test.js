@@ -44,3 +44,48 @@ test('the initially hidden Crane Manager can be reopened from the toolbar', () =
     button.click();
     assert.equal(panel.style.display, 'flex');
 });
+
+test('checking select all validates every model mesh; unchecking does nothing', () => {
+    const page = readFileSync(new URL('../pages/misc/transientmodelpulsesg.html', import.meta.url), 'utf8');
+    const start = page.indexOf("        document.getElementById('set-validate-all').addEventListener");
+    const end = page.indexOf('\n\n', start);
+    assert.ok(start >= 0 && end > start);
+    assert.match(page, /<label for="set-validate-all">[^<]+<\/label><input type="checkbox" id="set-validate-all">/);
+
+    const checkbox = { checked: false, addEventListener(_type, callback) { this.change = callback; } };
+    const selectedMeshes = new Map([[99, {}]]);
+    const validations = [];
+    const toasts = [];
+    const context = vm.createContext({
+        document: { getElementById: () => checkbox },
+        selectedMeshes,
+        currentIfcModel: {
+            traverse(callback) {
+                [{ isMesh: true, userData: { expressID: 1 }, visible: true },
+                    { isMesh: true, userData: { expressID: 2 }, visible: false },
+                    { isMesh: false }].forEach(callback);
+            }
+        },
+        currentModelID: 0,
+        clearSelection: () => selectedMeshes.clear(),
+        addMeshToSelection: mesh => selectedMeshes.set(mesh.userData.expressID, mesh),
+        runSGValidation: ids => validations.push(Array.from(ids)),
+        showToast: (...args) => toasts.push(args)
+    });
+    vm.runInContext(page.slice(start, end), context);
+
+    checkbox.checked = true;
+    checkbox.change({ target: checkbox });
+    assert.deepEqual(validations, [[1, 2]]);
+    assert.deepEqual([...selectedMeshes.keys()], [1, 2]);
+    checkbox.checked = false;
+    checkbox.change({ target: checkbox });
+    assert.equal(validations.length, 1);
+
+    context.currentIfcModel = null;
+    checkbox.checked = true;
+    checkbox.change({ target: checkbox });
+    assert.equal(checkbox.checked, false);
+    assert.deepEqual(toasts, [['Load a model first.', 'error']]);
+    assert.equal(validations.length, 1);
+});
