@@ -47,7 +47,7 @@ test('the initially hidden Crane Manager can be reopened from the toolbar', () =
 
 test('checking select all validates every model mesh; unchecking does nothing', () => {
     const page = readFileSync(new URL('../pages/misc/transientmodelpulsesg.html', import.meta.url), 'utf8');
-    const start = page.indexOf('        async function selectAllAndValidateSG()');
+    const start = page.indexOf('        function selectAllModelMeshes()');
     const end = page.indexOf('\n\n', start);
     assert.ok(start >= 0 && end > start);
     assert.match(page, /<label for="set-validate-all">[^<]+<\/label><input type="checkbox" id="set-validate-all">/);
@@ -94,7 +94,7 @@ test('successful IFC loads validate the newly loaded meshes only when enabled', 
     const page = readFileSync(new URL('../pages/misc/transientmodelpulsesg.html', import.meta.url), 'utf8');
     const start = page.indexOf('        async function processAndAddModel(');
     const end = page.indexOf('        function clearSelection()', start);
-    const helperStart = page.indexOf('        async function selectAllAndValidateSG()');
+    const helperStart = page.indexOf('        function selectAllModelMeshes()');
     const helperEnd = page.indexOf("        document.getElementById('set-validate-all').addEventListener", helperStart);
     assert.ok(start >= 0 && end > start && helperStart >= 0 && helperEnd > helperStart);
 
@@ -230,4 +230,52 @@ test('validation Excel tabs are matched by Global ID and compared with model dat
         { type: 'Missing Property Set', detail: 'Tab "Tekla Quantity": property set was not found on the model element.' }
     ]);
     assert.equal(context.compareElementWithExcel(element({ globalId: 'missing' }), workbook).matchedTabs, 0);
+});
+
+test('loading validation Excel compares only when select all validation is enabled', async () => {
+    const page = readFileSync(new URL('../pages/misc/transientmodelpulsesg.html', import.meta.url), 'utf8');
+    const start = page.indexOf("        validationExcelInput.addEventListener('change'");
+    const end = page.indexOf("        compareExcelButton.addEventListener('click'", start);
+    assert.ok(start >= 0 && end > start);
+
+    const validateAll = { checked: false };
+    const input = {
+        files: [], value: 'file',
+        addEventListener(_type, callback) { this.change = callback; }
+    };
+    const selectedMeshes = new Map([[99, {}]]);
+    const comparisons = [];
+    const toasts = [];
+    const context = vm.createContext({
+        document: { getElementById: () => validateAll },
+        validationExcelInput: input,
+        validationExcelStatus: {},
+        compareExcelButton: { disabled: true },
+        XLSX: { read: () => ({}) },
+        parseValidationWorkbook: () => ({ sheets: [{}], guidCount: 1, issues: [] }),
+        validationWorkbook: null,
+        currentIfcModel: {},
+        currentModelID: 0,
+        selectAllModelMeshes() {
+            selectedMeshes.clear();
+            selectedMeshes.set(1, {}).set(2, {});
+        },
+        compareSelectedWithExcel: async () => comparisons.push([...selectedMeshes.keys()]),
+        showToast: (...args) => toasts.push(args)
+    });
+    vm.runInContext(page.slice(start, end), context);
+    const upload = () => {
+        input.files = [{ name: 'check.xlsx', arrayBuffer: async () => new ArrayBuffer(0) }];
+        return input.change();
+    };
+
+    await upload();
+    assert.deepEqual(comparisons, []);
+    assert.deepEqual([...selectedMeshes.keys()], [99]);
+    assert.equal(context.compareExcelButton.disabled, false);
+    assert.match(toasts[0][0], /Click Compare Selected with Excel/);
+
+    validateAll.checked = true;
+    await upload();
+    assert.deepEqual(comparisons, [[1, 2]]);
 });

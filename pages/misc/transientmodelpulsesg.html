@@ -4566,12 +4566,15 @@
         }
         document.getElementById('header-validate-btn').addEventListener('click', () => runSGValidation(Array.from(selectedMeshes.keys())));
         document.getElementById('btn-validate-sg').addEventListener('click', () => runSGValidation(Array.from(selectedMeshes.keys())));
+        function selectAllModelMeshes() {
+            clearSelection();
+            currentIfcModel.traverse(child => {
+                if (child.isMesh) addMeshToSelection(child);
+            });
+        }
         async function selectAllAndValidateSG() {
             try {
-                clearSelection();
-                currentIfcModel.traverse(child => {
-                    if (child.isMesh) addMeshToSelection(child);
-                });
+                selectAllModelMeshes();
                 await runSGValidation(Array.from(selectedMeshes.keys()));
             } catch (error) {
                 console.error('SG validation failed:', error);
@@ -4828,8 +4831,12 @@
                 validationWorkbook = { ...parsed, fileName: file.name };
                 validationExcelStatus.textContent = `${file.name}: ${parsed.sheets.length} tab(s), ${parsed.guidCount} Global ID(s).`;
                 compareExcelButton.disabled = false;
-                if (selectedMeshes.size) await compareSelectedWithExcel();
-                else showToast('Validation Excel loaded. Select element(s), then compare.', 'success');
+                if (document.getElementById('set-validate-all').checked && currentIfcModel && currentModelID !== -1) {
+                    selectAllModelMeshes();
+                    await compareSelectedWithExcel();
+                } else {
+                    showToast('Validation Excel loaded. Click Compare Selected with Excel to check.', 'success');
+                }
             } catch (error) {
                 validationWorkbook = null;
                 validationExcelStatus.textContent = '';
