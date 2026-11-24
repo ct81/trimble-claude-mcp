@@ -3705,7 +3705,9 @@
                 }
                 setTimeout(hideLoading, 5000);
                 currentModelID = -1;
+                return;
             }
+            if (document.getElementById('set-validate-all').checked) selectAllAndValidateSG();
         }
 
         function clearSelection() {
@@ -4549,6 +4551,18 @@
         }
         document.getElementById('header-validate-btn').addEventListener('click', () => runSGValidation(Array.from(selectedMeshes.keys())));
         document.getElementById('btn-validate-sg').addEventListener('click', () => runSGValidation(Array.from(selectedMeshes.keys())));
+        async function selectAllAndValidateSG() {
+            try {
+                clearSelection();
+                currentIfcModel.traverse(child => {
+                    if (child.isMesh) addMeshToSelection(child);
+                });
+                await runSGValidation(Array.from(selectedMeshes.keys()));
+            } catch (error) {
+                console.error('SG validation failed:', error);
+                showToast('SG validation failed: ' + (error.message || error), 'error');
+            }
+        }
         document.getElementById('set-validate-all').addEventListener('change', (event) => {
             if (!event.target.checked) return;
             if (!currentIfcModel || currentModelID === -1) {
@@ -4556,11 +4570,7 @@
                 showToast('Load a model first.', 'error');
                 return;
             }
-            clearSelection();
-            currentIfcModel.traverse(child => {
-                if (child.isMesh) addMeshToSelection(child);
-            });
-            runSGValidation(Array.from(selectedMeshes.keys()));
+            selectAllAndValidateSG();
         });
 
         // ─── Export selected elements' attributes to Excel, one worksheet per Pset ───
