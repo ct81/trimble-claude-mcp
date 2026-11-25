@@ -28,7 +28,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:8px
 <section class="panel left">
 <h3>FACE SCANNER</h3>
 <div class="camera"><video id="video" autoplay muted playsinline></video><canvas id="faceCanvas"></canvas><div class="placeholder" id="cameraPlaceholder">Camera is off<br>Tap START SCAN to allow camera access</div></div>
-<div class="btns"><button class="btn primary" id="startCamera">START SCAN</button><button class="btn" id="stopCamera" disabled>STOP CAMERA</button></div>
+<div class="btns"><button class="btn primary" id="startCamera">START SCAN</button><button class="btn" id="captureFace" disabled>CAPTURE MY FACE</button><button class="btn" id="stopCamera" disabled>STOP CAMERA</button></div>
 <div class="field"><label>YOUR CUSTOM 3D AVATAR (.GLB / .GLTF)</label><input id="modelFile" type="file" accept=".glb,.gltf"></div>
 <div class="btns"><button class="btn" id="resetAvatar">RESET VIEW</button><button class="btn" id="removeAvatar">REMOVE MODEL</button></div>
 <div class="tiny">For a likeness of your face, load a 3D avatar model created from your photo by a compatible avatar-generation tool. A webcam scan tracks landmarks; it does not reconstruct a photorealistic 3D head by itself. Model files are loaded locally in this browser.</div>
@@ -71,7 +71,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { FaceLandmarker, FilesetResolver } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs';
 const $=id=>document.getElementById(id);
 const root=$('threeRoot'), sceneEl=$('scene');
-let renderer,scene,camera,avatarRoot,loadedModel=null,mixer=null,clock=new THREE.Clock(),mouthTargets=[],faceLandmarker=null,stream=null,tracking=false,lastVideoTime=-1;
+let renderer,scene,camera,avatarRoot,loadedModel=null,mixer=null,latestFaceLandmarks=null,demoHead=null,facePhotoTexture=null,facePhotoOverlay=null,clock=new THREE.Clock(),mouthTargets=[],faceLandmarker=null,stream=null,tracking=false,lastVideoTime=-1;
 let speaking=false,muted=false,recognition=null,micActive=false,scriptQueue=[],scriptIndex=0,scriptRunning=false;
 const log=m=>{$('log').innerHTML=`${new Date().toLocaleTimeString()} — ${escapeHtml(m)}<br>`+$('log').innerHTML;};
 const escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -95,7 +95,7 @@ function createDemoAvatar(){
  const make=(geo,mat,x,y,z,sx=1,sy=1,sz=1)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.scale.set(sx,sy,sz);group.add(m);return m;};
  make(new THREE.CapsuleGeometry(.48,.9,8,16),cloth,0,-.65,0,1,.95,.65);
  make(new THREE.CylinderGeometry(.16,.19,.35,24),skin,0,.05,0);
- const head=new THREE.Group();head.position.y=.65;group.add(head);
+ const head=new THREE.Group();head.position.y=.65;group.add(head);demoHead=head;
  const face=new THREE.Mesh(new THREE.SphereGeometry(.48,48,40),skin);face.scale.set(.78,1.05,.72);head.add(face);
  const hairMat=new THREE.MeshStandardMaterial({color:0x17243a,roughness:.72});
  const hair=new THREE.Mesh(new THREE.SphereGeometry(.49,40,32,0,Math.PI*2,0,Math.PI*.58),hairMat);hair.scale.set(.82,.85,.76);hair.position.set(0,.22,-.025);head.add(hair);
@@ -105,6 +105,7 @@ function createDemoAvatar(){
  const mouth=new THREE.Mesh(new THREE.SphereGeometry(.075,20,12),new THREE.MeshStandardMaterial({color:0x8c4058,roughness:.35}));mouth.position.set(0,-.22,.345);mouth.scale.set(1,.22,.35);head.add(mouth);mouthTargets=[{mesh:mouth,baseY:.22}];
  for(const x of [-.55,.55]){const arm=make(new THREE.CapsuleGeometry(.105,.78,6,12),cloth,x,-.48,0,1,1,1);arm.rotation.z=x<0?-.22:.22;}
  group.userData.head=head;group.userData.demoMouth=mouth;group.position.y=-.05;
+ if(facePhotoTexture)applyFacePhoto(facePhotoTexture);
  $('modelStatus').textContent='DEMO MODEL';$('avatarState').textContent='DEMO AVATAR';
 }
 function resize3D(){if(!renderer)return;const w=root.clientWidth,h=root.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/Math.max(1,h);camera.updateProjectionMatrix();}
@@ -123,6 +124,8 @@ async function loadModel(file){
  }catch(e){alert('Could not load this 3D model: '+e.message);log('Model load failed: '+e.message);}finally{URL.revokeObjectURL(url);}
 }
 $('modelFile').addEventListener('change',e=>{const f=e.target.files?.[0];if(f)loadModel(f);});
+function applyFacePhoto(texture){if(!demoHead)return;if(facePhotoOverlay)demoHead.remove(facePhotoOverlay);texture.colorSpace=THREE.SRGBColorSpace;const mat=new THREE.MeshBasicMaterial({map:texture,transparent:true,alphaTest:.08,side:THREE.DoubleSide});facePhotoOverlay=new THREE.Mesh(new THREE.PlaneGeometry(.57,.76),mat);facePhotoOverlay.position.set(0,-.015,.354);demoHead.add(facePhotoOverlay);$('bubble').textContent='Your captured face photo is applied to the demo avatar as a facial texture. For a true 3D likeness, use a reconstructed 3D head model.';$('avatarState').textContent='FACE PHOTO APPLIED';}
+$('captureFace').onclick=()=>{if(!tracking||!latestFaceLandmarks){alert('Start face scan and keep your face visible first.');return;}if(loadedModel){alert('Face-photo overlay currently applies to the built-in demo avatar. For a custom GLB, use a model with a compatible face texture/rig.');return;}const pts=latestFaceLandmarks;const xs=pts.map(p=>p.x),ys=pts.map(p=>p.y);let minX=Math.max(0,Math.min(...xs)-.12),maxX=Math.min(1,Math.max(...xs)+.12),minY=Math.max(0,Math.min(...ys)-.12),maxY=Math.min(1,Math.max(...ys)+.12);const v=$('video'),w=v.videoWidth,h=v.videoHeight;const sx=minX*w,sy=minY*h,sw=(maxX-minX)*w,sh=(maxY-minY)*h;const c=document.createElement('canvas');c.width=512;c.height=680;const ctx=c.getContext('2d');ctx.save();ctx.translate(c.width,0);ctx.scale(-1,1);ctx.drawImage(v,sx,sy,sw,sh,0,0,c.width,c.height);ctx.restore();const mask=document.createElement('canvas');mask.width=c.width;mask.height=c.height;const mx=mask.getContext('2d');mx.drawImage(c,0,0);mx.globalCompositeOperation='destination-in';mx.fillStyle='white';mx.beginPath();mx.ellipse(256,340,240,330,0,0,Math.PI*2);mx.fill();const tex=new THREE.CanvasTexture(mask);facePhotoTexture=tex;applyFacePhoto(tex);log('Captured face image and applied it to the demo avatar.');};
 $('resetAvatar').onclick=()=>{if(avatarRoot){avatarRoot.rotation.set(0,0,0);avatarRoot.position.set(0,-.05,0);}window.faceYaw=0;window.facePitch=0;};
 $('removeAvatar').onclick=()=>{if(loadedModel){scene.remove(avatarRoot);loadedModel=null;mixer=null;createDemoAvatar();}};
 async function loadFaceModel(){if(faceLandmarker)return;const vision=await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');faceLandmarker=await FaceLandmarker.createFromOptions(vision,{baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',delegate:'GPU'},runningMode:'VIDEO',numFaces:1,outputFaceBlendshapes:true,outputFacialTransformationMatrixes:true});}
@@ -180,13 +183,13 @@ $('startCamera').onclick=async()=>{
    alert(message);log(message);
  }
 };
-$('stopCamera').onclick=()=>{tracking=false;stream?.getTracks().forEach(t=>t.stop());stream=null;$('video').srcObject=null;$('cameraPlaceholder').style.display='grid';$('startCamera').disabled=false;$('stopCamera').disabled=true;$('faceStatus').textContent='NOT DETECTED';$('systemStatus').textContent='SYSTEM READY';window.faceYaw=0;window.facePitch=0;};
+$('stopCamera').onclick=()=>{tracking=false;stream?.getTracks().forEach(t=>t.stop());stream=null;$('video').srcObject=null;$('cameraPlaceholder').style.display='grid';$('startCamera').disabled=false;$('stopCamera').disabled=true;$('faceStatus').textContent='NOT DETECTED';$('captureFace').disabled=true;latestFaceLandmarks=null;$('systemStatus').textContent='SYSTEM READY';window.faceYaw=0;window.facePitch=0;};
 function trackFrame(){if(!tracking)return;const v=$('video');if(v.readyState>=2&&v.currentTime!==lastVideoTime){lastVideoTime=v.currentTime;const r=faceLandmarker.detectForVideo(v,performance.now());const c=$('faceCanvas'),rect=c.getBoundingClientRect();if(c.width!==Math.round(rect.width*devicePixelRatio)){c.width=rect.width*devicePixelRatio;c.height=rect.height*devicePixelRatio;}const x=c.getContext('2d');x.clearRect(0,0,c.width,c.height);
- if(r.faceLandmarks?.length){const pts=r.faceLandmarks[0];$('faceStatus').textContent='DETECTED';const nose=pts[1]||pts[4];const yaw=(nose.x-.5)*1.25,pitch=(nose.y-.48)*.8;window.faceYaw=-yaw;window.facePitch=pitch;$('headPosition').textContent=`X ${yaw.toFixed(2)} / Y ${pitch.toFixed(2)}`;
+ if(r.faceLandmarks?.length){const pts=r.faceLandmarks[0];latestFaceLandmarks=pts;$('captureFace').disabled=false;$('faceStatus').textContent='DETECTED';const nose=pts[1]||pts[4];const yaw=(nose.x-.5)*1.25,pitch=(nose.y-.48)*.8;window.faceYaw=-yaw;window.facePitch=pitch;$('headPosition').textContent=`X ${yaw.toFixed(2)} / Y ${pitch.toFixed(2)}`;
  x.fillStyle='rgba(94,235,255,.7)';for(let i=0;i<pts.length;i+=3){x.beginPath();x.arc(pts[i].x*c.width,pts[i].y*c.height,Math.max(1,c.width/500),0,Math.PI*2);x.fill();}
  const cats=r.faceBlendshapes?.[0]?.categories||[];let smile=0,jaw=0;for(const a of cats){if(a.categoryName.includes('mouthSmile'))smile=Math.max(smile,a.score);if(a.categoryName==='jawOpen')jaw=a.score;}
  $('expression').textContent=smile>.35?'SMILE':jaw>.25?'MOUTH OPEN':'NEUTRAL';driveMorphs(jaw);
- }else{$('faceStatus').textContent='SEARCHING';$('expression').textContent='—';}}
+ }else{latestFaceLandmarks=null;$('captureFace').disabled=true;$('faceStatus').textContent='SEARCHING';$('expression').textContent='—';}}
  requestAnimationFrame(trackFrame);}
 function driveMorphs(value){if(!mouthTargets.length)return;for(const t of mouthTargets){if(t.index!==undefined)t.mesh.morphTargetInfluences[t.index]=value;}}
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
