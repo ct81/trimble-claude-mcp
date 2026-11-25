@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>3D Face Presenter</title>
+<style>
+:root{--bg:#eef1f7;--panel:#fff;--text:#1b2030;--muted:#5b6478;--accent:#5b6cff;--line:#d9deea;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10131c;--panel:#1a1f2d;--text:#eef1f8;--muted:#98a2ba;--accent:#8793ff;--line:#2b3246}}
+:root[data-theme="dark"]{--bg:#10131c;--panel:#1a1f2d;--text:#eef1f8;--muted:#98a2ba;--accent:#8793ff;--line:#2b3246}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;flex-direction:column}
+#stage{flex:1;min-height:0;position:relative}
+canvas{display:block;width:100%;height:100%}
+#caption{position:absolute;left:12px;right:12px;bottom:10px;text-align:center;font-size:1rem;line-height:1.35;color:var(--text);background:color-mix(in srgb,var(--panel) 80%,transparent);border-radius:12px;padding:8px 12px;min-height:1.35em;display:none}
+#ui{background:var(--panel);border-top:1px solid var(--line);padding:12px;display:flex;flex-direction:column;gap:10px}
+textarea{width:100%;box-sizing:border-box;height:84px;resize:none;border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit;background:var(--bg);color:var(--text)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{font:inherit;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:999px;padding:8px 14px;cursor:pointer}
+button.on{border-color:var(--accent);color:var(--accent)}
+button.go{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
+.sp{flex:1}
+select{font:inherit;flex:1;min-width:0;border:1px solid var(--line);border-radius:999px;padding:8px 12px;background:var(--bg);color:var(--text)}
+[hidden]{display:none!important}
+#ui{max-height:52vh;overflow:auto}
+details{border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+summary{cursor:pointer;font-weight:600}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+label{font-size:.78rem;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+label select{border-radius:10px;padding:6px 8px}
+input[type=color]{width:100%;height:34px;border:1px solid var(--line);border-radius:8px;background:none;padding:2px}
+#perm{display:flex;flex-direction:column;gap:10px;text-align:center;align-items:center}
+#perm .row{justify-content:center}
+.box.asking .vwrap,.box.asking #smsg,.box.asking #camrow{display:none}
+.box:not(.asking) #perm{display:none}
+#scan{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:20;padding:12px}
+.box{background:var(--panel);border-radius:16px;padding:12px;width:min(92vw,400px);max-height:94%;display:flex;flex-direction:column;gap:10px;overflow:auto}
+.vwrap{position:relative;aspect-ratio:3/4;overflow:hidden;border-radius:12px;background:#000;max-height:60vh;margin:0 auto;width:100%}
+#vid{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+.oval{position:absolute;left:50%;top:45%;width:56%;height:66%;transform:translate(-50%,-50%);border:3px dashed #fff;border-radius:50%;box-shadow:0 0 0 999px rgba(0,0,0,.35)}
+small{color:var(--muted)}
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="c"></canvas><div id="caption"></div></div>
+<div id="ui">
+  <textarea id="txt">Hello! I’m your 3D presenter. Move your pointer and I’ll follow you with my eyes. Give me any script, and I’ll present it for you.</textarea>
+  <details id="cust"><summary>🎨 Customize look</summary>
+    <div class="grid">
+      <label>Face shape<select id="o-shape"><option value="oval">Oval</option><option value="round">Round</option><option value="long">Long</option><option value="square">Square jaw</option></select></label>
+      <label>Hair style<select id="o-hair"><option value="short">Short</option><option value="buzz">Buzz cut</option><option value="long">Long</option><option value="curly">Curly / afro</option><option value="bald">Bald</option></select></label>
+      <label>Hair color<input type="color" id="o-hc" value="#2f2420"></label>
+      <label>Skin tone<input type="color" id="o-sk" value="#e9b894"></label>
+      <label>Eye color<input type="color" id="o-ec" value="#3b2417"></label>
+      <label>Facial hair color<input type="color" id="o-fc" value="#2f2420"></label>
+      <label>Moustache<select id="o-mo"><option value="none">None</option><option value="reg">Regular</option><option value="thick">Thick</option></select></label>
+      <label>Beard<select id="o-be"><option value="none">None</option><option value="goatee">Goatee</option><option value="full">Full beard</option></select></label>
+      <label>Glasses<select id="o-gl"><option value="none">None</option><option value="round">Round</option><option value="square">Square</option></select></label>
+      <label>Mole<select id="o-ml"><option value="none">None</option><option value="cl">Cheek, screen-left</option><option value="cr">Cheek, screen-right</option><option value="chin">Chin</option><option value="lip">Above lip</option><option value="fore">Forehead</option><option value="eye">Beside eye</option><option value="scan">From scan</option></select></label>
+    </div>
+  </details>
+  <div class="row">
+    <button data-g="female" class="on">♀ Female</button>
+    <button data-g="male">♂ Male</button>
+    <button data-g="all">All voices</button>
+    <select id="vsel" aria-label="Voice"></select>
+  </div>
+  <div class="row">
+    <button class="go" id="speak">▶ Present</button>
+    <button id="stop">■ Stop</button>
+    <button id="ex">{ } JSON example</button>
+    <button id="scanbtn">📷 Scan my face</button>
+    <span class="sp"></span>
+    <button data-e="neutral" class="on">Neutral</button>
+    <button data-e="happy">Happy</button>
+    <button data-e="surprised">Surprised</button>
+    <button data-e="serious">Serious</button>
+  </div>
+  <small id="note">Paste plain text or a JSON script (array or {"script":[…]}) with text, expression, gender (male/female), voice (name), rate, pitch and pause (ms) per step.</small>
+</div>
+<div id="scan" hidden>
+  <div class="box">
+    <div id="perm">
+      <div style="font-size:2.2rem">📷</div>
+      <b>Allow camera access?</b>
+      <small id="permmsg"></small>
+      <div class="row"><button class="go" id="allow">Allow camera</button><button id="pick2">Upload photo</button><button id="later">Not now</button></div>
+    </div>
+    <div class="vwrap"><video id="vid" playsinline muted></video><canvas id="ov" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas><div class="oval"></div></div>
+    <small id="smsg">Center your face in the oval, in even light.</small>
+    <div class="row" id="camrow">
+      <button class="go" id="captureBtn" disabled>Capture</button>
+      <button id="pick">Upload photo</button>
+      <button id="reset">Reset look</button>
+      <button id="cls">Cancel</button>
+    </div>
+    <input type="file" id="file" accept="image/*" capture="user" hidden>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tracking.js/1.1.3/tracking-min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tracking.js/1.1.3/data/face-min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tracking.js/1.1.3/data/eye-min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/clmtrackr@1.1.2/build/clmtrackr.min.js"></script>
+<script>
+const canvas=document.getElementById('c'),stage=document.getElementById('stage');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene=new THREE.Scene();
+const cam=new THREE.PerspectiveCamera(32,1,0.1,50);cam.position.set(0,0.1,6.2);
+scene.add(new THREE.HemisphereLight(0xffffff,0x667799,0.9));
+const key=new THREE.DirectionalLight(0xffffff,0.9);key.position.set(2,3,4);scene.add(key);
+const rim=new THREE.DirectionalLight(0x88aaff,0.5);rim.position.set(-3,1,-2);scene.add(rim);
+
+const M=(c,r=0.6)=>new THREE.MeshStandardMaterial({color:c,roughness:r});
+const skin=M(0xf1c3a0,0.7),dark=M(0x2a1a1a,0.5),white=M(0xffffff,0.3),hair=M(0x3a2a22,0.8),shirt=M(0x5b6cff,0.8);
+
+const rig=new THREE.Group();scene.add(rig);
+// body
+const body=new THREE.Mesh(new THREE.SphereGeometry(1,32,24),shirt);body.scale.set(1.7,0.9,0.9);body.position.set(0,-2.1,0);scene.add(body);
+const neck=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.36,0.8,20),skin);neck.position.y=-1.2;scene.add(neck);
+// head
+const head=new THREE.Group();scene.add(head);
+const skull=new THREE.Mesh(new THREE.SphereGeometry(1,48,36),skin);skull.scale.set(0.9,1.1,0.95);head.add(skull);
+const cap=new THREE.Mesh(new THREE.SphereGeometry(1,40,24,0,Math.PI*2,0,Math.PI*0.48),hair);cap.scale.set(0.95,1.15,1.0);cap.rotation.x=-0.35;cap.position.y=0.04;head.add(cap);
+[-1,1].forEach(s=>{const e=new THREE.Mesh(new THREE.SphereGeometry(0.16,16,12),skin);e.scale.set(0.5,1,0.8);e.position.set(s*0.9,0,0);head.add(e)});
+const nose=new THREE.Mesh(new THREE.SphereGeometry(0.13,20,16),skin);nose.scale.set(0.85,1.1,1.1);nose.position.set(0,-0.12,0.93);head.add(nose);
+const hairLong=new THREE.Mesh(new THREE.SphereGeometry(1,32,24),hair);hairLong.scale.set(1.02,1.3,0.8);hairLong.position.set(0,-0.2,-0.2);head.add(hairLong);
+// eyes
+const eyes=[],pupils=[],brows=[];
+[-1,1].forEach(s=>{
+  const g=new THREE.Group();g.position.set(s*0.33,0.15,0.8);
+  const w=new THREE.Mesh(new THREE.SphereGeometry(0.14,24,16),white);w.scale.z=0.6;g.add(w);
+  const p=new THREE.Mesh(new THREE.SphereGeometry(0.07,16,12),dark);p.position.z=0.07;g.add(p);
+  head.add(g);eyes.push(g);pupils.push(p);
+  const b=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.05,0.06),hair);b.position.set(s*0.33,0.42,0.84);head.add(b);brows.push(b);
+});
+// mouth
+const mouth=new THREE.Group();mouth.position.set(0,-0.5,0.85);head.add(mouth);
+const lipMat=M(0xb5524f,0.55);
+const hole=new THREE.Mesh(new THREE.SphereGeometry(1,24,16),M(0x3d0e12,0.6));mouth.add(hole);
+const tongue=new THREE.Mesh(new THREE.SphereGeometry(1,16,12),M(0xd9696f,0.6));mouth.add(tongue);
+const teeth=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),white);mouth.add(teeth);
+const lip=new THREE.Mesh(new THREE.TorusGeometry(0.2,0.032,10,28,Math.PI),lipMat);mouth.add(lip);
+const lip2=new THREE.Mesh(new THREE.TorusGeometry(0.2,0.034,10,28,Math.PI),lipMat);mouth.add(lip2);
+const cheeks=[-1,1].map(s=>{const c=new THREE.Mesh(new THREE.SphereGeometry(0.12,16,12),new THREE.MeshStandardMaterial({color:0xff7f8a,roughness:0.9,transparent:true,opacity:0}));c.scale.set(1,0.7,0.3);c.position.set(s*0.5,-0.22,0.76);head.add(c);return c});
+
+// state
+const EX={neutral:{smile:0.3,brow:0,wide:1,w:1,jaw:0,squint:0,tilt:0,blush:0},happy:{smile:0.95,brow:0.05,wide:1,w:1.15,jaw:0.12,squint:0.22,tilt:0,blush:0.6},surprised:{smile:-0.1,brow:0.15,wide:1.35,w:0.7,jaw:0.55,squint:0,tilt:0,blush:0},serious:{smile:-0.25,brow:-0.04,wide:0.9,w:0.95,jaw:0,squint:0.12,tilt:0.28,blush:0}};
+let vt=0,vtNext=0,vw=1;
+let cur={...EX.neutral},tgt=EX.neutral,open=0,pulse=0,speaking=false,look={x:0,y:0},lookT={x:0,y:0},blink=0,nextBlink=2;
+addEventListener('pointermove',e=>{const r=canvas.getBoundingClientRect();lookT.x=((e.clientX-r.left)/r.width-0.5)*2;lookT.y=((e.clientY-r.top)/r.height-0.5)*2});
+document.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-e]').forEach(x=>x.classList.remove('on'));b.classList.add('on');tgt=EX[b.dataset.e]});
+
+// speech
+const txt=document.getElementById('txt'),capEl=document.getElementById('caption'),note=document.getElementById('note');
+let queue=[],run=0;
+function setExpr(n){if(!EX[n])return;tgt=EX[n];document.querySelectorAll('[data-e]').forEach(x=>x.classList.toggle('on',x.dataset.e===n))}
+function parseScript(raw){
+  const s=raw.trim();
+  if(s[0]==='['||s[0]==='{'){
+    let d=JSON.parse(s);
+    if(!Array.isArray(d))d=d.script||d.steps||d.lines;
+    if(!Array.isArray(d))throw new Error('expected an array or a "script" array');
+    return d.map(x=>typeof x==='string'?{text:x}:{text:x.text||x.say||'',expression:x.expression,rate:x.rate,pitch:x.pitch,pause:x.pause,voice:x.voice,gender:x.gender});
+  }
+  return (s.match(/[^.!?]+[.!?]*/g)||[]).map(x=>({text:x.trim()})).filter(x=>x.text);
+}
+const vsel=document.getElementById('vsel');let voices=[],gender='female';
+const FEM=/\b(female|woman|samantha|victoria|karen|moira|tessa|fiona|zira|susan|hazel|aria|jenny|emma|libby|sonia|allison|ava|serena|kate|joanna|salli|kimberly|ivy|amy|nicole|catherine|tracy|paulina|monica|luciana|amelie|marie|anna|ana|helena|sabina|milena|laura|elsa|michelle|natasha|clara|sara|lucia|paola|alice|ioana|zosia|yelda|kyoko|nora|vicki|veena|ellen|sandy|shelley|flo|grandma|zuzana|kanya|damayanti|lekha|samira|lana|karina|joana|catarina|carmit|alva|satu|melina|nicky)\b/i;
+const MALE=/\b(male|man|daniel|alex|fred|tom|oliver|david|mark|george|james|ryan|guy|matthew|joey|justin|kevin|brian|russell|arthur|aaron|gordon|rishi|jorge|diego|thomas|luca|markus|ravi|hemant|stefan|jacques|yuri|lee|henry|nathan|eric|bruce|ralph|junior|albert|reed|rocko|eddy|grandpa|xander|maged|mikhail|magnus|juan|felipe|filip|yannick|cem|mehmet|henrik|ioan)\b/i;
+const genderOf=v=>FEM.test(v.name)?'female':MALE.test(v.name)?'male':'other';
+const selVoice=()=>vsel.value===''?null:voices[+vsel.value]||null;
+function refreshVoices(){
+  if(!('speechSynthesis' in window))return;
+  voices=speechSynthesis.getVoices();
+  const lang=(navigator.language||'en').slice(0,2),prev=vsel.value;
+  const list=voices.map((v,i)=>({v,i})).filter(o=>gender==='all'||genderOf(o.v)===gender)
+    .sort((a,b)=>(b.v.lang.startsWith(lang)-a.v.lang.startsWith(lang))||a.v.name.localeCompare(b.v.name));
+  vsel.innerHTML=list.length?'':'<option value="">Default voice (pitch-adjusted)</option>';
+  list.forEach(o=>{const op=document.createElement('option');op.value=o.i;op.textContent=o.v.name+' ('+o.v.lang+')';vsel.appendChild(op)});
+  if(prev&&[...vsel.options].some(o=>o.value===prev))vsel.value=prev;
+}
+function styleAvatar(g){
+  const f=g==='female';
+  shirt.color.set(f?0xd6528a:0x5b6cff);
+  brows.forEach(b=>b.scale.set(1,f?0.7:1.4,1));
+  if(!scan){O.hair.value=f?'long':'short';O.hc.value=f?'#5a3524':'#2f2420';O.fc.value=O.hc.value;O.sk.value=f?'#f3c9ab':'#e9b894'}
+  applyLook();
+}
+function setGender(g){
+  gender=g;
+  document.querySelectorAll('[data-g]').forEach(x=>x.classList.toggle('on',x.dataset.g===g));
+  if(g!=='all')styleAvatar(g);
+  refreshVoices();
+}
+document.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>setGender(b.dataset.g));
+vsel.onchange=()=>{const v=selVoice();if(v){const g=genderOf(v);if(g!=='other')styleAvatar(g)}};
+if('speechSynthesis' in window)speechSynthesis.onvoiceschanged=refreshVoices;
+let mouthY=-0.5,browY=0.42,scan=null,stream=null,mScale=1,liveT=null,liveRAF=0,liveBuf=[];
+function applyScan(){
+  if(!scan)return;
+  const hx=a=>'#'+a.map(v=>Math.round(Math.min(1,Math.max(0,v))*255).toString(16).padStart(2,'0')).join('');
+  O.sk.value=hx(scan.skin);
+  if(scan.hc)O.hc.value=hx(scan.hc);
+  O.fc.value=scan.fc?hx(scan.fc):O.hc.value;
+  if(scan.shirt)shirt.color.setRGB(...scan.shirt);
+  if(scan.mole)ML.scan=scan.mole;
+  for(const k of ['shape','hair','mo','be','ml','gl'])if(scan[k])O[k].value=scan[k];
+}
+const scanEl=document.getElementById('scan'),vid=document.getElementById('vid'),smsg=document.getElementById('smsg'),fileIn=document.getElementById('file');
+function closeScan(){scanEl.hidden=true;stopLive();if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}vid.srcObject=null;captureBtn.disabled=true}
+document.getElementById('cls').onclick=closeScan;
+const box=scanEl.querySelector('.box'),permMsg=document.getElementById('permmsg');
+const DEF='To scan your face, this page needs to use your camera. Your browser will ask for permission next. Photos stay on your device and are never uploaded.';
+const BLOCKED='Camera access is blocked. Click the camera or lock icon in your browser’s address bar, set Camera to Allow, then press Allow camera again. If this page is embedded, it may not be permitted to use the camera, so you can upload a photo instead.';
+const captureBtn=document.getElementById('captureBtn');
+async function startCam(){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    box.classList.add('asking');
+    permMsg.textContent='This browser can’t open the camera here. Open this page over HTTPS (or localhost), or upload a photo instead.';
+    return;
+  }
+  captureBtn.disabled=true;
+  permMsg.textContent='Waiting for you to allow the camera in the browser prompt…';
+  try{
+    if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:960}},audio:false});
+    vid.srcObject=stream;
+    await vid.play();
+    if(!vid.videoWidth||!vid.videoHeight) throw new Error('Camera started but no video frames are available yet.');
+    box.classList.remove('asking');
+    captureBtn.disabled=false;
+    smsg.textContent='Center your face in the oval, in even light.';
+    startLive();
+  }catch(e){
+    if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+    vid.srcObject=null;
+    captureBtn.disabled=true;
+    box.classList.add('asking');
+    permMsg.textContent=(e&&(e.name==='NotAllowedError'||e.name==='SecurityError'))?BLOCKED:
+      (e&&e.name==='NotFoundError')?'No camera was found on this device. You can upload a photo instead.':
+      (e&&e.name==='NotReadableError')?'The camera is busy or unavailable. Close other apps using it, then try again, or upload a photo.':
+      'The camera could not be started. Check browser camera permission and try again, or upload a photo instead.';
+  }
+}
+document.getElementById('allow').onclick=startCam;
+document.getElementById('later').onclick=closeScan;
+document.getElementById('scanbtn').onclick=async()=>{
+  scanEl.hidden=false;box.classList.add('asking');permMsg.textContent=DEF;
+  let st='prompt';try{st=(await navigator.permissions.query({name:'camera'})).state}catch(e){}
+  if(st==='granted')startCam();else if(st==='denied')permMsg.textContent=BLOCKED;
+};
+document.getElementById('pick').onclick=document.getElementById('pick2').onclick=()=>fileIn.click();
+document.getElementById('reset').onclick=()=>{
+  scan=null;fx=1;mScale=1;nose.scale.x=0.85;mouthY=-0.5;browY=0.42;O.shape.value='oval';O.mo.value='none';O.be.value='none';O.gl.value='none';O.ml.value='none';
+  eyes.forEach((g,i)=>g.position.x=(i?1:-1)*0.33);brows.forEach((b,i)=>b.position.x=(i?1:-1)*0.33);
+  styleAvatar(hairLong.visible?'female':'male');note.textContent='Look reset to the default face.';closeScan();
+};
+fileIn.onchange=()=>{const f=fileIn.files[0];if(!f)return;const im=new Image();im.onload=()=>process(im,im.naturalWidth,im.naturalHeight);im.src=URL.createObjectURL(f)};
+document.getElementById('captureBtn').onclick=()=>{if(!vid.videoWidth||!vid.videoHeight){smsg.textContent='The camera is not ready yet. Wait a moment, or restart the camera.';captureBtn.disabled=true;return}process(vid,vid.videoWidth,vid.videoHeight)};
+const ov=document.getElementById('ov'),ovc=ov.getContext('2d');
+function startLive(){
+  if(!window.clm)return;
+  try{liveT=new clm.tracker();liveT.init();vid.width=vid.videoWidth;vid.height=vid.videoHeight;liveT.start(vid)}catch(e){liveT=null;return}
+  liveBuf=[];
+  const loop=()=>{
+    liveRAF=requestAnimationFrame(loop);
+    const bw=ov.clientWidth,bh=ov.clientHeight;if(ov.width!==bw){ov.width=bw;ov.height=bh}
+    ovc.clearRect(0,0,bw,bh);
+    const p=liveT&&liveT.getCurrentPosition(),s=liveT?liveT.getScore():0;
+    if(p&&s>0.4){
+      const vw=vid.videoWidth,vh=vid.videoHeight,k=Math.max(bw/vw,bh/vh),ox=(bw-vw*k)/2,oy=(bh-vh*k)/2;
+      ovc.fillStyle=s>0.55?'#4cf2a0':'#ffd24c';
+      p.forEach(q=>{ovc.beginPath();ovc.arc(bw-(q[0]*k+ox),q[1]*k+oy,2.2,0,6.3);ovc.fill()});
+      if(s>0.5){liveBuf.push(p.map(a=>[a[0],a[1]]));if(liveBuf.length>6)liveBuf.shift()}
+      smsg.textContent=s>0.55?'Face locked. Hold still, then press Capture.':'Tracking… keep your face in the oval and look straight ahead.';
+    }else{smsg.textContent='Looking for your face… make sure it’s well lit.';liveBuf=[]}
+  };
+  loop();
+}
+function stopLive(){cancelAnimationFrame(liveRAF);if(liveT){try{liveT.stop();liveT.reset()}catch(e){}liveT=null}ovc.clearRect(0,0,ov.width,ov.height)}
+async function stillLM(cv){
+  if(!window.clm)return null;
+  let t=null,best=null,bs=0;
+  try{t=new clm.tracker();t.init();t.start(cv);
+    for(let i=0;i<50;i++){await new Promise(r=>setTimeout(r,100));const p=t.getCurrentPosition(),s=t.getScore();if(p&&s>bs){bs=s;best=p.map(a=>[a[0],a[1]])}if(bs>0.6&&i>10)break}
+  }catch(e){}
+  try{if(t)t.stop()}catch(e){}
+  return bs>0.4?best:null;
+}
+function geom(L,cw,ch){
+  if(!L||L.length<63)return null;
+  const xs=a=>a.map(p=>p[0]),ys=a=>a.map(p=>p[1]),mn=a=>Math.min(...a),mx=a=>Math.max(...a),av=a=>a.reduce((s,v)=>s+v,0)/a.length;
+  const P=(a,b)=>L.slice(a,b+1),box=a=>({x0:mn(xs(a)),x1:mx(xs(a)),y0:mn(ys(a)),y1:mx(ys(a))});
+  const jaw=P(0,14),jb=box(jaw),W=jb.x1-jb.x0,chin=jb.y1,browTop=box(P(15,22)).y0;
+  const eP=P(23,32),mid=av(xs(eP)),eL=eP.filter(p=>p[0]<mid),eR=eP.filter(p=>p[0]>=mid);
+  if(!eL.length||!eR.length)return null;
+  const eb=[box(eL),box(eR)],eyeY=av(ys(eP)),eyeX=eb.map(b=>(b.x0+b.x1)/2);
+  const nb=box(P(33,43).concat(L[62]?[L[62]]:[])),mouth=box(P(44,61)),D=chin-eyeY;
+  if(W<cw*0.12||W>cw*0.95||D<=0||!(nb.y1>eyeY)||!(mouth.y0>nb.y0)||!(mouth.y1<chin+2))return null;
+  const topY=eyeY-0.95*D;
+  return {W,chin,browTop,eb,eyeY,eyeX,nb,mouth,D,topY,jaw,cx:(jb.x0+jb.x1)/2,cy:(topY+chin)/2,ry:(chin-topY)/2,rx:W/2};
+}
+function lmShape(g){const r=1.95*g.D/g.W,j=Math.abs(g.jaw[10][0]-g.jaw[4][0])/g.W;return r>1.62?'long':r<1.3?'round':j>0.74?'square':'oval'}
+function runTracker(cls,cv){return new Promise(res=>{const to=setTimeout(()=>res([]),8000);try{const t=new tracking.ObjectTracker(cls);t.setStepSize(1.5);t.setInitialScale(cls==='face'?4:2);t.on('track',e=>{clearTimeout(to);res(e.data||[])});tracking.track(cv,t)}catch(e){clearTimeout(to);res([])}})}
+async function findFace(cv){
+  const T=window.tracking;
+  if(!T||!T.ViolaJones||!T.ViolaJones.classifiers||!T.ViolaJones.classifiers.face)return null;
+  const fs=await runTracker('face',cv);if(!fs.length)return null;
+  const face=fs.sort((a,b)=>b.width-a.width)[0];
+  const eyes=T.ViolaJones.classifiers.eye?(await runTracker('eye',cv)).filter(e=>e.x>face.x&&e.x+e.width<face.x+face.width&&e.y+e.height/2<face.y+face.height*0.62&&e.y+e.height/2>face.y):[];
+  return {face,eyes};
+}
+async function process(src,vw,vh){
+  smsg.textContent='Analyzing your face…';
+  const cw=480,ch=640,cv=document.createElement('canvas');cv.width=cw;cv.height=ch;
+  const c=cv.getContext('2d',{willReadFrequently:true});
+  const sc=Math.max(cw/vw,ch/vh),sw=cw/sc,sh=ch/sc;c.drawImage(src,(vw-sw)/2,(vh-sh)/2,sw,sh,0,0,cw,ch);
+  let cx=cw*0.5,cy=ch*0.45,rx=cw*0.28,ry=ch*0.33,L=null;
+  if(src===vid&&liveBuf.length>=3){L=liveBuf[0].map((_,i)=>[0,1].map(k=>liveBuf.reduce((s,p)=>s+p[i][k],0)/liveBuf.length));L=L.map(q=>[(q[0]-(vw-sw)/2)*sc,(q[1]-(vh-sh)/2)*sc])}
+  if(!L)L=await stillLM(cv);
+  const LM=geom(L,cw,ch),G=LM?null:await findFace(cv);
+  if(LM){cx=LM.cx;cy=LM.cy;rx=LM.rx;ry=LM.ry}
+  else if(G){const f=G.face;cx=f.x+f.width/2;cy=f.y+f.height*0.375;rx=f.width*0.5;ry=f.height*0.625}
+  const grab=(x,y,w,h)=>{const d=c.getImageData(Math.max(0,x-w/2)|0,Math.max(0,y-h/2)|0,w|0,h|0).data,p=[[],[],[]];for(let i=0;i<d.length;i+=4){p[0].push(d[i]);p[1].push(d[i+1]);p[2].push(d[i+2])}return p};
+  const med=a=>{a.sort((x,y)=>x-y);return a[a.length>>1]/255};
+  const merge=ps=>[0,1,2].map(k=>ps.flatMap(p=>p[k]));
+  const sk=merge([grab(cx,cy-ry*0.55,cw*0.1,ch*0.04),grab(cx-rx*0.5,cy+ry*0.2,cw*0.08,ch*0.05),grab(cx+rx*0.5,cy+ry*0.2,cw*0.08,ch*0.05)]).map(med);
+  const hp=merge([grab(cx,cy-ry-ch*0.04,cw*0.14,ch*0.04)]).map(med);
+  const sp=merge([grab(cx,Math.min(ch*0.96,cy+ry*1.7),cw*0.3,ch*0.04)]).map(med);
+  const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
+  const all=c.getImageData(0,0,cw,ch).data;
+  const runC=(y,col,t)=>{y=y|0;const near=x=>{const i=(y*cw+(x|0))*4;return Math.hypot(all[i]/255-col[0],all[i+1]/255-col[1],all[i+2]/255-col[2])<t};let l=cx,r=cx;while(l>0&&near(l))l--;while(r<cw-1&&near(r))r++;return r-l};
+  const run=y=>runC(y,sk,0.13);
+  const lum=a=>0.3*a[0]+0.59*a[1]+0.11*a[2],slum=lum(sk);
+  const pat=(x,y,w,h)=>merge([grab(x,y,w,h)]).map(med);
+  const dk=p=>lum(p)<slum*0.72&&dist(p,sk)>0.16;
+  const T0=cy-ry,H=2*ry;let pm,pc,cheekB;
+  if(LM){
+    const m=LM.mouth,mw0=m.x1-m.x0,my=(m.y0+m.y1)/2,s=LM.W*0.12,yc=my+0.25*(LM.chin-my),yn=(LM.nb.y1+m.y0)/2,hn=Math.max(3,(m.y0-LM.nb.y1)*0.45);
+    const pL=pat(LM.cx-mw0*0.28,yn,mw0*0.25,hn),pR=pat(LM.cx+mw0*0.28,yn,mw0*0.25,hn);
+    pm=lum(pL)>lum(pR)?pL:pR;
+    pc=pat(LM.cx,m.y1+0.45*(LM.chin-m.y1),mw0*0.3,Math.max(3,(LM.chin-m.y1)*0.25));
+    cheekB=dk(pat(m.x0-LM.W*0.2,yc,s,s))&&dk(pat(m.x1+LM.W*0.2,yc,s,s));
+  }else{
+    pm=pat(cx,T0+H*0.66,rx*0.5,H*0.03);pc=pat(cx,T0+H*0.91,rx*0.36,H*0.045);
+    cheekB=dk(pat(cx-rx*0.62,T0+H*0.82,rx*0.22,H*0.09))&&dk(pat(cx+rx*0.62,T0+H*0.82,rx*0.22,H*0.09));
+  }
+  const hasMo=dk(pm),hasCh=dk(pc),hairOk=dist(hp,sk)>0.18;
+  const side=pat(cx-rx*1.12,cy+ry*0.35,cw*0.04,ch*0.1);
+  const cheekW=run(cy+ry*0.1);
+  let yy=cy-ry*0.4;while(yy>5&&run(yy)>cheekW*0.3)yy-=3;const hairY=yy;
+  yy=cy+ry*0.5;while(yy<ch-5&&run(yy)>cheekW*0.62)yy+=3;const chinY=yy;
+  const ratio=(chinY-hairY)/cheekW,jawR=run(cy+ry*0.65)/cheekW;
+  const shape=LM?lmShape(LM):(cheekW<cw*0.15||cheekW>cw*0.8||hasCh)?'oval':ratio>1.55?'long':ratio<1.2?'round':jawR>0.9?'square':'oval';
+  let hairStyle=null;
+  if(hairOk){const hr=runC(hairY-ry*0.12,hp,0.16)/(2*rx);let th=0,y2=hairY;while(y2>3&&runC(y2,hp,0.16)>rx*0.5&&th<ry*2){y2-=3;th+=3}
+    hairStyle=hr>1.45?'curly':th<ry*0.14?'buzz':dist(side,hp)<0.15?'long':'short'}
+  const E=(G?G.eyes:[]).sort((a,b)=>b.width-a.width).slice(0,2).sort((a,b)=>a.x-b.x);
+  const two=E.length===2,ex=LM?LM.eyeX:(two?E.map(e=>e.x+e.width/2):[cx-rx*0.45,cx+rx*0.45]);
+  const ey=LM?LM.eyeY:(two?(E[0].y+E[0].height/2+E[1].y+E[1].height/2)/2:cy-ry*0.05),ew=LM?((LM.eb[0].x1-LM.eb[0].x0)+(LM.eb[1].x1-LM.eb[1].x0))/2:(two?(E[0].width+E[1].width)/2:rx*0.4);
+  const frac=(x,y,w,h)=>{const d=c.getImageData(Math.max(0,x-w/2)|0,Math.max(0,y-h/2)|0,Math.max(1,w|0),Math.max(1,h|0)).data;let n=0,t=0;for(let i=0;i<d.length;i+=4){t++;if((0.3*d[i]+0.59*d[i+1]+0.11*d[i+2])/255<slum*0.6)n++}return t?n/t:0};
+  const maxF=(x,ys,w,h)=>Math.max(...ys.map(y=>frac(x,y,w,h)));
+  const eBase=LM?(LM.eb[0].y1+LM.eb[1].y1)/2:0;
+  const rimYs=LM?[0.2,0.4,0.65,0.9].map(k=>eBase+ew*k):[0.11,0.16,0.21].map(k=>ey+ry*k),rh=LM?ew*0.14:ry*0.05;
+  const rim=ex.map(x=>maxF(x,rimYs,ew*1.1,rh));
+  const bridge=LM?maxF((ex[0]+ex[1])/2,[ey-ew*0.1,ey+ew*0.05],Math.max(4,(ex[1]-ex[0]-ew)*0.5),ew*0.2):maxF((ex[0]+ex[1])/2,[ey-ry*0.03,ey+ry*0.04],Math.abs(ex[1]-ex[0])*0.25,ry*0.06);
+  const hasGl=(rim[0]>0.15)+(rim[1]>0.15)+(bridge>0.2)>=2;
+  let ml='none',bc=0;
+  for(const [k,x,y] of [['cl',cx-rx*0.55,cy+ry*0.2],['cr',cx+rx*0.55,cy+ry*0.2],['fore',cx-rx*0.25,cy-ry*0.55]]){
+    const d=c.getImageData((x-cw*0.05)|0,(y-ch*0.04)|0,(cw*0.1)|0,(ch*0.08)|0).data,L=[];
+    for(let i=0;i<d.length;i+=4)L.push(0.3*d[i]+0.59*d[i+1]+0.11*d[i+2]);
+    const m=L.slice().sort((a,b)=>a-b)[L.length>>1],n=L.filter(v=>v<m*0.6).length;
+    if(n>=6&&n<=220&&n>bc){bc=n;ml=k}
+  }
+  let moleXY=null,moleAv=null;
+  if(LM){ml='none';bc=0;
+    const u=LM.W,ny=LM.eyeY+(LM.nb.y1-LM.eyeY)*0.8,regs=[['cl',LM.eyeX[0],ny],['cr',LM.eyeX[1],ny],['fore',LM.cx,(LM.browTop+LM.topY)/2+0.05*u],['chin',LM.cx,LM.mouth.y1+(LM.chin-LM.mouth.y1)*0.55]];
+    for(const [k,x,y] of regs){
+      if(k==='chin'&&hasCh)continue;
+      const w=Math.max(4,(u*0.26)|0),h=Math.max(4,(u*0.2)|0),x0=Math.min(cw-w,Math.max(0,(x-w/2)|0)),y0=Math.min(ch-h,Math.max(0,(y-h/2)|0));
+      const d=c.getImageData(x0,y0,w,h).data,V=[];
+      for(let i=0;i<d.length;i+=4)V.push(0.3*d[i]+0.59*d[i+1]+0.11*d[i+2]);
+      const md=V.slice().sort((a,b)=>a-b)[V.length>>1],dki=[];
+      V.forEach((v,i)=>{if(v<md*0.6)dki.push(i)});
+      const fr=dki.length/V.length;
+      if(fr>=0.002&&fr<=0.05&&fr>bc){bc=fr;ml=k;const i0=dki[dki.length>>1];moleXY=[x0+(i0%w),y0+((i0/w)|0)]}
+    }
+    if(moleXY)moleAv=[Math.max(-0.8,Math.min(0.8,(moleXY[0]-LM.cx)/(LM.W/2)*0.78)),Math.max(-1,Math.min(0.8,0.15-(moleXY[1]-LM.eyeY)/(LM.chin-LM.eyeY)*1.25))];
+  }
+  scan={skin:sk,hc:hairOk?hp:null,shirt:sp,shape,ml:moleAv?'scan':ml,mole:moleAv,hair:hairStyle,mo:hasMo?'reg':'none',be:hasCh?(cheekB?'full':'goatee'):'none',fc:hasCh?pc:hasMo?pm:null,gl:hasGl?'square':'none'};
+  let msg=(LM?'Tracked 71 facial landmarks. ':G?'Face found. ':'Couldn’t locate your face precisely, so I assumed it’s centered. ')+'Detected: '+['skin tone',hairStyle&&hairStyle+' hair',hasMo&&'moustache',hasCh&&(cheekB?'full beard':'goatee'),hasGl&&'glasses',ml!=='none'&&'a mole',shape+' face'].filter(Boolean).join(', ')+'. These are estimates, so adjust anything in “Customize look”.';
+  if('FaceDetector' in window){try{
+    const fs=await new FaceDetector({maxDetectedFaces:1}).detect(cv);
+    if(fs[0]){
+      const bb=fs[0].boundingBox,L=fs[0].landmarks||[];
+      const fw=Math.min(1.08,Math.max(0.9,1.22/(bb.height/bb.width)));
+      if(!G&&!LM)fx=fw;
+      const E=L.filter(l=>l.type==='eye').map(l=>l.locations[0]),Mo=L.find(l=>l.type==='mouth');
+      if(E.length===2){const ex=Math.min(0.4,Math.max(0.27,Math.abs(E[0].x-E[1].x)/bb.width*1.8*fw/2));eyes.forEach((g,i)=>g.position.x=(i?1:-1)*ex);brows.forEach((b,i)=>b.position.x=(i?1:-1)*ex)}
+      if(Mo){const m=Mo.locations[0];mouthY=Math.min(-0.42,Math.max(-0.62,1.1-((m.y-bb.y)/bb.height)*2.2))}
+      msg+=' Face proportions adjusted too.';
+    }
+  }catch(e){}}
+  if(LM){
+    const dE=LM.eyeX[1]-LM.eyeX[0],r=((LM.mouth.y0+LM.mouth.y1)/2-LM.eyeY)/(LM.chin-LM.eyeY),exx=Math.min(0.42,Math.max(0.26,0.33*(dE/LM.W)/0.45));
+    eyes.forEach((g,i)=>g.position.x=(i?1:-1)*exx);brows.forEach((b,i)=>b.position.x=(i?1:-1)*exx);
+    mouthY=Math.min(-0.4,Math.max(-0.62,0.15-r));
+    mScale=Math.min(1.3,Math.max(0.8,((LM.mouth.x1-LM.mouth.x0)/LM.W)/0.36));
+    nose.scale.x=Math.min(1.3,Math.max(0.6,0.85*((LM.nb.x1-LM.nb.x0)/LM.W)/0.25));
+  }
+  applyScan();applyLook();document.getElementById('cust').open=true;note.textContent=msg;closeScan();
+}
+let fx=1;
+const O={};['shape','hair','hc','sk','ec','fc','mo','be','gl','ml'].forEach(k=>O[k]=document.getElementById('o-'+k));
+const fhMat=M(0x2f2420,0.9),moleMat=M(0x2a160e,0.8);
+const jawM=new THREE.Mesh(new THREE.SphereGeometry(1,32,20),skin);jawM.position.set(0,-0.62,-0.02);head.add(jawM);
+const beardCap=new THREE.Mesh(new THREE.SphereGeometry(1,40,24,0,Math.PI*2,Math.PI*0.7,Math.PI*0.3),fhMat);
+const beardG=new THREE.Group();beardG.add(beardCap);
+[-1,1].forEach(s=>{const b=new THREE.Mesh(new THREE.SphereGeometry(1,16,12),fhMat);b.scale.set(0.3,0.42,0.3);b.position.set(s*0.62,-0.42,0.38);beardG.add(b)});
+head.add(beardG);
+const goatee=new THREE.Mesh(new THREE.SphereGeometry(1,16,12),fhMat);goatee.scale.set(0.13,0.15,0.08);head.add(goatee);
+const mustaches=[0.035,0.06].map(th=>{const g=new THREE.Group();[-1,1].forEach(s=>{const m=new THREE.Mesh(new THREE.SphereGeometry(1,16,12),fhMat);m.scale.set(0.15,th,0.06);m.position.set(s*0.1,0,0);m.rotation.z=-s*0.25;g.add(m)});head.add(g);return g});
+const curls=new THREE.Group();head.add(curls);
+for(let r=0;r<2;r++)for(let i=0;i<9;i++){const a=(-80+i*20)*Math.PI/180,s=new THREE.Mesh(new THREE.SphereGeometry(0.27,12,10),hair);s.position.set(Math.sin(a),0.55+Math.cos(a)*0.62+r*0.12,r?-0.45:0);curls.add(s)}
+function glasses(shape){
+  const gm=M(0x111111,0.4),g=new THREE.Group(),lm=new THREE.MeshStandardMaterial({color:0x99ccff,transparent:true,opacity:0.18,roughness:0.1});
+  [-1,1].forEach(s=>{
+    const c=new THREE.Group();c.position.set(s*0.33,0.15,0.92);
+    if(shape==='round'){c.add(new THREE.Mesh(new THREE.TorusGeometry(0.19,0.018,8,32),gm),new THREE.Mesh(new THREE.CircleGeometry(0.19,24),lm))}
+    else{[[0,0.15,0.4,0.03],[0,-0.15,0.4,0.03],[-0.2,0,0.03,0.33],[0.2,0,0.03,0.33]].forEach(([x,y,w,h])=>{const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,0.03),gm);b.position.set(x,y,0);c.add(b)});c.add(new THREE.Mesh(new THREE.PlaneGeometry(0.4,0.3),lm))}
+    g.add(c);
+    const a=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.02,0.9),gm);a.position.set(s*0.72,0.15,0.5);a.rotation.y=-s*0.43;g.add(a);
+  });
+  const br=new THREE.Mesh(new THREE.BoxGeometry(0.28,0.02,0.02),gm);br.position.set(0,0.22,0.93);g.add(br);
+  head.add(g);return g;
+}
+const glassG={round:glasses('round'),square:glasses('square')};
+const mole=new THREE.Mesh(new THREE.SphereGeometry(0.035,12,10),moleMat);mole.scale.z=0.5;head.add(mole);
+const ML={cl:[-0.5,-0.15],cr:[0.5,-0.15],chin:[0.12,-0.9],lip:[0.2,-0.32],fore:[-0.2,0.72],eye:[0.55,0]};
+const SH={oval:[0.9,1.1],round:[1.0,1.0],long:[0.82,1.22],square:[0.95,1.05]};
+function applyLook(){
+  const [w,h]=SH[O.shape.value]||SH.oval,sx=w*fx,hs=O.hair.value,k=hs==='buzz'?1.02:1.055;
+  skull.scale.set(sx,h,0.95);cap.scale.set(sx*k,h*(k-0.01),1);hairLong.scale.set(sx*1.13,h*1.18,0.8);
+  jawM.visible=O.shape.value==='square';jawM.scale.set(sx,0.55,0.8);
+  cap.visible=hs!=='bald';hairLong.visible=hs==='long';curls.visible=hs==='curly';
+  hair.color.set(O.hc.value);skin.color.set(O.sk.value);dark.color.set(O.ec.value);fhMat.color.set(O.fc.value);
+  const c=skin.color;lipMat.color.setRGB(c.r*0.75+0.2,c.g*0.45+0.05,c.b*0.5+0.08);
+  mustaches[0].visible=O.mo.value==='reg';mustaches[1].visible=O.mo.value==='thick';
+  mustaches.forEach(g=>g.position.set(0,mouthY+0.15,0.885));
+  beardG.visible=O.be.value==='full';beardCap.scale.set(sx*1.03,h*1.03,0.98);
+  goatee.visible=O.be.value==='goatee';goatee.position.set(0,mouthY-0.3,0.64);
+  glassG.round.visible=O.gl.value==='round';glassG.square.visible=O.gl.value==='square';
+  const m=ML[O.ml.value];mole.visible=!!m;
+  if(m)mole.position.set(m[0],m[1],0.95*Math.sqrt(Math.max(0.05,1-(m[0]/sx)**2-(m[1]/h)**2))+0.005);
+}
+Object.values(O).forEach(el=>el.addEventListener('input',applyLook));
+const EXAMPLE={script:[
+  {text:'Welcome, everyone! Today I’ll show you how scripted presenting works.',expression:'happy',pause:400},
+  {text:'Each step can change my expression, and my voice.',expression:'surprised',gender:'male',rate:1.05,pause:300},
+  {text:'It can also slow me down, for the important points.',expression:'serious',rate:0.85,pitch:0.9,pause:600},
+  {text:'And that’s it. Thanks for watching!',expression:'happy'}
+]};
+document.getElementById('ex').onclick=()=>{txt.value=JSON.stringify(EXAMPLE,null,2)};
+function speakNext(id){
+  if(id!==run)return;
+  if(!queue.length){speaking=false;capEl.style.display='none';return}
+  const st=queue.shift();
+  if(st.expression)setExpr(st.expression);
+  if(st.gender==='male'||st.gender==='female')setGender(st.gender);
+  let v=st.voice?voices.find(x=>x.name.toLowerCase().includes(String(st.voice).toLowerCase())):null;
+  if(v){const g=genderOf(v);if(g!=='other')styleAvatar(g)}
+  v=v||selVoice();
+  const pm=v?1:(gender==='male'?0.7:gender==='female'?1.15:1);
+  const after=()=>{speaking=false;setTimeout(()=>speakNext(id),Math.max(0,+st.pause||0))};
+  if(!st.text){after();return}
+  capEl.textContent=st.text;capEl.style.display='block';
+  const u=new SpeechSynthesisUtterance(st.text);
+  if(v){u.voice=v;u.lang=v.lang}
+  u.rate=+st.rate||1;u.pitch=(+st.pitch||1)*pm;
+  u.onstart=()=>speaking=true;
+  u.onboundary=()=>pulse=1;
+  u.onend=after;u.onerror=after;
+  speaking=true;
+  speechSynthesis.speak(u);
+}
+function stop(){run++;queue=[];speaking=false;capEl.style.display='none';if('speechSynthesis' in window)speechSynthesis.cancel()}
+document.getElementById('stop').onclick=stop;
+document.getElementById('speak').onclick=()=>{
+  if(!('speechSynthesis' in window)){note.textContent='Speech isn’t supported in this browser.';return}
+  stop();const id=run;
+  try{queue=parseScript(txt.value)}catch(e){note.textContent='Invalid JSON script: '+e.message;return}
+  speakNext(id);
+};
+
+function resize(){const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h,false);cam.aspect=w/h;cam.fov=w/h<0.8?44:32;cam.updateProjectionMatrix()}
+new ResizeObserver(resize).observe(stage);resize();
+
+const clock=new THREE.Clock();
+function tick(){
+  const dt=Math.min(clock.getDelta(),0.05),t=clock.elapsedTime,k=1-Math.pow(0.001,dt);
+  for(const key in cur)cur[key]+=(tgt[key]-cur[key])*k*0.6;
+  look.x+=(lookT.x-look.x)*k*0.5;look.y+=(lookT.y-look.y)*k*0.5;
+  // mouth + talking expression
+  pulse*=Math.pow(0.03,dt);
+  vtNext-=dt;
+  if(vtNext<0){vtNext=0.07+Math.random()*0.08;const r=Math.random();vt=r<0.14?0.03:0.25+Math.random()*0.75;vw=0.75+Math.random()*0.6}
+  const talk=speaking?Math.min(1,vt*(0.7+0.3*Math.abs(Math.sin(t*9)))+0.5*pulse):0;
+  open+=(talk-open)*Math.min(1,dt*22);
+  const o=Math.min(1,Math.max(open,cur.jaw));
+  const sm=cur.smile+(speaking?0.18*Math.sin(t*1.9)+0.12*pulse:0);
+  const gap=o*0.2,mw=cur.w*mScale*(speaking?(1.05-0.3*o+0.25*(vw-1)):1);
+  hole.scale.set(0.19*mw,Math.max(0.004,gap/2),0.045);hole.position.set(0,-gap/2,-0.01);
+  teeth.scale.set(0.26*mw,Math.min(0.05,gap*0.5),0.02);teeth.position.set(0,-Math.min(0.025,gap*0.25)-0.002,0.04);teeth.visible=gap>0.03;
+  tongue.scale.set(0.11*mw,Math.max(0.003,gap*0.22),0.03);tongue.position.set(0,-gap*0.82,0.03);tongue.visible=gap>0.05;
+  lip.scale.set(mw,-sm*0.6+o*0.45,1);lip.position.set(0,0,0.01);
+  lip2.visible=gap>0.02;lip2.scale.set(mw*0.95,-(0.3+Math.max(sm,0)*0.4),1);lip2.position.set(0,-gap,0.01);
+  mouth.position.y=mouthY-o*0.02;
+  cheeks.forEach(c=>c.material.opacity=Math.max(0,cur.blush)*0.5+Math.max(0,sm-0.5)*0.3);
+  // blink
+  nextBlink-=dt;if(nextBlink<0){blink=1;nextBlink=2+Math.random()*3}
+  blink=Math.max(0,blink-dt*7);
+  const bl=Math.abs(Math.sin(blink*Math.PI*0.5+0.0001))*(blink>0?1:0);
+  eyes.forEach(g=>g.scale.set(cur.wide,Math.max(0.08,cur.wide*(1-bl)*(1-cur.squint)),1));
+  pupils.forEach(p=>{p.position.x=look.x*0.05;p.position.y=-look.y*0.04});
+  const emph=speaking?0.025*Math.sin(t*3.1)+0.06*pulse:0;
+  brows.forEach((b,i)=>{b.position.y=browY+cur.brow+emph;b.rotation.z=(i?1:-1)*cur.tilt});
+  // head motion
+  head.rotation.y=look.x*0.35+Math.sin(t*0.7)*0.04+(speaking?Math.sin(t*2.1)*0.06:0);
+  head.rotation.x=look.y*0.2+Math.sin(t*0.9)*0.02+(speaking?Math.sin(t*3.3)*0.03+pulse*0.07:0);
+  head.rotation.z=Math.sin(t*0.5)*0.015;
+  body.rotation.y=head.rotation.y*0.25;body.scale.y=0.9+Math.sin(t*1.4)*0.01;
+  renderer.render(scene,cam);requestAnimationFrame(tick);
+}
+tick();
+setGender('female');
+</script>
+</body>
+</html>

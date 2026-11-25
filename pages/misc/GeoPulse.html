@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GPS Info</title>
+<style>
+  body{font-family:system-ui,sans-serif;margin:0;padding:14px;max-width:520px;margin:auto;background:#f6f5f1;color:#1d1d1b}
+  h1{font-size:20px}
+  h2{font-size:13px;text-transform:uppercase;color:#6b6a65;margin:16px 0 6px}
+  button{font:inherit;font-weight:600;padding:10px 14px;border-radius:10px;border:1px solid #ccc;background:#fff;margin:0 6px 6px 0}
+  button.p{background:#e8590c;border-color:#e8590c;color:#fff}
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden}
+  td{padding:8px 10px;border-bottom:1px solid #eee}
+  td:first-child{color:#6b6a65;width:48%}
+  input{font:inherit;padding:8px;width:90px;border-radius:8px;border:1px solid #ccc}
+  #msg{color:#c92a2a;min-height:1.2em}
+  .cols{display:grid;grid-template-columns:1fr;gap:0 16px}
+  @media (min-width:700px){body{max-width:960px}.cols{grid-template-columns:1fr 1fr}}
+  @media (max-width:380px){body{padding:10px}td{padding:7px 8px;font-size:14px}td:first-child{width:44%}}
+  td:last-child{word-break:break-word}
+  button{min-height:44px}
+  #ask{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:20px;z-index:9}
+  #ask .box{background:#fff;border-radius:16px;padding:20px;max-width:360px;text-align:center}
+  #ask h3{margin:8px 0}
+  #ask p{color:#6b6a65;font-size:14px;margin:6px 0 16px}
+  #ask button{width:100%;margin:0 0 8px}
+</style>
+</head>
+<body>
+<div id="ask">
+  <div class="box">
+    <div style="font-size:40px">📍</div>
+    <h3>Allow location access?</h3>
+    <p>This page needs your phone's GPS to show your position and which site level you are on. Your browser will ask you to confirm. Choose <b>Allow</b> (or "While using the app").</p>
+    <button class="p" id="askyes">Allow location access</button>
+    <button id="askno">Not now</button>
+  </div>
+</div>
+<h1>GPS Info</h1>
+<button class="p" id="start">Start</button>
+<button id="stop">Stop</button>
+<p id="live" style="color:#2b8a3e;font-size:14px;margin:0 0 6px"></p>
+<p id="msg"></p>
+<div id="help" style="display:none;background:#fff3bf;border-radius:10px;padding:10px;margin-bottom:10px;font-size:14px"></div>
+
+<div class="cols"><div>
+<h2>Raw GPS data</h2>
+<table>
+  <tr><td>Latitude</td><td id="lat">-</td></tr>
+  <tr><td>Longitude</td><td id="lon">-</td></tr>
+  <tr><td>Accuracy</td><td id="acc">-</td></tr>
+  <tr><td>Altitude</td><td id="alt">-</td></tr>
+  <tr><td>Altitude accuracy</td><td id="aacc">-</td></tr>
+  <tr><td>Heading</td><td id="head">-</td></tr>
+  <tr><td>Speed</td><td id="spd">-</td></tr>
+  <tr><td>Timestamp</td><td id="ts">-</td></tr>
+</table>
+
+</div><div>
+<h2>Worked out from the data</h2>
+<table>
+  <tr><td>Status</td><td id="mov">-</td></tr>
+  <tr><td>Distance from site centre</td><td id="dist">-</td></tr>
+  <tr><td>Inside / outside site</td><td id="inside">-</td></tr>
+  <tr><td>Time on site</td><td id="time">-</td></tr>
+  <tr><td>Route points logged</td><td id="pts">0</td></tr>
+  <tr><td>Route distance travelled</td><td id="trav">0 m</td></tr>
+</table>
+
+</div></div>
+<h2>Site boundary</h2>
+<button id="setc">Set site centre here</button>
+Radius <input id="rad" type="number" value="150" min="10"> m
+
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (v, d = 1, u = "") => v == null ? "n/a" : v.toFixed(d) + u;
+
+let watchId = null;
+let last = null;            // latest reading
+let center = null;          // {lat, lon}
+let route = [];             // logged points
+let travelled = 0;
+let enteredAt = null;       // when worker came inside the site
+
+// Distance between two lat/long points in metres (haversine)
+function distance(lat1, lon1, lat2, lon2) {
+  const R = 6371000, r = Math.PI / 180;
+  const dLat = (lat2 - lat1) * r, dLon = (lon2 - lon1) * r;
+  const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function mmss(ms) {
+  const s = Math.floor(ms / 1000);
+  return Math.floor(s / 3600) + "h " + Math.floor(s % 3600 / 60) + "m " + s % 60 + "s";
+}
+
+function onPosition(p) {
+  const c = p.coords;
+  last = c;
+  $("msg").textContent = "";
+
+  // Raw data
+  $("lat").textContent  = c.latitude;
+  $("lon").textContent  = c.longitude;
+  $("acc").textContent  = "±" + fmt(c.accuracy, 0, " m");
+  $("alt").textContent  = fmt(c.altitude, 1, " m");
+  $("aacc").textContent = c.altitudeAccuracy == null ? "n/a" : "±" + fmt(c.altitudeAccuracy, 0, " m");
+  $("head").textContent = fmt(c.heading, 0, "°");
+  $("spd").textContent  = fmt(c.speed, 1, " m/s");
+  $("ts").textContent   = new Date(p.timestamp).toLocaleString();
+
+  // Moving or stationary (speed above ~0.5 m/s counts as moving)
+  $("mov").textContent = c.speed == null ? "n/a" : c.speed > 0.5 ? "Moving" : "Stationary";
+
+  // Route log (only add a point if moved more than the GPS accuracy)
+  const prev = route[route.length - 1];
+  if (!prev || distance(prev.lat, prev.lon, c.latitude, c.longitude) > Math.max(5, c.accuracy)) {
+    if (prev) travelled += distance(prev.lat, prev.lon, c.latitude, c.longitude);
+    route.push({ lat: c.latitude, lon: c.longitude, alt: c.altitude, t: p.timestamp });
+  }
+  $("pts").textContent  = route.length;
+  $("trav").textContent = Math.round(travelled) + " m";
+
+  // Site boundary checks
+  if (center) {
+    const d = distance(c.latitude, c.longitude, center.lat, center.lon);
+    const radius = +$("rad").value || 150;
+    const inside = d <= radius;
+    $("dist").textContent = Math.round(d) + " m";
+    $("inside").textContent = inside ? "Inside site" : "Outside site";
+    if (inside && !enteredAt) enteredAt = Date.now();
+    if (!inside) enteredAt = null;
+    $("time").textContent = enteredAt ? mmss(Date.now() - enteredAt) : "-";
+  }
+}
+
+// Which browser / OS, to show the right instructions
+function helpText() {
+  const ua = navigator.userAgent;
+  const ios = /iPhone|iPad|iPod/.test(ua);
+  if (ios) return "iPhone/iPad: Settings > Privacy & Security > Location Services > turn ON, then scroll to your browser (Safari or Chrome) and choose 'While Using'. In Safari also tap the 'aA' icon in the address bar > Website Settings > Location > Allow.";
+  if (/Firefox/.test(ua)) return "Firefox: tap the lock icon in the address bar > Permissions > Location > Allow, then reload.";
+  if (/SamsungBrowser/.test(ua)) return "Samsung Internet: tap the lock icon in the address bar > Permissions > Location > Allow, then reload.";
+  if (/Android/.test(ua)) return "Chrome (Android): tap the lock icon in the address bar > Permissions > Location > Allow, then reload. Also check Settings > Location is ON for the phone.";
+  if (/Edg\//.test(ua)) return "Edge: click the lock icon left of the address bar > Location > Allow, then reload.";
+  if (/Chrome/.test(ua)) return "Chrome: click the lock icon left of the address bar > Site settings > Location > Allow, then reload.";
+  if (/Safari/.test(ua)) return "Safari (Mac): Safari menu > Settings > Websites > Location > set this site to Allow, then reload.";
+  return "Open your browser's site settings for this page, set Location to Allow, then reload.";
+}
+
+function showHelp(text) { $("help").textContent = text; $("help").style.display = text ? "block" : "none"; }
+
+function onError(e) {
+  if (e.code === 1) endWatch();
+  if (e.code === 1) {
+    $("msg").textContent = "Location is blocked for this page. A website cannot turn it on by itself.";
+    showHelp(helpText());
+  } else if (e.code === 2) {
+    $("msg").textContent = "Position unavailable. Turn on the phone's Location/GPS and try outdoors.";
+  } else {
+    $("msg").textContent = "GPS timed out. Move to open sky and tap Start again.";
+  }
+}
+
+const REFRESH_MS = 3000;   // refresh interval
+let busy = false;
+
+function poll() {
+  if (busy) return;           // skip if the previous request is still running
+  busy = true;
+  navigator.geolocation.getCurrentPosition(
+    p => { busy = false; onPosition(p); },
+    e => { busy = false; onError(e); },
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
+}
+
+function beginWatch() {
+  poll();                               // first reading right away
+  watchId = setInterval(poll, REFRESH_MS);
+  $("live").textContent = "● Live, refreshing every " + REFRESH_MS / 1000 + " s";
+}
+
+function endWatch() {
+  if (watchId !== null) { clearInterval(watchId); watchId = null; }
+  busy = false;
+  $("live").textContent = "";
+}
+
+$("start").onclick = () => {
+  if (watchId !== null) return;
+  showHelp("");
+  if (!window.isSecureContext) {
+    $("msg").textContent = "Location only works on HTTPS (or localhost). Open this page with https://.";
+    return;
+  }
+  if (!navigator.geolocation) { $("msg").textContent = "This browser does not support geolocation."; return; }
+  if (permState === "granted") beginWatch();
+  else if (permState === "denied") { $("msg").textContent = "Location is blocked for this page."; showHelp(helpText()); }
+  else showAsk();
+};
+
+let permState = "unknown";
+function showAsk() { $("ask").style.display = "flex"; }
+function hideAsk() { $("ask").style.display = "none"; }
+
+$("askyes").onclick = () => {
+  hideAsk();
+  if (watchId === null) beginWatch();   // triggers the browser's own Allow prompt
+};
+$("askno").onclick = () => {
+  hideAsk();
+  $("msg").textContent = "Location not allowed. Tap Start when you are ready.";
+};
+
+// Detect the permission state ahead of time (not supported in every browser)
+if (navigator.permissions && navigator.permissions.query) {
+  navigator.permissions.query({ name: "geolocation" }).then(st => {
+    const apply = () => {
+      permState = st.state;
+      if (st.state === "prompt") showAsk();   // ask on page load
+      if (st.state === "denied") {
+        hideAsk();
+        $("msg").textContent = "Location is blocked for this page.";
+        showHelp(helpText());
+      } else if (st.state === "granted") {
+        hideAsk();
+        $("msg").textContent = "";
+        showHelp("");
+        if (watchId === null && window.isSecureContext) beginWatch();  // auto-start once allowed
+      }
+    };
+    apply();
+    st.onchange = apply;  // reacts when the user changes the setting
+  }).catch(() => {});
+}
+
+$("stop").onclick = () => {
+  if (watchId === null) return;
+  endWatch();
+  $("msg").textContent = "Stopped";
+};
+
+$("setc").onclick = () => {
+  if (!last) { $("msg").textContent = "Press Start and wait for a GPS fix first."; return; }
+  center = { lat: last.latitude, lon: last.longitude };
+  enteredAt = null;
+  $("msg").textContent = "";
+};
+</script>
+</body>
+</html>

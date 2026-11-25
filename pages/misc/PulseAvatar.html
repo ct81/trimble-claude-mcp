@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GeoPulse | PulseAvatar 2.0</title>
+<style>
+:root{--cyan:#68eaff;--blue:#398dff;--bg:#030912;--panel:rgba(5,24,43,.82);--line:rgba(104,234,255,.3);--muted:#83aabd}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% 42%,#102d49 0,#030912 55%,#010308 100%);color:#eafaff;font:14px Inter,Segoe UI,Arial,sans-serif;min-height:100vh}
+.app{max-width:1600px;margin:auto;padding:16px;display:grid;gap:12px;grid-template-rows:auto 1fr auto}
+header{display:flex;align-items:center;justify-content:space-between;padding:8px 4px 14px;border-bottom:1px solid var(--line)}.brand{font-weight:800;letter-spacing:2px;font-size:20px}.brand span{color:var(--cyan)}.status{font-size:11px;color:#a6d7e8;letter-spacing:1px}.led{display:inline-block;width:8px;height:8px;border-radius:50%;background:#39e6b3;box-shadow:0 0 12px #39e6b3;margin-right:8px}
+.layout{display:grid;grid-template-columns:minmax(240px,.8fr) minmax(360px,1.6fr) minmax(220px,.7fr);gap:12px;min-height:640px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:15px;box-shadow:0 0 30px #168ed014,inset 0 0 20px #1f99de09;backdrop-filter:blur(12px);min-width:0}.panel h3{font-size:11px;letter-spacing:1.5px;color:#83dff5;margin:0 0 13px}.camera{position:relative;aspect-ratio:4/3;background:#01050b;border-radius:12px;overflow:hidden;border:1px solid #68eaff33}.camera video,.camera canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}.camera canvas{pointer-events:none}.placeholder{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:#6794a8;padding:20px;font-size:12px}
+.btns{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.btn{border:1px solid var(--line);background:#11436270;color:#e4fbff;border-radius:9px;padding:10px 12px;font-size:11px;cursor:pointer}.btn:hover{background:#2782af80}.btn.primary{background:linear-gradient(120deg,#0d688c,#174f9b);border-color:#71eaff}.btn:disabled{opacity:.4;cursor:not-allowed}input,textarea,select{font:inherit}.tiny{font-size:10px;line-height:1.5;color:#78a4b8;margin-top:10px}.field{display:grid;gap:6px;margin-top:12px}.field label{font-size:10px;letter-spacing:1px;color:#8dcde0}.field input,.field select,.field textarea{width:100%;background:#031321;border:1px solid #68eaff38;border-radius:8px;padding:9px;color:#eafaff;outline:none}.field input:focus,.field textarea:focus{border-color:var(--cyan)}
+.stage{position:relative;display:flex;flex-direction:column;min-height:620px;overflow:hidden}.stagehead{display:flex;align-items:center;justify-content:space-between}.tag{border:1px solid var(--line);border-radius:30px;padding:6px 9px;color:#8eeaff;font-size:9px;letter-spacing:1px}.scene{position:relative;flex:1;min-height:470px;border-radius:12px;overflow:hidden;background:radial-gradient(ellipse at 50% 75%,#1172a944,transparent 48%),linear-gradient(#07182a66,#02081199)}#threeRoot{position:absolute;inset:0}#threeRoot canvas{width:100%;height:100%;display:block}.gridfloor{position:absolute;bottom:-4%;left:-20%;width:140%;height:40%;background-image:linear-gradient(#46ceff20 1px,transparent 1px),linear-gradient(90deg,#46ceff1c 1px,transparent 1px);background-size:42px 26px;transform:perspective(240px) rotateX(60deg);transform-origin:bottom;pointer-events:none}.bubble{position:absolute;z-index:2;top:14px;left:10%;right:10%;text-align:center;color:#b6efff;font-size:12px;line-height:1.5;text-shadow:0 0 12px #001;pointer-events:none}.ring{position:absolute;bottom:12px;left:50%;transform:translateX(-50%) perspective(300px) rotateX(62deg);width:260px;height:65px;border:2px solid #52dcffaa;border-radius:50%;box-shadow:0 0 20px #52dcff70,inset 0 0 20px #52dcff40;pointer-events:none}.scenefoot{text-align:center;font-size:9px;color:#628da2;letter-spacing:1px;margin-top:8px}
+.metric{padding:12px 0;border-bottom:1px solid #68eaff20}.metric label{display:block;color:#719db2;font-size:9px;letter-spacing:1px;margin-bottom:5px}.metric strong{font-size:15px;font-weight:500;color:#b7f4ff}.log{max-height:180px;overflow:auto;font-size:10px;line-height:1.6;color:#9ac9db;overflow-wrap:anywhere}
+.bottom{display:grid;grid-template-columns:1fr auto auto auto;gap:8px}.bottom input{min-width:0;background:#020c18;border:1px solid #68eaff38;border-radius:9px;padding:12px;color:#eafaff}.script{margin-top:12px;background:#020c18aa;border:1px solid #68eaff30;border-radius:12px;padding:12px}.scripthead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.scripthead strong{font-size:10px;letter-spacing:1.3px;color:#83dff5}#scriptText{width:100%;min-height:100px;resize:vertical;background:#020b16;border:1px solid #68eaff30;border-radius:8px;padding:10px;color:#eafaff;font:12px/1.5 inherit}.controls{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:8px}.controls label{font-size:10px;color:#8ab9cc}.controls select{max-width:200px;background:#061a2b;color:#eafaff;border:1px solid var(--line);padding:8px;border-radius:7px}.controls input[type=range]{width:85px;accent-color:#68eaff}.progress{font-size:10px;color:#80b5c9;margin-top:7px;min-height:14px}.disclaimer{font-size:10px;color:#6e9caf;line-height:1.5;margin-top:10px}
+@media(max-width:1000px){.layout{grid-template-columns:1fr 1.5fr}.right{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr)}.right h3{grid-column:1/-1}.logmetric{grid-column:1/-1}}
+@media(max-width:700px){.app{padding:9px}.layout{grid-template-columns:1fr;min-height:0}.stage{grid-row:1;min-height:530px}.left{grid-row:2}.right{grid-row:3;grid-template-columns:1fr 1fr}.bottom{grid-template-columns:1fr 1fr}.bottom input{grid-column:1/-1}.scene{min-height:430px}header{gap:10px}.status{text-align:right}}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div class="app">
+<header><div class="brand">Geo<span>Pulse</span> <small style="font-size:10px;color:#78b6d0;font-weight:400"> / PULSE AVATAR 2.0</small></div><div class="status"><i class="led"></i><span id="systemStatus">3D ENGINE STARTING</span></div></header>
+<main class="layout">
+<section class="panel left">
+<h3>FACE SCANNER</h3>
+<div class="camera"><video id="video" autoplay muted playsinline></video><canvas id="faceCanvas"></canvas><div class="placeholder" id="cameraPlaceholder">Camera is off<br>Tap START SCAN to allow camera access</div></div>
+<div class="btns"><button class="btn primary" id="startCamera">START SCAN</button><button class="btn" id="stopCamera" disabled>STOP CAMERA</button></div>
+<div class="field"><label>YOUR CUSTOM 3D AVATAR (.GLB / .GLTF)</label><input id="modelFile" type="file" accept=".glb,.gltf"></div>
+<div class="btns"><button class="btn" id="resetAvatar">RESET VIEW</button><button class="btn" id="removeAvatar">REMOVE MODEL</button></div>
+<div class="tiny">For a likeness of your face, load a 3D avatar model created from your photo by a compatible avatar-generation tool. A webcam scan tracks landmarks; it does not reconstruct a photorealistic 3D head by itself. Model files are loaded locally in this browser.</div>
+<div class="field"><label>AI BACKEND ENDPOINT</label><input id="apiEndpoint" value="/api/pulse/chat" placeholder="/api/pulse/chat"></div>
+<div class="tiny">Connect this endpoint to your own AI server. Do not put API keys in this page.</div>
+</section>
+<section class="panel stage">
+<div class="stagehead"><h3>REAL-TIME 3D PRESENTER</h3><span class="tag" id="avatarState">DEMO AVATAR</span></div>
+<div class="scene" id="scene"><div id="threeRoot"></div><div class="gridfloor"></div><div class="bubble" id="bubble">Hello. I am PulseAvatar. Load your custom 3D model or use the demo avatar.</div><div class="ring"></div></div>
+<div class="scenefoot">3D AVATAR • FACE LANDMARK TRACKING • VOICE INTERACTION</div>
+<div class="script">
+<div class="scripthead"><strong>SCRIPT PRESENTER</strong><span class="tag">READ ALOUD</span></div>
+<textarea id="scriptText" placeholder="Paste your presentation script here..."></textarea>
+<div class="controls">
+<label class="btn" for="scriptFile">LOAD TXT</label><input id="scriptFile" type="file" accept=".txt,.md" hidden>
+<button class="btn primary" id="playScript">▶ READ</button><button class="btn" id="pauseScript">Ⅱ PAUSE</button><button class="btn" id="stopScript">■ STOP</button>
+<label>VOICE</label><select id="voiceSelect"><option value="">System default</option></select>
+<label>SPEED</label><input id="rateControl" type="range" min=".7" max="1.25" step=".05" value=".95"><span id="rateValue" class="tiny" style="margin:0">0.95x</span>
+</div><div class="progress" id="scriptProgress">Paste a script or load a text file.</div>
+</div>
+</section>
+<aside class="panel right">
+<h3>LIVE ANALYTICS</h3>
+<div class="metric"><label>FACE STATUS</label><strong id="faceStatus">NOT DETECTED</strong></div>
+<div class="metric"><label>HEAD POSITION</label><strong id="headPosition">X 0.00 / Y 0.00</strong></div>
+<div class="metric"><label>EXPRESSION</label><strong id="expression">NEUTRAL</strong></div>
+<div class="metric"><label>VOICE INPUT</label><strong id="voiceStatus">READY</strong></div>
+<div class="metric"><label>3D MODEL</label><strong id="modelStatus">DEMO MODEL</strong></div>
+<div class="metric logmetric"><label>ACTIVITY LOG</label><div class="log" id="log">PulseAvatar initialized.</div></div>
+</aside>
+</main>
+<footer>
+<div class="bottom"><input id="textInput" placeholder="Type a message to PulseAvatar..." autocomplete="off"><button class="btn primary" id="sendBtn">SEND</button><button class="btn" id="micBtn">🎙 TALK</button><button class="btn" id="muteBtn">🔊 VOICE ON</button></div>
+<div class="disclaimer">Camera and microphone require HTTPS or localhost. Speech uses your browser's available voice services. Face landmarks are processed locally in this demo. AI replies require a configured backend endpoint.</div>
+</footer>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { FaceLandmarker, FilesetResolver } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs';
+const $=id=>document.getElementById(id);
+const root=$('threeRoot'), sceneEl=$('scene');
+let renderer,scene,camera,avatarRoot,loadedModel=null,mixer=null,clock=new THREE.Clock(),mouthTargets=[],faceLandmarker=null,stream=null,tracking=false,lastVideoTime=-1;
+let speaking=false,muted=false,recognition=null,micActive=false,scriptQueue=[],scriptIndex=0,scriptRunning=false;
+const log=m=>{$('log').innerHTML=`${new Date().toLocaleTimeString()} — ${escapeHtml(m)}<br>`+$('log').innerHTML;};
+const escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function init3D(){
+ scene=new THREE.Scene();scene.fog=new THREE.Fog(0x030912,5,15);
+ camera=new THREE.PerspectiveCamera(32,1,.1,100);camera.position.set(0,1.45,5.8);
+ renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;root.appendChild(renderer.domElement);
+ scene.add(new THREE.HemisphereLight(0xbfefff,0x14253d,2));
+ const key=new THREE.DirectionalLight(0xe5f7ff,3);key.position.set(2,4,4);scene.add(key);
+ const rim=new THREE.PointLight(0x25cfff,24,8);rim.position.set(-2,2,1);scene.add(rim);
+ const floor=new THREE.Mesh(new THREE.CircleGeometry(1.15,64),new THREE.MeshBasicMaterial({color:0x087da8,transparent:true,opacity:.16}));floor.rotation.x=-Math.PI/2;floor.position.y=-1.25;scene.add(floor);
+ const ring=new THREE.Mesh(new THREE.TorusGeometry(1.05,.012,8,100),new THREE.MeshBasicMaterial({color:0x56eaff,transparent:true,opacity:.8}));ring.rotation.x=Math.PI/2;ring.position.y=-1.22;scene.add(ring);
+ createDemoAvatar();resize3D();window.addEventListener('resize',resize3D);animate();
+}
+function createDemoAvatar(){
+ if(avatarRoot)scene.remove(avatarRoot);
+ const group=new THREE.Group();avatarRoot=group;scene.add(group);
+ const skin=new THREE.MeshStandardMaterial({color:0xe2b9a8,roughness:.48,metalness:.02});
+ const cloth=new THREE.MeshStandardMaterial({color:0xbcefff,metalness:.45,roughness:.25,emissive:0x0a4260,emissiveIntensity:.5});
+ const dark=new THREE.MeshStandardMaterial({color:0x17283c,roughness:.8});
+ const make=(geo,mat,x,y,z,sx=1,sy=1,sz=1)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.scale.set(sx,sy,sz);group.add(m);return m;};
+ make(new THREE.CapsuleGeometry(.48,.9,8,16),cloth,0,-.65,0,1,.95,.65);
+ make(new THREE.CylinderGeometry(.16,.19,.35,24),skin,0,.05,0);
+ const head=new THREE.Group();head.position.y=.65;group.add(head);
+ const face=new THREE.Mesh(new THREE.SphereGeometry(.48,48,40),skin);face.scale.set(.78,1.05,.72);head.add(face);
+ const hairMat=new THREE.MeshStandardMaterial({color:0x17243a,roughness:.72});
+ const hair=new THREE.Mesh(new THREE.SphereGeometry(.49,40,32,0,Math.PI*2,0,Math.PI*.58),hairMat);hair.scale.set(.82,.85,.76);hair.position.set(0,.22,-.025);head.add(hair);
+ const eyeMat=new THREE.MeshStandardMaterial({color:0x172e3d,roughness:.25});
+ for(const x of [-.19,.19]){const eye=new THREE.Mesh(new THREE.SphereGeometry(.045,16,12),eyeMat);eye.position.set(x,.04,.34);eye.scale.set(1,.55,.5);head.add(eye);}
+ const nose=new THREE.Mesh(new THREE.SphereGeometry(.055,16,12),skin);nose.position.set(0,-.08,.37);nose.scale.set(.65,1.5,.65);head.add(nose);
+ const mouth=new THREE.Mesh(new THREE.SphereGeometry(.075,20,12),new THREE.MeshStandardMaterial({color:0x8c4058,roughness:.35}));mouth.position.set(0,-.22,.345);mouth.scale.set(1,.22,.35);head.add(mouth);mouthTargets=[{mesh:mouth,baseY:.22}];
+ for(const x of [-.55,.55]){const arm=make(new THREE.CapsuleGeometry(.105,.78,6,12),cloth,x,-.48,0,1,1,1);arm.rotation.z=x<0?-.22:.22;}
+ group.userData.head=head;group.userData.demoMouth=mouth;group.position.y=-.05;
+ $('modelStatus').textContent='DEMO MODEL';$('avatarState').textContent='DEMO AVATAR';
+}
+function resize3D(){if(!renderer)return;const w=root.clientWidth,h=root.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/Math.max(1,h);camera.updateProjectionMatrix();}
+function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05);if(mixer)mixer.update(dt);if(avatarRoot){const head=avatarRoot.userData.head;if(head){head.rotation.y+=(window.faceYaw||0-head.rotation.y)*.08;head.rotation.x+=(window.facePitch||0-head.rotation.x)*.08;}avatarRoot.position.y=-.05+Math.sin(performance.now()*.0015)*.025;}
+ if(speaking&&avatarRoot?.userData.demoMouth){avatarRoot.userData.demoMouth.scale.y=.22+Math.abs(Math.sin(performance.now()*.018))*.42;}
+ renderer.render(scene,camera);}
+init3D();
+async function loadModel(file){
+ const url=URL.createObjectURL(file),loader=new GLTFLoader();
+ try{const gltf=await loader.loadAsync(url);if(loadedModel)scene.remove(loadedModel);if(avatarRoot)scene.remove(avatarRoot);
+ loadedModel=gltf.scene;avatarRoot=new THREE.Group();avatarRoot.add(loadedModel);scene.add(avatarRoot);
+ const box=new THREE.Box3().setFromObject(loadedModel),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());const max=Math.max(size.x,size.y,size.z)||1;loadedModel.scale.setScalar(2.55/max);loadedModel.position.sub(center.multiplyScalar(2.55/max));loadedModel.position.y-=.2;
+ mouthTargets=[];loadedModel.traverse(o=>{if(o.isMesh&&o.morphTargetDictionary&&o.morphTargetInfluences){const dict=o.morphTargetDictionary;for(const [name,index] of Object.entries(dict)){if(/jawopen|mouthopen|viseme_aa|viseme_oh|mouth_a/i.test(name))mouthTargets.push({mesh:o,index});}}});
+ if(gltf.animations?.length){mixer=new THREE.AnimationMixer(loadedModel);mixer.clipAction(gltf.animations[0]).play();}
+ $('modelStatus').textContent='CUSTOM MODEL';$('avatarState').textContent='CUSTOM AVATAR LOADED';$('bubble').textContent='Your custom 3D avatar is loaded. Start the camera to drive head movement.';log(`Loaded 3D model: ${file.name}`);
+ }catch(e){alert('Could not load this 3D model: '+e.message);log('Model load failed: '+e.message);}finally{URL.revokeObjectURL(url);}
+}
+$('modelFile').addEventListener('change',e=>{const f=e.target.files?.[0];if(f)loadModel(f);});
+$('resetAvatar').onclick=()=>{if(avatarRoot){avatarRoot.rotation.set(0,0,0);avatarRoot.position.set(0,-.05,0);}window.faceYaw=0;window.facePitch=0;};
+$('removeAvatar').onclick=()=>{if(loadedModel){scene.remove(avatarRoot);loadedModel=null;mixer=null;createDemoAvatar();}};
+async function loadFaceModel(){if(faceLandmarker)return;const vision=await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');faceLandmarker=await FaceLandmarker.createFromOptions(vision,{baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',delegate:'GPU'},runningMode:'VIDEO',numFaces:1,outputFaceBlendshapes:true,outputFacialTransformationMatrixes:true});}
+// Cross-browser camera permission helper. The permission prompt must be triggered
+// by a user gesture (the START SCAN button), and browsers require HTTPS or localhost.
+async function requestCameraAccess(){
+ const constraints={video:{facingMode:{ideal:'user'},width:{ideal:640},height:{ideal:480}},audio:false};
+ if(navigator.mediaDevices?.getUserMedia){
+   try{return await navigator.mediaDevices.getUserMedia(constraints);}
+   catch(err){
+     // Some mobile/browser implementations reject advanced constraints. Retry simply.
+     if(err.name==='OverconstrainedError'||err.name==='ConstraintNotSatisfiedError')
+       return await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+     throw err;
+   }
+ }
+ // Legacy APIs for older browsers. Most current browsers use mediaDevices above.
+ const legacy=navigator.getUserMedia||navigator.webkitGetUserMedia||navigator.mozGetUserMedia||navigator.msGetUserMedia;
+ if(legacy){
+   return await new Promise((resolve,reject)=>legacy.call(navigator,{video:true,audio:false},resolve,reject));
+ }
+ throw new Error('This browser does not support camera access. Please update your browser or use a supported browser such as Chrome, Edge, Firefox or Safari.');
+}
+function cameraErrorMessage(e){
+ const name=e?.name||'';
+ if(!window.isSecureContext && location.hostname!=='localhost' && location.hostname!=='127.0.0.1')
+   return 'Camera access requires a secure connection (HTTPS). Open this page using HTTPS or localhost.';
+ if(name==='NotAllowedError'||name==='PermissionDeniedError'||name==='SecurityError')
+   return 'Camera permission was blocked. Allow Camera for this website in your browser or device settings, then reload the page and try again.';
+ if(name==='NotFoundError'||name==='DevicesNotFoundError')
+   return 'No camera was found. Connect or enable a camera and try again.';
+ if(name==='NotReadableError'||name==='TrackStartError')
+   return 'The camera is busy or unavailable. Close other apps using the camera and try again.';
+ if(name==='AbortError') return 'The camera request was interrupted. Please try again.';
+ return 'Unable to start the camera: '+(e?.message||'Unknown camera error');
+}
+$('startCamera').onclick=async()=>{
+ $('startCamera').disabled=true;$('systemStatus').textContent='REQUESTING CAMERA PERMISSION';
+ try{
+   // Ask for camera access immediately after the button tap so the browser prompt appears promptly.
+   stream=await requestCameraAccess();
+   $('video').srcObject=stream;
+   await $('video').play();
+   $('cameraPlaceholder').style.display='none';
+   await loadFaceModel();
+   tracking=true;$('stopCamera').disabled=false;
+   $('systemStatus').textContent='FACE TRACKING ACTIVE';
+   log('Camera permission granted; facial landmarks are processed locally.');
+   requestAnimationFrame(trackFrame);
+ }catch(e){
+   stream?.getTracks().forEach(t=>t.stop());stream=null;
+   $('video').srcObject=null;$('startCamera').disabled=false;
+   $('systemStatus').textContent='CAMERA PERMISSION REQUIRED';
+   const message=cameraErrorMessage(e);$('cameraPlaceholder').style.display='grid';$('cameraPlaceholder').textContent=message;
+   alert(message);log(message);
+ }
+};
+$('stopCamera').onclick=()=>{tracking=false;stream?.getTracks().forEach(t=>t.stop());stream=null;$('video').srcObject=null;$('cameraPlaceholder').style.display='grid';$('startCamera').disabled=false;$('stopCamera').disabled=true;$('faceStatus').textContent='NOT DETECTED';$('systemStatus').textContent='SYSTEM READY';window.faceYaw=0;window.facePitch=0;};
+function trackFrame(){if(!tracking)return;const v=$('video');if(v.readyState>=2&&v.currentTime!==lastVideoTime){lastVideoTime=v.currentTime;const r=faceLandmarker.detectForVideo(v,performance.now());const c=$('faceCanvas'),rect=c.getBoundingClientRect();if(c.width!==Math.round(rect.width*devicePixelRatio)){c.width=rect.width*devicePixelRatio;c.height=rect.height*devicePixelRatio;}const x=c.getContext('2d');x.clearRect(0,0,c.width,c.height);
+ if(r.faceLandmarks?.length){const pts=r.faceLandmarks[0];$('faceStatus').textContent='DETECTED';const nose=pts[1]||pts[4];const yaw=(nose.x-.5)*1.25,pitch=(nose.y-.48)*.8;window.faceYaw=-yaw;window.facePitch=pitch;$('headPosition').textContent=`X ${yaw.toFixed(2)} / Y ${pitch.toFixed(2)}`;
+ x.fillStyle='rgba(94,235,255,.7)';for(let i=0;i<pts.length;i+=3){x.beginPath();x.arc(pts[i].x*c.width,pts[i].y*c.height,Math.max(1,c.width/500),0,Math.PI*2);x.fill();}
+ const cats=r.faceBlendshapes?.[0]?.categories||[];let smile=0,jaw=0;for(const a of cats){if(a.categoryName.includes('mouthSmile'))smile=Math.max(smile,a.score);if(a.categoryName==='jawOpen')jaw=a.score;}
+ $('expression').textContent=smile>.35?'SMILE':jaw>.25?'MOUTH OPEN':'NEUTRAL';driveMorphs(jaw);
+ }else{$('faceStatus').textContent='SEARCHING';$('expression').textContent='—';}}
+ requestAnimationFrame(trackFrame);}
+function driveMorphs(value){if(!mouthTargets.length)return;for(const t of mouthTargets){if(t.index!==undefined)t.mesh.morphTargetInfluences[t.index]=value;}}
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+if(SR){recognition=new SR();recognition.lang='en-SG';recognition.continuous=false;recognition.interimResults=true;recognition.onstart=()=>{$('voiceStatus').textContent='LISTENING';$('micBtn').textContent='STOP LISTENING';$('bubble').textContent='I am listening...';};recognition.onresult=e=>{let final='',interim='';for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)final+=t;else interim+=t;}$('textInput').value=final||interim;if(final.trim())handleMessage(final.trim());};recognition.onerror=e=>log('Speech recognition error: '+e.error);recognition.onend=()=>{$('micBtn').textContent='🎙 TALK';$('voiceStatus').textContent='READY';micActive=false;};}
+$('micBtn').onclick=()=>{if(!recognition){alert('Speech recognition is not supported in this browser. Try Chrome.');return;}if(micActive){recognition.stop();return;}try{recognition.start();micActive=true;}catch(e){log(e.message);}};
+function voices(){const sel=$('voiceSelect'),old=sel.value;sel.innerHTML='<option value="">System default</option>';speechSynthesis.getVoices().forEach(v=>{const o=document.createElement('option');o.value=v.name;o.textContent=`${v.name} (${v.lang})`;sel.append(o);});sel.value=old;}
+speechSynthesis.onvoiceschanged=voices;voices();
+function speak(text){if(muted)return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang='en-SG';u.rate=Number($('rateControl').value);u.pitch=1;const v=speechSynthesis.getVoices().find(x=>x.name===$('voiceSelect').value);if(v)u.voice=v;u.onstart=()=>{speaking=true;$('avatarState').textContent='SPEAKING';};u.onend=()=>{speaking=false;$('avatarState').textContent=loadedModel?'CUSTOM AVATAR':'DEMO AVATAR';driveMorphs(0);};u.onerror=()=>{speaking=false;driveMorphs(0);};speechSynthesis.speak(u);}
+async function getReply(message){const endpoint=$('apiEndpoint').value.trim();if(!endpoint)return 'Please configure your AI backend endpoint to enable intelligent conversation.';try{const res=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message})});if(!res.ok)throw new Error('HTTP '+res.status);const data=await res.json();return data.reply||data.message||'The AI service returned no reply.';}catch(e){log('AI endpoint unavailable: '+e.message);return 'I received your message, but I cannot reach the AI service yet. Please check the backend endpoint.';}}
+async function handleMessage(text){$('voiceStatus').textContent='PROCESSING';$('bubble').textContent='Thinking...';log('You: '+text);const reply=await getReply(text);$('bubble').textContent=reply;$('voiceStatus').textContent='READY';log('PulseAvatar: '+reply);speak(reply);}
+$('sendBtn').onclick=()=>{const t=$('textInput').value.trim();if(t){$('textInput').value='';handleMessage(t);}};$('textInput').onkeydown=e=>{if(e.key==='Enter')$('sendBtn').click();};
+$('muteBtn').onclick=()=>{muted=!muted;if(muted)speechSynthesis.cancel();$('muteBtn').textContent=muted?'🔇 VOICE OFF':'🔊 VOICE ON';};
+$('scriptFile').onchange=async e=>{const f=e.target.files?.[0];if(f){$('scriptText').value=await f.text();$('scriptProgress').textContent='Loaded '+f.name;}};
+function chunks(t){return t.match(/[^.!?]+[.!?]?/g)?.map(s=>s.trim()).filter(Boolean)||[t];}
+function nextScript(){if(!scriptRunning||scriptIndex>=scriptQueue.length){scriptRunning=false;$('scriptProgress').textContent='Presentation completed.';speaking=false;driveMorphs(0);return;}const text=scriptQueue[scriptIndex];$('bubble').textContent=text;$('scriptProgress').textContent=`Reading sentence ${scriptIndex+1} of ${scriptQueue.length}`;const u=new SpeechSynthesisUtterance(text);u.lang='en-SG';u.rate=Number($('rateControl').value);const v=speechSynthesis.getVoices().find(x=>x.name===$('voiceSelect').value);if(v)u.voice=v;u.onstart=()=>{speaking=true;$('avatarState').textContent='PRESENTING';};u.onend=()=>{speaking=false;scriptIndex++;nextScript();};u.onerror=()=>{scriptRunning=false;speaking=false;$('scriptProgress').textContent='Speech playback stopped.';};speechSynthesis.speak(u);}
+$('playScript').onclick=()=>{const t=$('scriptText').value.trim();if(!t){alert('Paste a script or load a text file first.');return;}speechSynthesis.cancel();scriptQueue=chunks(t);scriptIndex=0;scriptRunning=true;nextScript();log('Script presentation started.');};
+$('pauseScript').onclick=()=>{if(speechSynthesis.paused){speechSynthesis.resume();$('pauseScript').textContent='Ⅱ PAUSE';}else if(speechSynthesis.speaking){speechSynthesis.pause();$('pauseScript').textContent='▶ RESUME';$('scriptProgress').textContent='Presentation paused.';}};
+$('stopScript').onclick=()=>{scriptRunning=false;speechSynthesis.cancel();speaking=false;driveMorphs(0);$('pauseScript').textContent='Ⅱ PAUSE';$('scriptProgress').textContent='Presentation stopped.';};
+$('rateControl').oninput=e=>$('rateValue').textContent=Number(e.target.value).toFixed(2)+'x';
+window.addEventListener('beforeunload',()=>{stream?.getTracks().forEach(t=>t.stop());speechSynthesis.cancel();});
+$('systemStatus').textContent='SYSTEM READY';
+</script>
+</body></html>
