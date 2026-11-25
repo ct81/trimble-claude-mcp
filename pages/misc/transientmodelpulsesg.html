@@ -60,6 +60,10 @@
             background-image: radial-gradient(circle at 50% 50%, #101626 0%, #05070a 100%);
         }
 
+        #canvas-container.day-mode {
+            background-image: radial-gradient(circle at 50% 50%, #f5f9ff 0%, #cbdced 100%);
+        }
+
         #map-tile-source {
             position: absolute;
             top: 0;
@@ -1921,6 +1925,9 @@
                 </button>
                 <button class="toolbar-btn settings" id="btn-settings" title="Settings"><span
                         class="tb-icon">⚙️</span><span class="label">Settings</span></button>
+                <button class="toolbar-btn" type="button" id="btn-day-night" title="Switch to day background" aria-label="Day background" aria-pressed="false">
+                    <span class="tb-icon" aria-hidden="true">&#9728;</span><span class="label">Day</span>
+                </button>
                 <button class="toolbar-btn fullscreen" id="btn-fullscreen" title="Enter Fullscreen"><span
                         class="tb-icon">⛶</span><span class="label">Fullscreen</span></button>
             </div>
@@ -2806,7 +2813,24 @@
             }, { timeout: 10000 });
         });
         document.getElementById('set-grid').addEventListener('change', (e) => { gridHelper.visible = e.target.checked; });
-        document.getElementById('set-fog').addEventListener('change', (e) => { scene.fog = e.target.checked ? new THREE.FogExp2(0x05070a, 0.001) : null; });
+        const btnDayNight = document.getElementById('btn-day-night');
+        let dayBackground = false;
+        function updateBackgroundFog() {
+            scene.fog = document.getElementById('set-fog').checked
+                ? new THREE.FogExp2(dayBackground ? 0xcbdced : 0x05070a, 0.001)
+                : null;
+        }
+        btnDayNight.addEventListener('click', () => {
+            dayBackground = !dayBackground;
+            container.classList.toggle('day-mode', dayBackground);
+            btnDayNight.setAttribute('aria-pressed', String(dayBackground));
+            btnDayNight.title = dayBackground ? 'Switch to night background' : 'Switch to day background';
+            btnDayNight.innerHTML = dayBackground
+                ? '<span class="tb-icon" aria-hidden="true">&#9790;</span><span class="label">Night</span>'
+                : '<span class="tb-icon" aria-hidden="true">&#9728;</span><span class="label">Day</span>';
+            updateBackgroundFog();
+        });
+        document.getElementById('set-fog').addEventListener('change', updateBackgroundFog);
         document.getElementById('set-selbox').addEventListener('change', (e) => { selectionBoxes.visible = e.target.checked; });
 
         const DEFAULT_REQUIRED_SCHEMA = {

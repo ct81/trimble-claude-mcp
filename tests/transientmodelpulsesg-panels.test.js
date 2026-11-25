@@ -3,6 +3,53 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 
+test('day/night background toggle updates fog without overriding the fog setting', () => {
+    const page = readFileSync(new URL('../pages/misc/transientmodelpulsesg.html', import.meta.url), 'utf8');
+    assert.match(page, /id="btn-day-night"[^>]*>[\s\S]*?<\/button>\s*<button[^>]*id="btn-fullscreen"/);
+    const start = page.indexOf('        const btnDayNight =');
+    const end = page.indexOf("        document.getElementById('set-selbox')", start);
+    assert.ok(start >= 0 && end > start);
+    const button = {
+        attributes: {},
+        setAttribute(name, value) { this.attributes[name] = value; },
+        addEventListener(_type, callback) { this.click = callback; }
+    };
+    const fogSetting = {
+        checked: true,
+        addEventListener(_type, callback) { this.change = callback; }
+    };
+    let dayMode = false;
+    const scene = {};
+    const context = vm.createContext({
+        document: { getElementById: id => id === 'btn-day-night' ? button : fogSetting },
+        container: { classList: { toggle(_name, enabled) { dayMode = enabled; } } },
+        scene,
+        THREE: { FogExp2: class { constructor(color, density) { this.color = color; this.density = density; } } }
+    });
+    vm.runInContext(page.slice(start, end), context);
+
+    button.click();
+    assert.equal(dayMode, true);
+    assert.equal(button.attributes['aria-pressed'], 'true');
+    assert.match(button.title, /night/);
+    assert.equal(scene.fog.color, 0xcbdced);
+
+    fogSetting.checked = false;
+    fogSetting.change();
+    assert.equal(scene.fog, null);
+    button.click();
+    assert.equal(dayMode, false);
+    assert.equal(button.attributes['aria-pressed'], 'false');
+    assert.match(button.title, /day/);
+    assert.equal(scene.fog, null);
+
+    fogSetting.checked = true;
+    fogSetting.change();
+    assert.equal(scene.fog.color, 0x05070a);
+    button.click();
+    assert.equal(scene.fog.color, 0xcbdced);
+});
+
 test('the initially hidden Crane Manager can be reopened from the toolbar', () => {
     const page = readFileSync(new URL('../pages/misc/transientmodelpulsesg.html', import.meta.url), 'utf8');
     const craneButton = page.match(/<button class="toolbar-btn reopen" data-panel="([^"]*)"[^>]*\s+title="Reopen Crane Manager"/);
