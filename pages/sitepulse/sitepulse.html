@@ -41,6 +41,10 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
+        body[hidden] {
+            display: none;
+        }
+
         body {
             background-color: var(--bg-color);
             color: var(--text-main);
@@ -1779,7 +1783,7 @@
     </script>
 </head>
 
-<body>
+<body hidden>
 
     <div id="canvas-container"></div>
     <div id="map-tile-source" aria-hidden="true" inert></div>
@@ -2339,12 +2343,52 @@
     <div id="minimized-dock"></div>
 
     <script id="sign-out-script">
-        document.getElementById('btn-sign-out').addEventListener('click', () => {
+        function signOutSitePulse() {
+            document.body.hidden = true;
             localStorage.removeItem('oauth_demo_session_v1');
-            for (const key of ['oauth_google_token_v1', 'oauth_outlook_token_v1', 'oauth_pending_v1', 'username']) {
+            for (const key of ['sitepulse_login_v1', 'oauth_google_token_v1', 'oauth_outlook_token_v1', 'oauth_pending_v1', 'username']) {
                 sessionStorage.removeItem(key);
             }
             location.replace('./login.html');
+        }
+
+        function checkSitePulseLogin() {
+            document.body.hidden = true;
+            try {
+                const session = JSON.parse(localStorage.getItem('oauth_demo_session_v1') || 'null');
+                const approval = JSON.parse(sessionStorage.getItem('sitepulse_login_v1') || 'null');
+                const users = JSON.parse(localStorage.getItem('oauth_demo_users_v1') || '{}');
+                const user = session && Object.values(users).find(user =>
+                    user.id === session.userId && user.email === session.email && user.provider === session.provider);
+                if (!user || !user.id || !user.email || !['google', 'microsoft', 'facebook'].includes(user.provider) ||
+                    !Number.isFinite(session.at) || session.at <= 0 || session.at > Date.now() ||
+                    !approval || approval.id !== user.id || approval.email !== user.email || approval.provider !== user.provider) {
+                    signOutSitePulse();
+                    return;
+                }
+                if (user.provider === 'google' || user.provider === 'microsoft') {
+                    const key = user.provider === 'google' ? 'oauth_google_token_v1' : 'oauth_outlook_token_v1';
+                    const token = JSON.parse(sessionStorage.getItem(key) || 'null');
+                    if (!token || token.email !== user.email || typeof token.accessToken !== 'string' || !token.accessToken ||
+                        !Number.isFinite(token.expiresAt) || token.expiresAt <= Date.now()) {
+                        signOutSitePulse();
+                        return;
+                    }
+                }
+                document.body.hidden = false;
+            } catch (error) {
+                console.error('SitePulse login check failed:', error);
+                signOutSitePulse();
+            }
+        }
+
+        document.getElementById('btn-sign-out').addEventListener('click', signOutSitePulse);
+        checkSitePulseLogin();
+        window.addEventListener('pageshow', checkSitePulseLogin);
+        window.addEventListener('storage', event => {
+            if (event.key === null || event.key === 'oauth_demo_session_v1' || event.key === 'oauth_demo_users_v1') {
+                checkSitePulseLogin();
+            }
         });
     </script>
 

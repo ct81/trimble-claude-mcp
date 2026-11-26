@@ -217,6 +217,7 @@
   const saveUsers   = (u) => localStorage.setItem(USERS_KEY, JSON.stringify(u));
   const getSession  = () => readJSON(localStorage.getItem(SESSION_KEY));
   const setSession = (user) => {
+    sessionStorage.removeItem('sitepulse_login_v1');
     sessionStorage.removeItem(GOOGLE_TOKEN_KEY);
     sessionStorage.removeItem(OUTLOOK_TOKEN_KEY);
     localStorage.setItem(SESSION_KEY, JSON.stringify({
@@ -224,6 +225,7 @@
     }));
   };
   const clearSession = () => {
+    sessionStorage.removeItem('sitepulse_login_v1');
     sessionStorage.removeItem(GOOGLE_TOKEN_KEY);
     sessionStorage.removeItem(OUTLOOK_TOKEN_KEY);
     sessionStorage.removeItem(PENDING_KEY);
@@ -700,6 +702,9 @@
         email: token?.email
       });
     }
+    sessionStorage.setItem('sitepulse_login_v1', JSON.stringify({
+      id: user.id, email: user.email, provider: user.provider
+    }));
     location.replace(new URL('./sitepulse.html', location.href).href);
     return true;
   }
