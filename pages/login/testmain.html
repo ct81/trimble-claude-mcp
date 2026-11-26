@@ -1,0 +1,178 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Dashboard</title>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f6f9;
+    color: #333;
+}
+
+.navbar {
+    background: #1e293b;
+    color: white;
+    padding: 18px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.navbar h2 {
+    font-size: 20px;
+}
+
+.navbar button {
+    background: #ef4444;
+    color: white;
+    border: none;
+    padding: 9px 18px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.container {
+    max-width: 1100px;
+    margin: 40px auto;
+    padding: 20px;
+}
+
+.welcome {
+    margin-bottom: 30px;
+}
+
+.welcome h1 {
+    font-size: 28px;
+    margin-bottom: 10px;
+}
+
+.welcome p {
+    color: #64748b;
+}
+
+.dashboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+}
+
+.card {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.card .icon {
+    font-size: 32px;
+    margin-bottom: 15px;
+}
+
+.card h3 {
+    margin-bottom: 8px;
+}
+
+.card p {
+    color: #64748b;
+    font-size: 14px;
+}
+
+.footer {
+    text-align: center;
+    color: #94a3b8;
+    margin-top: 60px;
+    font-size: 13px;
+}
+
+</style>
+</head>
+
+<body>
+
+<header class="navbar">
+    <h2>My Workspace</h2>
+    <button onclick="logout()">Sign Out</button>
+</header>
+
+<main class="container">
+
+    <section class="welcome">
+        <h1>Welcome back, <span id="userName">User</span>!</h1>
+        <p>You have successfully signed in. What would you like to do today?</p>
+    </section>
+
+    <section class="dashboard">
+
+        <div class="card" onclick="navigate('projects.html')">
+            <div class="icon">📁</div>
+            <h3>My Projects</h3>
+            <p>View and manage your projects.</p>
+        </div>
+
+        <div class="card" onclick="navigate('team.html')">
+            <div class="icon">👥</div>
+            <h3>My Team</h3>
+            <p>Manage your team members.</p>
+        </div>
+
+        <div class="card" onclick="navigate('settings.html')">
+            <div class="icon">⚙️</div>
+            <h3>Settings</h3>
+            <p>Manage your account settings.</p>
+        </div>
+
+        <div class="card" onclick="navigate('support.html')">
+            <div class="icon">💬</div>
+            <h3>Help & Support</h3>
+            <p>Get assistance and support.</p>
+        </div>
+
+    </section>
+
+    <footer class="footer">
+        © 2026 My Workspace. All rights reserved.
+    </footer>
+
+</main>
+
+<script>
+
+// Get username from login session
+const username = sessionStorage.getItem("username");
+
+if (username) {
+    document.getElementById("userName").textContent = username;
+}
+
+// Navigate to another page
+function navigate(page) {
+    window.location.href = page;
+}
+
+// Sign out
+function logout() {
+    sessionStorage.clear();
+    window.location.href = "login.html";
+}
+
+</script>
+
+</body>
+</html>
