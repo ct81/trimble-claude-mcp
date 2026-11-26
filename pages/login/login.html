@@ -194,7 +194,7 @@
   const CONFIG = {
     google: {
       clientId: '686880889717-2nkselb4gkoatahntg5pu9ojcnt6sfmb.apps.googleusercontent.com',                 // e.g. 123-abc.apps.googleusercontent.com
-      scopes: ['openid', 'email', 'profile']
+      scopes: ['openid', 'email', 'profile', 'https://www.googleapis.com/auth/gmail.readonly']
     },
     facebook: {
       clientId: '',                 // App ID
@@ -220,14 +220,23 @@
   const USERS_KEY   = 'oauth_demo_users_v1';
   const SESSION_KEY = 'oauth_demo_session_v1';
   const PENDING_KEY = 'oauth_pending_v1';
+  const GOOGLE_TOKEN_KEY = 'oauth_google_token_v1';
 
   const $ = (s) => document.querySelector(s);
   const readJSON = (s) => { try { return JSON.parse(s); } catch { return null; } };
   const getUsers    = () => readJSON(localStorage.getItem(USERS_KEY)) || {};
   const saveUsers   = (u) => localStorage.setItem(USERS_KEY, JSON.stringify(u));
   const getSession  = () => readJSON(localStorage.getItem(SESSION_KEY));
-  const setSession  = (email) => localStorage.setItem(SESSION_KEY, JSON.stringify({ email, at: Date.now() }));
-  const clearSession = () => localStorage.removeItem(SESSION_KEY);
+  const setSession = (email) => {
+    sessionStorage.removeItem(GOOGLE_TOKEN_KEY);
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ email, at: Date.now() }));
+  };
+  const clearSession = () => {
+    sessionStorage.removeItem(GOOGLE_TOKEN_KEY);
+    sessionStorage.removeItem(PENDING_KEY);
+    sessionStorage.removeItem('username');
+    localStorage.removeItem(SESSION_KEY);
+  };
 
   /* ═══════════════ CRYPTO HELPERS ═══════════════ */
   const subtle = window.crypto && window.crypto.subtle;
@@ -412,11 +421,21 @@
             return;
           }
           try {
+            if (!(response.scope || '').split(/\s+/).includes('https://www.googleapis.com/auth/gmail.readonly')) {
+              throw new Error('Gmail read permission was not granted. Sign in again and allow read-only Gmail access.');
+            }
+            const expiresIn = Number(response.expires_in);
+            if (!Number.isFinite(expiresIn) || expiresIn <= 0) throw new Error('Google returned an invalid token expiration. Please sign in again.');
             const profile = await fetchProfile('google', response.access_token);
             if (request !== googleSignInRequest) return;
             if (!profile.email) throw new Error('Google did not return an email address. Allow the email permission and try again.');
             const user = upsertUser(profile, 'google');
             setSession(user.email);
+            sessionStorage.setItem(GOOGLE_TOKEN_KEY, JSON.stringify({
+              accessToken: response.access_token,
+              expiresAt: Date.now() + expiresIn * 1000,
+              email: user.email
+            }));
             hideConnecting();
             renderApp(user);
             showMsg('Signed in with Google.', 'ok');
@@ -667,6 +686,17 @@
   /* ═══════════════ RENDER ═══════════════ */
   function renderApp(user) {
     if (!user) return signOut();
+    console.log('Signed-in user:', {
+      id: user.id, email: user.email, name: user.name,
+      provider: user.provider, createdAt: user.createdAt
+    });
+    const googleToken = readJSON(sessionStorage.getItem(GOOGLE_TOKEN_KEY));
+    console.log('Google token metadata:', {
+      available: !!googleToken?.accessToken,
+      accessToken: googleToken?.accessToken ? '[REDACTED]' : null,
+      expiresAt: googleToken?.expiresAt,
+      email: googleToken?.email
+    });
     location.replace(new URL('./testmain.html', location.href).href);
   }
 
@@ -690,6 +720,10 @@
             Create an OAuth client of type <b>Web application</b>.
             Add <code>${location.origin}</code> to <b>Authorized JavaScript origins</b> (origin only, no path).
             Google uses the Google Identity Services token popup; no client secret or redirect URI is needed for this flow.
+            Enable the <b>Gmail API</b> in this project and configure the
+            <code>https://www.googleapis.com/auth/gmail.readonly</code> scope on the consent screen.
+            While the app is in Testing, add your account as a test user. Public apps using this restricted scope may require Google verification.
+            Gmail tokens are kept only in this tab's session storage until expiry or sign-out; they are not refresh tokens.
             Copy the <b>Client ID</b> into <code>CONFIG.google.clientId</code>.</li>
         <li><b>Facebook</b> — <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener">developers.facebook.com</a>.
             Create an app (Consumer). Add <b>Facebook Login → Web</b>.
