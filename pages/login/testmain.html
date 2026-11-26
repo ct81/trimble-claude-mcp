@@ -285,8 +285,29 @@ async function readGmail() {
                     sessionStorage.removeItem(GOOGLE_TOKEN_KEY);
                     throw new Error('Google access expired. Click Sign in again to reconnect.');
                 }
-                if (response.status === 403) throw new Error('Gmail access is unavailable. Enable the Gmail API and grant Gmail read permission, then sign in again.');
-                throw new Error('Gmail request failed (HTTP ' + response.status + '). Please try again.');
+                if (!response.headers.get('content-type')?.includes('application/json')) {
+                    throw new Error('Gmail request failed (HTTP ' + response.status + '); Google returned a non-JSON error response.');
+                }
+                const body = await response.json();
+                const error = body.error;
+                const reasons = [
+                    ...(error?.errors || []).map(detail => detail.reason),
+                    ...(error?.details || []).map(detail => detail.reason)
+                ];
+                let guidance = '';
+                if (reasons.some(reason => ['SERVICE_DISABLED', 'accessNotConfigured'].includes(reason))) {
+                    guidance = 'Enable Gmail API in the Google Cloud project that owns your OAuth client ID, wait a few minutes, then retry.';
+                } else if (reasons.some(reason => ['ACCESS_TOKEN_SCOPE_INSUFFICIENT', 'insufficientPermissions'].includes(reason))) {
+                    guidance = 'Click Sign in again and grant the gmail.readonly permission.';
+                } else if (reasons.includes('domainPolicy')) {
+                    guidance = 'Your Google Workspace administrator must allow this app to access Gmail.';
+                } else if (response.status === 403) {
+                    guidance = 'Check Gmail API enablement, granted permissions, and account restrictions in Google Cloud.';
+                }
+                throw new Error('Gmail request failed (HTTP ' + response.status + '): ' +
+                    (error?.message || error?.status || 'Google rejected the request.') +
+                    (reasons.filter(Boolean).length ? ' [' + reasons.filter(Boolean).join(', ') + ']' : '') +
+                    (guidance ? ' ' + guidance : ''));
             }
             return response.json();
         }

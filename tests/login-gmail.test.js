@@ -116,3 +116,30 @@ test('Gmail rejection reports errors and sign-out clears login information but k
     assert.equal(harness.session.get('unrelated'), 'keep');
     assert.equal(harness.context.window.location.href, 'login.html');
 });
+
+test('Gmail 403 errors show the provider reason and the corresponding remediation', async () => {
+    for (const [reason, guidance] of [
+        ['SERVICE_DISABLED', /project that owns your OAuth client ID/],
+        ['insufficientPermissions', /grant the gmail.readonly permission/],
+        ['domainPolicy', /Workspace administrator/],
+        ['forbidden', /account restrictions/]
+    ]) {
+        const harness = createHarness();
+        harness.context.fetch = async () => ({
+            ok: false, status: 403,
+            headers: { get: () => 'application/json; charset=UTF-8' },
+            json: async () => ({ error: {
+                message: 'Provider explanation',
+                errors: [{ reason }],
+                details: [{ reason }]
+            } })
+        });
+        await harness.context.readGmail();
+        const message = harness.elements['gmail-status'].textContent;
+        assert.match(message, /HTTP 403.*Provider explanation/);
+        assert.ok(message.includes(reason));
+        assert.match(message, guidance);
+        assert.equal(harness.elements['read-gmail'].disabled, false);
+        assert.equal(harness.session.has('oauth_google_token_v1'), true);
+    }
+});
