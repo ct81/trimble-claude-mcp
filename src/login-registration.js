@@ -48,7 +48,7 @@ export function createLoginRegistrationRouter(
     chesterEmailRequests.set(clientIp, now);
     try {
       await sendMail({
-        to: 'chester.tan@trimble.com',
+        to: 'noodletan81@gmail.com',
         subject: 'Build the Impossible',
         text: 'https://ct81.github.io/trimble-claude-mcp/pages/landing/buildtheimpossible.html'
       });
