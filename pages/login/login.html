@@ -183,6 +183,7 @@
   </div>
 </div>
 
+<script src="https://accounts.google.com/gsi/client" async></script>
 <script>
 (function () {
   'use strict';
@@ -285,6 +286,7 @@
   }
 
   let popupPoll = null, activePopup = null, completedSignIn = false;
+  let googleSignInRequest = 0;
 
   function showConnecting(provider) {
     $('#ovLogo').innerHTML = LOGOS[provider] || '';
@@ -303,19 +305,6 @@
   /* ═══════════════ PROVIDER ENDPOINTS ═══════════════ */
   function authUrl(provider, state, challenge) {
     const c = CONFIG[provider];
-    if (provider === 'google') {
-      const u = new URL('https://accounts.google.com/o/oauth2/v2/auth');
-      u.searchParams.set('client_id', c.clientId);
-      u.searchParams.set('redirect_uri', REDIRECT_URI);
-      u.searchParams.set('response_type', 'code');
-      u.searchParams.set('scope', c.scopes.join(' '));
-      u.searchParams.set('state', state);
-      u.searchParams.set('code_challenge', challenge);
-      u.searchParams.set('code_challenge_method', 'S256');
-      u.searchParams.set('prompt', 'select_account');
-      u.searchParams.set('access_type', 'online');
-      return u.toString();
-    }
     if (provider === 'microsoft') {
       const u = new URL(`https://login.microsoftonline.com/${c.tenant}/oauth2/v2.0/authorize`);
       u.searchParams.set('client_id', c.clientId);
@@ -343,6 +332,9 @@
   }
 
   async function exchangeCode(provider, code, verifier) {
+    if (provider !== 'microsoft') {
+      throw new Error('This sign-in link uses an old flow. Close it and sign in again using the provider button.');
+    }
     const c = CONFIG[provider];
     const body = new URLSearchParams({
       grant_type: 'authorization_code',
@@ -353,9 +345,7 @@
     });
     if (provider === 'microsoft') body.set('scope', c.scopes.join(' '));
 
-    const url = provider === 'google'
-      ? 'https://oauth2.googleapis.com/token'
-      : `https://login.microsoftonline.com/${c.tenant}/oauth2/v2.0/token`;
+    const url = `https://login.microsoftonline.com/${c.tenant}/oauth2/v2.0/token`;
 
     const res = await fetch(url, {
       method: 'POST',
@@ -398,6 +388,56 @@
   }
 
   /* ═══════════════ SOCIAL SIGN-IN (popup) ═══════════════ */
+  function signInWithGoogle() {
+    const oauth2 = window.google?.accounts?.oauth2;
+    if (!oauth2) {
+      showMsg('Google sign-in could not load. Check your connection and try again.', 'err');
+      return;
+    }
+    const request = ++googleSignInRequest;
+    showConnecting('google');
+    const fail = message => {
+      if (request !== googleSignInRequest) return;
+      hideConnecting();
+      showMsg(message, 'err');
+    };
+    try {
+      const client = oauth2.initTokenClient({
+        client_id: CONFIG.google.clientId,
+        scope: CONFIG.google.scopes.join(' '),
+        callback: async response => {
+          if (request !== googleSignInRequest) return;
+          if (response.error || !response.access_token) {
+            fail(response.error_description || response.error || 'Google did not return an access token.');
+            return;
+          }
+          try {
+            const profile = await fetchProfile('google', response.access_token);
+            if (request !== googleSignInRequest) return;
+            if (!profile.email) throw new Error('Google did not return an email address. Allow the email permission and try again.');
+            const user = upsertUser(profile, 'google');
+            setSession(user.email);
+            hideConnecting();
+            renderApp(user);
+            showMsg('Signed in with Google.', 'ok');
+          } catch (error) {
+            fail(error.message || 'Google sign-in failed.');
+          }
+        },
+        error_callback: error => {
+          fail(error.type === 'popup_closed'
+            ? 'Google sign-in window closed before it finished.'
+            : error.type === 'popup_failed_to_open'
+              ? 'Google sign-in popup was blocked. Allow popups and try again.'
+              : 'Google sign-in could not open. Please try again.');
+        }
+      });
+      client.requestAccessToken({ prompt: 'select_account' });
+    } catch (error) {
+      fail(error.message || 'Google sign-in failed.');
+    }
+  }
+
   async function signInWith(provider) {
     clearMsg();
     const c = CONFIG[provider];
@@ -406,6 +446,7 @@
         `Set CONFIG.${provider}.clientId at the top of the <script> to your real Client ID. ` +
         `Open "Setup" below for exact steps.`, 'err');
     }
+    if (provider === 'google') return signInWithGoogle();
 
     const state = randHex(16);
     let url, verifier = null;
@@ -626,16 +667,7 @@
   /* ═══════════════ RENDER ═══════════════ */
   function renderApp(user) {
     if (!user) return signOut();
-    $('#authView').classList.add('hidden');
-    $('#appView').classList.remove('hidden');
-
-    $('#whoName').textContent     = user.name || '—';
-    $('#whoEmail').textContent    = user.email || '—';
-    $('#whoProvider').textContent = LABELS[user.provider] || user.provider || '—';
-    $('#whoId').textContent       = user.id || '—';
-    $('#whoSince').textContent    = user.createdAt
-      ? new Date(user.createdAt).toLocaleString() : '—';
-    $('#whoAvatar').textContent   = (user.name || user.email || '?').charAt(0).toUpperCase();
+    location.replace(new URL('./testmain.html', location.href).href);
   }
 
   function signOut() {
@@ -651,11 +683,13 @@
   /* ═══════════════ SETUP PANEL ═══════════════ */
   function renderSetup() {
     $('#setupBody').innerHTML = `
-      <p style="font-size:12px;color:#9aa1b8">Register this exact <b>redirect URI</b> with every provider:</p>
+      <p style="font-size:12px;color:#9aa1b8">Register this exact <b>redirect URI</b> with Facebook and Outlook:</p>
       <p><code>${REDIRECT_URI}</code></p>
       <ol>
         <li><b>Google</b> — <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Cloud Console → Credentials</a>.
-            Create an OAuth client of type <b>Web application</b>. Add the redirect URI above.
+            Create an OAuth client of type <b>Web application</b>.
+            Add <code>${location.origin}</code> to <b>Authorized JavaScript origins</b> (origin only, no path).
+            Google uses the Google Identity Services token popup; no client secret or redirect URI is needed for this flow.
             Copy the <b>Client ID</b> into <code>CONFIG.google.clientId</code>.</li>
         <li><b>Facebook</b> — <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener">developers.facebook.com</a>.
             Create an app (Consumer). Add <b>Facebook Login → Web</b>.
@@ -668,8 +702,9 @@
             Copy the <b>Application (client) ID</b> into <code>CONFIG.microsoft.clientId</code>.
             <br>ℹ️ <b>Important:</b> register as <b>Single-page application</b>, not "Web" — the token endpoint only allows browser CORS for SPA apps.</li>
       </ol>
-      <p style="font-size:12px;color:#9aa1b8">No client secrets are used. This is the correct
-      <b>public-client</b> pattern (Authorization Code + PKCE).</p>
+      <p style="font-size:12px;color:#9aa1b8">No client secrets are used or stored in this page.
+      Google uses its browser token popup, Outlook uses Authorization Code + PKCE, and Facebook uses its token flow.
+      These accounts and sessions are a local browser demo, not server-side authentication.</p>
     `;
   }
 
@@ -685,6 +720,7 @@
   });
 
   $('#ovCancel').addEventListener('click', () => {
+    googleSignInRequest++;
     if (activePopup && !activePopup.closed) activePopup.close();
     completedSignIn = true;
     hideConnecting();
