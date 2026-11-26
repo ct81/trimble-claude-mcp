@@ -30,10 +30,6 @@ test('registration fills missing projects, detects duplicates, and serializes co
     return { status: response.status, data: await response.json() };
   };
   const register = email => request('register', email);
-  const initial = await readFile(registryPath, 'utf8');
-  assert.equal((await request('status', ' FIRST@example.com ')).data.registered, true);
-  assert.equal((await request('status', 'missing@example.com')).data.registered, false);
-  assert.equal(await readFile(registryPath, 'utf8'), initial);
 
   assert.equal((await register(' first@example.com ')).data.alreadyRegistered, false);
   assert.equal((await register('FIRST@example.com')).data.alreadyRegistered, true);

@@ -21,9 +21,6 @@ existing entries. When all projects already contain the email, signup displays
 “You have registered.” The endpoint saves emails only; passwords and local demo
 accounts remain in the browser. This registry is not an authentication or
 authorization mechanism.
-Successful sign-in checks `/api/login/status` without modifying the registry.
-If the email is found in any project, a “You have registered with us” alert
-appears before the dashboard redirect.
 
 The server must have write access to the registry. Use persistent storage for
 this file in deployments; an ephemeral filesystem loses registrations on redeploy.

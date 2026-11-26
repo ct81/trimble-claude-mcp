@@ -27,18 +27,6 @@ export function createLoginRegistrationRouter(registryPath) {
     next();
   });
 
-  router.post('/status', async (req, res) => {
-    try {
-      const registry = await readRegistry();
-      const registered = registry.projects.some(project =>
-        project.registeredEmails.some(email => email.trim().toLowerCase() === req.body.email));
-      res.json({ registered });
-    } catch (error) {
-      console.error('Could not check project registration:', error);
-      res.status(500).json({ error: 'Could not check your registration. Please try again.' });
-    }
-  });
-
   router.post('/register', async (req, res) => {
     const email = req.body.email;
     const registration = pendingWrite.then(async () => {
