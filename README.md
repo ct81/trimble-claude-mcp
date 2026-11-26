@@ -28,6 +28,13 @@ The login API allows `https://ct81.github.io` in addition to the configured
 `EXTENSION_ORIGIN`, without changing other routes' CORS policy. A successful
 signup means Resend accepted the email, not that it reached the recipient's inbox.
 
+Outlook uses a Microsoft Entra **Single-page application** registration with the
+login page's exact URL as its redirect URI. Enable Microsoft Graph delegated
+`User.Read` and `Mail.Read`, and approve consent as required. The dashboard shows
+the account name/email and provides **Read Outlook** for five recent inbox
+messages. Outlook access tokens remain in tab-scoped session storage and are
+removed on sign-out; expired access requires signing in again.
+
 Despite its name, `/api/login/register` is a read-only lookup of the published
 `https://ct81.github.io/trimble-claude-mcp/pages/login/registered.json`.
 If the email exists in any project's `registeredEmails` (case-insensitive),

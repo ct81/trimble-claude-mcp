@@ -115,13 +115,6 @@
         Continue with Google
       </button>
 
-      <button class="sbtn" data-provider="facebook" type="button">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="#1877F2" aria-hidden="true">
-          <path d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5 3.66 9.15 8.44 9.94v-7.03H7.9v-2.91h2.54V9.85c0-2.51 1.49-3.9 3.77-3.9 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56v1.89h2.78l-.45 2.91h-2.33V22c4.78-.79 8.44-4.94 8.44-9.94z"/>
-        </svg>
-        Continue with Facebook
-      </button>
-
       <button class="sbtn" data-provider="microsoft" type="button">
         <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
           <rect x="1" y="1" width="10" height="10" fill="#F25022"/>
@@ -130,6 +123,13 @@
           <rect x="13" y="13" width="10" height="10" fill="#FFB900"/>
         </svg>
         Continue with Outlook
+      </button>
+
+      <button class="sbtn" data-provider="facebook" type="button" style="visibility: collapse;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="#1877F2" aria-hidden="true">
+          <path d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5 3.66 9.15 8.44 9.94v-7.03H7.9v-2.91h2.54V9.85c0-2.51 1.49-3.9 3.77-3.9 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56v1.89h2.78l-.45 2.91h-2.33V22c4.78-.79 8.44-4.94 8.44-9.94z"/>
+        </svg>
+        Continue with Facebook
       </button>
     </div>
 
@@ -190,9 +190,9 @@
       version: 'v19.0'
     },
     microsoft: {
-      clientId: '',                 // Application (client) ID
+      clientId: 'ffa052b8-bc4c-45ca-847d-19f6ac6be79f',                 // Application (client) ID
       tenant:   'common',
-      scopes:   ['openid', 'email', 'profile', 'User.Read']
+      scopes:   ['openid', 'email', 'profile', 'User.Read', 'Mail.Read']
     }
   };
 
@@ -209,6 +209,7 @@
   const SESSION_KEY = 'oauth_demo_session_v1';
   const PENDING_KEY = 'oauth_pending_v1';
   const GOOGLE_TOKEN_KEY = 'oauth_google_token_v1';
+  const OUTLOOK_TOKEN_KEY = 'oauth_outlook_token_v1';
 
   const $ = (s) => document.querySelector(s);
   const readJSON = (s) => { try { return JSON.parse(s); } catch { return null; } };
@@ -217,12 +218,14 @@
   const getSession  = () => readJSON(localStorage.getItem(SESSION_KEY));
   const setSession = (user) => {
     sessionStorage.removeItem(GOOGLE_TOKEN_KEY);
+    sessionStorage.removeItem(OUTLOOK_TOKEN_KEY);
     localStorage.setItem(SESSION_KEY, JSON.stringify({
       email: user.email, userId: user.id, provider: user.provider, at: Date.now()
     }));
   };
   const clearSession = () => {
     sessionStorage.removeItem(GOOGLE_TOKEN_KEY);
+    sessionStorage.removeItem(OUTLOOK_TOKEN_KEY);
     sessionStorage.removeItem(PENDING_KEY);
     sessionStorage.removeItem('username');
     localStorage.removeItem(SESSION_KEY);
@@ -340,7 +343,13 @@
     if (!res.ok || !j.access_token) {
       throw new Error(j.error_description || j.error || 'Token exchange failed.');
     }
-    return j.access_token;
+    if (!(j.scope || '').split(/\s+/).some(scope => scope.toLowerCase() === 'mail.read' ||
+        scope.toLowerCase() === 'https://graph.microsoft.com/mail.read')) {
+      throw new Error('Outlook Mail.Read permission was not granted. Sign in again and allow inbox access.');
+    }
+    const expiresIn = Number(j.expires_in);
+    if (!Number.isFinite(expiresIn) || expiresIn <= 0) throw new Error('Microsoft returned an invalid token expiration.');
+    return { accessToken: j.access_token, expiresAt: Date.now() + expiresIn * 1000 };
   }
 
   async function fetchProfile(provider, token) {
@@ -520,9 +529,11 @@
     try {
       const provider = pending.provider;
       let accessToken;
+      let outlookToken;
 
       if (hasCode) {
-        accessToken = await exchangeCode(provider, qs.get('code'), pending.verifier);
+        outlookToken = await exchangeCode(provider, qs.get('code'), pending.verifier);
+        accessToken = outlookToken.accessToken;
       } else {
         accessToken = hs.get('access_token');
       }
@@ -534,16 +545,18 @@
       }
 
       const user = upsertUser(profile, provider);
+      if (outlookToken) outlookToken.email = user.email;
       sessionStorage.removeItem(PENDING_KEY);
 
       if (inPopup) {
         try {
           window.opener.postMessage(
-            { source: 'oauth-demo', ok: true, email: user.email, provider }, location.origin);
+            { source: 'oauth-demo', ok: true, email: user.email, provider, outlookToken }, location.origin);
         } catch (e) {}
         window.close();
       } else {
         setSession(user);
+        if (outlookToken) sessionStorage.setItem(OUTLOOK_TOKEN_KEY, JSON.stringify(outlookToken));
         history.replaceState({}, '', location.pathname);
         if (await renderApp(user)) showMsg(`Signed in with ${LABELS[provider]}.`, 'ok');
       }
@@ -581,7 +594,7 @@
 
   /* Message from the popup → finish sign-in in the opener */
   window.addEventListener('message', async (e) => {
-    if (e.origin !== location.origin) return;
+    if (e.origin !== location.origin || e.source !== activePopup) return;
     const d = e.data;
     if (!d || d.source !== 'oauth-demo') return;
     completedSignIn = true;
@@ -596,6 +609,15 @@
     }
     if (!user) return showMsg('Sign-in failed: account record not found.', 'err');
     setSession(user);
+    if (d.provider === 'microsoft') {
+      if (!d.outlookToken || typeof d.outlookToken.accessToken !== 'string' || !d.outlookToken.accessToken ||
+          d.outlookToken.email !== user.email || !Number.isFinite(d.outlookToken.expiresAt) ||
+          d.outlookToken.expiresAt <= Date.now()) {
+        clearSession();
+        return showMsg('Outlook access is missing or expired. Sign in again.', 'err');
+      }
+      sessionStorage.setItem(OUTLOOK_TOKEN_KEY, JSON.stringify(d.outlookToken));
+    }
     if (await renderApp(user)) showMsg(`Signed in with ${LABELS[d.provider] || d.provider}.`, 'ok');
   });
 
@@ -711,6 +733,8 @@
             Supported accounts: <em>any org + personal Microsoft accounts</em>.
             Platform: <b>Single-page application</b>, redirect URI = the URL above.
             Copy the <b>Application (client) ID</b> into <code>CONFIG.microsoft.clientId</code>.
+            Add Microsoft Graph <b>delegated</b> permissions <code>User.Read</code> and <code>Mail.Read</code>.
+            Grant administrator consent if required by your organization. The token is stored only in this tab until expiry or sign-out.
             <br>ℹ️ <b>Important:</b> register as <b>Single-page application</b>, not "Web" — the token endpoint only allows browser CORS for SPA apps.</li>
       </ol>
       <p style="font-size:12px;color:#9aa1b8">No client secrets are used or stored in this page.
@@ -767,6 +791,15 @@
               !Number.isFinite(token.expiresAt) || token.expiresAt <= Date.now()) {
             clearSession();
             showMsg('Google access is missing or expired. Sign in with Google again and allow Gmail access.', 'err');
+            return;
+          }
+        }
+        if (user.provider === 'microsoft') {
+          const token = readJSON(sessionStorage.getItem(OUTLOOK_TOKEN_KEY));
+          if (!token?.accessToken || token.email !== user.email ||
+              !Number.isFinite(token.expiresAt) || token.expiresAt <= Date.now()) {
+            clearSession();
+            showMsg('Outlook access is missing or expired. Sign in with Outlook again.', 'err');
             return;
           }
         }

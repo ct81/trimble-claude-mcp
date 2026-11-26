@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, LINE, Whatsapp & Telegram ChatBots, Leaflet Map, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #42"
+// #43"
 // git push origin main
 
 // git add .
@@ -48,6 +48,9 @@
 //https://app.ahrefs.com/add-project/web-analytics?return_to=%2Fdashboard
 //https://tagmanager.google.com/?utm_source=chatgpt.com#/container/accounts/6408137200/containers/288797854/workspaces/2/tags
 //https://tagassistant.google.com/?hl=en&utm_source=gtm#/?source=TAG_MANAGER&id=GTM-MMQ4VSRZ&canonical_id=288797854&gtm_auth=_Yj5fA9GHQCma8x7DXRYRw&gtm_preview=env-4&cb=7128091938533723
+
+//https://console.cloud.google.com/apis/credentials?project=trimblemcp
+//https://portal.azure.com/?utm_source=chatgpt.com#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Overview/quickStartType~/null/sourceType/Microsoft_AAD_IAM/appId/ffa052b8-bc4c-45ca-847d-19f6ac6be79f/objectId/125e4bfa-b59c-4bee-bc0c-cd60d6547726/isMSAApp~/false/defaultBlade/Overview/appSignInAudience/AzureADMyOrg/servicePrincipalCreated~/true
 
 import express from 'express';
 import { createLoginRegistrationRouter } from './login-registration.js';

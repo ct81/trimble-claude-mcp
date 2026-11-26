@@ -21,7 +21,7 @@ function createHarness(options = {}) {
         getItem: key => values.get(key) ?? null,
         removeItem: key => values.delete(key)
     });
-    const elements = Object.fromEntries(['gmail-status', 'gmail-messages', 'read-gmail', 'userName', 'account-name', 'account-email'].map(id =>
+    const elements = Object.fromEntries(['gmail-status', 'gmail-messages', 'read-gmail', 'outlook-status', 'outlook-messages', 'read-outlook', 'userName', 'account-name', 'account-email'].map(id =>
         [id, { children: [], replaceChildren() { this.children = []; },
             appendChild(child) { this.children.push(child); }, addEventListener() {} }]));
     const calls = [];
@@ -61,6 +61,30 @@ test('dashboard shows the signed-in name and email after the sign-out button', (
     assert.match(page, /Sign Out<\/button>\s*<div class="navbar-user">/);
     assert.equal(harness.logs[0][1].email, 'user@example.com');
     assert.equal(harness.logs[1][1].accessToken, 'test-token');
+});
+
+test('Outlook inbox uses the Microsoft token and clears it on sign-out', async () => {
+    const harness = createHarness();
+    const account = { id: 'outlook-user', provider: 'microsoft', name: 'Outlook User', email: 'user@example.com' };
+    harness.local.set('oauth_demo_users_v1', JSON.stringify({ account }));
+    harness.local.set('oauth_demo_session_v1', JSON.stringify({
+        userId: account.id, provider: account.provider, email: account.email, at: Date.now()
+    }));
+    harness.session.set('oauth_outlook_token_v1', JSON.stringify(harness.token));
+    harness.context.checkLogin();
+    assert.equal(harness.elements['account-name'].textContent, 'Outlook User');
+    assert.equal(harness.elements['read-outlook'].disabled, false);
+    harness.context.fetch = async (url, options) => {
+        assert.match(url, /^https:\/\/graph.microsoft.com\/v1.0\/me\/mailFolders\/inbox\/messages/);
+        assert.equal(options.headers.Authorization, 'Bearer test-token');
+        return { ok: true, json: async () => ({ value: [
+            { subject: '<b>Mail</b>', from: { emailAddress: { address: 'sender@example.com' } } }
+        ] }) };
+    };
+    await harness.context.readOutlook();
+    assert.equal(harness.elements['outlook-messages'].children[0].textContent, '<b>Mail</b> — sender@example.com');
+    harness.context.logout();
+    assert.equal(harness.session.has('oauth_outlook_token_v1'), false);
 });
 
 test('dashboard blocks missing, malformed, and unmatched sessions and missing Google tokens', () => {
