@@ -1,0 +1,1548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Build the Impossible</title>
+<style>
+:root{--bg:#050a14;--bg2:#0a1630;--panel:rgba(18,46,88,.38);--line:rgba(120,205,255,.32);--text:#e8f5ff;--muted:#8db4d6;--glow:#4fc3ff;--glow2:#8a7dff;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Segoe UI",system-ui,-apple-system,sans-serif;line-height:1.5;background-image:radial-gradient(900px 500px at 80% -5%,rgba(79,195,255,.18),transparent 60%),radial-gradient(700px 500px at 0% 40%,rgba(138,125,255,.12),transparent 60%),linear-gradient(rgba(120,205,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(120,205,255,.04) 1px,transparent 1px);background-size:auto,auto,44px 44px,44px 44px}
+.wrap{max-width:1100px;margin:0 auto;padding:0 18px}
+header{display:flex;align-items:center;justify-content:space-between;padding:16px 0;gap:10px}
+.brand{font-weight:700;letter-spacing:.04em}.brand span{color:var(--glow)}
+nav{display:flex;gap:14px;align-items:center;font-size:.9rem}
+nav a{color:var(--muted);text-decoration:none}
+.btn{font:inherit;cursor:pointer;border:1px solid var(--glow);color:#021326;background:linear-gradient(135deg,#7fd8ff,#4fc3ff);border-radius:999px;padding:10px 18px;font-weight:600;box-shadow:0 0 18px rgba(79,195,255,.45);text-decoration:none;display:inline-block}
+.btn.ghost{background:transparent;color:var(--text);box-shadow:none;border-color:var(--line)}
+.btn.rec{background:linear-gradient(135deg,#ff7a90,#ff4f6d);color:#fff;border-color:#ff4f6d;box-shadow:0 0 18px rgba(255,79,109,.6)}
+.hero{display:grid;grid-template-columns:1.05fr 1fr;gap:20px;align-items:center;padding:10px 0 30px}
+.chip{display:inline-block;font:600 .72rem ui-monospace,Menlo,monospace;letter-spacing:.14em;color:var(--glow);border:1px solid var(--line);border-radius:999px;padding:4px 12px;background:var(--panel)}
+h1{font-size:clamp(2rem,5.5vw,3.4rem);line-height:1.08;margin:14px 0 12px}
+h1 em{font-style:normal;background:linear-gradient(90deg,#7fd8ff,#8a7dff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{color:var(--muted);max-width:46ch}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.stage{position:relative;height:min(68vh,540px);min-height:380px;border-radius:22px;border:1px solid var(--line);overflow:hidden;background:radial-gradient(circle at 50% 85%,rgba(79,195,255,.28),transparent 55%),linear-gradient(180deg,rgba(10,22,48,.6),rgba(5,10,20,.9))}
+.stage::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(150,220,255,.05) 0 1px,transparent 1px 4px)}
+canvas{display:block;width:100%;height:100%}
+.hud{position:absolute;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 10px;font:600 .62rem ui-monospace,Menlo,monospace;letter-spacing:.08em;color:var(--glow);backdrop-filter:blur(6px);z-index:2}
+.hud b{display:block;color:var(--text);font-size:1.05rem;letter-spacing:0}
+.hud.a{left:10px;top:12px;width:132px}.hud.b{right:10px;top:70px;width:118px}
+.mini{display:flex;gap:3px;align-items:flex-end;height:26px;margin-top:6px}
+.mini s{flex:1;background:linear-gradient(var(--glow),transparent);animation:bar 2.2s ease-in-out infinite alternate}
+@keyframes bar{from{transform:scaleY(.35)}to{transform:scaleY(1)}}
+.mini s{transform-origin:bottom}
+#cap{position:absolute;left:10px;right:10px;bottom:10px;z-index:3;text-align:center;font-size:.92rem;background:rgba(5,14,30,.78);border:1px solid var(--line);border-radius:12px;padding:8px 12px;opacity:0;transition:opacity .3s;pointer-events:none;max-height:38%;overflow:hidden}
+h2{font-size:1.6rem;margin:10px 0 4px}
+.sub{color:var(--muted);margin:0 0 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(235px,1fr));gap:12px}
+.card{text-align:left;font:inherit;color:inherit;cursor:pointer;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;backdrop-filter:blur(6px);transition:transform .2s,box-shadow .2s,border-color .2s}
+.card:hover,.card.on{transform:translateY(-3px);border-color:var(--glow);box-shadow:0 0 22px rgba(79,195,255,.35)}
+.card .ic{font-size:1.6rem}.card h3{margin:6px 0 4px;font-size:1.02rem}.card p{margin:0;color:var(--muted);font-size:.85rem}
+.detail{margin:30px 0;display:grid;grid-template-columns:1.1fr 1fr;gap:16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px;backdrop-filter:blur(6px)}
+.panel h3{margin:0 0 8px;font:600 .74rem ui-monospace,Menlo,monospace;letter-spacing:.14em;color:var(--glow);text-transform:uppercase}
+.feat{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.feat li{padding-left:22px;position:relative}
+.feat li::before{content:"";position:absolute;left:0;top:.55em;width:10px;height:10px;border-radius:3px;background:var(--glow);box-shadow:0 0 10px var(--glow)}
+.live,.shot{position:relative;border:1px solid var(--line);border-radius:12px;background:linear-gradient(160deg,#0b1b38,#071022);overflow:hidden}
+.live{height:170px;padding:10px}
+.live .bar{font:600 .68rem ui-monospace,monospace;color:#7dffb4;letter-spacing:.1em}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dffb4;box-shadow:0 0 8px #7dffb4;margin-right:6px;animation:bl 1.2s infinite}
+@keyframes bl{50%{opacity:.25}}
+.bars{display:flex;gap:5px;align-items:flex-end;height:110px;margin-top:10px}
+.bars s{flex:1;background:linear-gradient(var(--glow),rgba(79,195,255,.05));border-radius:3px 3px 0 0}
+.live .bars s{animation:bar 1.6s ease-in-out infinite alternate;transform-origin:bottom}
+.live .bars s:nth-child(odd){animation-duration:2.1s}
+.shots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.shot{height:84px;padding:8px}.shot .bars{height:100%;margin:0}
+.shot.v::after{content:"▶";position:absolute;inset:0;display:grid;place-items:center;font-size:1.4rem;background:rgba(5,10,20,.45);color:#fff}
+.links{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+dialog{background:#0a1a34;color:var(--text);border:1px solid var(--glow);border-radius:18px;padding:20px;width:min(92vw,420px);box-shadow:0 0 40px rgba(79,195,255,.35)}
+dialog::backdrop{background:rgba(2,6,14,.7)}
+label{display:block;font-size:.8rem;color:var(--muted);margin-top:10px}
+input,select,textarea{width:100%;font:inherit;color:var(--text);background:#07122a;border:1px solid var(--line);border-radius:10px;padding:9px}
+footer{color:var(--muted);text-align:center;font-size:.8rem;padding:20px 0 30px}
+#avp{position:absolute;left:8px;right:8px;bottom:8px;max-height:58%;overflow:auto;background:rgba(6,16,34,.94);border:1px solid var(--line);border-radius:14px;padding:10px 12px;z-index:5;font-size:.78rem}
+#avp[hidden]{display:none}#avp .top{display:flex;justify-content:space-between;align-items:center;font-weight:700}
+#avp h4{margin:10px 0 5px;color:var(--glow);font:600 .64rem ui-monospace,Menlo,monospace;letter-spacing:.12em}
+.chs{display:flex;flex-wrap:wrap;gap:6px}.ch{border:1px solid var(--line);background:transparent;color:var(--text);border-radius:999px;padding:5px 11px;font:inherit;cursor:pointer}
+.ch.on{background:var(--glow);color:#021326;border-color:var(--glow)}.sw{width:26px;height:26px;border-radius:50%;padding:0;border:2px solid rgba(255,255,255,.25);cursor:pointer}.sw.on{border-color:#fff;box-shadow:0 0 0 2px var(--glow)}
+@media(max-width:820px){.hero,.detail{grid-template-columns:1fr}.stage{order:-1;height:62vh}.hud.b{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><div class="brand">◈ Build <span>the Impossible</span></div><nav><a href="#hub">Solutions</a><a href="#detail">Details</a><button class="btn ghost" id="demoTop">Request a Demo</button></nav></header>
+
+<section class="hero">
+  <div>
+    <span class="chip">WELCOME TO OUR HUB</span>
+    <h1>One hub for every <em>solution</em> we build</h1>
+    <p class="lead">Instead of promoting every application separately, explore all our technology solutions in one place. Pick a solution and your holographic guide will walk you through it.</p>
+    <div class="row"><button class="btn" id="intro">▶ Meet your guide</button><button class="btn ghost" id="mic">🎤 Talk</button><button class="btn ghost" id="mute">🔊 Voice on</button><button class="btn ghost" id="walk">🚶 Walk</button><button class="btn ghost" id="avb">⚙ Avatar</button><button class="btn ghost" id="zoom">🔍 Close-up</button></div><p class="lead" style="font-size:.82rem;margin-top:12px">Tip: move your finger or cursor over the avatar and she will point at it. Tap her face, hair, hands or body and she will react.</p>
+  </div>
+  <div class="stage" id="stage">
+    <canvas id="c"></canvas>
+    <div class="hud a">AI SALES REPRESENTATIVE<b>JENNIE</b><div class="mini" id="mini"></div></div>
+    <div class="hud b">AI PROCESSING<b>98.7%</b></div>
+    <div id="cap"></div>
+    <div id="avp" hidden></div>
+  </div>
+</section>
+
+<section id="hub">
+  <h2>Our solutions</h2>
+  <p class="sub">Select a solution to see its description, key features, live demo and more.</p>
+  <div class="grid" id="grid"></div>
+</section>
+
+<section class="detail" id="detail"></section>
+<footer>© Build the Impossible · Technology Solutions Hub</footer>
+</div>
+
+<dialog id="dlg">
+  <h2 style="margin-top:0">Request a Demo</h2>
+  <form id="f" method="dialog">
+    <label>Your name<input name="name" required></label>
+    <label>Email<input name="email" type="email" required></label>
+    <label>Solution<select name="sol" id="solSel"></select></label>
+    <label>Message<textarea name="msg" rows="3"></textarea></label>
+    <div class="row"><button class="btn" type="submit">Send request</button><button class="btn ghost" type="button" id="close">Cancel</button></div>
+  </form>
+</dialog>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script type="application/json" id="qaData">
+{
+ "threshold": 0.6,
+ "fallback": "Sorry, I did not quite catch that. You can ask me about SitePulse, OfficePulse, their features, or how to request a demo.",
+ "entries": [
+  {
+   "questions": [
+    "hello",
+    "hi",
+    "hey",
+    "good morning",
+    "good afternoon",
+    "good evening"
+   ],
+   "reply": [
+    "Hello! I am your holographic guide. Ask me about SitePulse or OfficePulse.",
+    "Hi there! How can I help you today?"
+   ]
+  },
+  {
+   "questions": [
+    "how are you",
+    "how are you doing",
+    "how do you do"
+   ],
+   "reply": "I am doing great, thank you for asking. How can I help you today?"
+  },
+  {
+   "questions": [
+    "who are you",
+    "what are you",
+    "what is your name",
+    "introduce yourself",
+    "tell me about yourself"
+   ],
+   "reply": "I am your holographic guide for the Technology Solutions Hub. I can explain our solutions, show you their key features, and help you request a live demo."
+  },
+  {
+   "questions": [
+    "what can you do",
+    "help",
+    "what can i ask you",
+    "how can you help me"
+   ],
+   "reply": "You can ask me about SitePulse, OfficePulse, their key features, or how to request a demo. You can also change my language in the avatar settings."
+  },
+  {
+   "questions": [
+    "what solutions do you have",
+    "what products do you have",
+    "what do you offer",
+    "show me your solutions",
+    "list your solutions",
+    "what is available"
+   ],
+   "reply": "We currently offer two solutions: SitePulse for construction site intelligence, and OfficePulse for workforce and task monitoring. Which one would you like to hear about?"
+  },
+  {
+   "questions": [
+    "tell me about sitepulse",
+    "what is sitepulse",
+    "explain sitepulse",
+    "site pulse",
+    "sitepulse"
+   ],
+   "reply": "SitePulse is an integrated construction intelligence platform. It connects 3D BIM models with real-world site operations, giving you a complete digital view of the entire project.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "sitepulse features",
+    "what are the features of sitepulse",
+    "what can sitepulse do",
+    "key features of sitepulse"
+   ],
+   "reply": "SitePulse includes a 3D BIM model viewer, geospatial digital twin, model explorer, model data validation, construction status tracking, crane position monitoring, delivery and vehicle tracking, a project dashboard, and progress history playback.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "what is bim",
+    "bim model",
+    "3d bim viewer",
+    "bim viewer"
+   ],
+   "reply": "BIM stands for Building Information Modelling. SitePulse lets you view your 3D BIM model and explore its data alongside what is actually happening on site.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "digital twin",
+    "what is a digital twin",
+    "geospatial digital twin"
+   ],
+   "reply": "The geospatial digital twin in SitePulse is a live digital copy of your site, placed on the map, so you can see the project in its real-world context.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "crane monitoring",
+    "crane position",
+    "track cranes",
+    "can you track cranes"
+   ],
+   "reply": "Yes. SitePulse includes crane position monitoring, so you can see where your cranes are on site.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "track deliveries",
+    "vehicle tracking",
+    "delivery tracking",
+    "track vehicles",
+    "track trucks"
+   ],
+   "reply": "SitePulse offers delivery and vehicle tracking, helping you see what is arriving on site and where vehicles are.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "progress playback",
+    "progress history",
+    "history playback",
+    "construction progress",
+    "track progress"
+   ],
+   "reply": "With progress history playback, you can replay how the project has progressed over time, and construction status tracking shows where each part stands today.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "tell me about officepulse",
+    "what is officepulse",
+    "explain officepulse",
+    "office pulse",
+    "officepulse"
+   ],
+   "reply": "OfficePulse is a smart workforce management solution. It gives real-time visibility of site personnel, task assignments and workforce movements, so you can coordinate better and use your resources wisely.",
+   "show": "OfficePulse"
+  },
+  {
+   "questions": [
+    "officepulse features",
+    "what are the features of officepulse",
+    "what can officepulse do",
+    "key features of officepulse"
+   ],
+   "reply": "OfficePulse includes workforce visualisation, task assignment, task progress monitoring, movement tracking, workforce allocation, a real-time dashboard, and performance insights.",
+   "show": "OfficePulse"
+  },
+  {
+   "questions": [
+    "track workers",
+    "track workforce",
+    "workforce tracking",
+    "track my staff",
+    "monitor my team",
+    "track people"
+   ],
+   "reply": "OfficePulse gives you centralised workforce tracking, including where personnel are, what tasks they are on, and how work is progressing.",
+   "show": "OfficePulse"
+  },
+  {
+   "questions": [
+    "request a demo",
+    "book a demo",
+    "i want a demo",
+    "can i see a demo",
+    "how do i get a demo",
+    "schedule a demo"
+   ],
+   "reply": "I would love to arrange that. Please tap the Request a Demo button on the page, choose the solution you are interested in, and send us your details."
+  },
+  {
+   "questions": [
+    "contact",
+    "contact you",
+    "contact us",
+    "how can i contact you",
+    "how do i reach you",
+    "talk to someone",
+    "talk to sales"
+   ],
+   "reply": "You can tap the Contact us button on the page and send us a message. Our team will get back to you."
+  },
+  {
+   "questions": [
+    "price",
+    "pricing",
+    "how much does it cost",
+    "cost",
+    "how much"
+   ],
+   "reply": "Pricing depends on your project and needs. Please request a demo or contact us and our team will go through the options with you."
+  },
+  {
+   "questions": [
+    "what languages do you speak",
+    "can you speak other languages",
+    "change language",
+    "speak chinese",
+    "speak korean",
+    "speak japanese",
+    "speak spanish"
+   ],
+   "reply": "I can speak English, Chinese, Malay, Thai, Filipino, Korean, Japanese, Spanish, German, French and Finnish. Open the Avatar settings and pick a language."
+  },
+  {
+   "questions": [
+    "thank you",
+    "thanks",
+    "thanks a lot",
+    "thank you very much"
+   ],
+   "reply": [
+    "You are very welcome!",
+    "My pleasure. Is there anything else I can help with?"
+   ]
+  },
+  {
+   "questions": [
+    "bye",
+    "goodbye",
+    "see you",
+    "see you later",
+    "that is all"
+   ],
+   "reply": "Goodbye! It was lovely talking with you. Come back any time."
+  },
+  {
+   "questions": [
+    "what is up",
+    "whats up",
+    "how is it going",
+    "how is your day",
+    "how was your day"
+   ],
+   "reply": "I am doing well, thank you. I am here and ready to help. What would you like to know?"
+  },
+  {
+   "questions": [
+    "are you real",
+    "are you human",
+    "are you a person",
+    "are you a robot",
+    "are you ai",
+    "are you an ai",
+    "are you a hologram"
+   ],
+   "reply": "I am a holographic digital guide, not a real person, but I am happy to help you like one."
+  },
+  {
+   "questions": [
+    "who made you",
+    "who created you",
+    "who built you",
+    "who is your creator"
+   ],
+   "reply": "I was built as the digital guide for this Technology Solutions Hub, to help visitors explore our solutions."
+  },
+  {
+   "questions": [
+    "how old are you",
+    "what is your age",
+    "when were you born"
+   ],
+   "reply": "I am a digital guide, so I do not have an age. I am always ready to help."
+  },
+  {
+   "questions": [
+    "where are you from",
+    "where do you live",
+    "where are you"
+   ],
+   "reply": "I live right here in the Technology Solutions Hub, on your screen."
+  },
+  {
+   "questions": [
+    "are you a girl",
+    "are you female",
+    "are you a woman",
+    "are you male"
+   ],
+   "reply": "I am a digital guide with a friendly female look. What matters is that I can help you."
+  },
+  {
+   "questions": [
+    "nice to meet you",
+    "pleased to meet you",
+    "good to meet you"
+   ],
+   "reply": "Nice to meet you too! How can I help you today?"
+  },
+  {
+   "questions": [
+    "good night",
+    "night night",
+    "sleep well"
+   ],
+   "reply": "Good night! Come back any time."
+  },
+  {
+   "questions": [
+    "sorry",
+    "i am sorry",
+    "my apologies",
+    "excuse me"
+   ],
+   "reply": "No problem at all. How can I help?"
+  },
+  {
+   "questions": [
+    "yes",
+    "yeah",
+    "yep",
+    "sure",
+    "okay",
+    "ok",
+    "alright"
+   ],
+   "reply": "Great! What would you like to know?"
+  },
+  {
+   "questions": [
+    "no",
+    "nope",
+    "not really",
+    "no thanks",
+    "no thank you"
+   ],
+   "reply": "No problem. If you need anything, just tap Talk and ask me."
+  },
+  {
+   "questions": [
+    "you are smart",
+    "you are great",
+    "good job",
+    "well done",
+    "you are amazing",
+    "you are helpful",
+    "great answer",
+    "that is helpful"
+   ],
+   "reply": "Thank you, that is very kind of you. Is there anything else you would like to know?"
+  },
+  {
+   "questions": [
+    "you are pretty",
+    "you are beautiful",
+    "you look nice",
+    "i like you",
+    "i love you",
+    "you are cute"
+   ],
+   "reply": "Thank you, that is sweet of you. Shall we look at our solutions together?"
+  },
+  {
+   "questions": [
+    "tell me a joke",
+    "say something funny",
+    "make me laugh",
+    "do you know any jokes"
+   ],
+   "reply": [
+    "Why did the construction worker bring a ladder to the meeting? Because he heard the project was going up!",
+    "What do you call a crane that sings? A lifting performer!"
+   ]
+  },
+  {
+   "questions": [
+    "can you hear me",
+    "do you hear me",
+    "are you listening",
+    "hello can you hear me"
+   ],
+   "reply": "Yes, I can hear you. Tap the Talk button, then ask your question."
+  },
+  {
+   "questions": [
+    "i cannot hear you",
+    "speak louder",
+    "louder please",
+    "i can not hear you",
+    "turn up the volume"
+   ],
+   "reply": "Please turn up your device volume, and check that the Voice button says Voice on. You can also read my words in the caption."
+  },
+  {
+   "questions": [
+    "repeat that",
+    "say that again",
+    "can you repeat",
+    "repeat please",
+    "pardon",
+    "come again",
+    "what did you say"
+   ],
+   "reply": "Of course. Tap Listen again in the solution panel to hear the description once more, or ask me your question again."
+  },
+  {
+   "questions": [
+    "can you help me",
+    "i need help",
+    "i have a question",
+    "can i ask you something",
+    "i need assistance"
+   ],
+   "reply": "Of course! Ask me anything about SitePulse, OfficePulse, or how to request a demo."
+  },
+  {
+   "questions": [
+    "what time is it",
+    "what is the time",
+    "what is the date today",
+    "what day is it"
+   ],
+   "reply": "I do not have a clock, but your device does. I can help you with our solutions though."
+  },
+  {
+   "questions": [
+    "what is the weather",
+    "how is the weather"
+   ],
+   "reply": "I cannot check the weather, but I can tell you all about our solutions. Would you like to start with SitePulse or OfficePulse?"
+  },
+  {
+   "questions": [
+    "how do i use you",
+    "how does this work",
+    "how do i talk to you",
+    "how do i ask you a question",
+    "how to use the microphone"
+   ],
+   "reply": "Tap the Talk button, allow microphone access if asked, then speak your question. I will answer out loud and in the caption."
+  },
+  {
+   "questions": [
+    "change your clothes",
+    "change outfit",
+    "change your outfit",
+    "can you change clothes",
+    "wear something else",
+    "change your dress"
+   ],
+   "reply": "Yes! Tap the Avatar button, then choose from Clothing: dress, shirt, T-shirt, shorts, working suit, princess gown, casual or bikini."
+  },
+  {
+   "questions": [
+    "change your hair",
+    "change hair colour",
+    "change hair color",
+    "change your hairstyle",
+    "different hair",
+    "blonde hair"
+   ],
+   "reply": "Of course. Tap the Avatar button, then pick a hair colour or hair style you like."
+  },
+  {
+   "questions": [
+    "change your look",
+    "customise avatar",
+    "customize avatar",
+    "change your appearance",
+    "avatar settings",
+    "how do i change you"
+   ],
+   "reply": "Tap the Avatar button to change my skin tone, hair, eyes, clothing, shoes and even my language."
+  },
+  {
+   "questions": [
+    "can you walk",
+    "walk please",
+    "start walking",
+    "go for a walk",
+    "walk around"
+   ],
+   "reply": "Yes! Tap the Walk button and I will take a stroll for you."
+  },
+  {
+   "questions": [
+    "close up",
+    "zoom in",
+    "come closer",
+    "let me see your face",
+    "show your face"
+   ],
+   "reply": "Tap the Close-up button to zoom in on me, and tap it again to zoom back out."
+  },
+  {
+   "questions": [
+    "turn off voice",
+    "be quiet",
+    "stop talking",
+    "mute",
+    "mute yourself"
+   ],
+   "reply": "You can tap the Voice button to switch my voice off. I will keep showing captions."
+  },
+  {
+   "questions": [
+    "turn on voice",
+    "unmute",
+    "speak to me",
+    "talk to me"
+   ],
+   "reply": "Tap the Voice button to switch my voice on, then ask me anything."
+  },
+  {
+   "questions": [
+    "what happens if i touch you",
+    "can i touch you",
+    "tap on you",
+    "what if i tap your face"
+   ],
+   "reply": "Go ahead and tap my face, hair, hands or body. I will react!"
+  },
+  {
+   "questions": [
+    "which solution is best",
+    "which one should i choose",
+    "which one is better",
+    "what do you recommend",
+    "what should i choose",
+    "what do you suggest"
+   ],
+   "reply": "It depends on your goal. SitePulse is for seeing and tracking your construction site, and OfficePulse is for managing your workforce and tasks. Tell me more about your needs, or request a demo and our team will advise you."
+  },
+  {
+   "questions": [
+    "difference between sitepulse and officepulse",
+    "sitepulse versus officepulse",
+    "compare sitepulse and officepulse",
+    "how are they different"
+   ],
+   "reply": "SitePulse focuses on the site itself, with 3D BIM models, a digital twin, cranes and deliveries. OfficePulse focuses on people, with workforce visibility, task assignment and progress monitoring."
+  },
+  {
+   "questions": [
+    "can i use both",
+    "can they work together",
+    "use both solutions",
+    "do they work together",
+    "can i combine them"
+   ],
+   "reply": "Many teams will want both site visibility and workforce visibility. To confirm that, please request a demo or tap Contact us and our team will answer in detail."
+  },
+  {
+   "questions": [
+    "how many solutions do you have",
+    "how many products",
+    "how many solutions are there"
+   ],
+   "reply": "We currently have two solutions: SitePulse and OfficePulse."
+  },
+  {
+   "questions": [
+    "who is sitepulse for",
+    "who uses sitepulse",
+    "who is it for",
+    "target users for sitepulse"
+   ],
+   "reply": "SitePulse is made for construction teams who want a complete digital view of their project, such as project managers, site teams and stakeholders.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "who is officepulse for",
+    "who uses officepulse",
+    "who should use officepulse"
+   ],
+   "reply": "OfficePulse is made for teams that need to coordinate people and tasks, such as site managers and operations teams.",
+   "show": "OfficePulse"
+  },
+  {
+   "questions": [
+    "what are the benefits of sitepulse",
+    "why use sitepulse",
+    "benefits of sitepulse",
+    "why should i choose sitepulse",
+    "what problem does sitepulse solve"
+   ],
+   "reply": "SitePulse brings your 3D model and real-world site activity together, so you can understand project status, track equipment and deliveries, and review progress in one place.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "what are the benefits of officepulse",
+    "why use officepulse",
+    "benefits of officepulse",
+    "why should i choose officepulse",
+    "what problem does officepulse solve"
+   ],
+   "reply": "OfficePulse gives real-time visibility of your workforce, which improves site coordination, helps you monitor work progress and optimise how resources are allocated.",
+   "show": "OfficePulse"
+  },
+  {
+   "questions": [
+    "what is construction intelligence",
+    "construction intelligence"
+   ],
+   "reply": "Construction intelligence means joining your design models with real site data, so you can make faster, better-informed decisions during a project.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "model explorer",
+    "what is the model explorer",
+    "explore the model"
+   ],
+   "reply": "The model explorer in SitePulse lets you browse the elements of your 3D model and look at their information.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "model validation",
+    "model data validation",
+    "validate my model",
+    "check model data",
+    "what is model data validation"
+   ],
+   "reply": "Model data validation in SitePulse helps you check that the information in your model is complete and consistent.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "construction status",
+    "construction status tracking",
+    "track construction status",
+    "project status"
+   ],
+   "reply": "Construction status tracking in SitePulse shows the status of the work, so you can see what is done and what is still in progress.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "project dashboard",
+    "what is the project dashboard",
+    "dashboard in sitepulse",
+    "sitepulse dashboard"
+   ],
+   "reply": "The project dashboard in SitePulse gives you a clear overview of your project in one place.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "real time dashboard",
+    "real-time dashboard",
+    "officepulse dashboard",
+    "dashboard in officepulse"
+   ],
+   "reply": "The real-time dashboard in OfficePulse gives you a live overview of your workforce and tasks.",
+   "show": "OfficePulse"
+  },
+  {
+   "questions": [
+    "task assignment",
+    "assign tasks",
+    "how do i assign tasks",
+    "can i assign work"
+   ],
+   "reply": "Yes. OfficePulse supports task assignment, so you can give work to the right people and keep track of it.",
+   "show": "OfficePulse"
+  },
+  {
+   "questions": [
+    "task progress",
+    "monitor task progress",
+    "track task progress",
+    "task progress monitoring"
+   ],
+   "reply": "OfficePulse lets you monitor task progress, so you always know how work is moving along.",
+   "show": "OfficePulse"
+  },
+  {
+   "questions": [
+    "movement tracking",
+    "track movement",
+    "workforce movement",
+    "where are my workers"
+   ],
+   "reply": "OfficePulse includes movement tracking, which gives visibility of workforce movements for better site coordination.",
+   "show": "OfficePulse"
+  },
+  {
+   "questions": [
+    "workforce allocation",
+    "allocate workers",
+    "resource allocation",
+    "allocate resources"
+   ],
+   "reply": "Workforce allocation in OfficePulse helps you place your people where they are needed most, and optimise your resources.",
+   "show": "OfficePulse"
+  },
+  {
+   "questions": [
+    "workforce visualisation",
+    "workforce visualization",
+    "visualise workforce",
+    "see my workforce"
+   ],
+   "reply": "Workforce visualisation in OfficePulse gives you a clear picture of your site personnel in real time.",
+   "show": "OfficePulse"
+  },
+  {
+   "questions": [
+    "performance insights",
+    "insights",
+    "analytics",
+    "reports",
+    "performance"
+   ],
+   "reply": "OfficePulse provides performance insights, so you can understand how work and resources are performing.",
+   "show": "OfficePulse"
+  },
+  {
+   "questions": [
+    "what is a dashboard",
+    "what does dashboard mean"
+   ],
+   "reply": "A dashboard is a single screen that shows the most important information of your project at a glance, using charts, numbers and status indicators."
+  },
+  {
+   "questions": [
+    "what does bim stand for",
+    "explain bim",
+    "what is building information modelling",
+    "what is building information modeling"
+   ],
+   "reply": "BIM stands for Building Information Modelling. It is a 3D model of a building that also carries data about its parts, such as materials, sizes and schedules.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "why do i need a digital twin",
+    "benefits of digital twin",
+    "what is the benefit of a digital twin"
+   ],
+   "reply": "A digital twin lets you see and understand your real project in a digital copy, which helps you spot issues early and plan better.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "what is workforce management",
+    "workforce management"
+   ],
+   "reply": "Workforce management means planning, assigning and tracking people and their tasks, so the right people are in the right place at the right time.",
+   "show": "OfficePulse"
+  },
+  {
+   "questions": [
+    "is there a free trial",
+    "free trial",
+    "can i try it",
+    "can i try it for free",
+    "is the demo free",
+    "is it free"
+   ],
+   "reply": "I am not able to confirm trial or demo terms. Please tap Request a Demo and our team will explain the options."
+  },
+  {
+   "questions": [
+    "how long does it take to set up",
+    "how long is implementation",
+    "how fast can i start",
+    "how long to implement",
+    "setup time",
+    "how long is the demo"
+   ],
+   "reply": "Timelines depend on your project. To confirm that, please request a demo or tap Contact us and our team will answer in detail."
+  },
+  {
+   "questions": [
+    "do you provide training",
+    "training",
+    "do you offer support",
+    "customer support",
+    "technical support",
+    "after sales support"
+   ],
+   "reply": "To confirm that, please request a demo or tap Contact us and our team will answer in detail."
+  },
+  {
+   "questions": [
+    "can it be customised",
+    "can it be customized",
+    "customization",
+    "customisation",
+    "can you customise it for us",
+    "tailor made"
+   ],
+   "reply": "We would be happy to discuss your needs. Please request a demo or contact us and our team will go through what is possible."
+  },
+  {
+   "questions": [
+    "does it work on mobile",
+    "mobile app",
+    "phone app",
+    "can i use it on my phone",
+    "does it work on tablet",
+    "works on ipad",
+    "is there an app"
+   ],
+   "reply": "To confirm that, please request a demo or tap Contact us and our team will answer in detail."
+  },
+  {
+   "questions": [
+    "is it secure",
+    "security",
+    "is my data safe",
+    "data security",
+    "data privacy",
+    "where is data stored",
+    "cloud or on premise",
+    "is it cloud based"
+   ],
+   "reply": "Data protection matters. To confirm that, please request a demo or tap Contact us and our team will answer in detail."
+  },
+  {
+   "questions": [
+    "can it integrate with other systems",
+    "integration",
+    "integrations",
+    "does it connect to other software",
+    "api",
+    "can it integrate with revit"
+   ],
+   "reply": "To confirm that, please request a demo or tap Contact us and our team will answer in detail."
+  },
+  {
+   "questions": [
+    "what file formats are supported",
+    "supported formats",
+    "ifc",
+    "can i upload my model",
+    "upload bim model",
+    "does it support revit",
+    "what file types"
+   ],
+   "reply": "To confirm that, please request a demo or tap Contact us and our team will answer in detail."
+  },
+  {
+   "questions": [
+    "what languages is the software",
+    "is the software multilingual",
+    "does the software support other languages"
+   ],
+   "reply": "I can speak many languages, which you can choose in Avatar settings. For the software languages, to confirm that, please request a demo or tap Contact us and our team will answer in detail."
+  },
+  {
+   "questions": [
+    "where is your company",
+    "where is your office",
+    "company location",
+    "address",
+    "where are you located",
+    "where are you based"
+   ],
+   "reply": "Please tap Contact us and our team will share the details with you."
+  },
+  {
+   "questions": [
+    "website",
+    "website link",
+    "your website",
+    "open website",
+    "where can i find more information",
+    "more information"
+   ],
+   "reply": "Tap the Website link button in the solution details to visit our website, or tap Contact us to reach our team."
+  },
+  {
+   "questions": [
+    "what do you do",
+    "what does your company do",
+    "what is this website",
+    "what is this",
+    "what is this hub",
+    "technology solutions hub"
+   ],
+   "reply": "This is the Technology Solutions Hub. We build smart solutions for construction and workforce management, including SitePulse and OfficePulse."
+  },
+  {
+   "questions": [
+    "tell me more",
+    "more",
+    "go on",
+    "continue",
+    "what else",
+    "anything else"
+   ],
+   "reply": "I can tell you about the features of SitePulse or OfficePulse, or help you request a demo. Which would you like?"
+  },
+  {
+   "questions": [
+    "i am interested",
+    "i am interested in your solutions",
+    "i want to know more",
+    "i want to buy",
+    "i want to purchase",
+    "how do i buy",
+    "how can i get started",
+    "get started",
+    "how to start"
+   ],
+   "reply": "Wonderful! The best first step is to tap Request a Demo, choose the solution you are interested in, and send us your details."
+  },
+  {
+   "questions": [
+    "what are the key features",
+    "key features",
+    "show me features",
+    "list the features",
+    "what features do you have"
+   ],
+   "reply": "Which solution would you like? SitePulse offers things like a 3D BIM viewer and digital twin, and OfficePulse offers workforce tracking and task monitoring."
+  },
+  {
+   "questions": [
+    "can you track my project",
+    "can you monitor my site",
+    "monitor my construction site",
+    "track my construction site",
+    "site monitoring"
+   ],
+   "reply": "Yes, SitePulse is built for that. It connects your 3D BIM model with real site operations, including status, cranes and deliveries.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "manage my staff",
+    "manage my employees",
+    "manage workers",
+    "staff management",
+    "employee management",
+    "manage my team"
+   ],
+   "reply": "OfficePulse helps you manage your workforce with task assignment, progress monitoring, movement tracking and allocation.",
+   "show": "OfficePulse"
+  }
+ ]
+}
+</script>
+<script>
+const CONTACT='noodletan@outlook.com';   // change to your email
+const SITE='#';                      // change to your website link
+const S=[
+//{ic:'🏗️',n:'Construction Technology',t:'Digital control of projects and sites',d:'Digital tools that bring construction projects under control, from planning and site records to cost tracking and progress reports.',f:['Project and site management','Cost and budget tracking','Progress reports with photos','Document control','Mobile access in the field']},
+//{ic:'🧠',n:'AI & Machine Learning',t:'Models that learn from your data',d:'Practical AI that learns from your data to forecast, classify and automate decisions, with models trained and tuned for your business.',f:['Predictive analytics','Document and image recognition','Smart assistants and chatbots','Anomaly detection','Model monitoring']},
+//{ic:'🔌',n:'MCP & API Integrations',t:'Connect systems and AI assistants',d:'Connect your systems and AI assistants through secure APIs and Model Context Protocol servers, so data flows where it is needed.',f:['Custom RESTful APIs','MCP servers for AI tools','Third-party connectors','Role-based access and audit log','Real-time synchronization']},
+//{ic:'⚙️',n:'Workflow Automation',t:'Less manual work, faster teams',d:'Replace repetitive manual steps with automated workflows, approvals and notifications that keep your teams moving.',f:['Visual workflow builder','Approvals and notifications','Scheduled tasks and triggers','Document and email automation','Performance dashboards']},
+{ic:'🧊',n:'SitePulse',t:'The Pulse of Your Construction Site',d:'SitePulse is an integrated construction intelligence platform that connects 3D BIM models with real-world site operations, providing a comprehensive digital view of the entire project.',f:['3D BIM Model Viewer','Geospatial Digital Twin','Model Explorer','Model Data Validation','Construction Status Tracking','Crane Position Monitoring ','Delivery and Vehicle Tracking','Project Dashboard','Progress History Playback']},
+//{ic:'🌐',n:'Custom Web Applications',t:'Apps built around how you work',d:'Web applications built around the way you work: fast, secure and easy to use on any device.',f:['Responsive design','Dashboards and reports','User roles and permissions','Cloud-ready and scalable','Ongoing support']},
+{ic:'💻',n:'OfficePulse',t:'Workforce and Task Monitoring',d:'A smart workforce management solution that provides real-time visibility of site personnel, task assignments, and workforce movements. Improve site coordination, monitor work progress, and optimise resource allocation through centralised workforce tracking.',f:['Workforce Visualisation','Task Assignment','Task Progress Monitoring','Movement Tracking','Workforce Allocation','Real-Time Dashboard','Performance Insights']}];
+const $=id=>document.getElementById(id),grid=$('grid'),det=$('detail'),cap=$('cap'),dlg=$('dlg');
+$('mini').innerHTML=[...Array(10)].map((_,i)=>`<s style="animation-delay:${i*.18}s"></s>`).join('');
+const bars=(i,k,n=9)=>[...Array(n)].map((_,j)=>`<s style="height:${20+((i*37+k*53+j*29)%70)}%"></s>`).join('');
+$('solSel').innerHTML=S.map((s,i)=>`<option value="${s.n}">${s.n}</option>`).join('');
+grid.innerHTML=S.map((s,i)=>`<button class="card" data-i="${i}"><div class="ic">${s.ic}</div><h3>${s.n}</h3><p>${s.t}</p></button>`).join('');
+let cur=-1;
+function show(i,speak,scroll){
+  cur=i;const s=S[i];
+  grid.querySelectorAll('.card').forEach((c,k)=>c.classList.toggle('on',k===i));
+  det.innerHTML=`<div class="panel"><h3>Product description</h3><h2 style="margin-top:0">${s.ic} ${s.n}</h2><p>${s.d}</p>
+  <h3 style="margin-top:16px">Key features</h3><ul class="feat">${s.f.map(x=>`<li>${x}</li>`).join('')}</ul>
+  <div class="links"><button class="btn" id="dBtn">Request a Demo</button><a class="btn ghost" href="${SITE}" target="_blank" rel="noopener">Website link ↗</a><button class="btn ghost" id="lBtn">🔊 Listen again</button></div></div>
+  <div class="panel"><h3>Live demo</h3><div class="live"><div class="bar"><span class="dot"></span>LIVE · ${s.n.toUpperCase()}</div><div class="bars">${bars(i,0,14)}</div></div>
+  <h3 style="margin-top:16px">Screenshots and videos</h3><div class="shots"><div class="shot"><div class="bars">${bars(i,1)}</div></div><div class="shot"><div class="bars">${bars(i,2)}</div></div><div class="shot v"><div class="bars">${bars(i,3)}</div></div></div>
+  <div class="links"><button class="btn ghost" id="cBtn">Contact us</button></div></div>`;
+  const open=()=>{$('solSel').value=s.n;dlg.showModal()};
+  $('dBtn').onclick=open;$('cBtn').onclick=open;
+  $('lBtn').onclick=()=>say(pitch(i));
+  if(scroll)det.scrollIntoView({behavior:'smooth',block:'start'});
+  if(speak)say(pitch(i));
+}
+const pitch=i=>`${S[i].n}. ${S[i].d} Key features include ${S[i].f.slice(0,3).join(', ')}. Request a demo to see it live.`;
+grid.onclick=e=>{const c=e.target.closest('.card');if(c)show(+c.dataset.i,true,true)};
+$('demoTop').onclick=()=>{if(cur>=0)$('solSel').value=S[cur].n;dlg.showModal()};
+$('close').onclick=()=>dlg.close();
+$('f').onsubmit=e=>{e.preventDefault();const d=new FormData($('f'));location.href='mailto:'+CONTACT+'?subject='+encodeURIComponent('Demo request: '+d.get('sol'))+'&body='+encodeURIComponent('Name: '+d.get('name')+'\nEmail: '+d.get('email')+'\n\n'+d.get('msg'));dlg.close()};
+show(0,false,false);
+
+// voice + avatar state
+let muted=false,speaking=false,pulse=0,tmr=0;
+$('mute').onclick=()=>{muted=!muted;$('mute').textContent=muted?'🔇 Voice off':'🔊 Voice on';if(muted&&window.speechSynthesis)speechSynthesis.cancel()};
+$('intro').onclick=()=>say('Welcome to the Technology Solutions Hub. I am your holographic guide. Choose any solution below and I will show you what it does, its key features, and how to request a live demo.');
+const LANGS=[['English (US)','en-US',0],['English (UK)','en-GB',0],['Chinese','zh-CN','zh-CN'],['Malay','ms-MY','ms'],['Thai','th-TH','th'],['Filipino','fil-PH','tl'],['Korean','ko-KR','ko'],['Japanese','ja-JP','ja'],['Spanish','es-ES','es'],['German','de-DE','de'],['French','fr-FR','fr'],['Finnish','fi-FI','fi']];
+let LI=0,LANG_READY=false,trTok=0;const trC={};
+function voice(code){const v=window.speechSynthesis?speechSynthesis.getVoices():[],n=x=>x.lang.toLowerCase().replace('_','-'),c=code.toLowerCase(),b=c.split('-')[0],fem=/female|samantha|zira|aria|jenny|susan|karen|moira|tessa|fiona|hazel|libby|sonia|xiaoxiao|yunxi|nanami|sun-hi|premwadee|achara|blessica|yasmin|elvira|katja|denise|noora|heidi|amelie|google/i;
+  let p=v.filter(x=>n(x)===c);if(!p.length)p=v.filter(x=>n(x).split('-')[0]===b||(b==='fil'&&/^tl/.test(n(x))));
+  return p.find(x=>fem.test(x.name))||p[0]||(b==='en'?v.find(x=>/^en/i.test(x.lang)):null)||null}
+async function tr(t,code){const k=code+'|'+t;if(trC[k])return trC[k];const ps=t.match(/[^.!?]+[.!?]*\s*/g)||[t],ch=[];let cur='';ps.forEach(p=>{if((cur+p).length>420){if(cur)ch.push(cur);cur=p}else cur+=p});if(cur)ch.push(cur);
+  const dec=x=>{const e=document.createElement('textarea');e.innerHTML=x;return e.value};
+  const out=await Promise.all(ch.map(async c=>{const r=await fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(c.trim())+'&langpair=en|'+code),d=await r.json();if(d.responseStatus!=200||!d.responseData||!d.responseData.translatedText)throw new Error('tr');return dec(d.responseData.translatedText)}));
+  return trC[k]=out.join(' ')}
+async function say(t){const my=++trTok,L=LANGS[LI];let o=t,ok=true;
+  clearTimeout(tmr);if(window.speechSynthesis)speechSynthesis.cancel();
+  if(L[2]){cap.textContent='…';cap.style.opacity=1;try{o=await tr(t,L[2])}catch(e){o=t;ok=false}if(my!==trTok)return}
+  sayRaw(o,ok?L[1]:'en-US');return o}
+function sayRaw(t,code){
+  clearTimeout(tmr);if(window.speechSynthesis)speechSynthesis.cancel();
+  cap.textContent=t;cap.style.opacity=1;
+  const end=()=>{speaking=false;cap.style.opacity=0};
+  if(muted||!window.speechSynthesis){speaking=true;tmr=setTimeout(end,Math.max(2500,t.length*62));return}
+  const u=new SpeechSynthesisUtterance(t),v=voice(code);u.lang=v?v.lang:code;if(v)u.voice=v;
+  u.pitch=1.1;u.onboundary=()=>pulse=1;u.onend=end;u.onerror=end;speaking=true;speechSynthesis.speak(u);
+}
+
+// realistic avatar
+const cv=$('c'),R=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
+R.setPixelRatio(Math.min(devicePixelRatio,2));R.outputEncoding=THREE.sRGBEncoding;R.localClippingEnabled=true;R.toneMapping=THREE.ACESFilmicToneMapping;R.toneMappingExposure=1.18;
+const sc=new THREE.Scene(),cam=new THREE.PerspectiveCamera(28,1,.1,60);cam.position.set(0,8,34);cam.lookAt(0,7.6,0);
+sc.add(new THREE.AmbientLight(0xa9c4e4,.7));
+[[0xfff1e6,1.3,-3,3,6],[0x6cc8ff,.55,5,0,4],[0x7fe3ff,1.2,0,3,-6],[0xff9ad0,.7,-6,5,-3],[0xffd9c0,.55,4,6,8]].forEach(([c,i,x,y,z])=>{const l=new THREE.DirectionalLight(c,i);l.position.set(x,y,z);sc.add(l)});
+const V=THREE.Vector3,AD=THREE.AdditiveBlending,fm=(c,o)=>new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:o,blending:AD,depthWrite:false});
+const MS=o=>new THREE.MeshStandardMaterial(o),cvs=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c};
+const tex=c=>{const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.anisotropy=4;return t};
+// head shape
+let LW=.23,LT=1,NK=1;const RX=.78,RY=1.05,RZ=.9,MY=-.55,NS=26,NR=8;
+const ss=(a,b,x)=>{const t=Math.min(1,Math.max(0,(x-a)/(b-a)));return t*t*(3-2*t)};
+const gs=(x,y,cx,cy,sx,sy,a)=>a*Math.exp(-(((x-cx)/sx)**2+((y-cy)/sy)**2));
+const taper=y=>1-.3*Math.pow(Math.min(1,Math.max(0,(-y-.12)/.95)),1.3);
+function bump(x,y){const a=Math.abs(x);let b=0;
+  b+=NK*(gs(a,y,0,-.27,.09,.075,.17)+gs(a,y,0,0,.05,.22,.06)+gs(a,y,.11,-.29,.06,.05,.05));
+  b+=gs(a,y,.27,.34,.2,.06,.045)-gs(a,y,.33,.12,.15,.1,.05);
+  b+=gs(a,y,.4,-.22,.22,.22,.065)+gs(a,y,0,-.55,.2,.12,.04)-gs(a,y,.25,-.55,.06,.06,.02);
+  b+=gs(a,y,0,-.9,.17,.11,.07)-gs(a,y,0,-.7,.12,.03,.03)+gs(a,y,0,.58,.42,.26,.03);return b}
+const zAt=(x,y)=>{const x0=x/taper(y),q=1-(x0/RX)**2-(y/RY)**2;return RZ*Math.sqrt(Math.max(0,q))+bump(x,y)};
+const hg=new THREE.SphereGeometry(1,80,60),hp=hg.attributes.position,huv=hg.attributes.uv,NV=hp.count;
+const base=new Float32Array(NV*3),wJ=new Float32Array(NV),wC=new Float32Array(NV*2);
+const U0=Float32Array.from(hp.array);function buildHead(){for(let i=0;i<NV;i++){const ux=U0[i*3],uy=U0[i*3+1],uz=U0[i*3+2],y=uy*RY,x=ux*RX*taper(y);let z=uz*RZ;
+  if(uz>0)z+=bump(x,y)*ss(.1,.55,uz);
+  hp.setXYZ(i,x,y,z);base[i*3]=x;base[i*3+1]=y;base[i*3+2]=z;huv.setXY(i,.5+x/1.9,.5+y/2.3);
+  wJ[i]=ss(-.38,-.62,y)*ss(.15,.5,uz)*(1-.5*ss(.35,.7,Math.abs(x)));
+  wC[i*2]=Math.exp(-(((x+.24)/.14)**2+((y+.55)/.12)**2));wC[i*2+1]=Math.exp(-(((x-.24)/.14)**2+((y+.55)/.12)**2))}}buildHead();
+hg.computeVertexNormals();
+function deform(open,sm){const jd=open*.15;
+  for(let i=0;i<NV;i++){let x=base[i*3],y=base[i*3+1],z=base[i*3+2];const w=wJ[i],cl=wC[i*2],cr=wC[i*2+1];
+    y-=jd*w;z-=jd*w*.25;y+=sm*.045*(cl+cr);z+=sm*.02*(cl+cr);x+=(cr-cl)*sm*.03;hp.setXYZ(i,x,y,z)}
+  hp.needsUpdate=true;hg.computeVertexNormals()}
+// skin texture
+const skinT=(()=>{const c=cvs(1024,1024),g=c.getContext('2d'),kx=1024/1.9,ky=1024/2.3;
+  g.fillStyle='#f5d6c3';g.fillRect(0,0,1024,1024);
+  const blob=(x,y,rx,ry,col,a)=>{g.save();g.translate((.5+x/1.9)*1024,(.5-y/2.3)*1024);g.scale(rx*kx,ry*ky);const r=g.createRadialGradient(0,0,0,0,0,1);r.addColorStop(0,col.replace('A',a));r.addColorStop(1,col.replace('A',0));g.fillStyle=r;g.fillRect(-1,-1,2,2);g.restore()};
+  [-1,1].forEach(s=>{blob(s*.4,-.25,.22,.17,'rgba(235,120,120,A)',.4);blob(s*.33,.14,.2,.11,'rgba(150,95,100,A)',.28);blob(s*.33,.26,.2,.07,'rgba(200,140,150,A)',.22);
+    blob(s*.17,-.15,.07,.2,'rgba(170,110,90,A)',.18);blob(s*.075,-.33,.03,.022,'rgba(80,40,35,A)',.7);blob(s*.6,-.1,.2,.5,'rgba(120,70,50,A)',.3)});
+  blob(0,-.38,.12,.04,'rgba(150,90,80,A)',.3);blob(0,-.55,.26,.1,'rgba(205,110,110,A)',.35);blob(0,.06,.05,.25,'rgba(255,240,230,A)',.25);blob(0,.55,.3,.15,'rgba(255,235,225,A)',.15);
+  blob(0,-1,.4,.15,'rgba(130,80,65,A)',.3);
+  [-1,1].forEach(s=>{blob(s*.38,-.1,.22,.13,'rgba(255,105,135,A)',.38);blob(s*.43,.0,.11,.05,'rgba(255,248,240,A)',.38);
+    blob(s*.35,.2,.19,.075,'rgba(168,92,135,A)',.42);blob(s*.36,.255,.17,.04,'rgba(235,190,160,A)',.3);
+    blob(s*.34,.168,.15,.017,'rgba(15,8,8,A)',.85);blob(s*.52,.19,.07,.013,'rgba(15,8,8,A)',.8);blob(s*.57,.205,.04,.01,'rgba(15,8,8,A)',.7)});
+  blob(0,.12,.04,.2,'rgba(255,248,240,A)',.2);
+  for(let i=0;i<5000;i++){g.fillStyle=`rgba(120,70,50,${.03+Math.random()*.06})`;g.fillRect(Math.random()*1024,Math.random()*1024,1.4,1.4)}
+  return tex(c)})();
+const skinM=MS({map:skinT,roughness:.46,emissive:0x40180f,emissiveIntensity:.2}),plainSkin=MS({color:0xeec0a5,roughness:.5,emissive:0x40180f,emissiveIntensity:.15});
+{const c=cvs(256,256),g=c.getContext('2d');g.fillStyle='#808080';g.fillRect(0,0,256,256);for(let i=0;i<5000;i++){const v=90+Math.random()*80|0;g.fillStyle=`rgba(${v},${v},${v},.5)`;g.beginPath();g.arc(Math.random()*256,Math.random()*256,.6+Math.random()*1.1,0,6.3);g.fill()}
+const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(5,7);plainSkin.bumpMap=t;plainSkin.bumpScale=.35}
+const fig=new THREE.Group(),body=new THREE.Group(),pivot=new THREE.Group(),head=new THREE.Group();sc.add(fig);fig.add(body);body.add(pivot);pivot.position.y=12.8;head.position.y=1.2;pivot.add(head);
+head.add(new THREE.Mesh(hg,skinM));
+const earM=[-1,1].map(s=>{const e=new THREE.Mesh(new THREE.SphereGeometry(1,16,12),plainSkin);e.scale.set(.05,.15,.1);e.position.set(s*.77,0,-.06);head.add(e);return e});
+// eyes
+const irisT=(()=>{const c=cvs(256,256),g=c.getContext('2d');g.fillStyle='#f4efec';g.fillRect(0,0,256,256);
+  const r=g.createRadialGradient(128,128,0,128,128,64);[[0,'#0d1a14'],[.3,'#1f5a46'],[.6,'#46b48f'],[.9,'#1d4a3c'],[1,'#10261e']].forEach(([o,col])=>r.addColorStop(o,col));
+  g.fillStyle=r;g.beginPath();g.arc(128,128,64,0,6.29);g.fill();g.strokeStyle='rgba(200,245,215,.4)';
+  for(let i=0;i<60;i++){const a=i/60*6.283;g.beginPath();g.moveTo(128+Math.cos(a)*22,128+Math.sin(a)*22);g.lineTo(128+Math.cos(a)*58,128+Math.sin(a)*58);g.stroke()}
+  g.fillStyle='#050302';g.beginPath();g.arc(128,128,22,0,6.29);g.fill();
+  const sg=g.createRadialGradient(128,128,70,128,128,128);sg.addColorStop(0,'rgba(200,150,140,0)');sg.addColorStop(1,'rgba(200,150,140,.5)');g.fillStyle=sg;g.fillRect(0,0,256,256);return tex(c)})();
+const eyeG=[-1,1].map(s=>{const g=new THREE.Group(),bg=new THREE.Group(),R0=.125,eg=new THREE.SphereGeometry(1,32,24),ep=eg.attributes.position,eu=eg.attributes.uv;
+  for(let i=0;i<ep.count;i++)eu.setXY(i,.5+ep.getX(i)/2,.5+ep.getY(i)/2);
+  const ball=new THREE.Mesh(eg,MS({map:irisT,roughness:.3}));ball.scale.setScalar(R0);
+  const cor=new THREE.Mesh(new THREE.SphereGeometry(1,24,16),MS({color:0xffffff,transparent:true,opacity:.1,roughness:.02,depthWrite:false}));cor.scale.setScalar(R0*1.04);bg.add(ball,cor);
+  const lg=new THREE.Group();lg.add(new THREE.Mesh(new THREE.SphereGeometry(R0*1.1,28,14,0,Math.PI*2,0,Math.PI/2),MS({color:0xe2ad92,roughness:.6,side:THREE.DoubleSide})));
+  g.add(bg,lg);g.position.set(s*.34,.12,zAt(.34,.12)-.06);g.rotation.y=s*.06;head.add(g);return {bg,lg}});
+// brows
+const browM=MS({color:0x3a2218,roughness:.8}),browG=new THREE.Group();head.add(browG);
+[-1,1].forEach(s=>{const pts=[[.12,.33],[.2,.375],[.3,.405],[.42,.385],[.52,.34]].map(([x,y])=>new THREE.Vector3(s*x,y,zAt(x,y)+.014));
+  browG.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),16,.015,6),browM))});
+// lips + mouth interior
+function mkLip(up){const g=new THREE.BufferGeometry(),idx=[];g.setAttribute('position',new THREE.BufferAttribute(new Float32Array((NS+1)*NR*3),3));
+  for(let i=0;i<NS;i++)for(let j=0;j<NR;j++){const a=i*NR+j,b=(i+1)*NR+j,c=(i+1)*NR+(j+1)%NR,d=i*NR+(j+1)%NR;idx.push(a,b,d,b,c,d)}
+  g.setIndex(idx);const m=new THREE.Mesh(g,MS({color:up?0xc23d5c:0xd4506c,roughness:up?.28:.14,side:THREE.DoubleSide}));m.frustumCulled=false;head.add(m);return m}
+function setLip(m,up,gap,sm,wd,cY){const p=m.geometry.attributes.position;
+  for(let i=0;i<=NS;i++){const t=i/NS*2-1,s=Math.abs(t),ctr=1-s*s,pc=Math.pow(ctr,.9),x=t*LW*wd;
+    const y=up?cY+(gap*.25+.03)*pc:cY-(gap*.75+.034)*pc,r=.01+(up?.036:.046)*LT*Math.pow(ctr,.7),z0=zAt(x,y)+.005;
+    for(let j=0;j<NR;j++){const a=j/NR*6.2832;p.setXYZ(i*NR+j,x,y+Math.cos(a)*r*.9,z0+Math.sin(a)*r*.8)}}
+  p.needsUpdate=true;m.geometry.computeVertexNormals()}
+const lipU=mkLip(true),lipL=mkLip(false);
+const cav=new THREE.Mesh(new THREE.SphereGeometry(1,20,12),new THREE.MeshBasicMaterial({color:0x330b10})),teeth=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),MS({color:0xf1ece2,roughness:.4})),tongue=new THREE.Mesh(new THREE.SphereGeometry(1,16,10),MS({color:0xd2636d,roughness:.5}));
+head.add(cav,teeth,tongue);
+// hair
+const hairT=(()=>{const c=cvs(512,512),g=c.getContext('2d'),gr=g.createLinearGradient(0,0,0,512);gr.addColorStop(0,'#5a2f1c');gr.addColorStop(.6,'#3b1d11');gr.addColorStop(1,'#2a140c');g.fillStyle=gr;g.fillRect(0,0,512,512);
+  for(let i=0;i<1400;i++){const x=Math.random()*512;g.strokeStyle=`rgba(${150+Math.random()*90|0},${85+Math.random()*50|0},${45+Math.random()*30|0},${.12+Math.random()*.3})`;g.lineWidth=.6+Math.random()*1.2;g.beginPath();g.moveTo(x,0);g.lineTo(x+(Math.random()-.5)*12,512*(.4+Math.random()*.6));g.stroke()}
+  const t=tex(c);t.wrapS=THREE.RepeatWrapping;return t})();
+const hairM=MS({map:hairT,bumpMap:hairT,bumpScale:1.2,roughness:.26,metalness:.18});
+const hairCap=new THREE.Mesh(new THREE.SphereGeometry(1,48,32,0,Math.PI*2,0,Math.PI*.43),hairM);hairCap.scale.set(RX*1.07,RY*1.08,RZ*1.08);hairCap.rotation.x=-.35;hairCap.position.set(0,.04,-.06);head.add(hairCap);
+const hairGeo=(()=>{let sd=11;const rnd=()=>{sd=sd+0x6D2B79F5|0;let t=Math.imul(sd^sd>>>15,1|sd);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+const NS=700,NSEG=26,NSIDE=5,P=[],C=[],I=[],sm=x=>{x=Math.min(1,Math.max(0,x));return x*x*(3-2*x)},lp=(a,b,t)=>a+(b-a)*t;
+const cr=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],nm=a=>{const l=Math.hypot(a[0],a[1],a[2])||1;return[a[0]/l,a[1]/l,a[2]/l]};
+const scalp=(th,ph)=>{const y=RY*1.09*Math.cos(th)+.04,tp=taper(y-.04);return[RX*1.09*Math.sin(th)*Math.sin(ph)*tp,y,RZ*1.09*Math.sin(th)*Math.cos(ph)-.06]};
+const col=new THREE.Color();
+for(let n=0;n<NS;n++){
+  // roots: random around the head, side part at phi=.3
+  let ph0=(rnd()*2-1)*Math.PI;const side=ph0>.3?1:-1,aph=Math.abs(ph0);
+  const hl=aph<.6?.95:lp(.95,1.6,sm((aph-.6)/.9)),th0=.05+rnd()*(hl-.05);
+  const front=aph<1.3,phf=front?side*1.55:ph0,thEar=1.72+rnd()*.1;
+  const rr=.5+.5*Math.sin(ph0*5+th0*3)*.7+(rnd()-.5)*.3,rr2=rnd(),wph=ph0*3+rnd(),k1=Math.round(NSEG*.36);
+  const pts=[];
+  for(let i=0;i<=k1;i++){const t=i/k1,e=front?sm(t*(.4+.6*Math.min(1,th0/.5))):0;pts.push(scalp(lp(th0,thEar,t),lp(ph0,phf,e)))}
+  const pe=pts[k1],isSide=Math.abs(phf)<1.95,xe=pe[0],ye=pe[1],ze=pe[2];
+  const xend=isSide?side*(.95+rr*.4):xe*1.25,yend=-(isSide?2.5+rr2*1.2:3.2+rr*1.4),zend=isSide?.72+rr*.2:-1.18-rr*.1;
+  const k2=NSEG-k1,amp=.05+.13*rr2,fq=1.6+rr;
+  for(let i=1;i<=k2;i++){const s=i/k2,w=Math.sin(s*Math.PI*fq+wph)*Math.sin(Math.min(1,s*1.2)*Math.PI*.5)*amp;
+    pts.push([lp(xe,xend,sm(s))+w*(isSide?side:1),lp(ye,yend,Math.pow(s,.85)),lp(ze,zend,sm(Math.min(1,s*1.3)))+w*.5])}
+  // colour: chestnut, ombre to golden tips, some highlights
+  const hi=rnd()<.12,h=hi?.09:.045+rnd()*.025,sat=hi?.65:.55+rnd()*.15,l0=hi?.4:.17+rnd()*.1,sz=.8+rnd()*.4;
+  const base=P.length/3;
+  for(let i=0;i<=NSEG;i++){const p=pts[i],a=pts[Math.max(0,i-1)],b=pts[Math.min(NSEG,i+1)],T=nm([b[0]-a[0],b[1]-a[1],b[2]-a[2]]);
+    const ref=Math.abs(T[2])<.9?[0,0,1]:[1,0,0],N=nm(cr(T,ref)),B=cr(T,N),t=i/NSEG,r=lp(.05,.012,Math.pow(t,1.3))*sz;
+    col.setHSL(h,sat,Math.min(.55,l0+.1*t*t+(hi?0:.05*Math.sin(t*9+wph))));
+    for(let j=0;j<NSIDE;j++){const an=j/NSIDE*6.2832,c=Math.cos(an)*r,s2=Math.sin(an)*r;
+      P.push(p[0]+N[0]*c+B[0]*s2,p[1]+N[1]*c+B[1]*s2,p[2]+N[2]*c+B[2]*s2);C.push(col.r,col.g,col.b)}}
+  for(let i=0;i<NSEG;i++)for(let j=0;j<NSIDE;j++){const a=base+i*NSIDE+j,b=base+(i+1)*NSIDE+j,c=base+(i+1)*NSIDE+(j+1)%NSIDE,d=base+i*NSIDE+(j+1)%NSIDE;I.push(a,b,d,b,c,d)}
+}
+const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(P),3));g.setAttribute('color',new THREE.BufferAttribute(new Float32Array(C),3));g.setIndex(new THREE.BufferAttribute(new Uint32Array(I),1));g.computeVertexNormals();return g})();
+const hairS=new THREE.Mesh(hairGeo,MS({vertexColors:true,roughness:.32,metalness:.05,emissive:0x1c0d06,emissiveIntensity:.5}));head.add(hairS);
+const hairBack=new THREE.Mesh(new THREE.SphereGeometry(1,32,24),MS({map:hairT,roughness:.5,emissive:0x1c0d06,emissiveIntensity:.5}));hairBack.scale.set(.8,2.2,.5);hairBack.position.set(0,-1.6,-.6);head.add(hairBack);
+const hairCurtain=(()=>{const NU=120,NV=28,P=[],UV=[],I=[],C=[],cl=new THREE.Color(),L2=(a,b,t)=>a+(b-a)*t;
+  for(let i=0;i<=NU;i++){const hi=Math.random()<.12,h=hi?.09:.045+Math.random()*.025,sat=hi?.65:.55+Math.random()*.15,l0=hi?.4:.17+Math.random()*.1,u=i/NU,ps=(u*2-1)*1.42,cs=Math.cos(ps),sn=Math.sin(ps),yEnd=-4.5+1.45*Math.pow(Math.abs(u*2-1),1.6)+.16*Math.sin(u*23);
+    for(let j=0;j<=NV;j++){const v=j/NV,y=L2(-.15,yEnd,v),dn=Math.min(1,(-.15-y)/2.2),rx=L2(.84,1.25,dn),rz=L2(.9,.98,dn);
+      P.push(rx*sn,y,-.1-rz*cs);UV.push(u*3,1-v);cl.setHSL(h,sat,Math.min(.55,l0+.1*v*v));C.push(cl.r,cl.g,cl.b)}}
+  for(let i=0;i<NU;i++)for(let j=0;j<NV;j++){const a=i*(NV+1)+j,b=(i+1)*(NV+1)+j;I.push(a,b,a+1,b,b+1,a+1)}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(P),3));g.setAttribute('uv',new THREE.BufferAttribute(new Float32Array(UV),2));g.setAttribute('color',new THREE.BufferAttribute(new Float32Array(C),3));g.setIndex(I);g.computeVertexNormals();
+  const c=cvs(512,512),x=c.getContext('2d'),gr=x.createLinearGradient(0,0,0,512);gr.addColorStop(0,'#6b3a1f');gr.addColorStop(.6,'#7a4526');gr.addColorStop(1,'#9a5f30');x.fillStyle=gr;x.fillRect(0,0,512,512);
+  for(let i=0;i<2200;i++){const X=Math.random()*512,j=()=>X+(Math.random()-.5)*20;x.strokeStyle=`rgba(${150+Math.random()*100|0},${90+Math.random()*60|0},${45+Math.random()*30|0},${.15+Math.random()*.35})`;x.lineWidth=.6+Math.random()*1.6;x.beginPath();x.moveTo(X,0);x.bezierCurveTo(j(),170,j(),340,j(),512);x.stroke()}
+  const t=tex(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  return new THREE.Mesh(g,MS({vertexColors:true,roughness:.32,metalness:.05,emissive:0x1c0d06,emissiveIntensity:.5,side:THREE.DoubleSide}))})();
+head.add(hairCurtain);hairS.raycast=()=>{};
+
+// full body
+const DOWN=new V(0,-1,0),UA=2.75,FA=2.45;
+const dressM=MS({color:0x5b3fd6,roughness:.28,metalness:.25,emissive:0x2a1590,emissiveIntensity:.4,transparent:true,opacity:.97,side:THREE.DoubleSide}),goldM=MS({color:0xf3c76b,roughness:.2,metalness:.9,emissive:0x5a3a08,emissiveIntensity:.35});
+const shoeM=MS({color:0xf0cf86,roughness:.18,metalness:.7,emissive:0x3a2606,emissiveIntensity:.3}),cyl=new THREE.CylinderGeometry(1,1,1,16),sph=new THREE.SphereGeometry(1,16,12);
+const part=(g,m,sx,sy,sz,x,y,z,par)=>{const o=new THREE.Mesh(g,m);o.scale.set(sx,sy,sz);o.position.set(x,y,z);par.add(o);return o};
+{const nk=new THREE.Mesh(new THREE.LatheGeometry(new THREE.CatmullRomCurve3([[.31,11.7],[.25,12.1],[.215,12.5],[.2,12.9],[.2,13.3]].map(([r,y])=>new V(r,y,0))).getPoints(24).map(p=>new THREE.Vector2(p.x,p.y)),32),plainSkin);nk.scale.z=.92;nk.position.z=.01;body.add(nk)}
+const sm1=(a,x)=>{const k=Math.min(a.length-2,Math.floor(x)),t=x-k,p0=a[Math.max(k-1,0)],p1=a[k],p2=a[k+1],p3=a[Math.min(k+2,a.length-1)];return .5*(2*p1+(p2-p0)*t+(2*p0-5*p1+4*p2-p3)*t*t+(3*p1-p0-3*p2+p3)*t*t*t)};
+const limb=(par,len,rs,m)=>{const N=18,pts=[];for(let i=0;i<=N;i++){const t=i/N;pts.push(new THREE.Vector2(sm1(rs,t*(rs.length-1))*(1+.03*Math.sin(Math.PI*t)),-len*t))}pts.reverse();par.add(new THREE.Mesh(new THREE.LatheGeometry(pts,32),m));part(sph,m,rs[0],rs[0],rs[0],0,0,0,par);const q=rs[rs.length-1];part(sph,m,q,q,q,0,-len,0,par)};
+const SKP=[[1.15,7.9],[1.42,8.5],[1.2,9.2],[.8,9.8],[.82,10.2],[1.12,10.9],[1.3,11.4],[1.34,11.8],[1.3,12.08],[.85,12.3],[.34,12.55],[.22,12.95]];
+const torso=new THREE.Mesh(new THREE.LatheGeometry(new THREE.CatmullRomCurve3(SKP.map(([r,y])=>new V(r,y,0)),false,'centripetal').getPoints(70).map(p=>new THREE.Vector2(Math.max(.05,p.x),p.y)),64),plainSkin);torso.scale.z=.56;body.add(torso);
+const dg=new THREE.LatheGeometry([[1.47,11.85],[1.56,11.45],[1.42,10.9],[1.02,10.2],[.84,9.75],[1.12,9.2],[1.42,8.6],[1.58,8.0],[1.5,6.8],[1.4,5.4]].map(([r,y])=>new THREE.Vector2(r,y)),40);
+const DRESS=[],dress=new THREE.Mesh(dg,dressM);dress.scale.z=.62;body.add(dress);
+const dw=new THREE.Mesh(dg,new THREE.MeshBasicMaterial({color:0xd9c8ff,wireframe:true,transparent:true,opacity:.07,blending:AD,depthWrite:false}));dw.scale.set(1.004,1,.622);body.add(dw);dw.raycast=()=>{};DRESS.push(dress,dw);
+{const belt=new THREE.Mesh(new THREE.TorusGeometry(1,.05,8,48),goldM);belt.rotation.x=Math.PI/2;belt.scale.set(.88,.55,1);belt.position.y=9.74;body.add(belt);DRESS.push(belt);
+ const prof=[[12.55,.45],[12.3,1.0],[12.05,1.45],[11.8,1.4],[11.6,1.3]],skR=y=>{for(let i=0;i<prof.length-1;i++){const[a,ra]=prof[i],[b,rb]=prof[i+1];if(y<=a&&y>=b)return ra+(rb-ra)*(a-y)/(a-b)}return 1.3};
+ const np=[];for(let t=-1;t<=1.001;t+=.1){const x=t*.85,y=12.32-.5*(1-t*t),r=skR(y);np.push(new V(x,y,.56*Math.sqrt(Math.max(.01,r*r-x*x))+.03))}
+ body.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(np),30,.025,6),goldM));
+ const pend=new THREE.Mesh(new THREE.SphereGeometry(.09,16,12),MS({color:0x9be3ff,emissive:0x4fc3ff,emissiveIntensity:1,roughness:.1}));pend.scale.set(1,1.4,1);pend.position.copy(np[10]);pend.position.z+=.04;body.add(pend);
+ [-1,1].forEach(s=>{const st=new THREE.Mesh(new THREE.SphereGeometry(.035,12,8),goldM);st.position.set(s*.8,-.12,-.06);head.add(st);
+  const dr=new THREE.Mesh(new THREE.SphereGeometry(.05,12,10),MS({color:0x9be3ff,emissive:0x4fc3ff,emissiveIntensity:.9,roughness:.1}));dr.scale.set(1,1.5,1);dr.position.set(s*.8,-.3,-.06);head.add(dr);
+  const ch=new THREE.Mesh(cyl,goldM);ch.scale.set(.008,.14,.008);ch.position.set(s*.8,-.2,-.06);head.add(ch)});}
+function mkLeg(s){const hip=new THREE.Group();hip.position.set(s*.68,8,0);body.add(hip);
+  limb(hip,3.6,[.36,.355,.33,.29,.25],plainSkin);
+  const knee=new THREE.Group();knee.position.y=-3.6;hip.add(knee);limb(knee,3.5,[.25,.27,.265,.22,.17,.14],plainSkin);
+  const ank=new THREE.Group();ank.position.y=-3.5;knee.add(ank);part(sph,plainSkin,.17,.3,.42,0,-.3,.2,ank);for(let k=0;k<5;k++)part(sph,plainSkin,.062-.008*k,.05,.1,s*(.11-.055*k),-.5,.6-.02*k,ank);
+  const hs=[part(sph,shoeM,.27,.21,.8,0,-.53,.5,ank),part(sph,shoeM,.25,.25,.36,0,-.53,-.05,ank),part(cyl,shoeM,.045,.5,.045,0,-.7,-.2,ank)];
+  const slM=MS({color:0xfdf3f6,roughness:.95}),snM=MS({color:0xf6f6f8,roughness:.5}),sole=MS({color:0x39c3ff,roughness:.4});
+  const sl=[part(sph,slM,.27,.07,.85,0,-.84,.42,ank),part(sph,slM,.26,.12,.4,0,-.7,.62,ank)];
+  const sn=[part(sph,sole,.3,.09,.98,0,-.84,.42,ank),part(sph,snM,.27,.27,.72,0,-.62,.42,ank),part(sph,snM,.26,.3,.3,0,-.6,-.08,ank),part(sph,sole,.1,.3,.55,.27,-.64,.42,ank)];
+  sl.concat(sn).forEach(x=>x.visible=false);return {hip,knee,ank,sh:[hs,sl,sn]}}
+const legs=[mkLeg(-1),mkLeg(1)];
+const GS={rest:[.35,.3,.35,.4,.45],open:[.15,.04,.06,.1,.16],point:[.55,0,1.35,1.4,1.45],wave:[.1,.02,.02,.04,.06]};
+const FL=[[.36,.22,.2],[.4,.25,.2],[.36,.23,.19],[.28,.17,.16]];
+function seg(par,len,r,m){part(cyl,m,r,len,r,0,-len/2,0,par);part(sph,m,r,r,r,0,0,0,par);part(sph,m,r*.96,r*.96,r*.96,0,-len,0,par);const g=new THREE.Group();g.position.y=-len;par.add(g);return g}
+function mkHand(sd,par){const hand=new THREE.Group();par.add(hand);{const pm=new THREE.Mesh(new THREE.CylinderGeometry(.14,.34,.85,18),plainSkin);pm.scale.z=.42;pm.position.y=-.42;hand.add(pm)}const fing=[];
+  FL.forEach((L,k)=>{const j1=new THREE.Group();j1.position.set(sd*(.27-.18*k),-.82,0);hand.add(j1);const r=.062-(k===3?.009:0),n1=seg(j1,L[0],r,plainSkin),n2=seg(n1,L[1],r*.92,plainSkin);seg(n2,L[2],r*.84,plainSkin);fing.push([j1,n1,n2])});
+  const t1=new THREE.Group();t1.position.set(sd*.5,-.28,.05);t1.rotation.z=sd*.6;hand.add(t1);const m1=seg(t1,.32,.075,plainSkin),m2=seg(m1,.28,.068,plainSkin);seg(m2,.22,.06,plainSkin);fing.unshift([t1,m1,m2]);return fing}
+function mkArm(sd){const sh=new THREE.Group();sh.position.set(sd*1.62,11.85,0);body.add(sh);
+  limb(sh,UA,[.3,.29,.255,.22,.19],plainSkin);
+  const el=new THREE.Group();el.position.y=-UA;sh.add(el);limb(el,FA,[.19,.2,.185,.155,.125],plainSkin);
+  const wr=new THREE.Group();wr.position.y=-FA;el.add(wr);
+  return {sd,sh,el,wr,fing:mkHand(sd,wr),tp:new V(sd*2,7,.35),cu:GS.rest.slice(),roll:0}}
+const arms=[mkArm(-1),mkArm(1)];
+function applyCurl(a){a.fing.forEach((f,k)=>{const c=a.cu[k],th=k===0;f[0].rotation.x=-c*(th?.5:.9);f[1].rotation.x=-c*(th?.8:1.1);f[2].rotation.x=-c*(th?.6:.7)})}
+function solveArm(a,tb,pole){
+  const t=tb.clone().sub(a.sh.position);let L=t.length();const mxL=UA+FA-.02;if(L>mxL){t.multiplyScalar(mxL/L);L=mxL}if(L<1.2){t.setLength(1.2);L=1.2}
+  const cl=x=>Math.min(1,Math.max(-1,x)),al=Math.acos(cl((UA*UA+L*L-FA*FA)/(2*UA*L))),dir=t.clone().divideScalar(L);
+  const pv=pole.clone().addScaledVector(dir,-pole.dot(dir));if(pv.lengthSq()<1e-4)pv.set(0,0,-1);pv.normalize();
+  const ua=dir.clone().multiplyScalar(Math.cos(al)).addScaledVector(pv,Math.sin(al));
+  a.sh.quaternion.setFromUnitVectors(DOWN,ua);
+  const fa=t.clone().sub(ua.clone().multiplyScalar(UA)).normalize().applyQuaternion(a.sh.quaternion.clone().invert());
+  a.el.quaternion.setFromUnitVectors(DOWN,fa);a.wr.rotation.y=a.roll}
+// ===== avatar customiser =====
+const clm=c=>MS({color:c,roughness:.5,side:THREE.DoubleSide}),RS={u:[.3,.29,.255,.22,.19],f:[.19,.2,.185,.155,.125],t:[.36,.355,.33,.29,.25],s:[.25,.27,.265,.22,.17,.14]};
+const ip=(a,t)=>{const x=t*(a.length-1),i=Math.min(a.length-2,Math.floor(x));return a[i]+(a[i+1]-a[i])*(x-i)};
+const cover=(par,len,rs,fr,m)=>{const pts=[];for(let i=0;i<=5;i++){const t=fr*i/5;pts.push(new THREE.Vector2(ip(rs,t)+.045,-len*t))}const o=new THREE.Mesh(new THREE.LatheGeometry(pts.reverse(),20),m);par.add(o);return o};
+const OUT=[{name:'Dress',ob:DRESS}];
+function outfit(name,o){const m=clm(o.c),m2=clm(o.c2||o.c),ob=[];
+  (o.b||[]).forEach(([pt,two,z])=>{const l=new THREE.Mesh(new THREE.LatheGeometry(pt.map(([r,y])=>new THREE.Vector2(r,y)),40),two?m2:m);l.scale.z=z||.62;body.add(l);ob.push(l)});
+  arms.forEach(a=>{if(o.su)ob.push(cover(a.sh,UA,RS.u,o.su,m));if(o.sf)ob.push(cover(a.el,FA,RS.f,o.sf,m))});
+  legs.forEach(L=>{if(o.lt)ob.push(cover(L.hip,3.6,RS.t,o.lt,m2));if(o.ls)ob.push(cover(L.knee,3.5,RS.s,o.ls,m2))});
+  if(o.x)o.x(ob,m,m2);ob.forEach(x=>x.visible=false);OUT.push({name,ob})}
+const TEE=[[.62,12.5],[1.15,12.28],[1.5,12.05],[1.52,11.5],[1.3,10.6],[1.18,9.8],[1.3,9.1],[1.45,8.55]],PEL=[[1.1,9.55],[1.42,8.7],[1.45,7.95]];
+outfit('Shirt',{c:0xf2f6ff,c2:0x2a2f45,b:[[TEE],[[[1.1,9.4],[1.45,8.6],[1.62,7.8],[1.62,6.6]],1]],su:1,sf:1});
+outfit('T-shirt',{c:0x2fd1b5,b:[[TEE]],su:.4});
+outfit('Shorts',{c:0xffd23f,c2:0x3f7ad8,b:[[[[.7,12.4],[1.2,12.18],[1.46,11.9],[1.5,11.4],[1.3,10.5],[1.2,9.8],[1.18,9.4]]],[PEL,1]],lt:.38});
+outfit('Working suit',{c:0x1f2a4d,c2:0x1a2240,b:[[[[.9,12.5],[1.3,12.25],[1.52,12.05],[1.6,11.4],[1.35,10.5],[1.3,9.6],[1.5,8.5]]],[PEL,1]],su:1,sf:1,lt:1,ls:1});
+outfit('Princess gown',{c:0xff9ccf,c2:0xffd9ef,b:[[[[.7,12.4],[1.2,12.2],[1.5,12.0],[1.45,11.4],[1.1,10.4],[.95,9.8]]],[[[.95,9.8],[1.9,9.0],[2.8,7.5],[3.6,5.0],[4.2,2.5],[4.4,.35]],1,1]],su:.3,x:(ob,m,m2)=>{
+  arms.forEach(a=>ob.push(part(sph,m,.48,.4,.48,0,-.1,0,a.sh)));
+  const gm=MS({color:0xffd36b,roughness:.2,metalness:.9,emissive:0x5a3a08,emissiveIntensity:.4}),r=new THREE.Mesh(new THREE.TorusGeometry(.6,.03,6,32),gm);r.rotation.x=Math.PI/2;r.scale.set(.95,1.1,1);r.position.set(0,.74,-.06);head.add(r);ob.push(r);
+  for(let k=-2;k<=2;k++){const a=k*.38,c=new THREE.Mesh(new THREE.ConeGeometry(.05,.2-.03*Math.abs(k),8),gm);c.position.set(.6*.95*Math.sin(a),.84+.03*(2-Math.abs(k)),-.06+.66*Math.cos(a));head.add(c);ob.push(c)}
+  const bt=new THREE.Mesh(new THREE.TorusGeometry(1,.05,8,48),gm);bt.rotation.x=Math.PI/2;bt.scale.set(.99,.62,1);bt.position.y=9.8;body.add(bt);ob.push(bt)}});
+outfit('Casual',{c:0xff7a6b,c2:0x3b5ea8,b:[[[[.7,12.5],[1.2,12.28],[1.52,12.05],[1.55,11.4],[1.38,10.4],[1.35,9.4],[1.5,8.7]]],[PEL,1]],su:1,sf:1,lt:1,ls:1});
+outfit('Bikini',{c:0xff4f8a,x:(ob,m)=>{
+  const rt=y=>{for(let i=0;i<SKP.length-1;i++){const[a,ya]=SKP[i],[b,yb]=SKP[i+1];if(y>=ya&&y<=yb)return a+(b-a)*(y-ya)/(yb-ya)}return 1.1},
+   zt=(x,y)=>.56*Math.sqrt(Math.max(1e-4,rt(y)**2-x*x))+.03,add=o=>{body.add(o);ob.push(o);return o},
+   tri=(A,B,C,zf,n)=>{const P=[],I=[],id={};for(let i=0;i<=n;i++)for(let j=0;j<=n-i;j++){const u=i/n,v=j/n,x=A[0]+(B[0]-A[0])*u+(C[0]-A[0])*v,y=A[1]+(B[1]-A[1])*u+(C[1]-A[1])*v;id[i+','+j]=P.length/3;P.push(x,y,zf(x,y))}
+    for(let i=0;i<n;i++)for(let j=0;j<n-i;j++){I.push(id[i+','+j],id[(i+1)+','+j],id[i+','+(j+1)]);if(j<n-i-1)I.push(id[(i+1)+','+j],id[(i+1)+','+(j+1)],id[i+','+(j+1)])}
+    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(P),3));g.setIndex(I);g.computeVertexNormals();return add(new THREE.Mesh(g,m))},
+   str=pts=>add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(q=>new V(q[0],q[1],q[2]))),30,.016,5),m)),
+   ring=(y)=>{const r=new THREE.Mesh(new THREE.TorusGeometry(rt(y)+.03,.016,5,48),m);r.rotation.x=Math.PI/2;r.scale.set(1,.575,1);r.position.y=y;add(r)};
+  [-1,1].forEach(sd=>{const c=[sd*.5,11.08,.4],R=[.44,.42,.44];ob.push(part(sph,plainSkin,R[0],R[1],R[2],c[0],c[1],c[2],body));
+    const bz=(x,y)=>{const q=1-((x-c[0])/(R[0]+.03))**2-((y-c[1])/(R[1]+.03))**2;return q>0?c[2]+(R[2]+.03)*Math.sqrt(q):-9},zf=(x,y)=>Math.max(zt(x,y),bz(x,y));
+    tri([sd*.06,10.78],[sd*.95,10.86],[sd*.5,11.62],zf,10);
+    str([[sd*.5,11.62,zf(sd*.5,11.62)],[sd*.34,12.0,zt(sd*.34,12.0)+.02],[sd*.18,12.3,zt(sd*.18,12.3)+.02],[sd*.24,12.45,.08],[sd*.2,12.45,-.2],[0,12.45,-.24]])});
+  ring(10.82);ring(9.0);tri([-.92,9.0],[.92,9.0],[0,8.05],zt,10);
+  str([[0,9.0,-zt(0,9.0)],[0,8.6,-zt(0,8.6)],[0,8.2,-zt(0,8.2)+.15],[0,7.98,-.05],[0,8.05,zt(0,8.05)]])}});
+const setOutfit=i=>OUT.forEach((o,k)=>o.ob.forEach(x=>x.visible=k===i)),setShoe=i=>legs.forEach(L=>L.sh.forEach((g,k)=>g.forEach(x=>x.visible=k===i)));
+// hair
+const clipP=new THREE.Plane(new V(0,1,0),99),hairMats=[hairS.material,hairCurtain.material,hairM,hairBack.material];
+[hairS.material,hairCurtain.material,hairBack.material].forEach(m=>m.clippingPlanes=[clipP]);
+const pony=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new V(0,.45,-.95),new V(0,.1,-1.35),new V(0,-.9,-1.6),new V(0,-1.9,-1.45)]),24,.2,10),hairM),bun=new THREE.Mesh(new THREE.SphereGeometry(.38,20,14),hairM);
+bun.position.set(0,.95,-.45);pony.visible=bun.visible=false;head.add(pony,bun);
+const ic=irisT.image,IR={Green:['#0d1a14','#1f5a46','#46b48f','#1d4a3c','#10261e'],Brown:['#1a0e08','#2c180c','#8b5a2b','#3a2312','#1c120c'],Blue:['#0a1020','#1c4a8a','#5aa7e8','#1a3a6a','#0e1a30'],Violet:['#150a20','#4a2a8a','#a07be8','#33206a','#1a1030'],Hazel:['#1a1008','#6a4a1c','#b08a3a','#4a3015','#1c140a']};
+function setIris(n){const g=ic.getContext('2d'),r=g.createRadialGradient(128,128,0,128,128,64);IR[n].forEach((c,k)=>r.addColorStop([0,.3,.6,.9,1][k],c));
+  g.fillStyle='#f4efec';g.fillRect(0,0,256,256);g.fillStyle=r;g.beginPath();g.arc(128,128,64,0,6.29);g.fill();g.strokeStyle='rgba(235,235,225,.3)';
+  for(let i=0;i<60;i++){const a=i/60*6.283;g.beginPath();g.moveTo(128+Math.cos(a)*22,128+Math.sin(a)*22);g.lineTo(128+Math.cos(a)*58,128+Math.sin(a)*58);g.stroke()}
+  g.fillStyle='#050302';g.beginPath();g.arc(128,128,22,0,6.29);g.fill();const sg=g.createRadialGradient(128,128,70,128,128,128);sg.addColorStop(0,'rgba(200,150,140,0)');sg.addColorStop(1,'rgba(200,150,140,.5)');g.fillStyle=sg;g.fillRect(0,0,256,256);irisT.needsUpdate=true}
+const SK=[['#f5d6c3',0xeec0a5,0xffffff],['#e8b896',0xe3a98a,0xf0d0c0],['#c68a5e',0xc68a5e,0xd8a880],['#8f5a3b',0x9a6340,0xb07f5a],['#5a3622',0x6b4128,0x82583a]],
+ HC=[['#4a2514',1,1,1],['#1a1210',.25,.35,.6],['#e8c27a',3,4.2,4.7],['#b5391e',2.3,.9,.9],['#ff6fb1',3,2,6.5],['#3a7bff',.5,2,10]],
+ HS=[['Long',0],['Medium',11.4],['Bob',12.45],['Pixie',13.5],['Ponytail',13.35,1],['Bun',13.35,2]],
+ HD=[['Oval',1,1,1],['Round',1.07,.97,1.03],['Slim',.93,1.04,.97],['Square',1.04,.98,1]],
+ EC=['Green','Brown','Blue','Violet','Hazel'],ES=[['Normal',1],['Big',1.14],['Small',.9]],
+ EA=[['Normal',.05,.15,.1,0,0],['Small',.04,.1,.08,0,0],['Big',.065,.21,.14,0,0],['Elf',.04,.27,.1,.35,.12]],
+ NO=[['Normal',1],['Small',.55],['Button',.8],['Pointed',1.5]],
+ MO=[['Natural',.23,1],['Full',.23,1.5],['Thin',.23,.6],['Wide',.3,1],['Small',.18,1]];
+const A={skin:0,hc:0,hs:0,hd:0,ec:0,es:0,bs:0,bc:0,ls:0,lc:0,ea:0,no:0,mo:0,of:0,sh:0};
+const BN=[[.12,.33],[.2,.375],[.3,.405],[.42,.385],[.52,.34]],BS=[['Natural',.015,BN],['Thick',.026,BN],['Thin',.009,BN],['Arched',.015,[[.12,.33],[.2,.39],[.3,.45],[.42,.42],[.52,.35]]],['Straight',.017,[[.12,.35],[.2,.36],[.3,.37],[.42,.37],[.52,.35]]]],BC=['#3a2218','#14100e','#7a3b1c','#c9a066'],
+ LASH=[['None',0,0],['Natural',13,1],['Long',15,1.5],['Dramatic',19,2.1]],LC=['#07040a','#3a2218','#5a2a6a'];
+function mkBrows(){const[,r,pp]=BS[A.bs];browM.color.set(BC[A.bc]);while(browG.children.length){const c=browG.children[0];browG.remove(c);c.geometry.dispose()}
+  [-1,1].forEach(sd=>browG.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pp.map(([x,y])=>new V(sd*x,y,zAt(x,y)+r*.9))),16,r,6),browM)))}
+function mkLash(){const[,cnt,k]=LASH[A.ls],lm=MS({color:LC[A.lc],roughness:.5}),RL=.1375;
+  eyeG.forEach((e,q)=>{const sd=q?1:-1,lg=e.lg;while(lg.children.length>1){const c=lg.children[1];lg.remove(c);c.geometry.dispose()}
+    if(!cnt)return;const ln=new THREE.Mesh(new THREE.TorusGeometry(RL*1.01,.012,6,28,Math.PI),lm);ln.rotation.x=Math.PI/2;lg.add(ln);
+    for(let i=0;i<cnt;i++){const th=Math.PI*(.06+.88*i/(cnt-1)),cx=Math.cos(th),sz=Math.sin(th),wing=sd>0?(cx<-.4?1:0):(cx>.4?1:0),L=(.075+.03*wing+.012*(i%2))*k,
+      pts=[new V(cx*RL,0,sz*RL),new V(cx*(RL+L*.5),L*.35,sz*(RL+L*.55)),new V(cx*(RL+L*.8),L*.95,sz*(RL+L*1.1))];
+      lg.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),6,.0055*(k>1.8?1.3:1),4),lm))}})}
+const APPLY={
+ skin:i=>{const[,p,mu]=SK[i];plainSkin.color.setHex(p);skinM.color.setHex(mu)},
+ hc:i=>{const[,r,g,b]=HC[i];hairMats.forEach(m=>m.color.setRGB(r,g,b))},
+ hs:i=>{const[,y,k]=HS[i];clipP.constant=y?-y:99;pony.visible=k===1;bun.visible=k===2},
+ hd:i=>{const[,x,y,z]=HD[i];head.scale.set(x,y,z)},
+ bs:mkBrows,bc:mkBrows,ls:mkLash,lc:mkLash,ec:i=>setIris(EC[i]),es:i=>eyeG.forEach(e=>e.bg.scale.setScalar(ES[i][1])),
+ ea:i=>{const[,x,y,z,t,dy]=EA[i];earM.forEach((e,k)=>{const sd=k?1:-1;e.scale.set(x,y,z);e.rotation.z=-sd*t;e.position.y=dy})},
+ no:i=>{NK=NO[i][1];buildHead();hg.computeVertexNormals();try{lo=-1}catch(e){}},
+ mo:i=>{LW=MO[i][1];LT=MO[i][2]},
+ of:setOutfit,sh:setShoe};
+const GRP=[['SKIN TONE','skin',SK.map(x=>x[0])],['HAIR COLOUR','hc',HC.map(x=>x[0])],['HAIR STYLE','hs',HS.map(x=>x[0])],['HEAD SHAPE','hd',HD.map(x=>x[0])],['EYE COLOUR','ec',EC],['EYE SIZE','es',ES.map(x=>x[0])],['EYEBROWS','bs',BS.map(x=>x[0])],['EYEBROW COLOUR','bc',BC],['EYELASHES','ls',LASH.map(x=>x[0])],['LASH COLOUR','lc',LC],['EARS','ea',EA.map(x=>x[0])],['NOSE','no',NO.map(x=>x[0])],['MOUTH','mo',MO.map(x=>x[0])],['CLOTHING','of',OUT.map(x=>x.name)],['SHOES','sh',['Heels','Slippers','Sneakers']]];
+GRP.splice(0,0,['LANGUAGE','lang',LANGS.map(l=>l[0])]);
+const TRBOX=`<div style="margin:8px 0 4px"><input id="trIn" placeholder="Type English to translate…" style="width:100%;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.25);color:var(--text);font:inherit"><button class="btn" id="trGo" style="margin-top:6px;padding:6px 14px">Translate &amp; speak</button><div id="trOut" style="margin-top:6px;color:var(--muted);font-size:.85rem"></div><div style="margin-top:10px;font-size:.8rem;color:var(--muted)">Q&amp;A file (JSON): <input type="file" id="qaFile" accept=".json,application/json" style="max-width:100%"><button class="btn ghost" id="qaDl" style="margin-top:6px;padding:4px 12px">Download Q&amp;A JSON</button></div></div>`;
+APPLY.lang=i=>{LI=i;if(LANG_READY)say('Hello! I will now speak to you in '+LANGS[i][0]+'.')};
+const avp=$('avp');
+avp.innerHTML='<div class="top">Avatar settings<button class="btn ghost" id="avx" style="padding:4px 12px">Done</button></div>'+GRP.map(([t,k,o])=>`<h4>${t}</h4><div class="chs">${o.map((v,i)=>/^#/.test(v)?`<button class="sw${i?'':' on'}" data-k="${k}" data-i="${i}" style="background:${v}" aria-label="${t} ${i+1}"></button>`:`<button class="ch${i?'':' on'}" data-k="${k}" data-i="${i}">${v}</button>`).join('')}</div>${k==='lang'?TRBOX:''}`).join('');
+avp.addEventListener('pointerdown',e=>e.stopPropagation());
+avp.onclick=e=>{const b=e.target.closest('[data-k]');if(!b)return;const k=b.dataset.k,i=+b.dataset.i;A[k]=i;APPLY[k](i);avp.querySelectorAll(`[data-k="${k}"]`).forEach(x=>x.classList.toggle('on',x===b))};
+$('avb').onclick=()=>avp.hidden=!avp.hidden;$('avx').onclick=()=>avp.hidden=true;
+Object.keys(APPLY).forEach(k=>APPLY[k](0));LANG_READY=true;
+
+// ===== voice chat (speech recognition + Q&A json) =====
+let QA={fallback:'Sorry, I did not catch that.',entries:[]};
+try{QA=JSON.parse($('qaData').textContent)}catch(e){}
+fetch('qa.json').then(r=>r.ok?r.json():null).then(j=>{if(j&&Array.isArray(j.entries))QA=j}).catch(()=>{});
+const STOP=new Set('a an the is are am to of for and or in on at it me my i we please can could would do does'.split(' ')),norm=t=>String(t).toLowerCase().replace(/[^\p{L}\p{N}\s]/gu,' ').replace(/\s+/g,' ').trim(),toks=t=>norm(t).split(' ').filter(w=>w&&!STOP.has(w));
+function match(text){const n=norm(text),tk=toks(text);let best=null,bs=0;
+  (QA.entries||[]).forEach(e=>(e.questions||[]).forEach(q=>{const nq=norm(q);if(!nq)return;let sc=0;
+    if(nq===n)sc=1;else if((' '+n+' ').includes(' '+nq+' ')||(' '+nq+' ').includes(' '+n+' '))sc=.85;
+    const qt=toks(q);if(qt.length&&tk.length){const hit=qt.filter(w=>tk.includes(w)).length;sc=Math.max(sc,hit/Math.max(qt.length,tk.length)*.7+hit/qt.length*.3)}
+    if(sc>bs){bs=sc;best=e}}));
+  return bs>=(QA.threshold||.5)?best:null}
+async function trRev(t,code){const r=await fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(t)+'&langpair='+code+'|en'),d=await r.json();if(d.responseStatus!=200||!d.responseData)throw new Error('tr');const e=document.createElement('textarea');e.innerHTML=d.responseData.translatedText;return e.value}
+async function ask(text){let en=text;const L=LANGS[LI];
+  if(L[2]){try{en=await trRev(text,L[2])}catch(e){}}
+  const m=match(en);
+  if(m&&m.show){const k=S.findIndex(s=>s.n.toLowerCase()===String(m.show).toLowerCase());if(k>=0)show(k,false,false)}
+  const r=m?(Array.isArray(m.reply)?m.reply[Math.random()*m.reply.length|0]:m.reply):QA.fallback;say(r)}
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition,mic=$('mic');let rec=null,listening=false;
+const note=t=>{cap.textContent=t;cap.style.opacity=1;clearTimeout(tmr);tmr=setTimeout(()=>{if(!speaking)cap.style.opacity=0},4500)};
+mic.onclick=()=>{
+  if(!SR){note('Voice recognition is not supported in this browser. Please use Chrome, Edge or Safari.');return}
+  if(listening){rec&&rec.stop();return}
+  if(window.speechSynthesis)speechSynthesis.cancel();speaking=false;trTok++;
+  rec=new SR();rec.lang=LANGS[LI][1];rec.interimResults=true;rec.maxAlternatives=1;let fin='',err='';
+  rec.onstart=()=>{listening=true;mic.classList.add('rec');mic.textContent='⏹ Listening…';cap.textContent='🎤 Listening…';cap.style.opacity=1};
+  rec.onresult=e=>{let t='';for(let i=0;i<e.results.length;i++)t+=e.results[i][0].transcript;fin=t;cap.textContent='“'+t+'”'};
+  rec.onerror=e=>{err=e.error};
+  rec.onend=()=>{listening=false;mic.classList.remove('rec');mic.textContent='🎤 Talk';
+    if(fin.trim())ask(fin.trim());
+    else if(err==='not-allowed'||err==='service-not-allowed')note('Microphone access is blocked. Please allow it in your browser settings.');
+    else note('I did not hear anything. Tap Talk and try again.')};
+  try{rec.start()}catch(e){}};
+$('qaFile').onchange=e=>{const f=e.target.files[0];if(!f)return;f.text().then(t=>{try{const j=JSON.parse(t);if(!Array.isArray(j.entries))throw 0;QA=j;note('Loaded '+j.entries.length+' Q&A entries.')}catch(x){note('That file is not a valid Q&A JSON.')}})};
+$('qaDl').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(QA,null,1)],{type:'application/json'}));a.download='qa.json';a.click()};
+$('trIn').onkeydown=e=>{e.stopPropagation();if(e.key==='Enter')$('trGo').click()};
+$('trGo').onclick=()=>{const v=$('trIn').value.trim();if(!v)return;$('trOut').textContent='Translating…';say(v).then(o=>{if(o!==undefined)$('trOut').textContent=o})};
+// hologram stage
+const ring=(r,o)=>{const m=new THREE.Mesh(new THREE.TorusGeometry(r,.05,8,72),fm(0x6fd0ff,o));m.rotation.x=Math.PI/2;m.position.y=.03;sc.add(m);return m};
+const rings=[ring(3.8,.8),ring(2.9,.6),ring(2,.9)];
+const disc=new THREE.Mesh(new THREE.CircleGeometry(4.6,48),fm(0x2f8fd8,.16));disc.rotation.x=-Math.PI/2;disc.position.y=.01;sc.add(disc);
+const beam=new THREE.Mesh(new THREE.CylinderGeometry(3.3,4.1,16.4,40,1,true),fm(0x4fc3ff,.05));beam.position.y=8.2;sc.add(beam);
+const scan=new THREE.Mesh(new THREE.TorusGeometry(3.2,.03,6,56),fm(0xbfeaff,.8));scan.rotation.x=Math.PI/2;sc.add(scan);
+const PN=260,pg=new THREE.BufferGeometry(),pp=new Float32Array(PN*3);
+for(let i=0;i<PN;i++){const a=Math.random()*6.28,r=Math.random()*4.6;pp.set([Math.cos(a)*r,Math.random()*16,Math.sin(a)*r],i*3)}
+pg.setAttribute('position',new THREE.BufferAttribute(pp,3));
+sc.add(new THREE.Points(pg,new THREE.PointsMaterial({color:0x9be3ff,size:.09,transparent:true,opacity:.8,blending:AD,depthWrite:false})));
+// interaction state
+const stage=$('stage');let mx=0,my=0,ptr=null,waveT=0,beatSide=-1,beatT=0,walk=false,wph=0,close=false,stepT=5,stepI=0,stepP=-1,cy=8,cz=34,cl=7.6;
+addEventListener('pointermove',e=>{mx=e.clientX/innerWidth*2-1;my=e.clientY/innerHeight*2-1});
+stage.addEventListener('pointermove',e=>{const r=stage.getBoundingClientRect();ptr={x:(e.clientX-r.left)/r.width*2-1,y:-((e.clientY-r.top)/r.height*2-1),t:performance.now()}});
+stage.addEventListener('pointerleave',()=>ptr=null);
+
+$('intro').addEventListener('click',()=>{waveT=3});
+$('walk').onclick=()=>{walk=!walk;$('walk').textContent=walk?'\u23f9 Stop walking':'\ud83d\udeb6 Walk'};
+$('zoom').onclick=()=>{close=!close;$('zoom').textContent=close?'\ud83e\uddcd Full body':'\ud83d\udd0d Close-up'};
+function fit(){const w=stage.clientWidth,h=stage.clientHeight;R.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}
+new ResizeObserver(fit).observe(stage);fit();
+const ray=new THREE.Raycaster(),plane=new THREE.Plane(new V(0,0,1),-5),pt=new V();
+const xr={t:0,d:0,f:()=>({}),hand:null,side:1,spin:0},em={blush:0,smile:0,mouth:0,lid:0,wide:0,brow:0,tilt:0,nod:0,turn:0,back:0,shrug:0,wob:0};
+const osc=(t,f)=>.5+.5*Math.sin(t*f),rc=new THREE.Raycaster();
+const handFn=(kind,s)=>(a,t)=>{const sd=a.sd;
+  if(kind==='hair'&&sd===s)return{tg:new V(sd*1.15,13.7,.9+Math.sin(t*3)*.08),cu:GS.open,roll:-sd*.5,pole:new V(sd,-.4,-.3)};
+  if(kind==='shake'&&sd===s)return{tg:new V(sd*1.1,10.2,3.3+Math.sin(t*9)*.1),cu:GS.open,roll:-sd*.2,pole:new V(sd,-1,0)};
+  if(kind==='chest')return{tg:new V(sd*.45,11.1,1.15),cu:GS.rest,roll:-sd*.8,pole:new V(sd*1.5,-.6,-.2)};
+  if(kind==='face'&&sd===s)return{tg:new V(sd*.6,13.2,1.15),cu:GS.rest,roll:-sd*.8,pole:new V(sd,-.5,-.3)};
+  return null};
+function react(z,s,idx){const lift=()=>{stepP=0;stepI=idx};
+  const T={
+  cheek:['Hehe, that tickles!',2.4,'face',t=>({blush:1,smile:.6,lid:.5,tilt:-s*.2,mouth:.2*osc(t,15),turn:s*.12})],
+  nose:['Boop!',1.8,0,t=>({blush:.4,smile:.5,lid:.85,nod:-.14,brow:.5,mouth:.12*osc(t,18)})],
+  lips:['Oh! That surprised me!',2.6,'face',t=>({blush:1,wide:1,brow:1,mouth:.45,nod:-.05})],
+  eyes:['Hey, my eyes!',2,0,t=>({lid:1,smile:.3,blush:.2,nod:.06,mouth:.15*osc(t,12)})],
+  forehead:['Aww, that is sweet.',2.2,0,t=>({lid:.9,smile:.65,blush:.5,nod:.12,tilt:-s*.08})],
+  ear:['Hee, that tickles my ear!',2.2,0,t=>({lid:.7,smile:.8,blush:.5,shrug:.7,tilt:-s*.25,mouth:.22*osc(t,16)})],
+  neck:['Eek, ticklish!',2.2,0,t=>({lid:.8,smile:.7,blush:.4,shrug:1,tilt:-s*.2,mouth:.25*osc(t,16)})],
+  hair:['Do you like my hair?',2.8,'hair',t=>({smile:.75,blush:.3,tilt:-s*.12,turn:s*.2,brow:.3})],
+  shoulder:['Yes? I am listening.',2.2,0,t=>({turn:s*.45,brow:.35,smile:.5,tilt:-s*.1,nod:.05})],
+  hand:['Nice to meet you!',2.8,'shake',t=>({smile:.8,brow:.25,nod:.06+.04*Math.sin(t*5)})],
+  chest:['Hey! Please keep it respectful.',3,'chest',t=>({blush:1,wide:.7,brow:.8,smile:.15,back:1,shrug:.3,turn:-s*.1})],
+  waist:['Hahaha, stop, that tickles!',2.8,0,t=>({blush:.5,lid:.6,smile:1,mouth:.3*osc(t,16),wob:1,tilt:Math.sin(t*9)*.1})],
+  hips:['Ta-da! Do you like my dress?',2.6,0,t=>({smile:.9,blush:.35,brow:.3}),()=>xr.spin=1.8],
+  leg:['Ooh, ticklish!',2.4,0,t=>({smile:.8,lid:.5,blush:.4,mouth:.2*osc(t,15)}),lift],
+  foot:['Like my golden heels?',2.4,0,t=>({smile:.8,brow:.3,blush:.2}),lift]};
+  T.arm=T.hand;const r=T[z]||T.cheek;
+  xr.side=s;xr.d=xr.t=r[1];xr.f=r[3];xr.hand=r[2]?handFn(r[2],s):null;if(r[4])r[4]();say(r[0])}
+function zoneOf(h){const o=h.object,inH=g=>{for(let p=o;p;p=p.parent)if(p===g)return true;return false},s=h.point.x>0?1:-1;
+  if(o===hairCurtain||o===hairCap||o===hairBack)return{n:'hair',s};
+  if(inH(head)){const p=head.worldToLocal(h.point.clone()),ax=Math.abs(p.x);
+    if(p.y>.62)return{n:'hair',s};
+    if(p.z<.15)return ax>.6&&p.y>-.35&&p.y<.35?{n:'ear',s}:{n:'hair',s};
+    if(Math.abs(p.y+.55)<.13&&ax<.32)return{n:'lips',s};
+    if(ax<.14&&p.y>-.4&&p.y<.05)return{n:'nose',s};
+    if(ax>.17&&ax<.52&&Math.abs(p.y-.12)<.12)return{n:'eyes',s};
+    if(p.y>.38)return{n:'forehead',s};
+    return{n:'cheek',s}}
+  for(let i=0;i<2;i++){const a=arms[i];if(inH(a.wr))return{n:'hand',s:a.sd};
+    if(inH(a.sh)){const p=a.sh.worldToLocal(h.point.clone());return{n:p.y>-.9?'shoulder':'arm',s:a.sd}}}
+  for(let i=0;i<2;i++){const L=legs[i];if(inH(L.hip))return{n:inH(L.ank)?'foot':'leg',s:i?1:-1,i}}
+  const p=body.worldToLocal(h.point.clone());
+  if(p.y>12.35)return{n:'neck',s};if(p.y>10.6)return{n:'chest',s};if(p.y>9.3)return{n:'waist',s};
+  return p.y>6?{n:'hips',s}:{n:'leg',s,i:s>0?1:0}}
+stage.addEventListener('pointerdown',e=>{const r=stage.getBoundingClientRect();
+  rc.setFromCamera({x:(e.clientX-r.left)/r.width*2-1,y:-((e.clientY-r.top)/r.height*2-1)},cam);fig.updateMatrixWorld(true);
+  const hit=rc.intersectObject(fig,true).find(h=>h.object.isMesh&&h.object.visible);
+  if(!hit){waveT=2.4;return}const z=zoneOf(hit);react(z.n,z.s,z.i!==undefined?z.i:(z.s>0?1:0))});
+function goal(a,i,t){const sd=a.sd;let tg=new V(sd*2,7,.35),cu=GS.rest,roll=-sd*1.2,pole=new V(sd*.6,-1,-.5);
+  tg.z+=walk?Math.sin(wph+(sd>0?0:Math.PI))*.9:0;tg.y+=walk?0:Math.sin(t*1.3+i)*.05;tg.y+=em.shrug*.5;
+  if(xr.t>0&&xr.hand){const r=xr.hand(a,t);if(r)return r}
+  if(i===0&&waveT>0){tg.set(sd*2.3+Math.sin(t*8)*.7,13.2+Math.sin(t*3)*.15,1.3);cu=GS.wave;roll=-sd*.6;pole=new V(sd,-1,-.2)}
+  else if(i===0&&ptr&&xr.t<=0&&performance.now()-ptr.t<2500){ray.setFromCamera({x:ptr.x,y:ptr.y},cam);if(ray.ray.intersectPlane(plane,pt)){tg.copy(body.worldToLocal(pt.clone()));cu=GS.point;roll=-sd;pole=new V(sd*.8,-1,-.2)}}
+  else if(speaking&&(beatSide===sd||beatSide===0)){tg.set(sd*1.8+Math.sin(t*2.3)*.25*sd,9.5+Math.sin(t*3)*.25,2.9);cu=GS.open;roll=.15*sd}
+  return {tg,cu,roll,pole}}
+const zc=zAt(0,MY)+.014;let last=performance.now(),blink=0,nb=2,open=0,vt=0,vn=0,lo=-1,ls=-9;
+(function loop(now){
+  requestAnimationFrame(loop);const dt=Math.min((now-last)/1000,.05),t=now/1000;last=now;
+  xr.t=Math.max(0,xr.t-dt);{const tp=xr.t>0?xr.f(t):null,kk=Math.min(1,dt*(tp?9:4));for(const k in em)em[k]+=((tp&&tp[k]||0)-em[k])*kk}
+  pivot.rotation.y+=((mx*.35+Math.sin(t*.6)*.07+(speaking?Math.sin(t*2)*.07:0)+em.turn)-pivot.rotation.y)*.08;
+  pivot.rotation.x+=((my*.12+(speaking?pulse*.07:0)+Math.sin(t*.9)*.015+em.nod)-pivot.rotation.x)*.1;
+  pivot.rotation.z+=(em.tilt-pivot.rotation.z)*.1;pivot.position.y=12.8-.2*em.shrug;
+  pulse*=Math.pow(.03,dt);vn-=dt;if(vn<0){vn=.07+Math.random()*.08;vt=Math.random()<.15?.03:.25+Math.random()*.75}
+  const talk=Math.min(1,(speaking?Math.min(1,vt*.8+pulse*.5):0)+em.mouth);open+=(talk-open)*Math.min(1,dt*22);
+  const sm=.35+.06*Math.sin(t*.8)+(speaking?.14*Math.sin(t*1.9)+.1*pulse:0)+.5*em.smile;
+  {const b=em.blush;skinM.emissive.setRGB(.25+.65*b,.094+.1*b,.059+.17*b);skinM.emissiveIntensity=.2+.45*b}
+  if(Math.abs(open-lo)>.004||Math.abs(sm-ls)>.004){lo=open;ls=sm;deform(open,sm)}
+  const gap=open*.2,wd=1.02-.12*open,cY=MY+sm*.05-gap*.15;
+  setLip(lipU,true,gap,sm,wd,cY);setLip(lipL,false,gap,sm,wd,cY);
+  cav.visible=gap>.012;cav.position.set(0,cY-gap*.5,zc);cav.scale.set(LW*wd*.9,gap*.5+.004,.02);
+  const th=Math.min(.05,gap*.45);teeth.visible=gap>.03;teeth.position.set(0,cY+gap*.25-th/2,zc+.006);teeth.scale.set(LW*wd*1.1,th,.005);
+  tongue.visible=gap>.07;tongue.position.set(0,cY-gap*.72,zc+.003);tongue.scale.set(LW*.5,gap*.2,.01);
+  nb-=dt;if(nb<0){blink=1;nb=2+Math.random()*3}blink=Math.max(0,blink-dt*8);const bl=Math.sin(blink*Math.PI);
+  eyeG.forEach(e=>{e.lg.rotation.x=-.75-.05*pulse-.22*em.wide+1.05*Math.max(bl,em.lid);e.bg.rotation.y=mx*.3;e.bg.rotation.x=my*.2});
+  browG.position.y=.045*em.brow+.02*pulse+(speaking?.008*Math.sin(t*3):0);
+  // body, legs
+  wph+=dt*(walk?5:0);waveT=Math.max(0,waveT-dt);
+  body.rotation.y+=((mx*.3+(speaking?Math.sin(t*1.7)*.05:0))-body.rotation.y)*.05;
+  let bx=Math.sin(t*.5)*.1;stepT-=dt;if(stepT<0&&stepP<0&&!walk){stepP=0;stepI=Math.random()<.5?0:1;stepT=6+Math.random()*5}
+  if(stepP>=0){stepP+=dt/1.3;if(stepP>1)stepP=-1}
+  legs.forEach((L,i)=>{const s=i?1:-1;let hx=-.02,kn=.04;
+    if(walk){const p=wph+(i?Math.PI:0);hx=.5*Math.sin(p);kn=.1+.9*Math.max(0,Math.sin(p+1.2))}
+    else{kn+=Math.max(0,Math.sin(t*.5)*s)*.1;if(stepP>=0&&stepI===i){const q=Math.sin(stepP*Math.PI);hx-=.3*q;kn+=.75*q;bx+=-s*.18*q}}
+    L.hip.rotation.x=hx;L.knee.rotation.x=kn;L.ank.rotation.x=-(hx+kn)});
+  body.position.x=bx;body.position.y=(walk?Math.abs(Math.sin(wph))*.15:0)+Math.abs(Math.sin(t*14))*.1*em.wob;body.position.z=-em.back*.8;body.rotation.z=Math.sin(t*.5)*.012+Math.sin(t*14)*.05*em.wob;
+  if(xr.spin>0){xr.spin-=dt;const q=Math.min(1,1-xr.spin/1.8);fig.rotation.y=xr.spin<=0?0:6.2832*(q<.5?2*q*q:1-Math.pow(-2*q+2,2)/2)}dress.scale.y=dw.scale.y=1+.004*Math.sin(t*1.5);{const br=Math.sin(t*1.6);torso.scale.set(1+.01*br,1,.56*(1+.025*br))}
+  // arms and hands
+  beatT-=dt;if(beatT<0){const r=Math.random();beatSide=r<.4?-1:r<.8?1:0;beatT=1.4+Math.random()*1.2}
+  cy+=((close?13.3:8)-cy)*.06;cz+=((close?11:34)-cz)*.06;cl+=((close?13.2:7.6)-cl)*.06;cam.position.set(0,cy,cz);cam.lookAt(0,cl,0);
+  body.updateMatrixWorld(true);
+  arms.forEach((a,i)=>{a.sh.position.y=11.85+.25*em.shrug;const g=goal(a,i,t),k=Math.min(1,dt*7);a.tp.lerp(g.tg,k);a.roll+=(g.roll-a.roll)*k;for(let j=0;j<5;j++)a.cu[j]+=(g.cu[j]-a.cu[j])*k;solveArm(a,a.tp,g.pole);applyCurl(a)});
+  rings.forEach((r,i)=>{r.rotation.z=t*(i%2?-.6:.6);r.material.opacity=.5+.3*Math.sin(t*2+i)});
+  scan.position.y=((t*.45)%1)*15.6;scan.material.opacity=.7*(1-((t*.45)%1)*.7);
+  const a=pg.attributes.position;for(let i=0;i<PN;i++){let y=a.getY(i)+dt*1.4;if(y>16)y=0;a.setY(i,y)}a.needsUpdate=true;
+  R.render(sc,cam);
+})(performance.now());
+if(window.speechSynthesis)speechSynthesis.onvoiceschanged=()=>{};
+</script>
+</body>
+</html>

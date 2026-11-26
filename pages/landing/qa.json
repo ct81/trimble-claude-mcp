@@ -1,0 +1,940 @@
+{
+ "threshold": 0.6,
+ "fallback": "Sorry, I did not quite catch that. You can ask me about SitePulse, OfficePulse, their features, or how to request a demo.",
+ "entries": [
+  {
+   "questions": [
+    "hello",
+    "hi",
+    "hey",
+    "good morning",
+    "good afternoon",
+    "good evening"
+   ],
+   "reply": [
+    "Hello! I am your holographic guide. Ask me about SitePulse or OfficePulse.",
+    "Hi there! How can I help you today?"
+   ]
+  },
+  {
+   "questions": [
+    "how are you",
+    "how are you doing",
+    "how do you do"
+   ],
+   "reply": "I am doing great, thank you for asking. How can I help you today?"
+  },
+  {
+   "questions": [
+    "who are you",
+    "what are you",
+    "what is your name",
+    "introduce yourself",
+    "tell me about yourself"
+   ],
+   "reply": "I am your holographic guide for the Technology Solutions Hub. I can explain our solutions, show you their key features, and help you request a live demo."
+  },
+  {
+   "questions": [
+    "what can you do",
+    "help",
+    "what can i ask you",
+    "how can you help me"
+   ],
+   "reply": "You can ask me about SitePulse, OfficePulse, their key features, or how to request a demo. You can also change my language in the avatar settings."
+  },
+  {
+   "questions": [
+    "what solutions do you have",
+    "what products do you have",
+    "what do you offer",
+    "show me your solutions",
+    "list your solutions",
+    "what is available"
+   ],
+   "reply": "We currently offer two solutions: SitePulse for construction site intelligence, and OfficePulse for workforce and task monitoring. Which one would you like to hear about?"
+  },
+  {
+   "questions": [
+    "tell me about sitepulse",
+    "what is sitepulse",
+    "explain sitepulse",
+    "site pulse",
+    "sitepulse"
+   ],
+   "reply": "SitePulse is an integrated construction intelligence platform. It connects 3D BIM models with real-world site operations, giving you a complete digital view of the entire project.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "sitepulse features",
+    "what are the features of sitepulse",
+    "what can sitepulse do",
+    "key features of sitepulse"
+   ],
+   "reply": "SitePulse includes a 3D BIM model viewer, geospatial digital twin, model explorer, model data validation, construction status tracking, crane position monitoring, delivery and vehicle tracking, a project dashboard, and progress history playback.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "what is bim",
+    "bim model",
+    "3d bim viewer",
+    "bim viewer"
+   ],
+   "reply": "BIM stands for Building Information Modelling. SitePulse lets you view your 3D BIM model and explore its data alongside what is actually happening on site.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "digital twin",
+    "what is a digital twin",
+    "geospatial digital twin"
+   ],
+   "reply": "The geospatial digital twin in SitePulse is a live digital copy of your site, placed on the map, so you can see the project in its real-world context.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "crane monitoring",
+    "crane position",
+    "track cranes",
+    "can you track cranes"
+   ],
+   "reply": "Yes. SitePulse includes crane position monitoring, so you can see where your cranes are on site.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "track deliveries",
+    "vehicle tracking",
+    "delivery tracking",
+    "track vehicles",
+    "track trucks"
+   ],
+   "reply": "SitePulse offers delivery and vehicle tracking, helping you see what is arriving on site and where vehicles are.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "progress playback",
+    "progress history",
+    "history playback",
+    "construction progress",
+    "track progress"
+   ],
+   "reply": "With progress history playback, you can replay how the project has progressed over time, and construction status tracking shows where each part stands today.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "tell me about officepulse",
+    "what is officepulse",
+    "explain officepulse",
+    "office pulse",
+    "officepulse"
+   ],
+   "reply": "OfficePulse is a smart workforce management solution. It gives real-time visibility of site personnel, task assignments and workforce movements, so you can coordinate better and use your resources wisely.",
+   "show": "OfficePulse"
+  },
+  {
+   "questions": [
+    "officepulse features",
+    "what are the features of officepulse",
+    "what can officepulse do",
+    "key features of officepulse"
+   ],
+   "reply": "OfficePulse includes workforce visualisation, task assignment, task progress monitoring, movement tracking, workforce allocation, a real-time dashboard, and performance insights.",
+   "show": "OfficePulse"
+  },
+  {
+   "questions": [
+    "track workers",
+    "track workforce",
+    "workforce tracking",
+    "track my staff",
+    "monitor my team",
+    "track people"
+   ],
+   "reply": "OfficePulse gives you centralised workforce tracking, including where personnel are, what tasks they are on, and how work is progressing.",
+   "show": "OfficePulse"
+  },
+  {
+   "questions": [
+    "request a demo",
+    "book a demo",
+    "i want a demo",
+    "can i see a demo",
+    "how do i get a demo",
+    "schedule a demo"
+   ],
+   "reply": "I would love to arrange that. Please tap the Request a Demo button on the page, choose the solution you are interested in, and send us your details."
+  },
+  {
+   "questions": [
+    "contact",
+    "contact you",
+    "contact us",
+    "how can i contact you",
+    "how do i reach you",
+    "talk to someone",
+    "talk to sales"
+   ],
+   "reply": "You can tap the Contact us button on the page and send us a message. Our team will get back to you."
+  },
+  {
+   "questions": [
+    "price",
+    "pricing",
+    "how much does it cost",
+    "cost",
+    "how much"
+   ],
+   "reply": "Pricing depends on your project and needs. Please request a demo or contact us and our team will go through the options with you."
+  },
+  {
+   "questions": [
+    "what languages do you speak",
+    "can you speak other languages",
+    "change language",
+    "speak chinese",
+    "speak korean",
+    "speak japanese",
+    "speak spanish"
+   ],
+   "reply": "I can speak English, Chinese, Malay, Thai, Filipino, Korean, Japanese, Spanish, German, French and Finnish. Open the Avatar settings and pick a language."
+  },
+  {
+   "questions": [
+    "thank you",
+    "thanks",
+    "thanks a lot",
+    "thank you very much"
+   ],
+   "reply": [
+    "You are very welcome!",
+    "My pleasure. Is there anything else I can help with?"
+   ]
+  },
+  {
+   "questions": [
+    "bye",
+    "goodbye",
+    "see you",
+    "see you later",
+    "that is all"
+   ],
+   "reply": "Goodbye! It was lovely talking with you. Come back any time."
+  },
+  {
+   "questions": [
+    "what is up",
+    "whats up",
+    "how is it going",
+    "how is your day",
+    "how was your day"
+   ],
+   "reply": "I am doing well, thank you. I am here and ready to help. What would you like to know?"
+  },
+  {
+   "questions": [
+    "are you real",
+    "are you human",
+    "are you a person",
+    "are you a robot",
+    "are you ai",
+    "are you an ai",
+    "are you a hologram"
+   ],
+   "reply": "I am a holographic digital guide, not a real person, but I am happy to help you like one."
+  },
+  {
+   "questions": [
+    "who made you",
+    "who created you",
+    "who built you",
+    "who is your creator"
+   ],
+   "reply": "I was built as the digital guide for this Technology Solutions Hub, to help visitors explore our solutions."
+  },
+  {
+   "questions": [
+    "how old are you",
+    "what is your age",
+    "when were you born"
+   ],
+   "reply": "I am a digital guide, so I do not have an age. I am always ready to help."
+  },
+  {
+   "questions": [
+    "where are you from",
+    "where do you live",
+    "where are you"
+   ],
+   "reply": "I live right here in the Technology Solutions Hub, on your screen."
+  },
+  {
+   "questions": [
+    "are you a girl",
+    "are you female",
+    "are you a woman",
+    "are you male"
+   ],
+   "reply": "I am a digital guide with a friendly female look. What matters is that I can help you."
+  },
+  {
+   "questions": [
+    "nice to meet you",
+    "pleased to meet you",
+    "good to meet you"
+   ],
+   "reply": "Nice to meet you too! How can I help you today?"
+  },
+  {
+   "questions": [
+    "good night",
+    "night night",
+    "sleep well"
+   ],
+   "reply": "Good night! Come back any time."
+  },
+  {
+   "questions": [
+    "sorry",
+    "i am sorry",
+    "my apologies",
+    "excuse me"
+   ],
+   "reply": "No problem at all. How can I help?"
+  },
+  {
+   "questions": [
+    "yes",
+    "yeah",
+    "yep",
+    "sure",
+    "okay",
+    "ok",
+    "alright"
+   ],
+   "reply": "Great! What would you like to know?"
+  },
+  {
+   "questions": [
+    "no",
+    "nope",
+    "not really",
+    "no thanks",
+    "no thank you"
+   ],
+   "reply": "No problem. If you need anything, just tap Talk and ask me."
+  },
+  {
+   "questions": [
+    "you are smart",
+    "you are great",
+    "good job",
+    "well done",
+    "you are amazing",
+    "you are helpful",
+    "great answer",
+    "that is helpful"
+   ],
+   "reply": "Thank you, that is very kind of you. Is there anything else you would like to know?"
+  },
+  {
+   "questions": [
+    "you are pretty",
+    "you are beautiful",
+    "you look nice",
+    "i like you",
+    "i love you",
+    "you are cute"
+   ],
+   "reply": "Thank you, that is sweet of you. Shall we look at our solutions together?"
+  },
+  {
+   "questions": [
+    "tell me a joke",
+    "say something funny",
+    "make me laugh",
+    "do you know any jokes"
+   ],
+   "reply": [
+    "Why did the construction worker bring a ladder to the meeting? Because he heard the project was going up!",
+    "What do you call a crane that sings? A lifting performer!"
+   ]
+  },
+  {
+   "questions": [
+    "can you hear me",
+    "do you hear me",
+    "are you listening",
+    "hello can you hear me"
+   ],
+   "reply": "Yes, I can hear you. Tap the Talk button, then ask your question."
+  },
+  {
+   "questions": [
+    "i cannot hear you",
+    "speak louder",
+    "louder please",
+    "i can not hear you",
+    "turn up the volume"
+   ],
+   "reply": "Please turn up your device volume, and check that the Voice button says Voice on. You can also read my words in the caption."
+  },
+  {
+   "questions": [
+    "repeat that",
+    "say that again",
+    "can you repeat",
+    "repeat please",
+    "pardon",
+    "come again",
+    "what did you say"
+   ],
+   "reply": "Of course. Tap Listen again in the solution panel to hear the description once more, or ask me your question again."
+  },
+  {
+   "questions": [
+    "can you help me",
+    "i need help",
+    "i have a question",
+    "can i ask you something",
+    "i need assistance"
+   ],
+   "reply": "Of course! Ask me anything about SitePulse, OfficePulse, or how to request a demo."
+  },
+  {
+   "questions": [
+    "what time is it",
+    "what is the time",
+    "what is the date today",
+    "what day is it"
+   ],
+   "reply": "I do not have a clock, but your device does. I can help you with our solutions though."
+  },
+  {
+   "questions": [
+    "what is the weather",
+    "how is the weather"
+   ],
+   "reply": "I cannot check the weather, but I can tell you all about our solutions. Would you like to start with SitePulse or OfficePulse?"
+  },
+  {
+   "questions": [
+    "how do i use you",
+    "how does this work",
+    "how do i talk to you",
+    "how do i ask you a question",
+    "how to use the microphone"
+   ],
+   "reply": "Tap the Talk button, allow microphone access if asked, then speak your question. I will answer out loud and in the caption."
+  },
+  {
+   "questions": [
+    "change your clothes",
+    "change outfit",
+    "change your outfit",
+    "can you change clothes",
+    "wear something else",
+    "change your dress"
+   ],
+   "reply": "Yes! Tap the Avatar button, then choose from Clothing: dress, shirt, T-shirt, shorts, working suit, princess gown, casual or bikini."
+  },
+  {
+   "questions": [
+    "change your hair",
+    "change hair colour",
+    "change hair color",
+    "change your hairstyle",
+    "different hair",
+    "blonde hair"
+   ],
+   "reply": "Of course. Tap the Avatar button, then pick a hair colour or hair style you like."
+  },
+  {
+   "questions": [
+    "change your look",
+    "customise avatar",
+    "customize avatar",
+    "change your appearance",
+    "avatar settings",
+    "how do i change you"
+   ],
+   "reply": "Tap the Avatar button to change my skin tone, hair, eyes, clothing, shoes and even my language."
+  },
+  {
+   "questions": [
+    "can you walk",
+    "walk please",
+    "start walking",
+    "go for a walk",
+    "walk around"
+   ],
+   "reply": "Yes! Tap the Walk button and I will take a stroll for you."
+  },
+  {
+   "questions": [
+    "close up",
+    "zoom in",
+    "come closer",
+    "let me see your face",
+    "show your face"
+   ],
+   "reply": "Tap the Close-up button to zoom in on me, and tap it again to zoom back out."
+  },
+  {
+   "questions": [
+    "turn off voice",
+    "be quiet",
+    "stop talking",
+    "mute",
+    "mute yourself"
+   ],
+   "reply": "You can tap the Voice button to switch my voice off. I will keep showing captions."
+  },
+  {
+   "questions": [
+    "turn on voice",
+    "unmute",
+    "speak to me",
+    "talk to me"
+   ],
+   "reply": "Tap the Voice button to switch my voice on, then ask me anything."
+  },
+  {
+   "questions": [
+    "what happens if i touch you",
+    "can i touch you",
+    "tap on you",
+    "what if i tap your face"
+   ],
+   "reply": "Go ahead and tap my face, hair, hands or body. I will react!"
+  },
+  {
+   "questions": [
+    "which solution is best",
+    "which one should i choose",
+    "which one is better",
+    "what do you recommend",
+    "what should i choose",
+    "what do you suggest"
+   ],
+   "reply": "It depends on your goal. SitePulse is for seeing and tracking your construction site, and OfficePulse is for managing your workforce and tasks. Tell me more about your needs, or request a demo and our team will advise you."
+  },
+  {
+   "questions": [
+    "difference between sitepulse and officepulse",
+    "sitepulse versus officepulse",
+    "compare sitepulse and officepulse",
+    "how are they different"
+   ],
+   "reply": "SitePulse focuses on the site itself, with 3D BIM models, a digital twin, cranes and deliveries. OfficePulse focuses on people, with workforce visibility, task assignment and progress monitoring."
+  },
+  {
+   "questions": [
+    "can i use both",
+    "can they work together",
+    "use both solutions",
+    "do they work together",
+    "can i combine them"
+   ],
+   "reply": "Many teams will want both site visibility and workforce visibility. To confirm that, please request a demo or tap Contact us and our team will answer in detail."
+  },
+  {
+   "questions": [
+    "how many solutions do you have",
+    "how many products",
+    "how many solutions are there"
+   ],
+   "reply": "We currently have two solutions: SitePulse and OfficePulse."
+  },
+  {
+   "questions": [
+    "who is sitepulse for",
+    "who uses sitepulse",
+    "who is it for",
+    "target users for sitepulse"
+   ],
+   "reply": "SitePulse is made for construction teams who want a complete digital view of their project, such as project managers, site teams and stakeholders.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "who is officepulse for",
+    "who uses officepulse",
+    "who should use officepulse"
+   ],
+   "reply": "OfficePulse is made for teams that need to coordinate people and tasks, such as site managers and operations teams.",
+   "show": "OfficePulse"
+  },
+  {
+   "questions": [
+    "what are the benefits of sitepulse",
+    "why use sitepulse",
+    "benefits of sitepulse",
+    "why should i choose sitepulse",
+    "what problem does sitepulse solve"
+   ],
+   "reply": "SitePulse brings your 3D model and real-world site activity together, so you can understand project status, track equipment and deliveries, and review progress in one place.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "what are the benefits of officepulse",
+    "why use officepulse",
+    "benefits of officepulse",
+    "why should i choose officepulse",
+    "what problem does officepulse solve"
+   ],
+   "reply": "OfficePulse gives real-time visibility of your workforce, which improves site coordination, helps you monitor work progress and optimise how resources are allocated.",
+   "show": "OfficePulse"
+  },
+  {
+   "questions": [
+    "what is construction intelligence",
+    "construction intelligence"
+   ],
+   "reply": "Construction intelligence means joining your design models with real site data, so you can make faster, better-informed decisions during a project.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "model explorer",
+    "what is the model explorer",
+    "explore the model"
+   ],
+   "reply": "The model explorer in SitePulse lets you browse the elements of your 3D model and look at their information.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "model validation",
+    "model data validation",
+    "validate my model",
+    "check model data",
+    "what is model data validation"
+   ],
+   "reply": "Model data validation in SitePulse helps you check that the information in your model is complete and consistent.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "construction status",
+    "construction status tracking",
+    "track construction status",
+    "project status"
+   ],
+   "reply": "Construction status tracking in SitePulse shows the status of the work, so you can see what is done and what is still in progress.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "project dashboard",
+    "what is the project dashboard",
+    "dashboard in sitepulse",
+    "sitepulse dashboard"
+   ],
+   "reply": "The project dashboard in SitePulse gives you a clear overview of your project in one place.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "real time dashboard",
+    "real-time dashboard",
+    "officepulse dashboard",
+    "dashboard in officepulse"
+   ],
+   "reply": "The real-time dashboard in OfficePulse gives you a live overview of your workforce and tasks.",
+   "show": "OfficePulse"
+  },
+  {
+   "questions": [
+    "task assignment",
+    "assign tasks",
+    "how do i assign tasks",
+    "can i assign work"
+   ],
+   "reply": "Yes. OfficePulse supports task assignment, so you can give work to the right people and keep track of it.",
+   "show": "OfficePulse"
+  },
+  {
+   "questions": [
+    "task progress",
+    "monitor task progress",
+    "track task progress",
+    "task progress monitoring"
+   ],
+   "reply": "OfficePulse lets you monitor task progress, so you always know how work is moving along.",
+   "show": "OfficePulse"
+  },
+  {
+   "questions": [
+    "movement tracking",
+    "track movement",
+    "workforce movement",
+    "where are my workers"
+   ],
+   "reply": "OfficePulse includes movement tracking, which gives visibility of workforce movements for better site coordination.",
+   "show": "OfficePulse"
+  },
+  {
+   "questions": [
+    "workforce allocation",
+    "allocate workers",
+    "resource allocation",
+    "allocate resources"
+   ],
+   "reply": "Workforce allocation in OfficePulse helps you place your people where they are needed most, and optimise your resources.",
+   "show": "OfficePulse"
+  },
+  {
+   "questions": [
+    "workforce visualisation",
+    "workforce visualization",
+    "visualise workforce",
+    "see my workforce"
+   ],
+   "reply": "Workforce visualisation in OfficePulse gives you a clear picture of your site personnel in real time.",
+   "show": "OfficePulse"
+  },
+  {
+   "questions": [
+    "performance insights",
+    "insights",
+    "analytics",
+    "reports",
+    "performance"
+   ],
+   "reply": "OfficePulse provides performance insights, so you can understand how work and resources are performing.",
+   "show": "OfficePulse"
+  },
+  {
+   "questions": [
+    "what is a dashboard",
+    "what does dashboard mean"
+   ],
+   "reply": "A dashboard is a single screen that shows the most important information of your project at a glance, using charts, numbers and status indicators."
+  },
+  {
+   "questions": [
+    "what does bim stand for",
+    "explain bim",
+    "what is building information modelling",
+    "what is building information modeling"
+   ],
+   "reply": "BIM stands for Building Information Modelling. It is a 3D model of a building that also carries data about its parts, such as materials, sizes and schedules.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "why do i need a digital twin",
+    "benefits of digital twin",
+    "what is the benefit of a digital twin"
+   ],
+   "reply": "A digital twin lets you see and understand your real project in a digital copy, which helps you spot issues early and plan better.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "what is workforce management",
+    "workforce management"
+   ],
+   "reply": "Workforce management means planning, assigning and tracking people and their tasks, so the right people are in the right place at the right time.",
+   "show": "OfficePulse"
+  },
+  {
+   "questions": [
+    "is there a free trial",
+    "free trial",
+    "can i try it",
+    "can i try it for free",
+    "is the demo free",
+    "is it free"
+   ],
+   "reply": "I am not able to confirm trial or demo terms. Please tap Request a Demo and our team will explain the options."
+  },
+  {
+   "questions": [
+    "how long does it take to set up",
+    "how long is implementation",
+    "how fast can i start",
+    "how long to implement",
+    "setup time",
+    "how long is the demo"
+   ],
+   "reply": "Timelines depend on your project. To confirm that, please request a demo or tap Contact us and our team will answer in detail."
+  },
+  {
+   "questions": [
+    "do you provide training",
+    "training",
+    "do you offer support",
+    "customer support",
+    "technical support",
+    "after sales support"
+   ],
+   "reply": "To confirm that, please request a demo or tap Contact us and our team will answer in detail."
+  },
+  {
+   "questions": [
+    "can it be customised",
+    "can it be customized",
+    "customization",
+    "customisation",
+    "can you customise it for us",
+    "tailor made"
+   ],
+   "reply": "We would be happy to discuss your needs. Please request a demo or contact us and our team will go through what is possible."
+  },
+  {
+   "questions": [
+    "does it work on mobile",
+    "mobile app",
+    "phone app",
+    "can i use it on my phone",
+    "does it work on tablet",
+    "works on ipad",
+    "is there an app"
+   ],
+   "reply": "To confirm that, please request a demo or tap Contact us and our team will answer in detail."
+  },
+  {
+   "questions": [
+    "is it secure",
+    "security",
+    "is my data safe",
+    "data security",
+    "data privacy",
+    "where is data stored",
+    "cloud or on premise",
+    "is it cloud based"
+   ],
+   "reply": "Data protection matters. To confirm that, please request a demo or tap Contact us and our team will answer in detail."
+  },
+  {
+   "questions": [
+    "can it integrate with other systems",
+    "integration",
+    "integrations",
+    "does it connect to other software",
+    "api",
+    "can it integrate with revit"
+   ],
+   "reply": "To confirm that, please request a demo or tap Contact us and our team will answer in detail."
+  },
+  {
+   "questions": [
+    "what file formats are supported",
+    "supported formats",
+    "ifc",
+    "can i upload my model",
+    "upload bim model",
+    "does it support revit",
+    "what file types"
+   ],
+   "reply": "To confirm that, please request a demo or tap Contact us and our team will answer in detail."
+  },
+  {
+   "questions": [
+    "what languages is the software",
+    "is the software multilingual",
+    "does the software support other languages"
+   ],
+   "reply": "I can speak many languages, which you can choose in Avatar settings. For the software languages, to confirm that, please request a demo or tap Contact us and our team will answer in detail."
+  },
+  {
+   "questions": [
+    "where is your company",
+    "where is your office",
+    "company location",
+    "address",
+    "where are you located",
+    "where are you based"
+   ],
+   "reply": "Please tap Contact us and our team will share the details with you."
+  },
+  {
+   "questions": [
+    "website",
+    "website link",
+    "your website",
+    "open website",
+    "where can i find more information",
+    "more information"
+   ],
+   "reply": "Tap the Website link button in the solution details to visit our website, or tap Contact us to reach our team."
+  },
+  {
+   "questions": [
+    "what do you do",
+    "what does your company do",
+    "what is this website",
+    "what is this",
+    "what is this hub",
+    "technology solutions hub"
+   ],
+   "reply": "This is the Technology Solutions Hub. We build smart solutions for construction and workforce management, including SitePulse and OfficePulse."
+  },
+  {
+   "questions": [
+    "tell me more",
+    "more",
+    "go on",
+    "continue",
+    "what else",
+    "anything else"
+   ],
+   "reply": "I can tell you about the features of SitePulse or OfficePulse, or help you request a demo. Which would you like?"
+  },
+  {
+   "questions": [
+    "i am interested",
+    "i am interested in your solutions",
+    "i want to know more",
+    "i want to buy",
+    "i want to purchase",
+    "how do i buy",
+    "how can i get started",
+    "get started",
+    "how to start"
+   ],
+   "reply": "Wonderful! The best first step is to tap Request a Demo, choose the solution you are interested in, and send us your details."
+  },
+  {
+   "questions": [
+    "what are the key features",
+    "key features",
+    "show me features",
+    "list the features",
+    "what features do you have"
+   ],
+   "reply": "Which solution would you like? SitePulse offers things like a 3D BIM viewer and digital twin, and OfficePulse offers workforce tracking and task monitoring."
+  },
+  {
+   "questions": [
+    "can you track my project",
+    "can you monitor my site",
+    "monitor my construction site",
+    "track my construction site",
+    "site monitoring"
+   ],
+   "reply": "Yes, SitePulse is built for that. It connects your 3D BIM model with real site operations, including status, cranes and deliveries.",
+   "show": "SitePulse"
+  },
+  {
+   "questions": [
+    "manage my staff",
+    "manage my employees",
+    "manage workers",
+    "staff management",
+    "employee management",
+    "manage my team"
+   ],
+   "reply": "OfficePulse helps you manage your workforce with task assignment, progress monitoring, movement tracking and allocation.",
+   "show": "OfficePulse"
+  }
+ ]
+}
