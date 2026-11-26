@@ -85,6 +85,57 @@ footer{color:var(--muted);text-align:center;font-size:.8rem;padding:20px 0 30px}
 #avp h4{margin:10px 0 5px;color:var(--glow);font:600 .64rem ui-monospace,Menlo,monospace;letter-spacing:.12em}
 .chs{display:flex;flex-wrap:wrap;gap:6px}.ch{border:1px solid var(--line);background:transparent;color:var(--text);border-radius:999px;padding:5px 11px;font:inherit;cursor:pointer}
 .ch.on{background:var(--glow);color:#021326;border-color:var(--glow)}.sw{width:26px;height:26px;border-radius:50%;padding:0;border:2px solid rgba(255,255,255,.25);cursor:pointer}.sw.on{border-color:#fff;box-shadow:0 0 0 2px var(--glow)}
+.status-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 15px;
+        border-radius: 30px;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+        border: 1px solid transparent;
+        white-space: nowrap;
+    }
+
+    /* Concept Preview */
+    .concept {
+        color: #2563eb;
+        background: #eff6ff;
+        border-color: #bfdbfe;
+    }
+
+    /* Under Active Development */
+    .development {
+        color: #b45309;
+        background: #fffbeb;
+        border-color: #fde68a;
+    }
+
+    /* Feedback Welcome */
+    .feedback {
+        color: #15803d;
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+    }
+
+    .status-icon {
+        font-size: 15px;
+    }
+
+    @media (max-width: 600px) {
+        .status-container {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
 @media(max-width:820px){.hero,.detail{grid-template-columns:1fr}.stage{order:-1;height:62vh}.hud.b{display:none}}
 </style>
 </head>
@@ -154,7 +205,7 @@ footer{color:var(--muted);text-align:center;font-size:.8rem;padding:20px 0 30px}
     "good evening"
    ],
    "reply": [
-    "Hello! I am your holographic guide. Ask me about SitePulse or OfficePulse.",
+    "Hello! I am Jennie, your AI Sales Representative. Ask me about SitePulse or OfficePulse.",
     "Hi there! How can I help you today?"
    ]
   },
@@ -174,7 +225,7 @@ footer{color:var(--muted);text-align:center;font-size:.8rem;padding:20px 0 30px}
     "introduce yourself",
     "tell me about yourself"
    ],
-   "reply": "I am your holographic guide for the Technology Solutions Hub. I can explain our solutions, show you their key features, and help you request a live demo."
+   "reply": "I am Jennie, your AI Sales Representative for the Technology Solutions Hub. I can explain our solutions, show you their key features, and help you request a live demo."
   },
   {
    "questions": [
@@ -1089,9 +1140,9 @@ const S=[
 //{ic:'🧠',n:'AI & Machine Learning',t:'Models that learn from your data',d:'Practical AI that learns from your data to forecast, classify and automate decisions, with models trained and tuned for your business.',f:['Predictive analytics','Document and image recognition','Smart assistants and chatbots','Anomaly detection','Model monitoring']},
 //{ic:'🔌',n:'MCP & API Integrations',t:'Connect systems and AI assistants',d:'Connect your systems and AI assistants through secure APIs and Model Context Protocol servers, so data flows where it is needed.',f:['Custom RESTful APIs','MCP servers for AI tools','Third-party connectors','Role-based access and audit log','Real-time synchronization']},
 //{ic:'⚙️',n:'Workflow Automation',t:'Less manual work, faster teams',d:'Replace repetitive manual steps with automated workflows, approvals and notifications that keep your teams moving.',f:['Visual workflow builder','Approvals and notifications','Scheduled tasks and triggers','Document and email automation','Performance dashboards']},
-{ic:'🧊',n:'SitePulse',t:'The Pulse of Your Construction Site',d:'SitePulse is an integrated construction intelligence platform that connects 3D BIM models with real-world site operations, providing a comprehensive digital view of the entire project.',f:['3D BIM Model Viewer','Geospatial Digital Twin','Model Explorer','Model Data Validation','Construction Status Tracking','Crane Position Monitoring ','Delivery and Vehicle Tracking','Project Dashboard','Progress History Playback']},
+{ic:'🧊',n:'SitePulse',a:'<span class="status-badge concept"><span class="status-icon">◉</span>Concept Preview</span>',t:'The Pulse of Your Construction Site',d:'SitePulse is an integrated construction intelligence platform that connects 3D BIM models with real-world site operations, providing a comprehensive digital view of the entire project.',f:['3D BIM Model Viewer','Geospatial Digital Twin','Model Explorer','Model Data Validation','Construction Status Tracking','Crane Position Monitoring ','Delivery and Vehicle Tracking','Project Dashboard','Progress History Playback']},
 //{ic:'🌐',n:'Custom Web Applications',t:'Apps built around how you work',d:'Web applications built around the way you work: fast, secure and easy to use on any device.',f:['Responsive design','Dashboards and reports','User roles and permissions','Cloud-ready and scalable','Ongoing support']},
-{ic:'💻',n:'OfficePulse',t:'Workforce and Task Monitoring',d:'A smart workforce management solution that provides real-time visibility of site personnel, task assignments, and workforce movements. Improve site coordination, monitor work progress, and optimise resource allocation through centralised workforce tracking.',f:['Workforce Visualisation','Task Assignment','Task Progress Monitoring','Movement Tracking','Workforce Allocation','Real-Time Dashboard','Performance Insights']}];
+{ic:'💻',n:'OfficePulse',a:'<span class="status-badge development"><span class="status-icon">⚙️</span>Under Active Development</span>',t:'Workforce and Task Monitoring',d:'A smart workforce management solution that provides real-time visibility of site personnel, task assignments, and workforce movements. Improve site coordination, monitor work progress, and optimise resource allocation through centralised workforce tracking.',f:['Workforce Visualisation','Task Assignment','Task Progress Monitoring','Movement Tracking','Workforce Allocation','Real-Time Dashboard','Performance Insights']}];
 const $=id=>document.getElementById(id),grid=$('grid'),det=$('detail'),cap=$('cap'),dlg=$('dlg');
 $('mini').innerHTML=[...Array(10)].map((_,i)=>`<s style="animation-delay:${i*.18}s"></s>`).join('');
 const bars=(i,k,n=9)=>[...Array(n)].map((_,j)=>`<s style="height:${20+((i*37+k*53+j*29)%70)}%"></s>`).join('');
@@ -1101,7 +1152,7 @@ let cur=-1;
 function show(i,speak,scroll){
   cur=i;const s=S[i];
   grid.querySelectorAll('.card').forEach((c,k)=>c.classList.toggle('on',k===i));
-  det.innerHTML=`<div class="panel"><h3>Product description</h3><h2 style="margin-top:0">${s.ic} ${s.n}</h2><p>${s.d}</p>
+  det.innerHTML=`<div class="panel"><h3>Product description</h3><h2 style="margin-top:0">${s.ic} ${s.n} ${s.a}</h2><p>${s.d}</p>
   <h3 style="margin-top:16px">Key features</h3><ul class="feat">${s.f.map(x=>`<li>${x}</li>`).join('')}</ul>
   <div class="links"><button class="btn" id="dBtn">Request a Demo</button><a class="btn ghost" href="${SITE}" target="_blank" rel="noopener">Website link ↗</a><button class="btn ghost" id="lBtn">🔊 Listen again</button></div></div>
   <div class="panel"><h3>Live demo</h3><div class="live"><div class="bar"><span class="dot"></span>LIVE · ${s.n.toUpperCase()}</div><div class="bars">${bars(i,0,14)}</div></div>
