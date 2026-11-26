@@ -2393,7 +2393,7 @@
     </script>
 
     <script type="module" id="leaflet-map-script">
-        import { getMapLayer, getMapLinks } from './transientmodelpulsesg-ground-map.js';
+        import { getMapLayer, getMapLinks } from './sitepulse-ground-map.js';
 
         const dialog = document.getElementById('leaflet-map-dialog');
         const leafletContainer = document.getElementById('leaflet-map');
@@ -2494,9 +2494,9 @@
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { IfcAPI, IFCPROJECT, IFCPRODUCT, IFCRELAGGREGATES, IFCRELNESTS, IFCRELCONTAINEDINSPATIALSTRUCTURE } from 'web-ifc';
-        import { createGroundMap, getMapLayer } from './transientmodelpulsesg-ground-map.js';
-        import { createVehicleSimulation } from './transientmodelpulsesg-vehicle.js';
-        import { buildExplorerTree } from './transientmodelpulsesg-explorer.js';
+        import { createGroundMap, getMapLayer } from './sitepulse-ground-map.js';
+        import { createVehicleSimulation } from './sitepulse-vehicle.js';
+        import { buildExplorerTree } from './sitepulse-explorer.js';
 
         const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
