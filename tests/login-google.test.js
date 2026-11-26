@@ -38,7 +38,8 @@ test('login redirects only for registered emails and clears sessions on rejectio
         showMsg: message => messages.push(message),
         readJSON: JSON.parse,
         GOOGLE_TOKEN_KEY: 'oauth_google_token_v1',
-        sessionStorage: { getItem: () => JSON.stringify({ accessToken: 'secret-token', expiresAt: 123 }) },
+        OUTLOOK_TOKEN_KEY: 'oauth_outlook_token_v1',
+        sessionStorage: { getItem: key => JSON.stringify({ accessToken: key === 'oauth_outlook_token_v1' ? 'outlook-token' : 'secret-token', expiresAt: 123 }) },
         location: {
             href: 'https://example.com/trimble-claude-mcp/pages/login/login.html?code=example',
             replace: url => redirects.push(url)
@@ -49,11 +50,15 @@ test('login redirects only for registered emails and clears sessions on rejectio
     await context.renderApp(null);
     assert.equal(signedOut, true);
     assert.deepEqual(redirects, []);
-    assert.equal(await context.renderApp({ email: 'user@example.com', hash: 'private-hash', salt: 'private-salt' }), true);
+    assert.equal(await context.renderApp({ email: 'user@example.com', provider: 'google', hash: 'private-hash', salt: 'private-salt' }), true);
     assert.deepEqual(redirects, ['https://example.com/trimble-claude-mcp/pages/login/testmain.html']);
     assert.equal(logs[1][1].accessToken, 'secret-token');
     assert.doesNotMatch(JSON.stringify(logs), /private-hash|private-salt/);
     assert.equal(requests, 1);
+    assert.equal(logs[1][0], 'Google token metadata:');
+    await context.renderApp({ email: 'user@example.com', provider: 'microsoft' });
+    assert.equal(logs.at(-1)[0], 'Outlook token metadata:');
+    assert.equal(logs.at(-1)[1].accessToken, 'outlook-token');
     responseBody = { alreadyRegistered: false };
     assert.equal(await context.renderApp({ email: 'user@example.com' }), false);
     assert.match(messages.at(-1), /not registered/);
@@ -66,7 +71,7 @@ test('login redirects only for registered emails and clears sessions on rejectio
     assert.equal(await context.renderApp({ email: 'user@example.com' }), false);
     assert.match(messages.at(-1), /invalid registration response/);
     assert.equal(cleared, 3);
-    assert.equal(redirects.length, 1);
+    assert.equal(redirects.length, 2);
 });
 
 function createHarness() {

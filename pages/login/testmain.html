@@ -145,10 +145,10 @@ body[hidden] {
 
     <section class="welcome">
         <h1>Welcome back, <span id="userName">User</span>!</h1>
-        <p>You have successfully signed in. What would you like to do today?</p>
+        <p id="signed-in-provider">You have successfully signed in. What would you like to do today?</p>
     </section>
 
-    <section class="card" aria-labelledby="gmail-title" style="margin-top: 30px;">
+    <section class="card" id="gmail-section" aria-labelledby="gmail-title" style="margin-top: 30px;" hidden>
         <h3 id="gmail-title">Gmail (read-only)</h3>
         <p id="gmail-status" role="status">Click to read your five most recent inbox messages.</p>
         <button type="button" id="read-gmail">Read Gmail</button>
@@ -156,7 +156,7 @@ body[hidden] {
         <ul id="gmail-messages"></ul>
     </section>
 
-    <section class="card" aria-labelledby="outlook-title" style="margin-top: 30px;">
+    <section class="card" id="outlook-section" aria-labelledby="outlook-title" style="margin-top: 30px;" hidden>
         <h3 id="outlook-title">Outlook (read-only)</h3>
         <p id="outlook-status" role="status">Click to read your five most recent inbox messages.</p>
         <button type="button" id="read-outlook">Read Outlook</button>
@@ -268,13 +268,20 @@ function checkLogin() {
             id: user.id, email: user.email, name: user.name,
             provider: user.provider, createdAt: user.createdAt
         });
-        const googleToken = JSON.parse(sessionStorage.getItem(GOOGLE_TOKEN_KEY) || 'null');
-        console.log('Google token metadata:', {
-            available: !!googleToken?.accessToken,
-            accessToken: googleToken?.accessToken || null,
-            expiresAt: googleToken?.expiresAt,
-            email: googleToken?.email
-        });
+        const providerName = user.provider === 'microsoft' ? 'Outlook' : user.provider === 'google' ? 'Google' : 'Facebook';
+        document.getElementById('signed-in-provider').textContent = `You have successfully signed in with ${providerName}.`;
+        document.getElementById('gmail-section').hidden = user.provider !== 'google';
+        document.getElementById('outlook-section').hidden = user.provider !== 'microsoft';
+        if (user.provider === 'google' || user.provider === 'microsoft') {
+            const tokenKey = user.provider === 'microsoft' ? OUTLOOK_TOKEN_KEY : GOOGLE_TOKEN_KEY;
+            const token = JSON.parse(sessionStorage.getItem(tokenKey) || 'null');
+            console.log(`${providerName} token metadata:`, {
+                available: !!token?.accessToken,
+                accessToken: token?.accessToken || null,
+                expiresAt: token?.expiresAt,
+                email: token?.email
+            });
+        }
         readGmailButton.disabled = user.provider !== 'google';
         if (user.provider !== 'google') gmailStatus.textContent = 'Sign in with Google and allow Gmail access to read your inbox.';
         readOutlookButton.disabled = user.provider !== 'microsoft';

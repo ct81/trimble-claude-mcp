@@ -21,7 +21,7 @@ function createHarness(options = {}) {
         getItem: key => values.get(key) ?? null,
         removeItem: key => values.delete(key)
     });
-    const elements = Object.fromEntries(['gmail-status', 'gmail-messages', 'read-gmail', 'outlook-status', 'outlook-messages', 'read-outlook', 'userName', 'account-name', 'account-email'].map(id =>
+    const elements = Object.fromEntries(['gmail-status', 'gmail-messages', 'read-gmail', 'outlook-status', 'outlook-messages', 'read-outlook', 'userName', 'account-name', 'account-email', 'signed-in-provider', 'gmail-section', 'outlook-section'].map(id =>
         [id, { children: [], replaceChildren() { this.children = []; },
             appendChild(child) { this.children.push(child); }, addEventListener() {} }]));
     const calls = [];
@@ -74,6 +74,11 @@ test('Outlook inbox uses the Microsoft token and clears it on sign-out', async (
     harness.context.checkLogin();
     assert.equal(harness.elements['account-name'].textContent, 'Outlook User');
     assert.equal(harness.elements['read-outlook'].disabled, false);
+    assert.equal(harness.elements['gmail-section'].hidden, true);
+    assert.equal(harness.elements['outlook-section'].hidden, false);
+    assert.match(harness.elements['signed-in-provider'].textContent, /Outlook/);
+    assert.equal(harness.logs.at(-1)[0], 'Outlook token metadata:');
+    assert.equal(harness.logs.at(-1)[1].accessToken, 'test-token');
     harness.context.fetch = async (url, options) => {
         assert.match(url, /^https:\/\/graph.microsoft.com\/v1.0\/me\/mailFolders\/inbox\/messages/);
         assert.equal(options.headers.Authorization, 'Bearer test-token');

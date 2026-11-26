@@ -689,13 +689,17 @@
       id: user.id, email: user.email, name: user.name,
       provider: user.provider, createdAt: user.createdAt
     });
-    const googleToken = readJSON(sessionStorage.getItem(GOOGLE_TOKEN_KEY));
-    console.log('Google token metadata:', {
-      available: !!googleToken?.accessToken,
-      accessToken: googleToken?.accessToken || null,
-      expiresAt: googleToken?.expiresAt,
-      email: googleToken?.email
-    });
+    if (user.provider === 'google' || user.provider === 'microsoft') {
+      const providerName = user.provider === 'microsoft' ? 'Outlook' : 'Google';
+      const tokenKey = user.provider === 'microsoft' ? OUTLOOK_TOKEN_KEY : GOOGLE_TOKEN_KEY;
+      const token = readJSON(sessionStorage.getItem(tokenKey));
+      console.log(`${providerName} token metadata:`, {
+        available: !!token?.accessToken,
+        accessToken: token?.accessToken || null,
+        expiresAt: token?.expiresAt,
+        email: token?.email
+      });
+    }
     location.replace(new URL('./testmain.html', location.href).href);
     return true;
   }
