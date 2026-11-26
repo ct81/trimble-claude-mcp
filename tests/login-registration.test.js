@@ -156,7 +156,7 @@ test('Build the Impossible Q&A data includes the Chester email action in both so
     assert.equal(accepted.status, 200);
     assert.equal(accepted.data.sent, true);
     assert.deepEqual(messages, [{
-      to: 'chester.tan@trimble.com',
+      to: 'noodletan81@gmail.com',
       subject: 'Build the Impossible',
       text: 'https://ct81.github.io/trimble-claude-mcp/pages/landing/buildtheimpossible.html'
     }]);
