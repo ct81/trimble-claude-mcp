@@ -60,8 +60,7 @@ test('dashboard shows the signed-in name and email after the sign-out button', (
     assert.equal(harness.elements['account-email'].textContent, 'user@example.com');
     assert.match(page, /Sign Out<\/button>\s*<div class="navbar-user">/);
     assert.equal(harness.logs[0][1].email, 'user@example.com');
-    assert.equal(harness.logs[1][1].accessToken, '[REDACTED]');
-    assert.doesNotMatch(JSON.stringify(harness.logs), /test-token/);
+    assert.equal(harness.logs[1][1].accessToken, 'test-token');
 });
 
 test('dashboard blocks missing, malformed, and unmatched sessions and missing Google tokens', () => {

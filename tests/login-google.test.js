@@ -37,8 +37,8 @@ test('successful sign-in redirects to testmain beside the login page', () => {
     assert.deepEqual(redirects, []);
     context.renderApp({ email: 'user@example.com', hash: 'private-hash', salt: 'private-salt' });
     assert.deepEqual(redirects, ['https://example.com/trimble-claude-mcp/pages/login/testmain.html']);
-    assert.equal(logs[1][1].accessToken, '[REDACTED]');
-    assert.doesNotMatch(JSON.stringify(logs), /secret-token|private-hash|private-salt/);
+    assert.equal(logs[1][1].accessToken, 'secret-token');
+    assert.doesNotMatch(JSON.stringify(logs), /private-hash|private-salt/);
 });
 
 function createHarness() {

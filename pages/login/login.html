@@ -695,7 +695,7 @@
     const googleToken = readJSON(sessionStorage.getItem(GOOGLE_TOKEN_KEY));
     console.log('Google token metadata:', {
       available: !!googleToken?.accessToken,
-      accessToken: googleToken?.accessToken ? '[REDACTED]' : null,
+      accessToken: googleToken?.accessToken || null,
       expiresAt: googleToken?.expiresAt,
       email: googleToken?.email
     });
