@@ -29,7 +29,11 @@ Failed registry requests return HTTP 502, not an unregistered result.
 
 Signup displays “You have registered” for a match. Otherwise it creates only
 a local browser demo account. The registry is not an authentication or
-authorization mechanism. The published JSON is publicly readable; do not put
+server-side authorization mechanism. All login-page sign-ins (including restored
+sessions) must match the published registry before redirecting to the dashboard.
+Missing emails or failed checks clear the login session and Google token.
+This is a client-side login gate, not protection for server APIs.
+The published JSON is publicly readable; do not put
 private email addresses or credentials in it.
 
 ## MCP connector setup

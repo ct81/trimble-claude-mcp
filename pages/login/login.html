@@ -439,8 +439,7 @@
               email: user.email
             }));
             hideConnecting();
-            renderApp(user);
-            showMsg('Signed in with Google.', 'ok');
+            if (await renderApp(user)) showMsg('Signed in with Google.', 'ok');
           } catch (error) {
             fail(error.message || 'Google sign-in failed.');
           }
@@ -573,8 +572,7 @@
       } else {
         setSession(user);
         history.replaceState({}, '', location.pathname);
-        renderApp(user);
-        showMsg(`Signed in with ${LABELS[provider]}.`, 'ok');
+        if (await renderApp(user)) showMsg(`Signed in with ${LABELS[provider]}.`, 'ok');
       }
       return true;
 
@@ -609,7 +607,7 @@
   }
 
   /* Message from the popup → finish sign-in in the opener */
-  window.addEventListener('message', (e) => {
+  window.addEventListener('message', async (e) => {
     if (e.origin !== location.origin) return;
     const d = e.data;
     if (!d || d.source !== 'oauth-demo') return;
@@ -625,8 +623,7 @@
     }
     if (!user) return showMsg('Sign-in failed: account record not found.', 'err');
     setSession(user);
-    renderApp(user);
-    showMsg(`Signed in with ${LABELS[d.provider] || d.provider}.`, 'ok');
+    if (await renderApp(user)) showMsg(`Signed in with ${LABELS[d.provider] || d.provider}.`, 'ok');
   });
 
   /* ═══════════════ EMAIL + PASSWORD (local demo) ═══════════════ */
@@ -709,8 +706,32 @@
   }
 
   /* ═══════════════ RENDER ═══════════════ */
-  function renderApp(user) {
+  async function renderApp(user) {
     if (!user) return signOut();
+    try {
+      const response = await fetch('https://trimble-claude-mcp-g86i.onrender.com/api/login/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email }),
+        signal: AbortSignal.timeout(15000)
+      });
+      if (!response.headers.get('content-type')?.includes('application/json')) {
+        throw new Error('Registration check is unavailable. Check the Render deployment and try again.');
+      }
+      const registration = await response.json();
+      if (!response.ok) throw new Error(registration.error || 'Could not check your registration.');
+      if (typeof registration.alreadyRegistered !== 'boolean') throw new Error('The server returned an invalid registration response.');
+      if (!registration.alreadyRegistered) {
+        clearSession();
+        showMsg('Your email is not registered with us. Contact the administrator for access.', 'err');
+        return false;
+      }
+    } catch (error) {
+      clearSession();
+      console.error('Sign-in registration check failed:', error);
+      showMsg(error.message || 'Could not check your registration.', 'err');
+      return false;
+    }
     console.log('Signed-in user:', {
       id: user.id, email: user.email, name: user.name,
       provider: user.provider, createdAt: user.createdAt
@@ -723,6 +744,7 @@
       email: googleToken?.email
     });
     location.replace(new URL('./testmain.html', location.href).href);
+    return true;
   }
 
   function signOut() {

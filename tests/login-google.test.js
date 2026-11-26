@@ -12,18 +12,30 @@ const start = page.indexOf('  function signInWithGoogle()');
 const end = page.indexOf('  /* ═══════════════ OAUTH CALLBACK', start);
 assert.ok(start >= 0 && end > start);
 
-test('successful sign-in redirects without a registration lookup', () => {
-    const start = page.indexOf('  function renderApp(user)');
+test('login redirects only for registered emails and clears sessions on rejection or lookup errors', async () => {
+    const start = page.indexOf('  async function renderApp(user)');
     const end = page.indexOf('  function signOut()', start);
     assert.ok(start >= 0 && end > start);
     const redirects = [];
     const logs = [];
     let requests = 0;
+    let responseBody = { alreadyRegistered: true };
+    let responseOK = true;
+    let cleared = 0;
+    const messages = [];
     let signedOut = false;
     const context = vm.createContext({
         URL,
+        AbortSignal,
         console: { log: (...args) => logs.push(args), error() {} },
-        fetch: () => { requests++; },
+        fetch: async (url, options) => {
+            requests++;
+            assert.equal(url, 'https://trimble-claude-mcp-g86i.onrender.com/api/login/register');
+            assert.deepEqual(JSON.parse(options.body), { email: 'user@example.com' });
+            return { ok: responseOK, headers: { get: () => 'application/json' }, json: async () => responseBody };
+        },
+        clearSession: () => { cleared++; },
+        showMsg: message => messages.push(message),
         readJSON: JSON.parse,
         GOOGLE_TOKEN_KEY: 'oauth_google_token_v1',
         sessionStorage: { getItem: () => JSON.stringify({ accessToken: 'secret-token', expiresAt: 123 }) },
@@ -34,14 +46,27 @@ test('successful sign-in redirects without a registration lookup', () => {
         signOut() { signedOut = true; }
     });
     vm.runInContext(page.slice(start, end), context);
-    context.renderApp(null);
+    await context.renderApp(null);
     assert.equal(signedOut, true);
     assert.deepEqual(redirects, []);
-    context.renderApp({ email: 'user@example.com', hash: 'private-hash', salt: 'private-salt' });
+    assert.equal(await context.renderApp({ email: 'user@example.com', hash: 'private-hash', salt: 'private-salt' }), true);
     assert.deepEqual(redirects, ['https://example.com/trimble-claude-mcp/pages/login/testmain.html']);
     assert.equal(logs[1][1].accessToken, 'secret-token');
     assert.doesNotMatch(JSON.stringify(logs), /private-hash|private-salt/);
-    assert.equal(requests, 0);
+    assert.equal(requests, 1);
+    responseBody = { alreadyRegistered: false };
+    assert.equal(await context.renderApp({ email: 'user@example.com' }), false);
+    assert.match(messages.at(-1), /not registered/);
+    responseOK = false;
+    responseBody = { error: 'Registry unavailable' };
+    assert.equal(await context.renderApp({ email: 'user@example.com' }), false);
+    assert.equal(messages.at(-1), 'Registry unavailable');
+    responseOK = true;
+    responseBody = {};
+    assert.equal(await context.renderApp({ email: 'user@example.com' }), false);
+    assert.match(messages.at(-1), /invalid registration response/);
+    assert.equal(cleared, 3);
+    assert.equal(redirects.length, 1);
 });
 
 function createHarness() {
@@ -73,7 +98,7 @@ function createHarness() {
         },
         upsertUser: profile => profile,
         setSession: user => sessions.push(user.email),
-        renderApp() {}
+        renderApp() { return true; }
     });
     vm.runInContext(page.slice(start, end), context);
     return { context, messages, sessions, profiles, storedTokens, get options() { return options; },
