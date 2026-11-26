@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ct81.github.io/trimble-claude-mcp/sitemap.xml
