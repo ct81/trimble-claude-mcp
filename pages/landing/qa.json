@@ -12,7 +12,7 @@
     "good evening"
    ],
    "reply": [
-    "Hello! I am your holographic guide. Ask me about SitePulse or OfficePulse.",
+    "Hello! I am Jennie, your AI Sales Representative. Ask me about SitePulse or OfficePulse.",
     "Hi there! How can I help you today?"
    ]
   },
@@ -32,7 +32,7 @@
     "introduce yourself",
     "tell me about yourself"
    ],
-   "reply": "I am your holographic guide for the Technology Solutions Hub. I can explain our solutions, show you their key features, and help you request a live demo."
+   "reply": "I am Jennie, your AI Sales Representative for the Technology Solutions Hub. I can explain our solutions, show you their key features, and help you request a live demo."
   },
   {
    "questions": [
@@ -172,6 +172,15 @@
   },
   {
    "questions": [
+    "send an email to chester",
+    "send email to chester",
+    "email chester"
+   ],
+   "reply": "I sent an email to Chester at chester.tan@trimble.com using Resend. The subject is Build the Impossible, and the message is the link to this page.",
+   "action": "sendChesterEmail"
+  },
+  {
+   "questions": [
     "contact",
     "contact you",
     "contact us",
@@ -246,7 +255,7 @@
     "are you an ai",
     "are you a hologram"
    ],
-   "reply": "I am a holographic digital guide, not a real person, but I am happy to help you like one."
+   "reply": "I am Jennie, your digital guide, not a real person, but I am happy to help you like one."
   },
   {
    "questions": [

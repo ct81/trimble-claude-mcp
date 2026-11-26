@@ -7,6 +7,21 @@ import express from 'express';
 import test from 'node:test';
 import { createLoginRegistrationRouter } from '../src/login-registration.js';
 
+test('Build the Impossible Q&A data includes the Chester email action in both sources', () => {
+  const html = readFileSync(new URL('../pages/landing/buildtheimpossible.html', import.meta.url), 'utf8');
+  const embeddedData = html.match(/<script type="application\/json" id="qaData">([\s\S]*?)<\/script>/);
+  assert.ok(embeddedData);
+  const qaSources = [
+    JSON.parse(embeddedData[1]),
+    JSON.parse(readFileSync(new URL('../pages/landing/qa.json', import.meta.url), 'utf8'))
+  ];
+  for (const data of qaSources) {
+    assert.ok(data.entries.some(entry =>
+      entry.action === 'sendChesterEmail' && entry.questions.includes('send an email to chester')
+    ));
+  }
+});
+
   test('signup emails the administrator with validated name and email and surfaces Resend failure', async t => {
     const previousAdminEmail = process.env.ADMIN_EMAIL;
     process.env.ADMIN_EMAIL = 'admin@example.com';
@@ -108,6 +123,45 @@ import { createLoginRegistrationRouter } from '../src/login-registration.js';
     fail = false;
     delete process.env.ADMIN_EMAIL;
     assert.equal((await request({ name: 'User', email: 'user@example.com', solution: 'SitePulse' })).status, 502);
+    assert.equal(messages.length, 1);
+  });
+
+  test('Chester email sends the fixed Resend message and limits repeat requests', async t => {
+    const messages = [];
+    let fail = true;
+    const app = express();
+    app.use('/api/login', createLoginRegistrationRouter(undefined, async message => {
+      if (fail) throw new Error('Resend unavailable');
+      messages.push(message);
+      return { id: 'test-email-id' };
+    }));
+    const server = app.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    t.after(() => new Promise(resolve => {
+      server.close(resolve);
+      server.closeAllConnections();
+    }));
+    const send = async () => {
+      const response = await fetch(`http://127.0.0.1:${server.address().port}/api/login/chester-email`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
+      });
+      return { status: response.status, data: await response.json() };
+    };
+
+    const failed = await send();
+    assert.equal(failed.status, 502);
+    assert.equal(failed.data.sent, undefined);
+    fail = false;
+    const accepted = await send();
+    assert.equal(accepted.status, 200);
+    assert.equal(accepted.data.sent, true);
+    assert.deepEqual(messages, [{
+      to: 'chester.tan@trimble.com',
+      subject: 'Build the Impossible',
+      text: 'https://ct81.github.io/trimble-claude-mcp/pages/landing/buildtheimpossible.html'
+    }]);
+    const limited = await send();
+    assert.equal(limited.status, 429);
     assert.equal(messages.length, 1);
   });
 

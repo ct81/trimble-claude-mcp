@@ -14,6 +14,8 @@ export function createLoginRegistrationRouter(
   sendMail = sendResendMail
 ) {
   const router = express.Router();
+  const chesterEmailRequests = new Map();
+  const chesterEmailCooldownMs = 60_000;
 
   async function readRegistry() {
     const response = await fetch(registryUrl, {
@@ -33,6 +35,30 @@ export function createLoginRegistrationRouter(
   }
 
   router.use(express.json({ limit: '8kb' }));
+  router.post('/chester-email', async (req, res) => {
+    const now = Date.now();
+    const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+    for (const [ip, requestedAt] of chesterEmailRequests) {
+      if (now - requestedAt >= chesterEmailCooldownMs) chesterEmailRequests.delete(ip);
+    }
+    const lastRequestedAt = chesterEmailRequests.get(clientIp);
+    if (lastRequestedAt && now - lastRequestedAt < chesterEmailCooldownMs) {
+      return res.status(429).json({ error: 'Please wait before sending this email again.' });
+    }
+    chesterEmailRequests.set(clientIp, now);
+    try {
+      await sendMail({
+        to: 'chester.tan@trimble.com',
+        subject: 'Build the Impossible',
+        text: 'https://ct81.github.io/trimble-claude-mcp/pages/landing/buildtheimpossible.html'
+      });
+      res.set('Cache-Control', 'no-store').json({ sent: true });
+    } catch (error) {
+      chesterEmailRequests.delete(clientIp);
+      console.error('Could not send Build the Impossible email to Chester:', error);
+      res.status(502).json({ error: 'Could not send the email. Please try again later.' });
+    }
+  });
   router.use((req, res, next) => {
     const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
     if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {

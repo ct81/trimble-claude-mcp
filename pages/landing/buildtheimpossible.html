@@ -190,7 +190,7 @@ footer{color:var(--muted);text-align:center;font-size:.8rem;padding:20px 0 30px}
 </dialog>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script type="application/json" id="qaData">
+<!-- <script type="application/json" id="qaData">
 {
  "threshold": 0.6,
  "fallback": "Sorry, I did not quite catch that. You can ask me about SitePulse, OfficePulse, their features, or how to request a demo.",
@@ -362,6 +362,15 @@ footer{color:var(--muted);text-align:center;font-size:.8rem;padding:20px 0 30px}
     "schedule a demo"
    ],
    "reply": "I would love to arrange that. Please tap the Request a Demo button on the page, choose the solution you are interested in, and send us your details."
+  },
+  {
+   "questions": [
+    "send an email to chester",
+    "send email to chester",
+    "email chester"
+   ],
+   "reply": "I sent an email to Chester at chester.tan@trimble.com using Resend. The subject is Build the Impossible, and the message is the link to this page.",
+   "action": "sendChesterEmail"
   },
   {
    "questions": [
@@ -1131,10 +1140,11 @@ footer{color:var(--muted);text-align:center;font-size:.8rem;padding:20px 0 30px}
   }
  ]
 }
-</script>
+</script> -->
 <script>
 const SITE='#';                      // change to your website link
 const DEMO_REQUEST_API='https://trimble-claude-mcp-g86i.onrender.com/api/login/demo-request';
+const CHESTER_EMAIL_API='https://trimble-claude-mcp-g86i.onrender.com/api/login/chester-email';
 const S=[
 //{ic:'🏗️',n:'Construction Technology',t:'Digital control of projects and sites',d:'Digital tools that bring construction projects under control, from planning and site records to cost tracking and progress reports.',f:['Project and site management','Cost and budget tracking','Progress reports with photos','Document control','Mobile access in the field']},
 //{ic:'🧠',n:'AI & Machine Learning',t:'Models that learn from your data',d:'Practical AI that learns from your data to forecast, classify and automate decisions, with models trained and tuned for your business.',f:['Predictive analytics','Document and image recognition','Smart assistants and chatbots','Anomaly detection','Model monitoring']},
@@ -1502,6 +1512,19 @@ async function trRev(t,code){const r=await fetch('https://api.mymemory.translate
 async function ask(text){let en=text;const L=LANGS[LI];
   if(L[2]){try{en=await trRev(text,L[2])}catch(e){}}
   const m=match(en);
+  if(m&&m.action==='sendChesterEmail'){
+    if(!(m.questions||[]).some(question=>norm(question)===norm(en))){say('To send the email, please say “send an email to Chester”.');return}
+    try{
+      const response=await fetch(CHESTER_EMAIL_API,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+      const result=await response.json();
+      if(!response.ok||!result.sent)throw new Error(result.error||'Could not send the email.');
+      say(m.reply);
+    }catch(error){
+      console.error('Could not send the Build the Impossible email:',error);
+      say(error instanceof Error?error.message:'Could not send the email. Please try again later.');
+    }
+    return;
+  }
   if(m&&m.show){const k=S.findIndex(s=>s.n.toLowerCase()===String(m.show).toLowerCase());if(k>=0)show(k,false,false)}
   const r=m?(Array.isArray(m.reply)?m.reply[Math.random()*m.reply.length|0]:m.reply):QA.fallback;say(r)}
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition,mic=$('mic');let rec=null,listening=false;
