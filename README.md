@@ -14,17 +14,23 @@ Node.js MCP server and OAuth backend for Trimble Connect, with a Firebase-hosted
 
 ## Browser demo registration
 
-Serve [the login page](pages/login/login.html) through the Node server (`npm start`).
-Email signup posts to `/api/login/register`, which adds the email to every
-project in [registered.json](pages/login/registered.json), without duplicating
-existing entries. When all projects already contain the email, signup displays
-“You have registered.” The endpoint saves emails only; passwords and local demo
-accounts remain in the browser. This registry is not an authentication or
-authorization mechanism.
+Email signup in [the login page](pages/login/login.html) posts to
+`https://trimble-claude-mcp-g86i.onrender.com/api/login/register`. Deploy the Node
+server on Render with `npm start` and allow `https://ct81.github.io` through its
+CORS policy if the page is hosted on GitHub Pages.
 
-The server must have write access to the registry. Use persistent storage for
-this file in deployments; an ephemeral filesystem loses registrations on redeploy.
-Do not publish the registry on a static host or commit real registrations.
+Despite its name, `/api/login/register` is a read-only lookup of the published
+`https://ct81.github.io/trimble-claude-mcp/pages/login/registered.json`.
+If the email exists in any project's `registeredEmails` (case-insensitive),
+it returns `alreadyRegistered: true`; otherwise it returns `false`. No emails
+are added or files saved. Update and publish [registered.json](pages/login/registered.json)
+to change the registry; GitHub Pages deployment/CDN updates may take time.
+Failed registry requests return HTTP 502, not an unregistered result.
+
+Signup displays “You have registered” for a match. Otherwise it creates only
+a local browser demo account. The registry is not an authentication or
+authorization mechanism. The published JSON is publicly readable; do not put
+private email addresses or credentials in it.
 
 ## MCP connector setup
 

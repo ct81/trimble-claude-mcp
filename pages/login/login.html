@@ -649,16 +649,16 @@
     if (button.disabled) return;
     button.disabled = true;
     try {
-      const response = await fetch('/api/login/register', {
+      const response = await fetch('https://trimble-claude-mcp-g86i.onrender.com/api/login/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
       if (!response.headers.get('content-type')?.includes('application/json')) {
-        throw new Error('Registration requires the Node server. Open this page on the server, not a static host.');
+        throw new Error('The registration endpoint did not return JSON. Check that the latest Node server is deployed on Render.');
       }
       const registration = await response.json();
-      if (!response.ok) throw new Error(registration.error || 'Could not save your registration.');
+      if (!response.ok) throw new Error(registration.error || 'Could not check your registration.');
       if (typeof registration.alreadyRegistered !== 'boolean') throw new Error('The server returned an invalid registration response.');
       if (registration.alreadyRegistered || users['email:' + email]) {
         showMsg('You have registered. Please log in.', 'err');

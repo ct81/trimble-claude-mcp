@@ -1,22 +1,32 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 import { once } from 'node:events';
 import express from 'express';
 import test from 'node:test';
 import { createLoginRegistrationRouter } from '../src/login-registration.js';
 
-test('registration fills missing projects, detects duplicates, and serializes concurrent saves', async t => {
-  const directory = await mkdtemp(path.join(tmpdir(), 'login-registration-'));
-  t.after(() => rm(directory, { recursive: true }));
-  const registryPath = path.join(directory, 'registered.json');
-  await writeFile(registryPath, JSON.stringify({ projects: [
+test('registration checks the published registry without adding emails and surfaces upstream failures', async t => {
+  const registry = { projects: [
     { projectName: 'SitePulse', projectId: 'one', registeredEmails: ['First@Example.com'] },
     { projectName: 'OfficePulse', projectId: 'two', registeredEmails: [] }
-  ] }));
+  ] };
+  let upstreamStatus = 200;
+  let upstreamBody = registry;
+  let reads = 0;
+  const upstream = express();
+  upstream.get('/registered.json', (_req, res) => {
+    reads++;
+    res.status(upstreamStatus).json(upstreamBody);
+  });
+  const registryServer = upstream.listen(0, '127.0.0.1');
+  await once(registryServer, 'listening');
+  t.after(() => new Promise(resolve => {
+    registryServer.close(resolve);
+    registryServer.closeAllConnections();
+  }));
   const app = express();
-  app.use('/api/login', createLoginRegistrationRouter(registryPath));
+  app.use('/api/login', createLoginRegistrationRouter(
+    `http://127.0.0.1:${registryServer.address().port}/registered.json`
+  ));
   const server = app.listen(0, '127.0.0.1');
   await once(server, 'listening');
   t.after(() => new Promise(resolve => {
@@ -31,21 +41,24 @@ test('registration fills missing projects, detects duplicates, and serializes co
   };
   const register = email => request('register', email);
 
-  assert.equal((await register(' first@example.com ')).data.alreadyRegistered, false);
+  const original = JSON.stringify(registry);
+  assert.equal((await register(' first@example.com ')).data.alreadyRegistered, true);
   assert.equal((await register('FIRST@example.com')).data.alreadyRegistered, true);
-  const saved = JSON.parse(await readFile(registryPath, 'utf8'));
-  assert.deepEqual(saved.projects[0].registeredEmails, ['First@Example.com']);
-  assert.deepEqual(saved.projects[1].registeredEmails, ['first@example.com']);
-  assert.equal(saved.projects[0].projectId, 'one');
-
-  const results = await Promise.all([register('second@example.com'), register('third@example.com')]);
-  assert.ok(results.every(result => result.status === 200));
-  const concurrent = JSON.parse(await readFile(registryPath, 'utf8'));
-  for (const project of concurrent.projects) {
-    assert.ok(project.registeredEmails.includes('second@example.com'));
-    assert.ok(project.registeredEmails.includes('third@example.com'));
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const result = await register('missing@example.com');
+    assert.equal(result.status, 200);
+    assert.equal(result.data.alreadyRegistered, false);
   }
-  const before = await readFile(registryPath, 'utf8');
+  assert.equal(JSON.stringify(registry), original);
+  const before = reads;
   assert.equal((await register('not-email')).status, 400);
-  assert.equal(await readFile(registryPath, 'utf8'), before);
+  assert.equal(reads, before);
+  upstreamStatus = 404;
+  assert.equal((await register('first@example.com')).status, 502);
+  upstreamStatus = 200;
+  upstreamBody = { projects: [{ projectName: 'Broken' }] };
+  const malformed = await register('first@example.com');
+  assert.equal(malformed.status, 502);
+  assert.match(malformed.data.error, /Could not read/);
+  assert.equal(malformed.data.alreadyRegistered, undefined);
 });

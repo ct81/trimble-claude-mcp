@@ -8,7 +8,7 @@ const start = page.indexOf('  async function handleSignup(');
 const end = page.indexOf('  async function handleLogin(', start);
 assert.ok(start >= 0 && end > start);
 
-test('signup waits for project registration and stops on duplicates or failed saves', async () => {
+test('signup waits for the published registry check and stops on duplicates or lookup failures', async () => {
   for (const outcome of ['success', 'duplicate', 'failure']) {
     const messages = [];
     let saved = false;
@@ -28,13 +28,13 @@ test('signup waits for project registration and stops on duplicates or failed sa
       renderApp() { redirected = true; }, setTimeout: callback => callback(),
       console: { error() {} }, showMsg: message => messages.push(message),
       fetch: async (url, options) => {
-        assert.equal(url, '/api/login/register');
+        assert.equal(url, 'https://trimble-claude-mcp-g86i.onrender.com/api/login/register');
         assert.equal(saved, false);
         submitted = JSON.parse(options.body);
         return {
           ok: outcome !== 'failure', headers: { get: () => 'application/json' },
           json: async () => outcome === 'failure'
-            ? { error: 'Could not save your registration.' }
+            ? { error: 'Could not check your registration.' }
             : { alreadyRegistered: outcome === 'duplicate' }
         };
       }
@@ -46,6 +46,6 @@ test('signup waits for project registration and stops on duplicates or failed sa
     assert.equal(redirected, outcome === 'success');
     assert.equal(button.disabled, false);
     if (outcome === 'duplicate') assert.match(messages.at(-1), /You have registered/);
-    if (outcome === 'failure') assert.match(messages.at(-1), /Could not save/);
+    if (outcome === 'failure') assert.match(messages.at(-1), /Could not check/);
   }
 });
