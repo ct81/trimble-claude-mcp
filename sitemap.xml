@@ -2,19 +2,11 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
     <url>
-        <loc>https://ct81.github.io/</loc>
-    </url>
-
-    <url>
         <loc>https://ct81.github.io/trimble-claude-mcp/</loc>
     </url>
 
     <url>
         <loc>https://ct81.github.io/trimble-claude-mcp/pages/landing/buildtheimpossible.html</loc>
-    </url>
-
-    <url>
-        <loc>https://ct81.github.io/trimble-claude-mcp/home.html</loc>
     </url>
 
 </urlset>
