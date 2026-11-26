@@ -92,7 +92,7 @@ footer{color:var(--muted);text-align:center;font-size:.8rem;padding:20px 0 30px}
     <span class="chip">WELCOME TO OUR HUB</span>
     <h1>One hub for every <em>solution</em> we build</h1>
     <p class="lead">Instead of promoting every application separately, explore all our technology solutions in one place. Pick a solution and your holographic guide will walk you through it.</p>
-    <div class="row"><button class="btn" id="intro">▶ Meet your guide</button><button class="btn ghost" id="mic">🎤 Talk</button><button class="btn ghost" id="mute">🔊 Voice on</button><button class="btn ghost" id="walk">🚶 Walk</button><button class="btn ghost" id="avb">⚙ Avatar</button><button class="btn ghost" id="zoom">🔍 Close-up</button></div><p class="lead" style="font-size:.82rem;margin-top:12px">Tip: move your finger or cursor over the avatar and she will point at it. Tap her face, hair, hands or body and she will react.</p>
+    <div class="row"><button class="btn" id="intro">▶ Meet your guide</button><button class="btn ghost" id="mic">🎤 Talk</button><button class="btn ghost" id="mute">🔊 Voice on</button><button class="btn ghost" id="avb">⚙ Avatar</button><button class="btn ghost" id="zoom">🔍 Close-up</button><button class="btn ghost" id="walk" style="visibility: collapse;">🚶 Walk</button></div><p class="lead" style="font-size:.82rem;margin-top:12px; visibility: collapse;">Tip: move your finger or cursor over the avatar and she will point at it. Tap her face, hair, hands or body and she will react.</p>
   </div>
   <div class="stage" id="stage">
     <canvas id="c"></canvas>
@@ -1109,7 +1109,7 @@ show(0,false,false);
 // voice + avatar state
 let muted=false,speaking=false,pulse=0,tmr=0;
 $('mute').onclick=()=>{muted=!muted;$('mute').textContent=muted?'🔇 Voice off':'🔊 Voice on';if(muted&&window.speechSynthesis)speechSynthesis.cancel()};
-$('intro').onclick=()=>say('Welcome to the Technology Solutions Hub. I am your holographic guide. Choose any solution below and I will show you what it does, its key features, and how to request a live demo.');
+$('intro').onclick=()=>say('Welcome to the Technology Solutions Hub. I am Jennie, your AI Sales Representative. Choose any solution below and I will show you what it does, its key features, and how to request a live demo.');
 const LANGS=[['English (US)','en-US',0],['English (UK)','en-GB',0],['Chinese','zh-CN','zh-CN'],['Malay','ms-MY','ms'],['Thai','th-TH','th'],['Filipino','fil-PH','tl'],['Korean','ko-KR','ko'],['Japanese','ja-JP','ja'],['Spanish','es-ES','es'],['German','de-DE','de'],['French','fr-FR','fr'],['Finnish','fi-FI','fi']];
 let LI=0,LANG_READY=false,trTok=0;const trC={};
 function voice(code){const v=window.speechSynthesis?speechSynthesis.getVoices():[],n=x=>x.lang.toLowerCase().replace('_','-'),c=code.toLowerCase(),b=c.split('-')[0],fem=/female|samantha|zira|aria|jenny|susan|karen|moira|tessa|fiona|hazel|libby|sonia|xiaoxiao|yunxi|nanami|sun-hi|premwadee|achara|blessica|yasmin|elvira|katja|denise|noora|heidi|amelie|google/i;
