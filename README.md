@@ -14,10 +14,19 @@ Node.js MCP server and OAuth backend for Trimble Connect, with a Firebase-hosted
 
 ## Browser demo registration
 
-Email signup in [the login page](pages/login/login.html) posts to
-`https://trimble-claude-mcp-g86i.onrender.com/api/login/register`. Deploy the Node
-server on Render with `npm start` and allow `https://ct81.github.io` through its
-CORS policy if the page is hosted on GitHub Pages.
+Sign-in in [the login page](pages/login/login.html) uses Google, Facebook, or
+Outlook; email/password login is not supported. The Sign up tab collects a full
+name and email. Create account posts to
+`https://trimble-claude-mcp-g86i.onrender.com/api/login/signup`, which uses Resend
+to send an account request to the administrator. It does not create a login
+session, automatically approve access, or modify the registry.
+
+Deploy the Node server on Render with `npm start`. Set `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and
+`ADMIN_EMAIL` (the account request recipient) in Render's Environment; the sender must be authorized in
+Resend (use a verified sender/domain). Never put the API key in the HTML.
+The login API allows `https://ct81.github.io` in addition to the configured
+`EXTENSION_ORIGIN`, without changing other routes' CORS policy. A successful
+signup means Resend accepted the email, not that it reached the recipient's inbox.
 
 Despite its name, `/api/login/register` is a read-only lookup of the published
 `https://ct81.github.io/trimble-claude-mcp/pages/login/registered.json`.
@@ -27,9 +36,8 @@ are added or files saved. Update and publish [registered.json](pages/login/regis
 to change the registry; GitHub Pages deployment/CDN updates may take time.
 Failed registry requests return HTTP 502, not an unregistered result.
 
-Signup displays “You have registered” for a match. Otherwise it creates only
-a local browser demo account. The registry is not an authentication or
-server-side authorization mechanism. All login-page sign-ins (including restored
+The registry is not an authentication or server-side authorization mechanism.
+All login-page sign-ins (including restored
 sessions) must match the published registry before redirecting to the dashboard.
 Missing emails or failed checks clear the login session and Google token.
 This is a client-side login gate, not protection for server APIs.

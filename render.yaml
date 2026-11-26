@@ -12,6 +12,12 @@ services:
         value: 10000
       - key: SESSION_SECRET
         sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
       - key: TRIMBLE_CLIENT_ID
         sync: false
       - key: TRIMBLE_CLIENT_SECRET

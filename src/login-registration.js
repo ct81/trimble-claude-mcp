@@ -1,6 +1,8 @@
 import express from 'express';
+import { sendResendMail } from './resend/resendmail.js';
 export function createLoginRegistrationRouter(
-  registryUrl = 'https://ct81.github.io/trimble-claude-mcp/pages/login/registered.json'
+  registryUrl = 'https://ct81.github.io/trimble-claude-mcp/pages/login/registered.json',
+  sendMail = sendResendMail
 ) {
   const router = express.Router();
 
@@ -44,6 +46,28 @@ export function createLoginRegistrationRouter(
     } catch (error) {
       console.error('Could not check published project registration:', error);
       res.status(502).json({ error: 'Could not read the published registration registry. Please try again.' });
+    }
+  });
+
+  router.post('/signup', async (req, res) => {
+    const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
+    if (!name || name.length > 200 || /[\r\n]/.test(name)) {
+      return res.status(400).json({ error: 'Enter your full name (up to 200 characters, on one line).' });
+    }
+    try {
+      const adminEmail = process.env.ADMIN_EMAIL?.trim();
+      if (!adminEmail || adminEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(adminEmail)) {
+        throw new Error('Set ADMIN_EMAIL to a valid account request recipient.');
+      }
+      await sendMail({
+        to: adminEmail,
+        subject: 'New account request',
+        text: `A user requested an account.\n\nFull name: ${name}\nEmail: ${req.body.email}`
+      });
+      res.set('Cache-Control', 'no-store').json({ sent: true });
+    } catch (error) {
+      console.error('Could not send account request:', error);
+      res.status(502).json({ error: 'Could not send your account request. Please try again later.' });
     }
   });
   return router;

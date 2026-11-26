@@ -5,47 +5,49 @@ import vm from 'node:vm';
 
 const page = readFileSync(new URL('../pages/login/login.html', import.meta.url), 'utf8');
 const start = page.indexOf('  async function handleSignup(');
-const end = page.indexOf('  async function handleLogin(', start);
+const end = page.indexOf('  /* ═══════════════ RENDER', start);
 assert.ok(start >= 0 && end > start);
 
-test('signup waits for the published registry check and stops on duplicates or lookup failures', async () => {
-  for (const outcome of ['success', 'duplicate', 'failure']) {
+test('signup sends only name and email, creates no session, and reports delivery failures', async () => {
+  assert.doesNotMatch(page, /id="(?:loginForm|liPass|suPass|suPass2)"/);
+  for (const outcome of ['success', 'unconfirmed', 'failure']) {
     const messages = [];
     let saved = false;
     let redirected = false;
     let submitted;
+    let reset = false;
     const button = { disabled: false };
     const fields = {
       '#suName': { value: 'Test' }, '#suEmail': { value: ' TEST@example.com ' },
-      '#suPass': { value: 'test-password' }, '#suPass2': { value: 'test-password' },
-      '#signupForm': { querySelector: () => button }
+      '#signupForm': { querySelector: () => button, reset() { reset = true; } }
     };
     const context = vm.createContext({
-      $: id => fields[id], EMAIL_RE: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
-      clearMsg() {}, getUsers: () => ({}), randHex: () => 'test-salt',
-      hashPassword: async () => 'test-hash',
-      saveUsers() { saved = true; }, setSession() {},
+      AbortSignal, $: id => fields[id], EMAIL_RE: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
+      clearMsg() {},
+      saveUsers() { saved = true; }, setSession() { saved = true; },
       renderApp() { redirected = true; }, setTimeout: callback => callback(),
       console: { error() {} }, showMsg: message => messages.push(message),
       fetch: async (url, options) => {
-        assert.equal(url, 'https://trimble-claude-mcp-g86i.onrender.com/api/login/register');
+        assert.equal(url, 'https://trimble-claude-mcp-g86i.onrender.com/api/login/signup');
         assert.equal(saved, false);
         submitted = JSON.parse(options.body);
         return {
           ok: outcome !== 'failure', headers: { get: () => 'application/json' },
           json: async () => outcome === 'failure'
-            ? { error: 'Could not check your registration.' }
-            : { alreadyRegistered: outcome === 'duplicate' }
+            ? { error: 'Could not send your account request.' }
+            : { sent: outcome === 'success' }
         };
       }
     });
     vm.runInContext(page.slice(start, end), context);
     await context.handleSignup({ preventDefault() {} });
-    assert.deepEqual(submitted, { email: 'test@example.com' });
-    assert.equal(saved, outcome === 'success');
-    assert.equal(redirected, outcome === 'success');
+    assert.deepEqual(submitted, { email: 'test@example.com', name: 'Test' });
+    assert.equal(saved, false);
+    assert.equal(redirected, false);
     assert.equal(button.disabled, false);
-    if (outcome === 'duplicate') assert.match(messages.at(-1), /You have registered/);
-    if (outcome === 'failure') assert.match(messages.at(-1), /Could not check/);
+    assert.equal(reset, outcome === 'success');
+    if (outcome === 'success') assert.match(messages.at(-1), /sent.*approval/);
+    if (outcome === 'unconfirmed') assert.match(messages.at(-1), /did not confirm/);
+    if (outcome === 'failure') assert.match(messages.at(-1), /Could not send/);
   }
 });

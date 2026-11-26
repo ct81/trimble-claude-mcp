@@ -204,7 +204,7 @@ function getLoggedInUser() {
     const users = JSON.parse(localStorage.getItem('oauth_demo_users_v1') || '{}');
     if (!session || typeof session.email !== 'string' || !session.email ||
         typeof session.userId !== 'string' || !session.userId ||
-        !['google', 'microsoft', 'facebook', 'email'].includes(session.provider) ||
+        !['google', 'microsoft', 'facebook'].includes(session.provider) ||
         !Number.isFinite(session.at) || session.at <= 0 || session.at > Date.now()) return null;
     return Object.values(users).find(user => user.email === session.email &&
         user.id === session.userId && user.provider === session.provider) || null;
