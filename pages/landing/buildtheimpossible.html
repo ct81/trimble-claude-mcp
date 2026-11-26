@@ -78,6 +78,7 @@ dialog{background:#0a1a34;color:var(--text);border:1px solid var(--glow);border-
 dialog::backdrop{background:rgba(2,6,14,.7)}
 label{display:block;font-size:.8rem;color:var(--muted);margin-top:10px}
 input,select,textarea{width:100%;font:inherit;color:var(--text);background:#07122a;border:1px solid var(--line);border-radius:10px;padding:9px}
+.form-status{min-height:1.5em;margin:10px 0 0;color:var(--muted);font-size:.9rem}.form-status.error{color:#ff7a90}
 footer{color:var(--muted);text-align:center;font-size:.8rem;padding:20px 0 30px}
 #avp{position:absolute;left:8px;right:8px;bottom:8px;max-height:58%;overflow:auto;background:rgba(6,16,34,.94);border:1px solid var(--line);border-radius:14px;padding:10px 12px;z-index:5;font-size:.78rem}
 #avp[hidden]{display:none}#avp .top{display:flex;justify-content:space-between;align-items:center;font-weight:700}
@@ -132,7 +133,8 @@ footer{color:var(--muted);text-align:center;font-size:.8rem;padding:20px 0 30px}
     <label>Email<input name="email" type="email" required></label>
     <label>Solution<select name="sol" id="solSel"></select></label>
     <label>Message<textarea name="msg" rows="3"></textarea></label>
-    <div class="row"><button class="btn" type="submit">Send request</button><button class="btn ghost" type="button" id="close">Cancel</button></div>
+    <div class="row"><button class="btn" id="sendRequest" type="submit">Send request</button><button class="btn ghost" type="button" id="close">Cancel</button></div>
+    <p class="form-status" id="formStatus" role="status" aria-live="polite"></p>
   </form>
 </dialog>
 
@@ -1080,8 +1082,8 @@ footer{color:var(--muted);text-align:center;font-size:.8rem;padding:20px 0 30px}
 }
 </script>
 <script>
-const CONTACT='noodletan@outlook.com';   // change to your email
 const SITE='#';                      // change to your website link
+const DEMO_REQUEST_API='https://trimble-claude-mcp-g86i.onrender.com/api/login/demo-request';
 const S=[
 //{ic:'🏗️',n:'Construction Technology',t:'Digital control of projects and sites',d:'Digital tools that bring construction projects under control, from planning and site records to cost tracking and progress reports.',f:['Project and site management','Cost and budget tracking','Progress reports with photos','Document control','Mobile access in the field']},
 //{ic:'🧠',n:'AI & Machine Learning',t:'Models that learn from your data',d:'Practical AI that learns from your data to forecast, classify and automate decisions, with models trained and tuned for your business.',f:['Predictive analytics','Document and image recognition','Smart assistants and chatbots','Anomaly detection','Model monitoring']},
@@ -1105,7 +1107,7 @@ function show(i,speak,scroll){
   <div class="panel"><h3>Live demo</h3><div class="live"><div class="bar"><span class="dot"></span>LIVE · ${s.n.toUpperCase()}</div><div class="bars">${bars(i,0,14)}</div></div>
   <h3 style="margin-top:16px">Screenshots and videos</h3><div class="shots"><div class="shot"><div class="bars">${bars(i,1)}</div></div><div class="shot"><div class="bars">${bars(i,2)}</div></div><div class="shot v"><div class="bars">${bars(i,3)}</div></div></div>
   <div class="links"><button class="btn ghost" id="cBtn">Contact us</button></div></div>`;
-  const open=()=>{$('solSel').value=s.n;dlg.showModal()};
+  const open=()=>{$('solSel').value=s.n;openDemo()};
   $('dBtn').onclick=open;$('cBtn').onclick=open;
   $('lBtn').onclick=()=>say(pitch(i));
   if(scroll)det.scrollIntoView({behavior:'smooth',block:'start'});
@@ -1113,9 +1115,31 @@ function show(i,speak,scroll){
 }
 const pitch=i=>`${S[i].n}. ${S[i].d} Key features include ${S[i].f.slice(0,3).join(', ')}. Request a demo to see it live.`;
 grid.onclick=e=>{const c=e.target.closest('.card');if(c)show(+c.dataset.i,true,true)};
-$('demoTop').onclick=()=>{if(cur>=0)$('solSel').value=S[cur].n;dlg.showModal()};
 $('close').onclick=()=>dlg.close();
-$('f').onsubmit=e=>{e.preventDefault();const d=new FormData($('f'));location.href='mailto:'+CONTACT+'?subject='+encodeURIComponent('Demo request: '+d.get('sol'))+'&body='+encodeURIComponent('Name: '+d.get('name')+'\nEmail: '+d.get('email')+'\n\n'+d.get('msg'));dlg.close()};
+function openDemo(){
+  $('sendRequest').disabled=false;$('sendRequest').textContent='Send request';
+  $('formStatus').classList.remove('error');$('formStatus').textContent='';
+  dlg.showModal();
+}
+$('demoTop').onclick=()=>{if(cur>=0)$('solSel').value=S[cur].n;openDemo()};
+$('f').onsubmit=async e=>{
+  e.preventDefault();
+  const form=$('f'),button=$('sendRequest'),status=$('formStatus'),data=new FormData(form);
+  button.disabled=true;button.textContent='Sending…';status.classList.remove('error');status.textContent='Sending your request…';
+  try{
+    const response=await fetch(DEMO_REQUEST_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      name:data.get('name'),email:data.get('email'),solution:data.get('sol'),message:data.get('msg')
+    })});
+    const result=await response.json();
+    if(!response.ok||!result.sent)throw new Error(result.error||'Could not send your demo request. Please try again.');
+    status.textContent='Your demo request has been sent.';
+    button.textContent='Request sent';
+  }catch(error){
+    status.classList.add('error');
+    status.textContent=error instanceof Error?error.message:'Could not send your demo request. Please try again.';
+    button.disabled=false;button.textContent='Send request';
+  }
+};
 show(0,false,false);
 
 // voice + avatar state

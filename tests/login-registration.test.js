@@ -57,6 +57,60 @@ import { createLoginRegistrationRouter } from '../src/login-registration.js';
     assert.equal(messages.length, 1);
   });
 
+  test('demo requests email the administrator and reject invalid fields or delivery failures', async t => {
+    const previousAdminEmail = process.env.ADMIN_EMAIL;
+    process.env.ADMIN_EMAIL = 'admin@example.com';
+    t.after(() => {
+      if (previousAdminEmail === undefined) delete process.env.ADMIN_EMAIL;
+      else process.env.ADMIN_EMAIL = previousAdminEmail;
+    });
+    const messages = [];
+    let fail = false;
+    const app = express();
+    app.use('/api/login', createLoginRegistrationRouter(undefined, async message => {
+      if (fail) throw new Error('Resend unavailable');
+      messages.push(message);
+      return { id: 'test-email-id' };
+    }));
+    const server = app.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    t.after(() => new Promise(resolve => {
+      server.close(resolve);
+      server.closeAllConnections();
+    }));
+    const request = async body => {
+      const response = await fetch(`http://127.0.0.1:${server.address().port}/api/login/demo-request`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+      });
+      return { status: response.status, data: await response.json() };
+    };
+    const accepted = await request({
+      name: ' Test User ', email: ' USER@example.com ', solution: ' SitePulse ', message: ' Please contact me. '
+    });
+    assert.equal(accepted.status, 200);
+    assert.equal(accepted.data.sent, true);
+    assert.deepEqual(messages, [{
+      to: 'admin@example.com', subject: 'Demo request: SitePulse',
+      text: 'A user requested a demo.\n\nName: Test User\nEmail: user@example.com\nSolution: SitePulse\n\nMessage:\nPlease contact me.'
+    }]);
+    for (const body of [
+      { name: '', email: 'user@example.com', solution: 'SitePulse' },
+      { name: 'Test\nUser', email: 'user@example.com', solution: 'SitePulse' },
+      { name: 'User', email: 'user@example.com', solution: 'SitePulse\nOther' },
+      { name: 'User', email: 'user@example.com', solution: 'SitePulse', message: 'x'.repeat(5001) },
+      { name: 'User', email: 'not-email', solution: 'SitePulse' }
+    ]) assert.equal((await request(body)).status, 400);
+    assert.equal(messages.length, 1);
+    fail = true;
+    const rejected = await request({ name: 'User', email: 'user@example.com', solution: 'SitePulse' });
+    assert.equal(rejected.status, 502);
+    assert.equal(rejected.data.sent, undefined);
+    fail = false;
+    delete process.env.ADMIN_EMAIL;
+    assert.equal((await request({ name: 'User', email: 'user@example.com', solution: 'SitePulse' })).status, 502);
+    assert.equal(messages.length, 1);
+  });
+
   test('login API preflight allows GitHub Pages and preserves other route CORS policy', async t => {
     const source = readFileSync(new URL('../src/server.js', import.meta.url), 'utf8');
     const start = source.indexOf('const openCors =');

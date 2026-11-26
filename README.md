@@ -20,9 +20,12 @@ name and email. Create account posts to
 `https://trimble-claude-mcp-g86i.onrender.com/api/login/signup`, which uses Resend
 to send an account request to the administrator. It does not create a login
 session, automatically approve access, or modify the registry.
+The **Build the Impossible** landing page sends demo requests through
+`https://trimble-claude-mcp-g86i.onrender.com/api/login/demo-request`, which also
+uses Resend to deliver them to `ADMIN_EMAIL`.
 
 Deploy the Node server on Render with `npm start`. Set `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and
-`ADMIN_EMAIL` (the account request recipient) in Render's Environment; the sender must be authorized in
+`ADMIN_EMAIL` (the request recipient) in Render's Environment; the sender must be authorized in
 Resend (use a verified sender/domain). Never put the API key in the HTML.
 The login API allows `https://ct81.github.io` in addition to the configured
 `EXTENSION_ORIGIN`, without changing other routes' CORS policy. A successful
