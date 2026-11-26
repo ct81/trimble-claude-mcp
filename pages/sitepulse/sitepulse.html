@@ -1897,9 +1897,9 @@
                 <div><label for="ifc-upload" class="upload-btn"><span>⤒</span> <span class="icon">Load IFC</span></label><input type="file" id="ifc-upload" accept=".ifc" style="display: none;">
                 </div>
                 <div class="user-profile">
-                    <div class="user-avatar">AC</div>
+                    <div class="user-avatar" id="profile-avatar"></div>
                     <div class="user-details">
-                        <span>Alex Chen</span>
+                        <span id="profile-name"></span>
                         <button type="button" id="btn-sign-out">Sign out</button>
                     </div>
                 </div>
@@ -2375,6 +2375,13 @@
                         return;
                     }
                 }
+                const name = typeof user.name === 'string' ? user.name.trim() : '';
+                const parts = name.split(/\s+/).filter(Boolean);
+                const initials = parts.length
+                    ? Array.from(parts[0])[0] + (parts.length > 1 ? Array.from(parts[parts.length - 1])[0] : '')
+                    : Array.from(user.email)[0];
+                document.getElementById('profile-name').textContent = name || user.email;
+                document.getElementById('profile-avatar').textContent = initials.toUpperCase();
                 document.body.hidden = false;
             } catch (error) {
                 console.error('SitePulse login check failed:', error);
