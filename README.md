@@ -12,6 +12,23 @@ Node.js MCP server and OAuth backend for Trimble Connect, with a Firebase-hosted
 - Trimble Connect API: user-authorized data
 - Anthropic API: optional Claude orchestration
 
+## Browser demo registration
+
+Serve [the login page](pages/login/login.html) through the Node server (`npm start`).
+Email signup posts to `/api/login/register`, which adds the email to every
+project in [registered.json](pages/login/registered.json), without duplicating
+existing entries. When all projects already contain the email, signup displays
+“You have registered.” The endpoint saves emails only; passwords and local demo
+accounts remain in the browser. This registry is not an authentication or
+authorization mechanism.
+Successful sign-in checks `/api/login/status` without modifying the registry.
+If the email is found in any project, a “You have registered with us” alert
+appears before the dashboard redirect.
+
+The server must have write access to the registry. Use persistent storage for
+this file in deployments; an ephemeral filesystem loses registrations on redeploy.
+Do not publish the registry on a static host or commit real registrations.
+
 ## MCP connector setup
 
 For Trimble Agent Studio or another remote MCP client, use the deployed MCP

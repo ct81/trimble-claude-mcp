@@ -2,7 +2,7 @@
 
 // git add . 
 // git commit -m "Start MCP, LINE, Whatsapp & Telegram ChatBots, Leaflet Map, Workflow Builder, Firebase Realtime Database, Swagger, HTML & Javascript, PDF/JSON Extractor, Python, Custom LLM-powered template generation, Trimble Agent Studio, Tekla Open APIs, TSD APIs, SketchUp Ruby APIs, TC Status Sharing, Workspace, Core, Model, ModelFeature, Organizer, Property Set, Regions & Topics APIs 
-// #33"
+// #34"
 // git push origin main
 
 // git add .
@@ -50,6 +50,7 @@
 //https://tagassistant.google.com/?hl=en&utm_source=gtm#/?source=TAG_MANAGER&id=GTM-MMQ4VSRZ&canonical_id=288797854&gtm_auth=_Yj5fA9GHQCma8x7DXRYRw&gtm_preview=env-4&cb=7128091938533723
 
 import express from 'express';
+import { createLoginRegistrationRouter } from './login-registration.js';
 import { dxfTextToRecords } from './AI_RoachHarbor/dxf-text.js';
 import { brainToTekla } from './AI_RoachHarbor/brain-tekla.js';
 import swaggerUi from 'swagger-ui-express';
@@ -763,7 +764,18 @@ app.get('/privacy.html', (req, res) => res.sendFile(path.join(process.cwd(), 'pr
 app.get('/images/svg/roachharbor-logo-dark.svg', (req, res) =>
   res.sendFile(path.join(process.cwd(), 'images', 'svg', 'roachharbor-logo-dark.svg')));
 app.use(express.static(path.join(process.cwd(), 'public')));
+app.use('/api/login', createLoginRegistrationRouter(
+  path.join(process.cwd(), 'pages', 'login', 'registered.json')
+));
 app.use('/pages', (req, res, next) => {
+  let requestedPath;
+  try {
+    requestedPath = path.posix.normalize(decodeURIComponent(req.path)).toLowerCase();
+  } catch (error) {
+    if (!(error instanceof URIError)) return next(error);
+    return res.status(400).send('Invalid page path.');
+  }
+  if (requestedPath.startsWith('/login/registered.json')) return res.sendStatus(404);
   if (req.path === '/datastorage' || req.path.startsWith('/datastorage/')) return next();
   return express.static(path.join(process.cwd(), 'pages'))(req, res, next);
 });

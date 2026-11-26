@@ -12,16 +12,30 @@ const start = page.indexOf('  function signInWithGoogle()');
 const end = page.indexOf('  /* ═══════════════ OAUTH CALLBACK', start);
 assert.ok(start >= 0 && end > start);
 
-test('successful sign-in redirects to testmain beside the login page', () => {
-    const start = page.indexOf('  function renderApp(user)');
+test('successful sign-in prompts registered users before redirecting to testmain', async () => {
+    const start = page.indexOf('  async function renderApp(user)');
     const end = page.indexOf('  function signOut()', start);
     assert.ok(start >= 0 && end > start);
     const redirects = [];
     const logs = [];
+    const alerts = [];
+    const errors = [];
+    let registered = true;
+    let failed = false;
     let signedOut = false;
     const context = vm.createContext({
         URL,
-        console: { log: (...args) => logs.push(args) },
+        console: { log: (...args) => logs.push(args), error() {} },
+        window: { alert: message => alerts.push(message) },
+        showMsg: message => errors.push(message),
+        fetch: async (url, options) => {
+            assert.equal(url, '/api/login/status');
+            assert.deepEqual(JSON.parse(options.body), { email: 'user@example.com' });
+            return {
+                ok: !failed, headers: { get: () => 'application/json' },
+                json: async () => failed ? { error: 'Could not check registration.' } : { registered }
+            };
+        },
         readJSON: JSON.parse,
         GOOGLE_TOKEN_KEY: 'oauth_google_token_v1',
         sessionStorage: { getItem: () => JSON.stringify({ accessToken: 'secret-token', expiresAt: 123 }) },
@@ -32,13 +46,22 @@ test('successful sign-in redirects to testmain beside the login page', () => {
         signOut() { signedOut = true; }
     });
     vm.runInContext(page.slice(start, end), context);
-    context.renderApp(null);
+    await context.renderApp(null);
     assert.equal(signedOut, true);
     assert.deepEqual(redirects, []);
-    context.renderApp({ email: 'user@example.com', hash: 'private-hash', salt: 'private-salt' });
+    await context.renderApp({ email: 'user@example.com', hash: 'private-hash', salt: 'private-salt' });
+    assert.deepEqual(alerts, ['You have registered with us.']);
     assert.deepEqual(redirects, ['https://example.com/trimble-claude-mcp/pages/login/testmain.html']);
     assert.equal(logs[1][1].accessToken, 'secret-token');
     assert.doesNotMatch(JSON.stringify(logs), /private-hash|private-salt/);
+    registered = false;
+    await context.renderApp({ email: 'user@example.com' });
+    assert.equal(alerts.length, 1);
+    assert.equal(redirects.length, 2);
+    failed = true;
+    await context.renderApp({ email: 'user@example.com' });
+    assert.equal(redirects.length, 2);
+    assert.match(errors[0], /Could not check registration/);
 });
 
 function createHarness() {

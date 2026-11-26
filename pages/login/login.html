@@ -645,22 +645,45 @@
     if (pass !== pass2)        return showMsg('Passwords do not match.');
 
     const users = getUsers();
-    if (users['email:' + email]) return showMsg('That email already has an account. Try logging in.');
-
-    const salt = randHex(16);
-    const user = users['email:' + email] = {
-      id: salt.slice(0, 12),
-      name: name || email.split('@')[0],
-      email,
-      salt,
-      hash: await hashPassword(pass, salt),
-      provider: 'email',
-      createdAt: new Date().toISOString()
-    };
-    saveUsers(users);
-    setSession(user);
-    showMsg('Account created — signing you in…', 'ok');
-    setTimeout(() => renderApp(user), 400);
+    const button = $('#signupForm').querySelector('button[type="submit"]');
+    if (button.disabled) return;
+    button.disabled = true;
+    try {
+      const response = await fetch('/api/login/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      if (!response.headers.get('content-type')?.includes('application/json')) {
+        throw new Error('Registration requires the Node server. Open this page on the server, not a static host.');
+      }
+      const registration = await response.json();
+      if (!response.ok) throw new Error(registration.error || 'Could not save your registration.');
+      if (typeof registration.alreadyRegistered !== 'boolean') throw new Error('The server returned an invalid registration response.');
+      if (registration.alreadyRegistered || users['email:' + email]) {
+        showMsg('You have registered. Please log in.', 'err');
+        return;
+      }
+      const salt = randHex(16);
+      const user = users['email:' + email] = {
+        id: salt.slice(0, 12),
+        name: name || email.split('@')[0],
+        email,
+        salt,
+        hash: await hashPassword(pass, salt),
+        provider: 'email',
+        createdAt: new Date().toISOString()
+      };
+      saveUsers(users);
+      setSession(user);
+      showMsg('Account created — signing you in…', 'ok');
+      setTimeout(() => renderApp(user), 400);
+    } catch (error) {
+      console.error('Account registration failed:', error);
+      showMsg(error.message || 'Could not create your account.', 'err');
+    } finally {
+      button.disabled = false;
+    }
   }
 
   async function handleLogin(e) {
@@ -686,7 +709,7 @@
   }
 
   /* ═══════════════ RENDER ═══════════════ */
-  function renderApp(user) {
+  async function renderApp(user) {
     if (!user) return signOut();
     console.log('Signed-in user:', {
       id: user.id, email: user.email, name: user.name,
@@ -699,7 +722,24 @@
       expiresAt: googleToken?.expiresAt,
       email: googleToken?.email
     });
-    location.replace(new URL('./testmain.html', location.href).href);
+    try {
+      const response = await fetch('/api/login/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email })
+      });
+      if (!response.headers.get('content-type')?.includes('application/json')) {
+        throw new Error('Registration checks require the Node server. Open this page on the server, not a static host.');
+      }
+      const status = await response.json();
+      if (!response.ok) throw new Error(status.error || 'Could not check your registration.');
+      if (typeof status.registered !== 'boolean') throw new Error('The server returned an invalid registration status.');
+      if (status.registered) window.alert('You have registered with us.');
+      location.replace(new URL('./testmain.html', location.href).href);
+    } catch (error) {
+      console.error('Sign-in registration check failed:', error);
+      showMsg(error.message || 'Could not check your registration.', 'err');
+    }
   }
 
   function signOut() {
