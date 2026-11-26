@@ -69,7 +69,7 @@ function createHarness() {
             return { id: 'user', email: 'user@example.com', name: 'User' };
         },
         upsertUser: profile => profile,
-        setSession: email => sessions.push(email),
+        setSession: user => sessions.push(user.email),
         renderApp() {}
     });
     vm.runInContext(page.slice(start, end), context);
@@ -144,4 +144,34 @@ test('Gmail permission and valid token expiry are required before storing a toke
     assert.match(harness.messages.at(-1).message, /invalid token expiration/);
     assert.equal(harness.storedTokens.size, 0);
     assert.deepEqual(harness.sessions, []);
+});
+
+test('restoring a Google login without a current-tab Gmail token stays on login for reconnection', async () => {
+    const start = page.indexOf('  (async function boot()');
+    const end = page.indexOf('  })();', start) + '  })();'.length;
+    assert.ok(start >= 0 && end > start);
+    for (const token of [null, { accessToken: 'expired', email: 'user@example.com', expiresAt: 1 }]) {
+        let cleared = false;
+        let redirected = false;
+        const messages = [];
+        const user = { id: 'user', email: 'user@example.com', provider: 'google' };
+        const context = vm.createContext({
+            location: { protocol: 'https:' },
+            window: {},
+            renderSetup() {}, setMode() {},
+            handleCallbackIfPresent: async () => false,
+            getSession: () => ({ email: user.email, userId: user.id, provider: user.provider, at: Date.now() }),
+            getUsers: () => ({ user }),
+            GOOGLE_TOKEN_KEY: 'oauth_google_token_v1',
+            sessionStorage: { getItem: () => JSON.stringify(token) },
+            readJSON: JSON.parse,
+            clearSession() { cleared = true; },
+            renderApp() { redirected = true; },
+            showMsg: message => messages.push(message)
+        });
+        await vm.runInContext(page.slice(start, end), context);
+        assert.equal(cleared, true);
+        assert.equal(redirected, false);
+        assert.match(messages[0], /Sign in with Google again/);
+    }
 });

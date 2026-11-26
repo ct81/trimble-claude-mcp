@@ -19,6 +19,10 @@ body {
     color: #333;
 }
 
+body[hidden] {
+    display: none;
+}
+
 .navbar {
     background: #1e293b;
     color: white;
@@ -124,7 +128,7 @@ body {
 </style>
 </head>
 
-<body>
+<body hidden>
 
 <header class="navbar">
     <h2>My Workspace</h2>
@@ -195,7 +199,20 @@ const gmailMessages = document.getElementById('gmail-messages');
 const readGmailButton = document.getElementById('read-gmail');
 let gmailRequest = 0;
 
+function getLoggedInUser() {
+    const session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+    const users = JSON.parse(localStorage.getItem('oauth_demo_users_v1') || '{}');
+    if (!session || typeof session.email !== 'string' || !session.email ||
+        typeof session.userId !== 'string' || !session.userId ||
+        !['google', 'microsoft', 'facebook', 'email'].includes(session.provider) ||
+        !Number.isFinite(session.at) || session.at <= 0 || session.at > Date.now()) return null;
+    return Object.values(users).find(user => user.email === session.email &&
+        user.id === session.userId && user.provider === session.provider) || null;
+}
+
 function getGoogleToken() {
+    const user = getLoggedInUser();
+    if (!user || user.provider !== 'google') throw new Error('Sign in with Google and allow Gmail access first.');
     const raw = sessionStorage.getItem(GOOGLE_TOKEN_KEY);
     if (!raw) throw new Error('Sign in with Google and allow Gmail access first.');
     const token = JSON.parse(raw);
@@ -209,11 +226,15 @@ function getGoogleToken() {
     return token;
 }
 
-try {
-    const session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
-    const users = JSON.parse(localStorage.getItem('oauth_demo_users_v1') || '{}');
-    const user = Object.values(users).find(user => user.email === session?.email);
-    if (user) {
+function checkLogin() {
+    document.body.hidden = true;
+    try {
+        const user = getLoggedInUser();
+        if (!user) {
+            logout();
+            return;
+        }
+        if (user.provider === 'google') getGoogleToken();
         document.getElementById('userName').textContent = user.name || user.email;
         document.getElementById('account-name').textContent = user.name || user.email;
         document.getElementById('account-email').textContent = user.email;
@@ -228,12 +249,26 @@ try {
             expiresAt: googleToken?.expiresAt,
             email: googleToken?.email
         });
+        readGmailButton.disabled = user.provider !== 'google';
+        if (user.provider !== 'google') gmailStatus.textContent = 'Sign in with Google and allow Gmail access to read your inbox.';
+        document.body.hidden = false;
+    } catch (error) {
+        console.error('Login session check failed:', error);
+        logout();
     }
-} catch (error) {
-    gmailStatus.textContent = 'Could not read your login session. Click Sign in again.';
 }
 
+checkLogin();
+window.addEventListener('pageshow', checkLogin);
+window.addEventListener('storage', event => {
+    if (event.key === SESSION_KEY || event.key === 'oauth_demo_users_v1' || event.key === null) checkLogin();
+});
+
 async function readGmail() {
+    if (!getLoggedInUser()) {
+        logout();
+        return;
+    }
     const request = ++gmailRequest;
     gmailMessages.replaceChildren();
     readGmailButton.disabled = true;
@@ -273,7 +308,7 @@ async function readGmail() {
         console.error('Gmail read failed:', error);
         gmailStatus.textContent = error.message || 'Could not read Gmail.';
     } finally {
-        if (request === gmailRequest) readGmailButton.disabled = false;
+        if (request === gmailRequest) readGmailButton.disabled = getLoggedInUser()?.provider !== 'google';
     }
 }
 
@@ -286,6 +321,7 @@ function navigate(page) {
 
 // Sign out
 function logout() {
+    document.body.hidden = true;
     gmailRequest++;
     gmailMessages.replaceChildren();
     gmailStatus.textContent = '';

@@ -6,14 +6,17 @@ import vm from 'node:vm';
 const page = readFileSync(new URL('../pages/login/testmain.html', import.meta.url), 'utf8');
 const script = page.match(/<script>([\s\S]*?)<\/script>/)[1];
 
-function createHarness() {
+function createHarness(options = {}) {
     const token = { accessToken: 'test-token', expiresAt: Date.now() + 3600000, email: 'user@example.com' };
     const session = new Map([['oauth_google_token_v1', JSON.stringify(token)], ['oauth_pending_v1', '{}'],
         ['username', 'User'], ['unrelated', 'keep']]);
     const local = new Map([
-        ['oauth_demo_session_v1', JSON.stringify({ email: token.email })],
-        ['oauth_demo_users_v1', JSON.stringify({ user: { email: token.email, name: 'User' } })]
+        ['oauth_demo_session_v1', JSON.stringify({ email: token.email, userId: 'user', provider: 'google', at: Date.now() })],
+        ['oauth_demo_users_v1', JSON.stringify({ user: { id: 'user', email: token.email, name: 'User', provider: 'google' } })]
     ]);
+    if (options.noSession) local.delete('oauth_demo_session_v1');
+    if (options.badSession) local.set('oauth_demo_session_v1', options.badSession);
+    if (options.noToken) session.delete('oauth_google_token_v1');
     const storage = values => ({
         getItem: key => values.get(key) ?? null,
         removeItem: key => values.delete(key)
@@ -23,10 +26,11 @@ function createHarness() {
             appendChild(child) { this.children.push(child); }, addEventListener() {} }]));
     const calls = [];
     const logs = [];
+    const events = {};
     const context = vm.createContext({
         sessionStorage: storage(session), localStorage: storage(local),
-        document: { getElementById: id => elements[id], createElement: () => ({}) },
-        window: { location: { replace(url) { this.href = url; } } },
+        document: { body: { hidden: true }, getElementById: id => elements[id], createElement: () => ({}) },
+        window: { location: { replace(url) { this.href = url; } }, addEventListener: (name, callback) => { events[name] = callback; } },
         console: { error() {}, log: (...args) => logs.push(args) },
         fetch: async (url, options) => {
             calls.push({ url, options });
@@ -36,7 +40,7 @@ function createHarness() {
         }
     });
     vm.runInContext(script, context);
-    return { context, token, session, local, elements, calls, logs };
+    return { context, token, session, local, elements, calls, logs, events };
 }
 
 test('dashboard reads Gmail only on demand with a bearer token and renders text safely', async () => {
@@ -58,6 +62,31 @@ test('dashboard shows the signed-in name and email after the sign-out button', (
     assert.equal(harness.logs[0][1].email, 'user@example.com');
     assert.equal(harness.logs[1][1].accessToken, '[REDACTED]');
     assert.doesNotMatch(JSON.stringify(harness.logs), /test-token/);
+});
+
+test('dashboard blocks missing, malformed, and unmatched sessions and missing Google tokens', () => {
+    for (const options of [
+        { noSession: true }, { badSession: '{broken' },
+        { badSession: JSON.stringify({ email: 'user@example.com', userId: 'other', provider: 'google', at: Date.now() }) },
+        { noToken: true }
+    ]) {
+        const harness = createHarness(options);
+        assert.equal(harness.context.document.body.hidden, true);
+        assert.equal(harness.context.window.location.href, 'login.html');
+        assert.equal(harness.local.has('oauth_demo_session_v1'), false);
+    }
+});
+
+test('restoring a cached dashboard or signing out in another tab rechecks authentication', () => {
+    for (const event of ['pageshow', 'storage']) {
+        const harness = createHarness();
+        assert.equal(harness.context.document.body.hidden, false);
+        harness.local.delete('oauth_demo_session_v1');
+        harness.events[event]({ key: 'oauth_demo_session_v1' });
+        assert.equal(harness.context.document.body.hidden, true);
+        assert.equal(harness.context.window.location.href, 'login.html');
+        assert.equal(harness.session.has('oauth_google_token_v1'), false);
+    }
 });
 
 test('expired and wrong-account tokens are removed without contacting Gmail', async () => {
