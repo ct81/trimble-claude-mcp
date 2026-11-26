@@ -50,7 +50,7 @@
 //https://tagassistant.google.com/?hl=en&utm_source=gtm#/?source=TAG_MANAGER&id=GTM-MMQ4VSRZ&canonical_id=288797854&gtm_auth=_Yj5fA9GHQCma8x7DXRYRw&gtm_preview=env-4&cb=7128091938533723
 
 //https://console.cloud.google.com/apis/credentials?project=trimblemcp
-//https://portal.azure.com/?utm_source=chatgpt.com#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Overview/quickStartType~/null/sourceType/Microsoft_AAD_IAM/appId/ffa052b8-bc4c-45ca-847d-19f6ac6be79f/objectId/125e4bfa-b59c-4bee-bc0c-cd60d6547726/isMSAApp~/false/defaultBlade/Overview/appSignInAudience/AzureADMyOrg/servicePrincipalCreated~/true
+//https://portal.azure.com/?utm_source=chatgpt.com#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Overview/quickStartType~/null/sourceType/Microsoft_AAD_IAM/appId/bdd23667-6979-4b77-9235-d02db0bc1cf5/objectId/125e4bfa-b59c-4bee-bc0c-cd60d6547726/isMSAApp~/false/defaultBlade/Overview/appSignInAudience/AzureADMyOrg/servicePrincipalCreated~/true
 
 import express from 'express';
 import { createLoginRegistrationRouter } from './login-registration.js';
