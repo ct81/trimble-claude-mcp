@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SitePulse</title>
+    <title>⧉ SitePulse</title>
 
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
@@ -277,6 +277,24 @@
             align-items: center;
             justify-content: center;
             font-size: 0.7rem;
+        }
+
+        .user-details {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        #btn-sign-out {
+            border: 0;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            cursor: pointer;
+        }
+
+        #btn-sign-out:hover {
+            color: var(--text-main);
         }
 
         .toolbar {
@@ -1875,7 +1893,11 @@
                 <div><label for="ifc-upload" class="upload-btn"><span>⤒</span> <span class="icon">Load IFC</span></label><input type="file" id="ifc-upload" accept=".ifc" style="display: none;">
                 </div>
                 <div class="user-profile">
-                    <div class="user-avatar">AC</div> <span>Alex Chen</span>
+                    <div class="user-avatar">AC</div>
+                    <div class="user-details">
+                        <span>Alex Chen</span>
+                        <button type="button" id="btn-sign-out">Sign out</button>
+                    </div>
                 </div>
             </div>
         </header>
@@ -2315,6 +2337,16 @@
     </div>
 
     <div id="minimized-dock"></div>
+
+    <script id="sign-out-script">
+        document.getElementById('btn-sign-out').addEventListener('click', () => {
+            localStorage.removeItem('oauth_demo_session_v1');
+            for (const key of ['oauth_google_token_v1', 'oauth_outlook_token_v1', 'oauth_pending_v1', 'username']) {
+                sessionStorage.removeItem(key);
+            }
+            location.replace('./login.html');
+        });
+    </script>
 
     <script type="module" id="leaflet-map-script">
         import { getMapLayer, getMapLinks } from './transientmodelpulsesg-ground-map.js';
