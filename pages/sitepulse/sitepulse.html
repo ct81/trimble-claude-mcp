@@ -146,7 +146,6 @@
             height: min(65dvh, 560px);
             color: #222;
         }
-        #btn-map-sim-stop[hidden] { display: none; }
 
         #leaflet-map .leaflet-map-control {
             display: grid;
@@ -1954,8 +1953,7 @@
             </div>
             <div class="toolbar-group">
                 <button type="button" class="toolbar-btn" id="btn-vehicle" title="Start 3D vehicle" aria-label="Start 3D vehicle">▶</button>
-                <button type="button" class="toolbar-btn" id="btn-map-sim-play" title="Play map vehicle simulation" aria-label="Play map vehicle simulation" aria-pressed="false"><span aria-hidden="true">▶</span><span class="label">Simulate Map</span></button>
-                <button type="button" class="toolbar-btn" id="btn-map-sim-stop" title="Stop map vehicle simulation" aria-label="Stop map vehicle simulation" disabled hidden>■</button>
+                <button type="button" class="toolbar-btn" id="btn-map-sim-play" title="Play map vehicle simulation" aria-label="Play map vehicle simulation" aria-pressed="false"><span id="map-sim-icon" aria-hidden="true">▶</span><span class="label" id="map-sim-label">Play Map</span></button>
                 <button class="toolbar-btn" type="button" id="open-leaflet-map" aria-haspopup="dialog" title="Open Leaflet Map">
                     <span class="tb-icon" aria-hidden="true">🗺</span><span class="label">Map</span>
                 </button>
@@ -2965,15 +2963,22 @@
         });
 
         const simulationPlay = document.getElementById('btn-map-sim-play');
-        const simulationStop = document.getElementById('btn-map-sim-stop');
+        function updateMapSimulationButton(running) {
+            simulationPlay.setAttribute('aria-pressed', String(running));
+            simulationPlay.title = running ? 'Stop map vehicle simulation' : 'Play map vehicle simulation';
+            simulationPlay.setAttribute('aria-label', simulationPlay.title);
+            document.getElementById('map-sim-icon').textContent = running ? '■' : '▶';
+            document.getElementById('map-sim-label').textContent = running ? 'Stop Map' : 'Play Map';
+        }
         function stopMapSimulation() {
             mapVehicleSimulation.stop();
-            simulationPlay.setAttribute('aria-pressed', 'false');
-            simulationStop.disabled = true;
-            simulationStop.hidden = true;
+            updateMapSimulationButton(false);
         }
         simulationPlay.addEventListener('click', () => {
-            stopMapSimulation();
+            if (mapVehicleSimulation.running) {
+                stopMapSimulation();
+                return;
+            }
             const anchor = { lat: 1.3521, lng: 103.8198, x: controls.target.x, z: controls.target.z };
             if (!groundMap.show(anchor, 'Street')) return;
             stopVehicleSimulation();
@@ -2987,12 +2992,9 @@
             controls.update();
             updateGroundMapLinks();
             mapVehicleSimulation.start(focus);
-            simulationPlay.setAttribute('aria-pressed', 'true');
-            simulationStop.disabled = false;
-            simulationStop.hidden = false;
+            updateMapSimulationButton(true);
             showToast('Simulating a vehicle on the ground map near 1.3521, 103.8198 (demo loop, not a road route).', 'success');
         });
-        simulationStop.addEventListener('click', stopMapSimulation);
 
         function updateGroundMapLinks() {
             const links = groundMap.getLinks(controls.target);

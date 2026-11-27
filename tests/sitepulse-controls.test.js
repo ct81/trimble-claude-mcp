@@ -192,8 +192,8 @@ test('Explorer group labels select all descendant model elements, including thro
     assert.deepEqual(selected, [40, 41, 42], 'Search must not limit the contents selected for a group');
 });
 
-test('map simulation uses the ground overlay and keeps toolbar stop visibility in sync', () => {
-    const elements = Object.fromEntries(['btn-map-sim-play', 'btn-map-sim-stop']
+test('map simulation uses one play/stop toggle on the ground overlay', () => {
+    const elements = Object.fromEntries(['btn-map-sim-play', 'map-sim-icon', 'map-sim-label']
         .map(id => [id, new Element()]));
     const anchors = [], starts = [];
     let running = false, available = true;
@@ -202,6 +202,7 @@ test('map simulation uses the ground overlay and keeps toolbar stop visibility i
     const context = vm.createContext({
         document: { getElementById: id => elements[id] },
         mapVehicleSimulation: {
+            get running() { return running; },
             start(focus) { running = true; starts.push(focus); },
             stop() { running = false; }
         },
@@ -223,19 +224,21 @@ test('map simulation uses the ground overlay and keeps toolbar stop visibility i
     assert.equal(groundMapLayer.value, 'Street');
     assert.equal(hideGroundMap.hidden, false);
     assert.equal(running, true);
-    assert.equal(elements['btn-map-sim-stop'].hidden, false);
+    assert.equal(elements['map-sim-icon'].textContent, '■');
+    assert.equal(elements['map-sim-label'].textContent, 'Stop Map');
+    assert.equal(elements['btn-map-sim-play'].getAttribute('aria-label'), 'Stop map vehicle simulation');
     assert.equal(starts[0].x, 25);
     elements['btn-map-sim-play'].listeners.click();
-    assert.equal(starts.length, 2);
-    elements['btn-map-sim-stop'].listeners.click();
+    assert.equal(starts.length, 1, 'Clicking Stop must not restart the simulation');
     assert.equal(running, false);
-    assert.equal(elements['btn-map-sim-stop'].disabled, true);
-    assert.equal(elements['btn-map-sim-stop'].hidden, true);
+    assert.equal(elements['map-sim-icon'].textContent, '▶');
+    assert.equal(elements['map-sim-label'].textContent, 'Play Map');
+    assert.equal(elements['btn-map-sim-play'].getAttribute('aria-label'), 'Play map vehicle simulation');
     available = false;
     elements['btn-map-sim-play'].listeners.click();
-    assert.equal(starts.length, 2, 'Failed ground map initialization must not start a vehicle');
+    assert.equal(starts.length, 1, 'Failed ground map initialization must not start a vehicle');
     assert.equal(elements['btn-map-sim-play'].getAttribute('aria-pressed'), 'false');
-    assert.equal(elements['btn-map-sim-stop'].hidden, true);
+    assert.equal(elements['map-sim-label'].textContent, 'Play Map');
 });
 
 test('SitePulse module scripts parse', () => {
