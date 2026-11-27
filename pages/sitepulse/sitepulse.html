@@ -28,7 +28,7 @@
             --dashboard-padding: 20px;
             --dashboard-gap: 20px;
             --panel-top: calc(var(--header-height) + var(--toolbar-height) + var(--dashboard-padding));
-            --controls-h: 160px;
+            --controls-h: 360px;
             --crane-h: 270px;
             --floating-gap: 20px;
             --right-col-w: 360px;
@@ -811,8 +811,12 @@
             background: rgba(0, 240, 255, 0.2);
             border-color: var(--neon-blue);
         }
+        #model-transparency { width: 100%; accent-color: var(--neon-blue); }
+        #model-layers { max-height: 150px; overflow-y: auto; }
+        #model-layers label { display: flex; align-items: center; gap: 6px; }
 
         #floating-controls-panel {
+            height: var(--controls-h);
             top: var(--panel-top);
             right: calc(var(--right-col-w) + var(--dashboard-gap) + var(--floating-gap));
         }
@@ -1650,7 +1654,7 @@
                 --dashboard-padding: 15px;
                 --dashboard-gap: 15px;
                 --floating-gap: 15px;
-                --controls-h: 150px;
+                --controls-h: 350px;
                 --crane-h: 250px;
                 --right-col-w: 300px;
             }
@@ -1675,7 +1679,7 @@
                 --dashboard-padding: 10px;
                 --dashboard-gap: 10px;
                 --floating-gap: 10px;
-                --controls-h: 150px;
+                --controls-h: 350px;
                 --crane-h: 240px;
                 --right-col-w: 260px;
             }
@@ -1738,7 +1742,7 @@
                 --panel-top: calc(var(--header-height) + var(--toolbar-height) + 10px);
                 --dashboard-gap: 10px;
                 --floating-gap: 10px;
-                --controls-h: 140px;
+                --controls-h: 340px;
                 --crane-h: 240px;
                 --right-col-w: 240px;
             }
@@ -2166,6 +2170,14 @@
                 </div>
             </div>
             <div class="content">
+                <div class="control-group">
+                    <label for="model-transparency">Transparency <output id="model-transparency-value">30%</output></label>
+                    <input id="model-transparency" type="range" min="0" max="100" step="1" value="30">
+                </div>
+                <div class="control-group">
+                    <label id="model-layers-label">Layers (Floors / Storeys)</label>
+                    <div id="model-layers" role="group" aria-labelledby="model-layers-label">Load an IFC model to see floors.</div>
+                </div>
                 <div class="control-group">
                     <label>Color By</label>
                     <select id="color-by-select">
@@ -2598,6 +2610,73 @@
         const sharedDefaultMaterial = new THREE.MeshStandardMaterial({ color: 0x00f0ff, emissive: 0x003366, metalness: 0.8, roughness: 0.2, transparent: true, opacity: 0.7, side: THREE.DoubleSide });
         let colorByMaterials = [];
         const selectedMaterial = new THREE.MeshPhysicalMaterial({ color: 0xff007f, emissive: 0x44001a, metalness: 0.9, roughness: 0.1, transparent: true, opacity: 0.9, side: THREE.DoubleSide });
+        let modelTransparency = null;
+        const floorLayers = [];
+        function getModelMeshes(visibleOnly = false) {
+            const meshes = [];
+            if (currentIfcModel) currentIfcModel[visibleOnly ? 'traverseVisible' : 'traverse'](child => {
+                if (child.isMesh) meshes.push(child);
+            });
+            return meshes;
+        }
+        function applyMaterialTransparency(material) {
+            if (modelTransparency === null) return;
+            for (const item of Array.isArray(material) ? material : [material]) {
+                item.opacity = 1 - modelTransparency / 100;
+                item.transparent = true;
+                item.needsUpdate = true;
+            }
+        }
+        document.getElementById('model-transparency').addEventListener('input', event => {
+            modelTransparency = Number(event.target.value);
+            document.getElementById('model-transparency-value').textContent = `${modelTransparency}%`;
+            const materials = new Set([sharedDefaultMaterial, selectedMaterial, ...colorByMaterials,
+                ...selectedOriginalMaterials.values(), ...statusPlaybackMaterials.values()]);
+            statusPlaybackOriginals.forEach(original => materials.add(original.material));
+            currentIfcModel?.traverse(child => { if (child.isMesh) materials.add(child.material); });
+            materials.forEach(applyMaterialTransparency);
+        });
+
+        function buildFloorLayers() {
+            const container = document.getElementById('model-layers');
+            container.replaceChildren();
+            floorLayers.length = 0;
+            if (!currentIfcModel || !explorerTree) {
+                container.textContent = currentIfcModel ? 'Could not read floor layers.' : 'Load an IFC model to see floors.';
+                return;
+            }
+            const memberships = new Map(), floors = new Map();
+            const visit = (node, floor = null) => {
+                if (String(node.type).toUpperCase() === 'IFCBUILDINGSTOREY') {
+                    floor = node.id;
+                    floors.set(floor, node.name);
+                }
+                if (node.id !== undefined && floor !== null) memberships.set(node.id, floor);
+                node.children.forEach(child => visit(child, floor));
+            };
+            visit(explorerTree);
+            const meshes = currentIfcModel.children.filter(child => child.isMesh);
+            const groups = new Map();
+            meshes.forEach(mesh => {
+                const id = memberships.get(mesh.userData.expressID) ?? 'unassigned';
+                if (!groups.has(id)) {
+                    const group = new THREE.Group();
+                    group.name = floors.get(id) || 'Unassigned / Other';
+                    currentIfcModel.add(group);
+                    groups.set(id, group);
+                }
+                groups.get(id).add(mesh);
+            });
+            groups.forEach(group => {
+                const label = document.createElement('label'), checkbox = document.createElement('input');
+                checkbox.type = 'checkbox'; checkbox.checked = true;
+                checkbox.addEventListener('change', () => { group.visible = checkbox.checked; });
+                label.append(checkbox, document.createTextNode(`${group.name} (${group.children.length})`));
+                container.appendChild(label);
+                floorLayers.push({ group, checkbox });
+            });
+            if (!groups.size) container.textContent = 'No model geometry available.';
+        }
 
         const loadingOverlay = document.getElementById('loading-overlay'); const loadStatus = document.getElementById('load-status'); const loadTitle = document.getElementById('load-title');
         const progressContainer = document.getElementById('progress-container'); const progressBar = document.getElementById('progress-bar');
@@ -3451,7 +3530,7 @@
                         explorerTreeElement.querySelectorAll('button.selected').forEach(item => item.classList.remove('selected'));
                         button.classList.add('selected');
                         clearSelection();
-                        const mesh = currentIfcModel?.children.find(child => child.isMesh && child.userData.expressID === node.id);
+                        const mesh = getModelMeshes().find(child => child.userData.expressID === node.id);
                         if (mesh) addMeshToSelection(mesh);
                         showElementProperties(currentModelID, node.id);
                     });
@@ -3660,6 +3739,8 @@
                 guidToMeshMap.clear();
                 elementPsetCache.clear();
                 explorerTree = null;
+                floorLayers.length = 0;
+                document.getElementById('model-layers').textContent = 'Load an IFC model to see floors.';
                 explorerSearch.value = '';
                 renderExplorer();
                 renderer.renderLists.dispose();
@@ -3799,7 +3880,8 @@
                 scene.add(group);
                 currentIfcModel = group;
                 clearSelection();
-                if (explorerPanel.style.display !== 'none') refreshExplorer();
+                refreshExplorer();
+                buildFloorLayers();
 
                 const box = new THREE.Box3().setFromObject(group);
                 const center = box.getCenter(new THREE.Vector3());
@@ -3911,7 +3993,7 @@
             raycaster.setFromCamera(pointer, camera);
             if (!currentIfcModel || currentModelID === -1) return;
 
-            const intersects = raycaster.intersectObjects(currentIfcModel.children.filter(c => c.visible));
+            const intersects = raycaster.intersectObjects(getModelMeshes(true), false);
             if (intersects.length > 0) {
                 const hitMesh = intersects[0].object;
                 if (!event.shiftKey && !event.ctrlKey) clearSelection();
@@ -3922,7 +4004,7 @@
                     if (parentEid >= 0) {
                         const parts = getParts(currentModelID, parentEid);
                         if (parts.length > 0) {
-                            currentIfcModel.children.forEach(child => {
+                            getModelMeshes(true).forEach(child => {
                                 if (!child.isMesh) return;
                                 const cid = safeExpressID(child.userData.expressID);
                                 if (parts.includes(cid)) addMeshToSelection(child);
@@ -3947,7 +4029,7 @@
             const minX = Math.min(x1, x2), maxX = Math.max(x1, x2);
             const minY = Math.min(y1, y2), maxY = Math.max(y1, y2);
             let added = 0;
-            currentIfcModel.children.forEach(child => {
+            getModelMeshes(true).forEach(child => {
                 if (!child.isMesh || !child.visible) return;
                 if (selectedMeshes.has(child.userData.expressID)) return;
                 const box = new THREE.Box3().setFromObject(child);
@@ -4061,6 +4143,7 @@
             const color = new THREE.Color(getStatusColor(status));
             const newMat = sharedDefaultMaterial.clone();
             newMat.color = color; newMat.emissive = color.clone().multiplyScalar(0.3); newMat.opacity = 1.0;
+            applyMaterialTransparency(newMat);
             mesh.material = newMat;
             statusColoredMeshes.add(mesh);
             if (selectedMeshes.get(mesh.userData.expressID) === mesh) selectedOriginalMaterials.set(mesh.userData.expressID, newMat);
@@ -4095,7 +4178,7 @@
 
         function buildStatusTimeline() {
             const meshesById = new Map();
-            currentIfcModel.children.forEach(mesh => {
+            getModelMeshes().forEach(mesh => {
                 if (!mesh.isMesh) return;
                 const eid = mesh.userData.expressID;
                 if (!meshesById.has(eid)) meshesById.set(eid, []);
@@ -4258,6 +4341,7 @@
             selectedMeshes.forEach(mesh => {
                 const newMat = sharedDefaultMaterial.clone();
                 newMat.color = color; newMat.emissive = color.clone().multiplyScalar(0.5); newMat.opacity = 1.0;
+                applyMaterialTransparency(newMat);
                 mesh.material = newMat;
             });
             showToast(`Applied color to ${selectedMeshes.size} elements.`, 'success');
@@ -4992,12 +5076,13 @@
             if (selectedMeshes.size === 0 || !currentIfcModel) return;
             isIsolated = !isIsolated;
             e.target.classList.toggle('active');
-            currentIfcModel.children.forEach(child => { if (child.isMesh) child.visible = isIsolated ? selectedMeshes.has(child.userData.expressID) : true; });
+            getModelMeshes().forEach(child => { child.visible = isIsolated ? selectedMeshes.has(child.userData.expressID) : true; });
         });
 
         document.getElementById('btn-show-all').addEventListener('click', () => {
             if (!currentIfcModel) return;
-            currentIfcModel.children.forEach(child => { if (child.isMesh) child.visible = true; });
+            getModelMeshes().forEach(child => { child.visible = true; });
+            floorLayers.forEach(({ group, checkbox }) => { group.visible = true; checkbox.checked = true; });
             document.getElementById('btn-isolate').classList.remove('active');
             isIsolated = false;
             clearSelection();
@@ -5050,6 +5135,7 @@
                             newMat.color = typeColors[key];
                             newMat.emissive = typeColors[key].clone().multiplyScalar(0.2);
                             newMat.opacity = 0.9;
+                            applyMaterialTransparency(newMat);
                             typeMaterials[key] = newMat;
                             colorByMaterials.push(newMat);
                         }
