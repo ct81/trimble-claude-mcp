@@ -36,7 +36,6 @@ export function getMapLayer(name, ground = false) {
     }
     return mapLayers[name];
 }
-
 function wrapLongitude(lng) {
     return ((lng + 180) % 360 + 360) % 360 - 180;
 }
@@ -105,7 +104,7 @@ export function getGroundBounds(corners, groundY) {
     return minX <= maxX ? { minX, minZ, maxX, maxZ } : null;
 }
 
-export function createGroundMap(THREE, scene, groundY, showToast) {
+function createOverlayGroundMap(THREE, scene, groundY, showToast) {
     const source = document.getElementById('map-tile-source');
     const group = new THREE.Group();
     scene.add(group);
@@ -126,6 +125,7 @@ export function createGroundMap(THREE, scene, groundY, showToast) {
         mesh.material.dispose();
         tiles.delete(tile);
     }
+
 
     function hide() {
         if (!map) return;
@@ -221,5 +221,151 @@ export function createGroundMap(THREE, scene, groundY, showToast) {
         show, hide, setLayer, update,
         getLinks: (focus) => getMapLinks(placement.toLatLng(focus), lastView ? map.getZoom() : 13),
         fromLatLng: (point, focus) => placement.fromLatLng(point, focus)
+    };
+}
+
+function createInteractiveGroundMap(groundY, showToast, { camera, controls, container }) {
+    const source = document.getElementById('interactive-ground-map');
+    let map, layer, placement, saved, syncing = false, previousView = '', linksDirty = false;
+    let metersPerPixel;
+    const copy = point => ({ x: point.x, y: point.y, z: point.z });
+    const key = () => [camera.position.x, camera.position.y, camera.position.z,
+        controls.target.x, controls.target.z, source.clientWidth, source.clientHeight, camera.fov].join(':');
+
+    function syncCamera() {
+        if (!map || syncing) return;
+        const focus = placement.fromLatLng(map.getCenter(), controls.target);
+        const height = map.getSize().y * metersPerPixel / 2 ** map.getZoom() /
+            (2 * Math.tan(camera.fov * Math.PI / 360));
+        controls.target.set(focus.x, groundY, focus.z);
+        camera.position.set(focus.x, groundY + height, focus.z);
+        camera.up.set(0, 0, -1);
+        camera.lookAt(controls.target);
+        previousView = key();
+        linksDirty = true;
+    }
+
+    function setLayer(name) {
+        if (layer) map.removeLayer(layer);
+        const { url, maxNativeZoom, attribution } = getMapLayer(name);
+        let reported = false;
+        layer = globalThis.L.tileLayer(url, { maxZoom: MAX_ZOOM, maxNativeZoom, attribution })
+            .on('tileerror', () => {
+                if (!reported) {
+                    showToast(`Some ${name} ground map tiles could not load. Try another layer or check your connection.`, 'error');
+                    reported = true;
+                }
+            }).addTo(map);
+    }
+
+    function update() {
+        if (!map) return;
+        if (previousView === key()) {
+            const changed = linksDirty;
+            linksDirty = false;
+            return changed;
+        }
+        syncing = true;
+        try {
+            map.invalidateSize({ pan: false });
+            const height = Math.max(1, camera.position.y - groundY);
+            const span = 2 * height * Math.tan(camera.fov * Math.PI / 360);
+            const zoom = Math.max(2, Math.min(MAX_ZOOM, Math.log2(map.getSize().y * metersPerPixel / span)));
+            map.setView(placement.toLatLng(controls.target), zoom, { animate: false });
+        } finally {
+            syncing = false;
+        }
+        syncCamera();
+        linksDirty = false;
+        return true;
+    }
+
+    function hide() {
+        if (!map) return;
+        map.remove();
+        map = layer = null;
+        source.hidden = true;
+        container.classList.remove('interactive-ground-active');
+        camera.up.set(saved.up.x, saved.up.y, saved.up.z);
+        camera.position.set(saved.position.x, saved.position.y, saved.position.z);
+        controls.target.set(saved.target.x, saved.target.y, saved.target.z);
+        controls.enabled = saved.enabled;
+        controls.update();
+    }
+
+    function show(anchor, layerName) {
+        const L = globalThis.L;
+        if (!L) {
+            showToast('Leaflet could not load. Check your connection and reload the page.', 'error');
+            return false;
+        }
+        hide();
+        placement = createMapPlacement(L.CRS.EPSG3857, anchor);
+        metersPerPixel = EQUATOR_LENGTH * Math.cos(anchor.lat * Math.PI / 180) / TILE_SIZE;
+        saved = { position: copy(camera.position), target: copy(controls.target), up: copy(camera.up), enabled: controls.enabled };
+        controls.enabled = false;
+        source.hidden = false;
+        container.classList.add('interactive-ground-active');
+        map = L.map(source, {
+            attributionControl: false, zoomControl: false, zoomAnimation: false, fadeAnimation: false,
+            minZoom: 2, maxZoom: MAX_ZOOM, zoomSnap: 0, zoomDelta: .5
+        });
+        map.on('move zoom resize', syncCamera);
+        setLayer(layerName);
+        const height = Math.max(10, Math.abs(camera.position.y - groundY));
+        controls.target.set(anchor.x, groundY, anchor.z);
+        camera.position.set(anchor.x, groundY + height, anchor.z);
+        previousView = '';
+        update();
+        return true;
+    }
+    return {
+        show, hide, setLayer, update,
+        getLinks: focus => getMapLinks(placement.toLatLng(focus), map.getZoom()),
+        fromLatLng: (point, focus) => placement.fromLatLng(point, focus)
+    };
+}
+
+export function createGroundMap(THREE, scene, groundY, showToast, view) {
+    const overlay = createOverlayGroundMap(THREE, scene, groundY, showToast);
+    const interactive = createInteractiveGroundMap(groundY, showToast, view);
+    let active = null, mode = 'overlay', anchor, layerName;
+    return {
+        get mode() { return mode; },
+        get visible() { return active !== null; },
+        show(nextAnchor, nextLayer) {
+            const target = mode === 'interactive' ? interactive : overlay;
+            if (active) active.hide();
+            active = null;
+            if (!target.show(nextAnchor, nextLayer)) return false;
+            active = target;
+            anchor = { ...nextAnchor };
+            layerName = nextLayer;
+            return true;
+        },
+        hide() {
+            if (active) active.hide();
+            active = null;
+        },
+        setMode(nextMode) {
+            if (!['overlay', 'interactive'].includes(nextMode)) throw new Error('Invalid ground map mode.');
+            if (mode === nextMode) return true;
+            if (!active) { mode = nextMode; return true; }
+            const previousMode = mode, previous = active;
+            previous.hide();
+            const next = nextMode === 'interactive' ? interactive : overlay;
+            if (!next.show(anchor, layerName)) {
+                active = previous.show(anchor, layerName) ? previous : null;
+                mode = previousMode;
+                return false;
+            }
+            active = next;
+            mode = nextMode;
+            return true;
+        },
+        setLayer(name) { active.setLayer(name); layerName = name; },
+        update(camera) { return active?.update(camera); },
+        getLinks(focus) { return active.getLinks(focus); },
+        fromLatLng(point, focus) { return active.fromLatLng(point, focus); }
     };
 }

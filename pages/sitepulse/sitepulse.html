@@ -78,6 +78,13 @@
             visibility: hidden;
             pointer-events: none;
         }
+        #interactive-ground-map {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+        }
+        #interactive-ground-map[hidden] { display: none; }
+        #canvas-container.interactive-ground-active { background: none; pointer-events: none; }
 
         .ground-map-controls {
             position: absolute;
@@ -1628,7 +1635,8 @@
             background: rgba(157, 78, 221, 0.25);
         }
 
-        #map-settings input[type="number"] {
+        #map-settings input[type="number"],
+        #ground-map-mode {
             width: 120px;
             padding: 4px;
             background: var(--bg-color);
@@ -1793,6 +1801,7 @@
 <body hidden>
 
     <div id="canvas-container"></div>
+    <div id="interactive-ground-map" role="region" aria-label="Interactive Leaflet ground map" hidden></div>
     <div id="map-tile-source" aria-hidden="true" inert></div>
     <div id="ground-map-layers" class="ground-map-controls" role="group" aria-label="Ground map layers" hidden>
         <label for="ground-map-layer">Ground map layer</label>
@@ -1847,11 +1856,18 @@
         <div class="settings-row"><label>Selection Box</label><input type="checkbox" id="set-selbox" checked></div>
         <form id="map-settings">
             <h4>Ground Map</h4>
+            <div class="settings-row">
+                <label for="ground-map-mode">Map mode</label>
+                <select id="ground-map-mode">
+                    <option value="overlay">3D ground overlay</option>
+                    <option value="interactive">Interactive Leaflet map</option>
+                </select>
+            </div>
             <div class="settings-row"><label for="map-lat">Latitude</label><input id="map-lat" type="number" step="any" min="-85.05112878" max="85.05112878" placeholder="1.3521" required></div>
             <div class="settings-row"><label for="map-lng">Longitude</label><input id="map-lng" type="number" step="any" min="-180" max="180" placeholder="103.8198" required></div>
             <div class="settings-row"><label for="map-x">Model X (m)</label><input id="map-x" type="number" step="any" value="0" required></div>
             <div class="settings-row"><label for="map-z">Model Z (m)</label><input id="map-z" type="number" step="any" value="0" required></div>
-            <p>Match a latitude and longitude to a point on the grid. North is -Z. Map tiles require an internet connection.</p>
+            <p>Match a latitude and longitude to a point on the grid. North is -Z. Interactive Leaflet mode uses a top-down view and map gestures; switch to 3D overlay to select model elements. Map tiles require an internet connection.</p>
             <div class="settings-row">
                 <button type="submit">Apply Ground Map</button>
                 <button type="button" id="hide-ground-map" hidden>Hide Map</button>
@@ -2573,7 +2589,7 @@
         const gridHelper = new THREE.GridHelper(500, 250, 0x00f0ff, 0x1a2a44); gridHelper.position.y = -0.1; gridHelper.material.opacity = 0.2; gridHelper.material.transparent = true; scene.add(gridHelper);
 
         const groundY = gridHelper.position.y - 0.05;
-        const groundMap = createGroundMap(THREE, scene, groundY, showToast);
+        const groundMap = createGroundMap(THREE, scene, groundY, showToast, { camera, controls, container });
         const vehicleSimulation = createVehicleSimulation(THREE, scene, groundY);
         const mapVehicleSimulation = createVehicleSimulation(THREE, scene, groundY);
 
@@ -2938,6 +2954,7 @@
         const groundMapLayers = document.getElementById('ground-map-layers');
         const groundMapTools = document.getElementById('ground-map-tools');
         const groundMapLayer = document.getElementById('ground-map-layer');
+        const groundMapMode = document.getElementById('ground-map-mode');
         const mapAttribution = document.getElementById('map-attribution');
         const groundMapTraffic = document.getElementById('ground-map-traffic');
         const groundMapStreetView = document.getElementById('ground-map-street-view');
@@ -3008,9 +3025,23 @@
         }
 
         function updateGroundMapAttribution() {
-            mapAttribution.innerHTML = getMapLayer(groundMapLayer.value, true).attribution;
+            mapAttribution.innerHTML = getMapLayer(groundMapLayer.value, groundMap.mode === 'overlay').attribution;
         }
 
+        groundMapMode.addEventListener('change', () => {
+            if (!groundMap.setMode(groundMapMode.value)) {
+                groundMapMode.value = groundMap.mode;
+                if (!groundMap.visible) {
+                    hideGroundMap.hidden = groundMapLayers.hidden = groundMapTools.hidden = true;
+                    stopMapSimulation();
+                }
+                return;
+            }
+            if (groundMap.visible) {
+                updateGroundMapAttribution();
+                updateGroundMapLinks();
+            }
+        });
         document.getElementById('map-settings').addEventListener('submit', (e) => {
             e.preventDefault();
             const [lat, lng, x, z] = ['map-lat', 'map-lng', 'map-x', 'map-z']
@@ -5291,7 +5322,7 @@
 
         function animate(time) {
             requestAnimationFrame(animate);
-            controls.update();
+            if (controls.enabled) controls.update();
             if (groundMap.update(camera)) updateGroundMapLinks();
             vehicleSimulation.update(time);
             mapVehicleSimulation.update(time);
