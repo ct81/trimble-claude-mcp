@@ -812,8 +812,11 @@
             border-color: var(--neon-blue);
         }
         #model-transparency { width: 100%; accent-color: var(--neon-blue); }
-        #model-layers { max-height: 150px; overflow-y: auto; }
-        #model-layers label { display: flex; align-items: center; gap: 6px; }
+        #model-layers, #model-element-types { max-height: 150px; overflow-y: auto; }
+        #model-layers label, #model-element-types label { display: flex; align-items: center; gap: 6px; }
+        .model-filter-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+        .model-filter-tabs button { flex: 1; padding: 5px 3px; font-size: .65rem; }
+        .model-filter-tabs button[aria-selected="true"] { border-color: var(--neon-blue); background: rgba(0, 240, 255, .15); }
 
         #floating-controls-panel {
             height: var(--controls-h);
@@ -2175,8 +2178,12 @@
                     <input id="model-transparency" type="range" min="0" max="100" step="1" value="30">
                 </div>
                 <div class="control-group">
-                    <label id="model-layers-label">Layers (Floors / Storeys)</label>
-                    <div id="model-layers" role="group" aria-labelledby="model-layers-label">Load an IFC model to see floors.</div>
+                    <div class="model-filter-tabs" role="tablist" aria-label="Model visibility">
+                        <button type="button" id="model-floors-tab" role="tab" aria-selected="true" aria-controls="model-layers">Layers (Floors / Storeys)</button>
+                        <button type="button" id="model-types-tab" role="tab" aria-selected="false" aria-controls="model-element-types" tabindex="-1">Element Types</button>
+                    </div>
+                    <div id="model-layers" role="tabpanel" aria-labelledby="model-floors-tab">Load an IFC model to see floors.</div>
+                    <div id="model-element-types" role="tabpanel" aria-labelledby="model-types-tab" hidden>Load an IFC model to see element types.</div>
                 </div>
                 <div class="control-group">
                     <label>Color By</label>
@@ -2612,6 +2619,28 @@
         const selectedMaterial = new THREE.MeshPhysicalMaterial({ color: 0xff007f, emissive: 0x44001a, metalness: 0.9, roughness: 0.1, transparent: true, opacity: 0.9, side: THREE.DoubleSide });
         let modelTransparency = null;
         const floorLayers = [];
+        const elementTypeLayers = [];
+        const modelFilterTabs = ['model-floors-tab', 'model-types-tab'].map(id => document.getElementById(id));
+        function activateModelFilterTab(index) {
+            modelFilterTabs.forEach((tab, i) => {
+                tab.setAttribute('aria-selected', String(i === index));
+                tab.tabIndex = i === index ? 0 : -1;
+                document.getElementById(tab.getAttribute('aria-controls')).hidden = i !== index;
+            });
+        }
+        modelFilterTabs.forEach((tab, index) => {
+            tab.addEventListener('click', () => activateModelFilterTab(index));
+            tab.addEventListener('keydown', event => {
+                let next;
+                if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') next = 1 - index;
+                else if (event.key === 'Home') next = 0;
+                else if (event.key === 'End') next = 1;
+                else return;
+                event.preventDefault();
+                activateModelFilterTab(next);
+                modelFilterTabs[next].focus();
+            });
+        });
         function getModelMeshes(visibleOnly = false) {
             const meshes = [];
             if (currentIfcModel) currentIfcModel[visibleOnly ? 'traverseVisible' : 'traverse'](child => {
@@ -2639,24 +2668,32 @@
 
         function buildFloorLayers() {
             const container = document.getElementById('model-layers');
+            const typeContainer = document.getElementById('model-element-types');
             container.replaceChildren();
+            typeContainer.replaceChildren();
+            const previousGroups = floorLayers.map(layer => layer.group);
             floorLayers.length = 0;
+            elementTypeLayers.length = 0;
             if (!currentIfcModel || !explorerTree) {
                 container.textContent = currentIfcModel ? 'Could not read floor layers.' : 'Load an IFC model to see floors.';
+                typeContainer.textContent = currentIfcModel ? 'Could not read element types.' : 'Load an IFC model to see element types.';
                 return;
             }
-            const memberships = new Map(), floors = new Map();
+            const memberships = new Map(), floors = new Map(), types = new Map();
             const visit = (node, floor = null) => {
                 if (String(node.type).toUpperCase() === 'IFCBUILDINGSTOREY') {
                     floor = node.id;
                     floors.set(floor, node.name);
                 }
                 if (node.id !== undefined && floor !== null) memberships.set(node.id, floor);
+                if (node.id !== undefined && node.type) types.set(node.id, node.type.toUpperCase());
                 node.children.forEach(child => visit(child, floor));
             };
             visit(explorerTree);
-            const meshes = currentIfcModel.children.filter(child => child.isMesh);
+            const meshes = getModelMeshes();
+            previousGroups.forEach(group => currentIfcModel.remove(group));
             const groups = new Map();
+            const typeLayers = new Map();
             meshes.forEach(mesh => {
                 const id = memberships.get(mesh.userData.expressID) ?? 'unassigned';
                 if (!groups.has(id)) {
@@ -2665,17 +2702,40 @@
                     currentIfcModel.add(group);
                     groups.set(id, group);
                 }
-                groups.get(id).add(mesh);
+                const floorGroup = groups.get(id), type = types.get(mesh.userData.expressID) || 'Unknown';
+                if (!typeLayers.has(type)) typeLayers.set(type, { groups: new Map(), count: 0 });
+                const layer = typeLayers.get(type);
+                if (!layer.groups.has(id)) {
+                    const group = new THREE.Group();
+                    group.name = type;
+                    floorGroup.add(group);
+                    layer.groups.set(id, group);
+                }
+                layer.groups.get(id).add(mesh);
+                layer.count++;
             });
             groups.forEach(group => {
                 const label = document.createElement('label'), checkbox = document.createElement('input');
                 checkbox.type = 'checkbox'; checkbox.checked = true;
                 checkbox.addEventListener('change', () => { group.visible = checkbox.checked; });
-                label.append(checkbox, document.createTextNode(`${group.name} (${group.children.length})`));
+                let count = 0;
+                group.traverse(child => { if (child.isMesh) count++; });
+                label.append(checkbox, document.createTextNode(`${group.name} (${count})`));
                 container.appendChild(label);
                 floorLayers.push({ group, checkbox });
             });
+            [...typeLayers].sort(([a], [b]) => a.localeCompare(b)).forEach(([type, layer]) => {
+                const label = document.createElement('label'), checkbox = document.createElement('input');
+                checkbox.type = 'checkbox'; checkbox.checked = true;
+                const groups = [...layer.groups.values()];
+                checkbox.addEventListener('change', () => groups.forEach(group => { group.visible = checkbox.checked; }));
+                const name = type.replace(/^IFC/, '').toLowerCase().replace(/^\w/, letter => letter.toUpperCase());
+                label.append(checkbox, document.createTextNode(`${name} (${layer.count})`));
+                typeContainer.appendChild(label);
+                elementTypeLayers.push({ groups, checkbox });
+            });
             if (!groups.size) container.textContent = 'No model geometry available.';
+            if (!typeLayers.size) typeContainer.textContent = 'No model geometry available.';
         }
 
         const loadingOverlay = document.getElementById('loading-overlay'); const loadStatus = document.getElementById('load-status'); const loadTitle = document.getElementById('load-title');
@@ -3510,7 +3570,7 @@
             const filter = (node, parentMatches = false) => {
                 const matches = parentMatches || !query || node.name.toLowerCase().includes(query);
                 const children = node.children.map(child => filter(child, matches)).filter(Boolean);
-                return matches || children.length ? { ...node, children } : null;
+                return matches || children.length ? { ...node, children, selectionNode: node } : null;
             };
             const root = filter(explorerTree);
             if (!root) {
@@ -3519,20 +3579,26 @@
             }
             const renderNode = (node, parent, open = false) => {
                 const createLabel = () => {
-                    if (node.id === undefined) return document.createTextNode(node.name);
                     const button = document.createElement('button');
                     button.type = 'button';
                     button.textContent = node.name;
-                    button.title = `${node.type} #${node.id}`;
+                    button.title = node.id === undefined ? `Select ${node.name}` : `${node.type} #${node.id}`;
                     button.addEventListener('click', event => {
                         event.preventDefault();
                         event.stopPropagation();
                         explorerTreeElement.querySelectorAll('button.selected').forEach(item => item.classList.remove('selected'));
                         button.classList.add('selected');
                         clearSelection();
-                        const mesh = getModelMeshes().find(child => child.userData.expressID === node.id);
-                        if (mesh) addMeshToSelection(mesh);
-                        showElementProperties(currentModelID, node.id);
+                        const ids = new Set();
+                        const collect = item => {
+                            if (item.id !== undefined) ids.add(item.id);
+                            item.children.forEach(collect);
+                        };
+                        collect(node.selectionNode || node);
+                        getModelMeshes().forEach(mesh => {
+                            if (ids.has(mesh.userData.expressID)) addMeshToSelection(mesh);
+                        });
+                        if (node.id !== undefined) showElementProperties(currentModelID, node.id);
                     });
                     return button;
                 };
@@ -3740,7 +3806,9 @@
                 elementPsetCache.clear();
                 explorerTree = null;
                 floorLayers.length = 0;
+                elementTypeLayers.length = 0;
                 document.getElementById('model-layers').textContent = 'Load an IFC model to see floors.';
+                document.getElementById('model-element-types').textContent = 'Load an IFC model to see element types.';
                 explorerSearch.value = '';
                 renderExplorer();
                 renderer.renderLists.dispose();
@@ -5083,6 +5151,7 @@
             if (!currentIfcModel) return;
             getModelMeshes().forEach(child => { child.visible = true; });
             floorLayers.forEach(({ group, checkbox }) => { group.visible = true; checkbox.checked = true; });
+            elementTypeLayers.forEach(({ groups, checkbox }) => { groups.forEach(group => { group.visible = true; }); checkbox.checked = true; });
             document.getElementById('btn-isolate').classList.remove('active');
             isIsolated = false;
             clearSelection();
