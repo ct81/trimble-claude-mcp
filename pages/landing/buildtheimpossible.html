@@ -34,6 +34,7 @@ nav{display:flex;gap:14px;align-items:center;font-size:.9rem}
 nav a{color:var(--muted);text-decoration:none}
 .btn{font:inherit;cursor:pointer;border:1px solid var(--glow);color:#021326;background:linear-gradient(135deg,#7fd8ff,#4fc3ff);border-radius:999px;padding:10px 18px;font-weight:600;box-shadow:0 0 18px rgba(79,195,255,.45);text-decoration:none;display:inline-block}
 .btn.ghost{background:transparent;color:var(--text);box-shadow:none;border-color:var(--line)}
+#songPlay[hidden]{display:none}
 .btn.rec{background:linear-gradient(135deg,#ff7a90,#ff4f6d);color:#fff;border-color:#ff4f6d;box-shadow:0 0 18px rgba(255,79,109,.6)}
 .hero{display:grid;grid-template-columns:1.05fr 1fr;gap:20px;align-items:center;padding:10px 0 30px}
 .chip{display:inline-block;font:600 .72rem ui-monospace,Menlo,monospace;letter-spacing:.14em;color:var(--glow);border:1px solid var(--line);border-radius:999px;padding:4px 12px;background:var(--panel)}
@@ -169,6 +170,7 @@ footer{color:var(--muted);text-align:center;font-size:.8rem;padding:20px 0 30px}
     <div class="hud a">AI SALES REPRESENTATIVE<b>JENNIE</b><div class="mini" id="mini"></div></div>
     <div class="hud b" id="avatarStatus" data-active="false">AVATAR STATUS<b id="avatarStatusText" role="status" aria-live="polite">Ready</b></div>
     <div id="cap"></div>
+    <button class="btn ghost" id="songPlay" hidden style="position:absolute;right:10px;top:140px;z-index:6">Play birthday song</button>
     <div id="avp" hidden></div>
   </div>
 </section>
@@ -1211,13 +1213,96 @@ show(0,false,false);
 
 // voice + avatar state
 let muted=false,speaking=false,pulse=0,tmr=0;
+let birthdayAudio=null,birthdaySong=null;
+async function prepareBirthdayAudio(){
+  const Audio=window.AudioContext||window.webkitAudioContext;
+  if(!Audio)throw new Error('Background music is not supported in this browser.');
+  if(!birthdayAudio)birthdayAudio=new Audio();
+  if(birthdayAudio.state!=='running')await birthdayAudio.resume();
+  return birthdayAudio;
+}
+function stopBirthdaySong(){
+  $('songPlay').hidden=true;
+  if(!birthdaySong)return;
+  const song=birthdaySong;birthdaySong=null;trTok++;
+  song.timers.forEach(clearTimeout);
+  song.nodes.forEach(node=>{node.stop();node.disconnect()});
+  song.output.disconnect();
+  if(window.speechSynthesis)speechSynthesis.cancel();
+  speaking=false;cap.style.opacity=0;setAvatarStatus('Ready');
+}
+async function playBirthdaySong(){
+  stopBirthdaySong();trTok++;clearTimeout(tmr);
+  if(window.speechSynthesis)speechSynthesis.cancel();
+  speaking=false;
+  if(muted){cap.textContent='Turn Voice on to play the birthday song.';cap.style.opacity=1;setAvatarStatus('Voice off');return}
+  if(!window.speechSynthesis){cap.textContent='Spoken lyrics are not supported in this browser.';cap.style.opacity=1;setAvatarStatus('Voice unavailable');return}
+  const token=trTok;
+  setAvatarStatus('Preparing music...',true);
+  $('songPlay').hidden=false;
+  try{
+    const audio=await prepareBirthdayAudio();
+    if(token!==trTok)return;
+    if(audio.state!=='running')throw new Error('Tap Play birthday song to enable audio.');
+    $('songPlay').hidden=true;
+    const output=audio.createGain();output.gain.value=.14;output.connect(audio.destination);
+    const song={nodes:[],timers:[],output};birthdaySong=song;
+    const beat=.85,start=audio.currentTime+.1;
+    const phrases=[
+      [[60,.5],[60,.5],[62,1],[60,1],[65,1],[64,2]],
+      [[60,.5],[60,.5],[62,1],[60,1],[67,1],[65,2]],
+      [[60,.5],[60,.5],[72,1],[69,1],[65,1],[64,1],[62,1]],
+      [[70,.5],[70,.5],[69,1],[65,1],[67,1],[65,2]]
+    ];
+    const tone=(midi,time,duration,volume,type)=>{
+      const oscillator=audio.createOscillator(),gain=audio.createGain();
+      oscillator.type=type;oscillator.frequency.value=440*Math.pow(2,(midi-69)/12);
+      gain.gain.setValueAtTime(0,time);gain.gain.linearRampToValueAtTime(volume,time+.02);
+      gain.gain.exponentialRampToValueAtTime(.001,time+duration);
+      oscillator.connect(gain);gain.connect(output);
+      oscillator.onended=()=>{oscillator.disconnect();gain.disconnect()};
+      song.nodes.push(oscillator);oscillator.start(time);oscillator.stop(time+duration+.04);
+    };
+    let offset=0;
+    phrases.forEach((notes,line)=>{
+      const chords=[[53,57,60],[48,52,55],[53,57,60],[58,62,65]];
+      for(let bar=0;bar<2;bar++)chords[line].forEach(midi=>tone(midi,start+(offset+bar*3)*beat,2.8*beat,.12,'sine'));
+      notes.forEach(([midi,length])=>{tone(midi,start+offset*beat,length*beat*.9,.5,'triangle');offset+=length});
+      const lyrics=line===2?'Happy birthday, dear friend.':'Happy birthday to you.';
+      song.timers.push(setTimeout(()=>{
+        if(birthdaySong!==song)return;
+        speechSynthesis.cancel();
+        cap.textContent=lyrics;cap.style.opacity=1;
+        const utterance=new SpeechSynthesisUtterance(lyrics),v=voice('en-US');
+        utterance.lang='en-US';if(v)utterance.voice=v;utterance.rate=.8;utterance.pitch=1.15;
+        utterance.onstart=()=>{if(birthdaySong===song)speaking=true};
+        utterance.onboundary=()=>{if(birthdaySong===song)pulse=1};
+        utterance.onend=()=>{if(birthdaySong===song)speaking=false};
+        utterance.onerror=e=>{
+          if(birthdaySong!==song||e.error==='canceled'||e.error==='interrupted')return;
+          console.error('Birthday lyrics playback failed:',e.error);stopBirthdaySong();
+          cap.textContent='Could not play the birthday lyrics. Please try again.';cap.style.opacity=1;setAvatarStatus('Playback failed');
+        };
+        speechSynthesis.speak(utterance);
+      },100+line*6*beat*1000));
+    });
+    setAvatarStatus('Playing birthday song',true);
+    song.timers.push(setTimeout(()=>{if(birthdaySong===song)stopBirthdaySong()},100+offset*beat*1000+500));
+  }catch(error){
+    if(token!==trTok)return;
+    stopBirthdaySong();console.error('Could not play birthday song:',error);
+    cap.textContent=error instanceof Error?error.message:'Could not play the birthday song.';
+    cap.style.opacity=1;setAvatarStatus('Playback unavailable');$('songPlay').hidden=false;
+  }
+}
+$('songPlay').onclick=()=>playBirthdaySong();
 let avatarStatusVersion=0;
 function setAvatarStatus(text,active=false){
   $('avatarStatusText').textContent=text;
   $('avatarStatus').dataset.active=String(active);
   return ++avatarStatusVersion;
 }
-$('mute').onclick=()=>{muted=!muted;$('mute').textContent=muted?'🔇 Voice off':'🔊 Voice on';if(muted&&window.speechSynthesis){speechSynthesis.cancel();if(speaking){trTok++;speaking=false;clearTimeout(tmr);cap.style.opacity=0;setAvatarStatus('Ready')}}};
+$('mute').onclick=()=>{muted=!muted;$('mute').textContent=muted?'🔇 Voice off':'🔊 Voice on';if(muted){stopBirthdaySong();trTok++;if(window.speechSynthesis)speechSynthesis.cancel();speaking=false;clearTimeout(tmr);cap.style.opacity=0;setAvatarStatus('Ready')}};
 $('intro').onclick=()=>say('Welcome to the Technology Solutions Hub. I am Jennie, your AI Sales Representative. Choose any solution below and I will show you what it does, its key features, and how to request a live demo.');
 const LANGS=[['English (US)','en-US',0],['English (UK)','en-GB',0],['Chinese','zh-CN','zh-CN'],['Malay','ms-MY','ms'],['Thai','th-TH','th'],['Filipino','fil-PH','tl'],['Korean','ko-KR','ko'],['Japanese','ja-JP','ja'],['Spanish','es-ES','es'],['German','de-DE','de'],['French','fr-FR','fr'],['Finnish','fi-FI','fi']];
 let LI=0,LANG_READY=false,trTok=0;const trC={};
@@ -1228,7 +1313,7 @@ async function tr(t,code){const k=code+'|'+t;if(trC[k])return trC[k];const ps=t.
   const dec=x=>{const e=document.createElement('textarea');e.innerHTML=x;return e.value};
   const out=await Promise.all(ch.map(async c=>{const r=await fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(c.trim())+'&langpair=en|'+code),d=await r.json();if(d.responseStatus!=200||!d.responseData||!d.responseData.translatedText)throw new Error('tr');return dec(d.responseData.translatedText)}));
   return trC[k]=out.join(' ')}
-async function say(t,statusAfter='Ready'){const my=++trTok,L=LANGS[LI];let o=t,ok=true;
+async function say(t,statusAfter='Ready'){stopBirthdaySong();const my=++trTok,L=LANGS[LI];let o=t,ok=true;
   clearTimeout(tmr);speaking=false;if(window.speechSynthesis)speechSynthesis.cancel();
   if(L[2]){setAvatarStatus('Translating...',true);cap.textContent='…';cap.style.opacity=1;try{o=await tr(t,L[2])}catch(e){console.error('Could not translate avatar response:',e);o=t;ok=false}if(my!==trTok)return}
   sayRaw(o,ok?L[1]:'en-US',statusAfter);return o}
@@ -1557,9 +1642,11 @@ function match(text){const n=norm(text),tk=toks(text);let best=null,bs=0;
   return bs>=(QA.threshold||.5)?best:null}
 async function trRev(t,code){const r=await fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(t)+'&langpair='+code+'|en'),d=await r.json();if(d.responseStatus!=200||!d.responseData)throw new Error('tr');const e=document.createElement('textarea');e.innerHTML=d.responseData.translatedText;return e.value}
 async function ask(text){let en=text;const L=LANGS[LI];
+  stopBirthdaySong();
   if(L[2]){setAvatarStatus('Translating...',true);try{en=await trRev(text,L[2])}catch(e){console.error('Could not translate avatar question:',e)}}
   setAvatarStatus('Finding answer...',true);
   const m=match(en);
+  if(m&&m.action==='playBirthdaySong'){await playBirthdaySong();return}
   if(m&&m.action==='sendChesterEmail'){
     if(!(m.questions||[]).some(question=>norm(question)===norm(en))){say('To send the email, please say “send an email to Chester”.');return}
     setAvatarStatus('Sending email...',true);
@@ -1581,6 +1668,8 @@ const note=t=>{cap.textContent=t;cap.style.opacity=1;clearTimeout(tmr);tmr=setTi
 mic.onclick=()=>{
   if(!SR){setAvatarStatus('Voice unavailable');note('Voice recognition is not supported in this browser. Please use Chrome, Edge or Safari.');return}
   if(listening){rec&&rec.stop();return}
+  stopBirthdaySong();
+  prepareBirthdayAudio().catch(error=>console.error('Could not enable birthday music:',error));
   trTok++;clearTimeout(tmr);if(window.speechSynthesis)speechSynthesis.cancel();speaking=false;
   setAvatarStatus('Starting microphone...',true);
   rec=new SR();rec.lang=LANGS[LI][1];rec.interimResults=true;rec.maxAlternatives=1;let fin='',err='';

@@ -4,6 +4,15 @@
  "entries": [
   {
    "questions": [
+    "sing me a song",
+    "sing happy birthday",
+    "play happy birthday"
+   ],
+   "reply": "Here is Happy Birthday, with spoken lyrics and a birthday melody.",
+   "action": "playBirthdaySong"
+  },
+  {
+   "questions": [
     "hello",
     "hi",
     "hey",
