@@ -1393,15 +1393,48 @@ const dw=new THREE.Mesh(dg,new THREE.MeshBasicMaterial({color:0xd9c8ff,wireframe
  [-1,1].forEach(s=>{const st=new THREE.Mesh(new THREE.SphereGeometry(.035,12,8),goldM);st.position.set(s*.8,-.12,-.06);head.add(st);
   const dr=new THREE.Mesh(new THREE.SphereGeometry(.05,12,10),MS({color:0x9be3ff,emissive:0x4fc3ff,emissiveIntensity:.9,roughness:.1}));dr.scale.set(1,1.5,1);dr.position.set(s*.8,-.3,-.06);head.add(dr);
   const ch=new THREE.Mesh(cyl,goldM);ch.scale.set(.008,.14,.008);ch.position.set(s*.8,-.2,-.06);head.add(ch)});}
+function mkFoot(s,ank){
+  const foot=new THREE.Group();ank.add(foot);
+  // Longitudinal sections: heel, instep, arch, ball and toe roots.
+  const profile=[[-.29,0,-.56,-.56],[-.22,.13,-.74,-.36],[-.06,.17,-.78,-.23],[.15,.17,-.74,-.29],[.36,.21,-.76,-.4],[.58,.27,-.8,-.49],[.76,.26,-.81,-.55],[.88,.22,-.8,-.6],[.94,0,-.7,-.7]];
+  const columns=profile[0].map((_,k)=>profile.map(p=>p[k])),rings=48,sides=32,positions=[],indices=[];
+  for(let i=0;i<=rings;i++){
+    const t=i/rings*(profile.length-1),[z,w,bottom,top]=columns.map(column=>sm1(column,t));
+    for(let j=0;j<=sides;j++){
+      const angle=j/sides*Math.PI*2,x=Math.cos(angle)*Math.max(0,w),y=(top+bottom)/2+Math.sin(angle)*(top-bottom)/2;
+      const arch=.06*Math.exp(-(((z-.2)/.22)**2))*Math.max(0,-Math.sin(angle))*Math.max(0,-Math.cos(angle));
+      positions.push(s*x,y+arch,z);
+      if(i<rings&&j<sides){const a=i*(sides+1)+j,b=a+sides+1;indices.push(a,a+1,b,b,a+1,b+1)}
+    }
+  }
+  const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+  if(s<0)for(let i=0;i<indices.length;i+=3){const swap=indices[i+1];indices[i+1]=indices[i+2];indices[i+2]=swap}
+  geometry.setIndex(indices);geometry.computeVertexNormals();foot.add(new THREE.Mesh(geometry,plainSkin));
+  part(sph,plainSkin,.145,.23,.16,0,-.13,0,foot);
+  const nailM=MS({color:0xe8c7ba,roughness:.38});
+  const toes=[[-.18,.09,.18,.96],[-.015,.067,.19,.97],[.115,.059,.16,.94],[.225,.05,.135,.9],[.285,.043,.11,.81]];
+  toes.forEach(([x,r,length,z],k)=>{
+    const y=-.71+(k===4?.02:0),toe=part(sph,plainSkin,r,.085-k*.006,length,s*x,y,z,foot);
+    toe.rotation.y=-s*.06*k;
+    const nail=part(sph,nailM,r*.64,.009,length*.34,s*x,y+.077-k*.006,z+length*.35,foot);
+    nail.rotation.y=toe.rotation.y;
+  });
+  return foot;
+}
 function mkLeg(s){const hip=new THREE.Group();hip.position.set(s*.68,8,0);body.add(hip);
   limb(hip,3.6,[.36,.355,.33,.29,.25],plainSkin);
   const knee=new THREE.Group();knee.position.y=-3.6;hip.add(knee);limb(knee,3.5,[.25,.27,.265,.22,.17,.14],plainSkin);
-  const ank=new THREE.Group();ank.position.y=-3.5;knee.add(ank);part(sph,plainSkin,.17,.3,.42,0,-.3,.2,ank);for(let k=0;k<5;k++)part(sph,plainSkin,.062-.008*k,.05,.1,s*(.11-.055*k),-.5,.6-.02*k,ank);
-  const hs=[part(sph,shoeM,.27,.21,.8,0,-.53,.5,ank),part(sph,shoeM,.25,.25,.36,0,-.53,-.05,ank),part(cyl,shoeM,.045,.5,.045,0,-.7,-.2,ank)];
+  const ank=new THREE.Group();ank.position.y=-3.5;knee.add(ank);const foot=mkFoot(s,ank);
+  const hs=[part(sph,shoeM,.35,.04,.43,s*.03,-.84,.74,ank),part(sph,shoeM,.19,.035,.23,0,-.68,-.06,ank),part(cyl,shoeM,.055,.21,.055,0,-.775,-.12,ank)];
+  const bridge=part(sph,shoeM,.22,.025,.44,0,-.76,.29,ank);bridge.rotation.x=.18;hs.push(bridge);
+  const strap=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new V(-.28,-.72,.65),new V(-.2,-.5,.65),new V(0,-.45,.65),new V(.2,-.5,.65),new V(.28,-.72,.65)]),24,.028,8),shoeM);ank.add(strap);hs.push(strap);
+  const ankleStrap=new THREE.Mesh(new THREE.TorusGeometry(.15,.025,8,32),shoeM);ankleStrap.rotation.x=Math.PI/2;ankleStrap.position.y=-.13;ank.add(ankleStrap);hs.push(ankleStrap);
+  hs.push(part(sph,shoeM,.18,.16,.12,0,-.45,-.16,ank));
   const slM=MS({color:0xfdf3f6,roughness:.95}),snM=MS({color:0xf6f6f8,roughness:.5}),sole=MS({color:0x39c3ff,roughness:.4});
-  const sl=[part(sph,slM,.27,.07,.85,0,-.84,.42,ank),part(sph,slM,.26,.12,.4,0,-.7,.62,ank)];
-  const sn=[part(sph,sole,.3,.09,.98,0,-.84,.42,ank),part(sph,snM,.27,.27,.72,0,-.62,.42,ank),part(sph,snM,.26,.3,.3,0,-.6,-.08,ank),part(sph,sole,.1,.3,.55,.27,-.64,.42,ank)];
-  sl.concat(sn).forEach(x=>x.visible=false);return {hip,knee,ank,sh:[hs,sl,sn]}}
+  const sl=[part(sph,slM,.36,.055,.75,s*.035,-.85,.44,ank),part(sph,slM,.29,.14,.24,0,-.59,.55,ank)];
+  const sn=[part(sph,sole,.37,.055,.77,s*.035,-.85,.44,ank),part(sph,snM,.38,.22,.64,s*.025,-.63,.61,ank),part(sph,snM,.22,.29,.28,0,-.49,-.06,ank)];
+  for(let i=0;i<4;i++){const lace=part(cyl,slM,.014,.32-i*.025,.014,0,-.39-i*.035,.2+i*.09,ank);lace.rotation.z=Math.PI/2;sn.push(lace)}
+  sl.concat(sn).forEach(x=>x.visible=false);return {hip,knee,ank,foot,sh:[hs,sl,sn]}}
 const legs=[mkLeg(-1),mkLeg(1)];
 const GS={rest:[.35,.3,.35,.4,.45],open:[.15,.04,.06,.1,.16],point:[.55,0,1.35,1.4,1.45],wave:[.1,.02,.02,.04,.06]};
 const FL=[[.36,.22,.2],[.4,.25,.2],[.36,.23,.19],[.28,.17,.16]];
@@ -1460,7 +1493,7 @@ outfit('Bikini',{c:0xff4f8a,x:(ob,m)=>{
     str([[sd*.5,11.62,zf(sd*.5,11.62)],[sd*.34,12.0,zt(sd*.34,12.0)+.02],[sd*.18,12.3,zt(sd*.18,12.3)+.02],[sd*.24,12.45,.08],[sd*.2,12.45,-.2],[0,12.45,-.24]])});
   ring(10.82);ring(9.0);tri([-.92,9.0],[.92,9.0],[0,8.05],zt,10);
   str([[0,9.0,-zt(0,9.0)],[0,8.6,-zt(0,8.6)],[0,8.2,-zt(0,8.2)+.15],[0,7.98,-.05],[0,8.05,zt(0,8.05)]])}});
-const setOutfit=i=>OUT.forEach((o,k)=>o.ob.forEach(x=>x.visible=k===i)),setShoe=i=>legs.forEach(L=>L.sh.forEach((g,k)=>g.forEach(x=>x.visible=k===i)));
+const setOutfit=i=>OUT.forEach((o,k)=>o.ob.forEach(x=>x.visible=k===i)),setShoe=i=>legs.forEach(L=>{L.foot.rotation.x=i===0?.12:0;L.foot.position.y=i===0?.1:0;L.sh.forEach((g,k)=>g.forEach(x=>x.visible=k===i))});
 // hair
 const clipP=new THREE.Plane(new V(0,1,0),99),hairMats=[hairS.material,hairCurtain.material,hairM,hairBack.material];
 [hairS.material,hairCurtain.material,hairBack.material].forEach(m=>m.clippingPlanes=[clipP]);
