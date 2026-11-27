@@ -192,58 +192,50 @@ test('Explorer group labels select all descendant model elements, including thro
     assert.deepEqual(selected, [40, 41, 42], 'Search must not limit the contents selected for a group');
 });
 
-test('map simulation animates near Singapore and cleans up on stop, restart and map close', () => {
-    const elements = Object.fromEntries(['btn-map-sim-play', 'btn-map-sim-stop', 'stop-map-simulation-dialog']
+test('map simulation uses the ground overlay and keeps toolbar stop visibility in sync', () => {
+    const elements = Object.fromEntries(['btn-map-sim-play', 'btn-map-sim-stop']
         .map(id => [id, new Element()]));
-    const dialog = new Element(), frames = new Map(), markers = [], routes = [], layers = [];
-    let nextFrame = 0, opened = 0;
-    const map = { setView(position, zoom) { this.position = position; this.zoom = zoom; } };
-    const overlay = position => ({
-        position, addTo() { return this; }, bindTooltip() { return this; },
-        setLatLng(next) { this.position = next; }, remove() { this.removed = true; }
-    });
+    const anchors = [], starts = [];
+    let running = false, available = true;
+    const target = { x: 25, z: 80, set(x, y, z) { Object.assign(this, { x, y, z }); } };
+    const groundMapLayer = { value: 'Satellite' }, hideGroundMap = { hidden: true };
     const context = vm.createContext({
-        document: { getElementById: id => elements[id] }, dialog,
-        globalThis: { L: {
-            polyline: position => { const route = overlay(position); routes.push(route); return route; },
-            marker: position => { const marker = overlay(position); markers.push(marker); return marker; },
-            divIcon: options => options
-        } },
-        requestAnimationFrame: callback => { frames.set(++nextFrame, callback); return nextFrame; },
-        cancelAnimationFrame: id => frames.delete(id),
-        openLeafletMap: () => { opened++; },
-        selectLayer: value => layers.push(value), testMap: map
+        document: { getElementById: id => elements[id] },
+        mapVehicleSimulation: {
+            start(focus) { running = true; starts.push(focus); },
+            stop() { running = false; }
+        },
+        groundMap: {
+            show(anchor, layer) { anchors.push({ ...anchor, layer }); return available; },
+            fromLatLng(anchor) { return { x: anchor.x, z: anchor.z }; }
+        },
+        controls: { target, update() {} },
+        camera: { position: { set() {} } }, groundY: -.15,
+        groundMapLayer, hideGroundMap, groundMapLayers: {}, groundMapTools: {},
+        stopVehicleSimulation() {}, resetGroundMapLocation() {},
+        updateGroundMapAttribution() {}, updateGroundMapLinks() {}, showToast() {}
     });
-    const start = page.indexOf('        let map;', page.indexOf('id="leaflet-map-script"'));
-    const end = page.indexOf("        document.getElementById('open-leaflet-map').addEventListener", start);
-    vm.runInContext(page.slice(start, end) + '\nmap=testMap;selectMapLayer=selectLayer;', context);
-    const frame = time => {
-        const [id, callback] = [...frames][0];
-        frames.delete(id);
-        callback(time);
-    };
+    const start = page.indexOf("        const simulationPlay =");
+    const end = page.indexOf('        function updateGroundMapLinks()', start);
+    vm.runInContext(page.slice(start, end), context);
     elements['btn-map-sim-play'].listeners.click();
-    assert.equal(opened, 1);
-    assert.deepEqual(layers, ['Street']);
-    assert.equal(markers[0].position[0], 1.3521);
-    assert.equal(markers[0].position[1], 103.8198);
-    frame(0); frame(16);
-    assert.ok(markers[0].position[0] > 1.3521);
-    assert.ok(Math.abs(markers[0].position[0] - 1.3521) < .00001, 'Motion is smooth between animation frames');
-    assert.equal(frames.size, 1);
+    assert.deepEqual(anchors[0], { lat: 1.3521, lng: 103.8198, x: 25, z: 80, layer: 'Street' });
+    assert.equal(groundMapLayer.value, 'Street');
+    assert.equal(hideGroundMap.hidden, false);
+    assert.equal(running, true);
+    assert.equal(elements['btn-map-sim-stop'].hidden, false);
+    assert.equal(starts[0].x, 25);
     elements['btn-map-sim-play'].listeners.click();
-    assert.equal(markers[0].removed, true);
-    assert.equal(routes[0].removed, true);
-    assert.equal(frames.size, 1, 'Restart must not duplicate animation loops');
-    elements['stop-map-simulation-dialog'].listeners.click();
-    assert.equal(frames.size, 0);
-    assert.equal(markers[1].removed, true);
+    assert.equal(starts.length, 2);
+    elements['btn-map-sim-stop'].listeners.click();
+    assert.equal(running, false);
     assert.equal(elements['btn-map-sim-stop'].disabled, true);
+    assert.equal(elements['btn-map-sim-stop'].hidden, true);
+    available = false;
     elements['btn-map-sim-play'].listeners.click();
-    dialog.listeners.close();
-    assert.equal(frames.size, 0);
-    assert.equal(markers[2].removed, true);
+    assert.equal(starts.length, 2, 'Failed ground map initialization must not start a vehicle');
     assert.equal(elements['btn-map-sim-play'].getAttribute('aria-pressed'), 'false');
+    assert.equal(elements['btn-map-sim-stop'].hidden, true);
 });
 
 test('SitePulse module scripts parse', () => {

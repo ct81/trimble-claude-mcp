@@ -146,8 +146,7 @@
             height: min(65dvh, 560px);
             color: #222;
         }
-        .map-simulation-vehicle { background: none; border: 0; }
-        .map-simulation-vehicle span { display: block; font-size: 24px; text-align: center; line-height: 32px; }
+        #btn-map-sim-stop[hidden] { display: none; }
 
         #leaflet-map .leaflet-map-control {
             display: grid;
@@ -1818,7 +1817,6 @@
     <dialog id="leaflet-map-dialog" aria-labelledby="leaflet-map-title">
         <div class="leaflet-map-heading">
             <h4 id="leaflet-map-title">Leaflet Map</h4>
-            <button type="button" id="stop-map-simulation-dialog" hidden>Stop simulation</button>
             <form method="dialog"><button class="toolbar-btn" type="submit" autofocus>Close Map</button></form>
         </div>
         <p id="leaflet-map-status" role="status"></p>
@@ -1957,7 +1955,7 @@
             <div class="toolbar-group">
                 <button type="button" class="toolbar-btn" id="btn-vehicle" title="Start 3D vehicle" aria-label="Start 3D vehicle">▶</button>
                 <button type="button" class="toolbar-btn" id="btn-map-sim-play" title="Play map vehicle simulation" aria-label="Play map vehicle simulation" aria-pressed="false"><span aria-hidden="true">▶</span><span class="label">Simulate Map</span></button>
-                <button type="button" class="toolbar-btn" id="btn-map-sim-stop" title="Stop map vehicle simulation" aria-label="Stop map vehicle simulation" disabled>■</button>
+                <button type="button" class="toolbar-btn" id="btn-map-sim-stop" title="Stop map vehicle simulation" aria-label="Stop map vehicle simulation" disabled hidden>■</button>
                 <button class="toolbar-btn" type="button" id="open-leaflet-map" aria-haspopup="dialog" title="Open Leaflet Map">
                     <span class="tb-icon" aria-hidden="true">🗺</span><span class="label">Map</span>
                 </button>
@@ -2430,53 +2428,6 @@
         const leafletContainer = document.getElementById('leaflet-map');
         const status = document.getElementById('leaflet-map-status');
         let map;
-        const simulationPlay = document.getElementById('btn-map-sim-play');
-        const simulationStop = document.getElementById('btn-map-sim-stop');
-        const dialogStop = document.getElementById('stop-map-simulation-dialog');
-        let simulationFrame = null, simulationMarker = null, simulationRoute = null;
-        function stopMapSimulation() {
-            if (simulationFrame !== null) cancelAnimationFrame(simulationFrame);
-            simulationFrame = null;
-            if (simulationMarker) simulationMarker.remove();
-            if (simulationRoute) simulationRoute.remove();
-            simulationMarker = simulationRoute = null;
-            simulationPlay.setAttribute('aria-pressed', 'false');
-            simulationStop.disabled = true;
-            dialogStop.hidden = true;
-        }
-        function simulationPosition(progress) {
-            const angle = progress * Math.PI * 2;
-            return [1.3521 + .0008 * Math.sin(angle), 103.8198 + .001 * (1 - Math.cos(angle))];
-        }
-        simulationPlay.addEventListener('click', () => {
-            stopMapSimulation();
-            openLeafletMap();
-            if (!map) return;
-            const L = globalThis.L;
-            selectMapLayer('Street');
-            map.setView([1.3521, 103.8208], 17);
-            simulationRoute = L.polyline(Array.from({ length: 121 }, (_, i) => simulationPosition(i / 120)), {
-                color: '#146eff', weight: 3, dashArray: '6 6'
-            }).addTo(map).bindTooltip('Simulated loop (not a road route)');
-            simulationMarker = L.marker(simulationPosition(0), {
-                icon: L.divIcon({ className: 'map-simulation-vehicle', html: '<span aria-label="Simulated vehicle">🚗</span>', iconSize: [32, 32], iconAnchor: [16, 16] })
-            }).addTo(map).bindTooltip('Simulated vehicle');
-            simulationPlay.setAttribute('aria-pressed', 'true');
-            simulationStop.disabled = false;
-            dialogStop.hidden = false;
-            let lastTime = null, elapsed = 0;
-            function move(time) {
-                if (lastTime !== null) elapsed += Math.min(time - lastTime, 100);
-                lastTime = time;
-                simulationMarker.setLatLng(simulationPosition((elapsed % 90000) / 90000));
-                simulationFrame = requestAnimationFrame(move);
-            }
-            simulationFrame = requestAnimationFrame(move);
-        });
-        simulationStop.addEventListener('click', stopMapSimulation);
-        dialogStop.addEventListener('click', stopMapSimulation);
-        dialog.addEventListener('close', stopMapSimulation);
-        let selectMapLayer;
 
         document.getElementById('open-leaflet-map').addEventListener('click', openLeafletMap);
         function openLeafletMap() {
@@ -2531,10 +2482,6 @@
                 map.removeLayer(activeLayer);
                 activeLayer = layers[select.value].addTo(map);
             });
-            selectMapLayer = value => {
-                select.value = value;
-                select.dispatchEvent(new Event('change'));
-            };
 
             function updateLinks() {
                 const links = getMapLinks(map.getCenter(), map.getZoom());
@@ -2630,6 +2577,7 @@
         const groundY = gridHelper.position.y - 0.05;
         const groundMap = createGroundMap(THREE, scene, groundY, showToast);
         const vehicleSimulation = createVehicleSimulation(THREE, scene, groundY);
+        const mapVehicleSimulation = createVehicleSimulation(THREE, scene, groundY);
 
         const selectionBoxes = new THREE.Group();
         scene.add(selectionBoxes);
@@ -3016,6 +2964,36 @@
             }
         });
 
+        const simulationPlay = document.getElementById('btn-map-sim-play');
+        const simulationStop = document.getElementById('btn-map-sim-stop');
+        function stopMapSimulation() {
+            mapVehicleSimulation.stop();
+            simulationPlay.setAttribute('aria-pressed', 'false');
+            simulationStop.disabled = true;
+            simulationStop.hidden = true;
+        }
+        simulationPlay.addEventListener('click', () => {
+            stopMapSimulation();
+            const anchor = { lat: 1.3521, lng: 103.8198, x: controls.target.x, z: controls.target.z };
+            if (!groundMap.show(anchor, 'Street')) return;
+            stopVehicleSimulation();
+            resetGroundMapLocation();
+            groundMapLayer.value = 'Street';
+            hideGroundMap.hidden = groundMapLayers.hidden = groundMapTools.hidden = false;
+            updateGroundMapAttribution();
+            const focus = groundMap.fromLatLng(anchor, controls.target);
+            controls.target.set(focus.x, groundY, focus.z);
+            camera.position.set(focus.x + 45, groundY + 45, focus.z + 45);
+            controls.update();
+            updateGroundMapLinks();
+            mapVehicleSimulation.start(focus);
+            simulationPlay.setAttribute('aria-pressed', 'true');
+            simulationStop.disabled = false;
+            simulationStop.hidden = false;
+            showToast('Simulating a vehicle on the ground map near 1.3521, 103.8198 (demo loop, not a road route).', 'success');
+        });
+        simulationStop.addEventListener('click', stopMapSimulation);
+
         function updateGroundMapLinks() {
             const links = groundMap.getLinks(controls.target);
             groundMapTraffic.href = links.traffic;
@@ -3036,6 +3014,7 @@
             const [lat, lng, x, z] = ['map-lat', 'map-lng', 'map-x', 'map-z']
                 .map(id => document.getElementById(id).valueAsNumber);
             if (groundMap.show({ lat, lng, x, z }, groundMapLayer.value)) {
+                stopMapSimulation();
                 stopVehicleSimulation();
                 resetGroundMapLocation();
                 hideGroundMap.hidden = groundMapLayers.hidden = groundMapTools.hidden = false;
@@ -3045,6 +3024,7 @@
         });
         hideGroundMap.addEventListener('click', () => {
             groundMap.hide();
+            stopMapSimulation();
             stopVehicleSimulation();
             resetGroundMapLocation();
             hideGroundMap.hidden = groundMapLayers.hidden = groundMapTools.hidden = true;
@@ -5312,6 +5292,7 @@
             controls.update();
             if (groundMap.update(camera)) updateGroundMapLinks();
             vehicleSimulation.update(time);
+            mapVehicleSimulation.update(time);
             renderer.render(scene, camera);
         }
         requestAnimationFrame(animate);
