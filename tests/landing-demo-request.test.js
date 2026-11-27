@@ -20,6 +20,7 @@ function avatarContext() {
     $: id => elements[id],
     cap: { textContent: '', style: {} },
     console: { error() {} },
+    AbortController,
     setTimeout: callback => { const id = timers.size + 1; timers.set(id, callback); return id; },
     clearTimeout: id => timers.delete(id),
     SpeechSynthesisUtterance: class { constructor(text) { this.text = text; } },
@@ -105,9 +106,14 @@ test('landing page inline scripts parse', () => {
   }
 });
 
-test('birthday Q&A plays generated music with spoken lyrics and stops on interruption', async () => {
+test('birthday Q&A plays the uploaded MP3 with spoken lyrics and stops on interruption', async () => {
   const { context, elements, utterances, timers } = avatarContext();
-  const oscillators = [];
+  const sources = [], requests = [];
+  const buffer = { duration: 24 };
+  context.fetch = async (url, options) => {
+    requests.push({ url, signal: options.signal });
+    return { ok: true, arrayBuffer: async () => new ArrayBuffer(8) };
+  };
   context.window.AudioContext = class {
     state = 'running';
     currentTime = 0;
@@ -118,40 +124,65 @@ test('birthday Q&A plays generated music with spoken lyrics and stops on interru
         connect() {}, disconnect() {}
       };
     }
-    createOscillator() {
-      const oscillator = {
-        frequency: {}, connect() {}, disconnect() {},
-        start(time) { this.startTime = time; },
+    async decodeAudioData() { return buffer; }
+    createBufferSource() {
+      const source = {
+        connect() {}, disconnect() {},
+        start() { this.started = true; },
         stop() { this.stopped = true; }
       };
-      oscillators.push(oscillator);
-      return oscillator;
+      sources.push(source);
+      return source;
     }
   };
   context.QA = JSON.parse(readFileSync(new URL('../pages/landing/qa.json', import.meta.url), 'utf8'));
   await vm.runInContext("ask('sing me a song')", context);
   assert.equal(elements.avatarStatusText.textContent, 'Playing birthday song');
-  assert.ok(oscillators.length > 0);
-  assert.ok(oscillators.every(node => Number.isFinite(node.frequency.value) && node.frequency.value > 0));
-  assert.ok(oscillators.some(node => node.startTime > 10), 'Melody continues through later phrases');
-  const initialNotes = oscillators.length;
+  const musicUrl = new URL(requests[0].url, new URL('../pages/landing/buildtheimpossible.html', import.meta.url));
+  assert.ok(readFileSync(musicUrl).length > 0, 'Music URL resolves to the uploaded MP3');
+  assert.equal(sources[0].buffer, buffer);
+  assert.equal(sources[0].started, true);
   [...timers.values()][0]();
   assert.equal(utterances[0].text, 'Happy birthday to you.');
   utterances[0].onstart();
   assert.equal(vm.runInContext('speaking', context), true);
   elements.mute.onclick();
+  assert.equal(sources[0].stopped, true);
+  assert.equal(requests[0].signal.aborted, true);
   assert.equal(timers.size, 0);
   assert.equal(vm.runInContext('birthdaySong', context), null);
   assert.equal(elements.avatarStatusText.textContent, 'Ready');
 
   await vm.runInContext('playBirthdaySong()', context);
-  assert.equal(oscillators.length, initialNotes, 'Muted playback must not generate music');
+  assert.equal(sources.length, 1, 'Muted playback must not start music');
   elements.mute.onclick();
+  await vm.runInContext('playBirthdaySong()', context);
+  sources.at(-1).onended();
+  assert.equal(vm.runInContext('birthdaySong', context), null);
+  assert.equal(timers.size, 0);
+  assert.equal(elements.avatarStatusText.textContent, 'Ready');
   await vm.runInContext('playBirthdaySong()', context);
   await vm.runInContext("say('Another answer')", context);
   assert.equal(vm.runInContext('birthdaySong', context), null);
   assert.equal(timers.size, 0);
   assert.equal(elements.avatarStatusText.textContent, 'Speaking...');
+});
+
+test('birthday playback reports a missing music file without leaving playback active', async () => {
+  const { context, elements } = avatarContext();
+  let disconnected = false;
+  context.window.AudioContext = class {
+    state = 'running';
+    createGain() {
+      return { gain: {}, connect() {}, disconnect() { disconnected = true; } };
+    }
+  };
+  context.fetch = async () => ({ ok: false, status: 404 });
+  await vm.runInContext('playBirthdaySong()', context);
+  assert.match(context.cap.textContent, /HTTP 404/);
+  assert.equal(elements.avatarStatusText.textContent, 'Playback unavailable');
+  assert.equal(vm.runInContext('birthdaySong', context), null);
+  assert.equal(disconnected, true);
 });
 
 test('birthday playback surfaces blocked audio with a user-gesture retry button', async () => {

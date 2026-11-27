@@ -1214,6 +1214,7 @@ show(0,false,false);
 // voice + avatar state
 let muted=false,speaking=false,pulse=0,tmr=0;
 let birthdayAudio=null,birthdaySong=null;
+const BIRTHDAY_MUSIC_URL='../../images/upload/audio/nastelbom-happy-birthday-495860.mp3';
 async function prepareBirthdayAudio(){
   const Audio=window.AudioContext||window.webkitAudioContext;
   if(!Audio)throw new Error('Background music is not supported in this browser.');
@@ -1225,6 +1226,7 @@ function stopBirthdaySong(){
   $('songPlay').hidden=true;
   if(!birthdaySong)return;
   const song=birthdaySong;birthdaySong=null;trTok++;
+  song.controller.abort();
   song.timers.forEach(clearTimeout);
   song.nodes.forEach(node=>{node.stop();node.disconnect()});
   song.output.disconnect();
@@ -1245,29 +1247,18 @@ async function playBirthdaySong(){
     if(token!==trTok)return;
     if(audio.state!=='running')throw new Error('Tap Play birthday song to enable audio.');
     $('songPlay').hidden=true;
-    const output=audio.createGain();output.gain.value=.14;output.connect(audio.destination);
-    const song={nodes:[],timers:[],output};birthdaySong=song;
-    const beat=.85,start=audio.currentTime+.1;
-    const phrases=[
-      [[60,.5],[60,.5],[62,1],[60,1],[65,1],[64,2]],
-      [[60,.5],[60,.5],[62,1],[60,1],[67,1],[65,2]],
-      [[60,.5],[60,.5],[72,1],[69,1],[65,1],[64,1],[62,1]],
-      [[70,.5],[70,.5],[69,1],[65,1],[67,1],[65,2]]
-    ];
-    const tone=(midi,time,duration,volume,type)=>{
-      const oscillator=audio.createOscillator(),gain=audio.createGain();
-      oscillator.type=type;oscillator.frequency.value=440*Math.pow(2,(midi-69)/12);
-      gain.gain.setValueAtTime(0,time);gain.gain.linearRampToValueAtTime(volume,time+.02);
-      gain.gain.exponentialRampToValueAtTime(.001,time+duration);
-      oscillator.connect(gain);gain.connect(output);
-      oscillator.onended=()=>{oscillator.disconnect();gain.disconnect()};
-      song.nodes.push(oscillator);oscillator.start(time);oscillator.stop(time+duration+.04);
-    };
-    let offset=0;
-    phrases.forEach((notes,line)=>{
-      const chords=[[53,57,60],[48,52,55],[53,57,60],[58,62,65]];
-      for(let bar=0;bar<2;bar++)chords[line].forEach(midi=>tone(midi,start+(offset+bar*3)*beat,2.8*beat,.12,'sine'));
-      notes.forEach(([midi,length])=>{tone(midi,start+offset*beat,length*beat*.9,.5,'triangle');offset+=length});
+    const output=audio.createGain();output.gain.value=.3;output.connect(audio.destination);
+    const song={nodes:[],timers:[],output,controller:new AbortController()};birthdaySong=song;
+    const response=await fetch(BIRTHDAY_MUSIC_URL,{signal:song.controller.signal});
+    if(!response.ok)throw new Error('Could not load birthday music (HTTP '+response.status+').');
+    const buffer=await audio.decodeAudioData(await response.arrayBuffer());
+    if(birthdaySong!==song)return;
+    if(!Number.isFinite(buffer.duration)||buffer.duration<=0)throw new Error('Birthday music has an invalid duration.');
+    const music=audio.createBufferSource();music.buffer=buffer;music.connect(output);
+    song.nodes.push(music);
+    music.onended=()=>{if(birthdaySong===song)stopBirthdaySong()};
+    music.start();
+    for(let line=0;line<4;line++){
       const lyrics=line===2?'Happy birthday, dear friend.':'Happy birthday to you.';
       song.timers.push(setTimeout(()=>{
         if(birthdaySong!==song)return;
@@ -1284,10 +1275,9 @@ async function playBirthdaySong(){
           cap.textContent='Could not play the birthday lyrics. Please try again.';cap.style.opacity=1;setAvatarStatus('Playback failed');
         };
         speechSynthesis.speak(utterance);
-      },100+line*6*beat*1000));
-    });
+      },line*buffer.duration/4*1000));
+    }
     setAvatarStatus('Playing birthday song',true);
-    song.timers.push(setTimeout(()=>{if(birthdaySong===song)stopBirthdaySong()},100+offset*beat*1000+500));
   }catch(error){
     if(token!==trTok)return;
     stopBirthdaySong();console.error('Could not play birthday song:',error);
