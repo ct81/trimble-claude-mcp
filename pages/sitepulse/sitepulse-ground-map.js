@@ -105,23 +105,36 @@ export function getGroundBounds(corners, groundY) {
     return minX <= maxX ? { minX, minZ, maxX, maxZ } : null;
 }
 
-export function createGroundMap(THREE, scene, groundY, showToast, { camera, controls, container }) {
+export function createGroundMap(THREE, scene, groundY, showToast) {
     const source = document.getElementById('map-tile-source');
-    let map, placement, layer, savedView, metersPerPixel, syncing = false, previousView = '';
-    const vector = value => ({ x: value.x, y: value.y, z: value.z });
+    const group = new THREE.Group();
+    scene.add(group);
+    const geometry = new THREE.PlaneGeometry(1, 1);
+    geometry.rotateX(-Math.PI / 2);
+    const tiles = new Map();
+    const retiredTiles = new Set();
+    const corners = Array.from({ length: 8 }, () => new THREE.Vector3());
+    const previousWorld = new THREE.Matrix4();
+    const previousProjection = new THREE.Matrix4();
+    let map, placement, layer, lastView, retainTiles = false;
+
+    function removeTile(tile) {
+        const mesh = tiles.get(tile);
+        if (!mesh) return;
+        group.remove(mesh);
+        mesh.material.map.dispose();
+        mesh.material.dispose();
+        tiles.delete(tile);
+    }
 
     function hide() {
         if (!map) return;
         map.remove();
+        for (const tile of tiles.keys()) removeTile(tile);
+        retiredTiles.clear();
         map = null;
         layer = null;
-        source.hidden = true;
-        container.classList.remove('leaflet-ground-active');
-        camera.position.set(savedView.position.x, savedView.position.y, savedView.position.z);
-        camera.up.set(savedView.up.x, savedView.up.y, savedView.up.z);
-        controls.target.set(savedView.target.x, savedView.target.y, savedView.target.z);
-        controls.enabled = savedView.enabled;
-        controls.update();
+        lastView = null;
     }
 
     function show(anchor, layerName) {
@@ -132,48 +145,46 @@ export function createGroundMap(THREE, scene, groundY, showToast, { camera, cont
         }
         hide();
         placement = createMapPlacement(L.CRS.EPSG3857, anchor);
-        metersPerPixel = EQUATOR_LENGTH * Math.cos(anchor.lat * Math.PI / 180) / TILE_SIZE;
-        savedView = { position: vector(camera.position), target: vector(controls.target), up: vector(camera.up), enabled: controls.enabled };
-        controls.enabled = false;
-        source.hidden = false;
-        container.classList.add('leaflet-ground-active');
         map = L.map(source, {
             attributionControl: false, zoomControl: false, zoomAnimation: false, fadeAnimation: false,
-            minZoom: 2, maxZoom: MAX_ZOOM, zoomSnap: 0, zoomDelta: .5
+            dragging: false, keyboard: false, scrollWheelZoom: false, doubleClickZoom: false,
+            boxZoom: false, touchZoom: false, trackResize: false
         });
-        map.on('move zoom resize', syncCamera);
         setLayer(layerName);
-        const height = Math.max(10, Math.abs(camera.position.y - groundY));
-        controls.target.set(anchor.x, groundY, anchor.z);
-        camera.position.set(anchor.x, groundY + height, anchor.z);
-        previousView = '';
-        update();
+        previousWorld.elements.fill(0);
         return true;
-    }
-
-    function syncCamera() {
-        if (syncing || !map) return;
-        const focus = placement.fromLatLng(map.getCenter(), controls.target);
-        const height = map.getSize().y * metersPerPixel / 2 ** map.getZoom() /
-            (2 * Math.tan(camera.fov * Math.PI / 360));
-        controls.target.set(focus.x, groundY, focus.z);
-        camera.position.set(focus.x, groundY + height, focus.z);
-        // North-up nadir view aligns the WebGL ground plane with Leaflet pixels.
-        camera.up.set(0, 0, -1);
-        camera.lookAt(controls.target);
-        previousView = viewKey();
-    }
-
-    function viewKey() {
-        return [camera.position.x, camera.position.y, camera.position.z,
-            controls.target.x, controls.target.z, source.clientWidth, source.clientHeight, camera.fov].join(':');
     }
 
     function setLayer(name) {
         if (layer) map.removeLayer(layer);
-        const { url, maxNativeZoom, attribution } = getMapLayer(name);
+        for (const tile of tiles.keys()) removeTile(tile);
+        retiredTiles.clear();
+        const { url, maxNativeZoom } = getMapLayer(name, true);
         let reportedTileError = false;
-        layer = globalThis.L.tileLayer(url, { maxZoom: MAX_ZOOM, maxNativeZoom, attribution, keepBuffer: 1 })
+        layer = globalThis.L.tileLayer(url, { crossOrigin: true, maxZoom: MAX_ZOOM, maxNativeZoom, keepBuffer: 1 })
+            .on('tileload', ({ tile, coords }) => {
+                const { x, y, z } = coords;
+                const corner = placement.toWorld(x * TILE_SIZE, y * TILE_SIZE, z);
+                const opposite = placement.toWorld((x + 1) * TILE_SIZE, (y + 1) * TILE_SIZE, z);
+                const texture = new THREE.Texture(tile);
+                texture.colorSpace = THREE.SRGBColorSpace;
+                texture.needsUpdate = true;
+                const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ map: texture, fog: false }));
+                mesh.position.set((corner.x + opposite.x) / 2, groundY, (corner.z + opposite.z) / 2);
+                mesh.scale.set(opposite.x - corner.x, 1, opposite.z - corner.z);
+                // During tile replacement, prefer the sharper tile where zoom levels overlap.
+                mesh.renderOrder = z;
+                group.add(mesh);
+                tiles.set(tile, mesh);
+            })
+            .on('tileunload', ({ tile }) => {
+                if (retainTiles && tiles.has(tile)) retiredTiles.add(tile);
+                else removeTile(tile);
+            })
+            .on('load', () => {
+                for (const tile of retiredTiles) removeTile(tile);
+                retiredTiles.clear();
+            })
             .on('tileerror', () => {
                 if (!reportedTileError) {
                     showToast(`Some ${name} ground map tiles could not load. Try another layer or check your connection.`, 'error');
@@ -183,23 +194,32 @@ export function createGroundMap(THREE, scene, groundY, showToast, { camera, cont
             .addTo(map);
     }
 
-    function update() {
+    function update(camera) {
         if (!map) return;
-        if (viewKey() === previousView) return;
-        syncing = true;
-        map.invalidateSize({ pan: false });
-        const height = Math.max(1, camera.position.y - groundY);
-        const span = 2 * height * Math.tan(camera.fov * Math.PI / 360);
-        const zoom = Math.max(2, Math.min(MAX_ZOOM, Math.log2(map.getSize().y * metersPerPixel / span)));
-        map.setView(placement.toLatLng(controls.target), zoom, { animate: false });
-        syncing = false;
-        syncCamera();
+        camera.updateMatrixWorld();
+        if (previousWorld.equals(camera.matrixWorld) && previousProjection.equals(camera.projectionMatrix)) return;
+        previousWorld.copy(camera.matrixWorld);
+        previousProjection.copy(camera.projectionMatrix);
+        if (camera.position.y <= groundY) return true;
+        for (let i = 0; i < corners.length; i++) {
+            corners[i].set(i & 1 ? 1 : -1, i & 2 ? 1 : -1, i & 4 ? 1 : -1).unproject(camera);
+        }
+        const bounds = getGroundBounds(corners, groundY);
+        if (!bounds) return true;
+        const { key, center, zoom } = placement.getView(bounds, map.getSize().x);
+        if (key !== lastView) {
+            // Leaflet unloads the old zoom synchronously; keep its textures until the new tiles settle.
+            retainTiles = Boolean(lastView) && map.getZoom() !== zoom && retiredTiles.size === 0;
+            map.setView(center, zoom, { animate: false });
+            retainTiles = false;
+            lastView = key;
+        }
         return true;
     }
 
     return {
         show, hide, setLayer, update,
-        getLinks: (focus) => getMapLinks(placement.toLatLng(focus), map.getZoom()),
+        getLinks: (focus) => getMapLinks(placement.toLatLng(focus), lastView ? map.getZoom() : 13),
         fromLatLng: (point, focus) => placement.fromLatLng(point, focus)
     };
 }

@@ -72,13 +72,12 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 100vw;
-            height: 100dvh;
+            width: 1280px;
+            height: 1280px;
             overflow: hidden;
-            z-index: 0;
+            visibility: hidden;
+            pointer-events: none;
         }
-        #map-tile-source[hidden] { display: none; }
-        #canvas-container.leaflet-ground-active { background: none; pointer-events: none; }
 
         .ground-map-controls {
             position: absolute;
@@ -1794,7 +1793,7 @@
 <body hidden>
 
     <div id="canvas-container"></div>
-    <div id="map-tile-source" role="region" aria-label="Interactive Leaflet ground map" hidden></div>
+    <div id="map-tile-source" aria-hidden="true" inert></div>
     <div id="ground-map-layers" class="ground-map-controls" role="group" aria-label="Ground map layers" hidden>
         <label for="ground-map-layer">Ground map layer</label>
         <select id="ground-map-layer">
@@ -1847,12 +1846,12 @@
         <div class="settings-row"><label>Show Fog</label><input type="checkbox" id="set-fog" checked></div>
         <div class="settings-row"><label>Selection Box</label><input type="checkbox" id="set-selbox" checked></div>
         <form id="map-settings">
-            <h4>Leaflet Ground Map</h4>
+            <h4>Ground Map</h4>
             <div class="settings-row"><label for="map-lat">Latitude</label><input id="map-lat" type="number" step="any" min="-85.05112878" max="85.05112878" placeholder="1.3521" required></div>
             <div class="settings-row"><label for="map-lng">Longitude</label><input id="map-lng" type="number" step="any" min="-180" max="180" placeholder="103.8198" required></div>
             <div class="settings-row"><label for="map-x">Model X (m)</label><input id="map-x" type="number" step="any" value="0" required></div>
             <div class="settings-row"><label for="map-z">Model Z (m)</label><input id="map-z" type="number" step="any" value="0" required></div>
-            <p>Match a latitude and longitude to a point on the grid. Drag or zoom the Leaflet map beneath the model in a north-up, top-down view. Hide Map restores 3D navigation. Tiles require an internet connection.</p>
+            <p>Match a latitude and longitude to a point on the grid. North is -Z. Map tiles require an internet connection.</p>
             <div class="settings-row">
                 <button type="submit">Apply Ground Map</button>
                 <button type="button" id="hide-ground-map" hidden>Hide Map</button>
@@ -2574,7 +2573,7 @@
         const gridHelper = new THREE.GridHelper(500, 250, 0x00f0ff, 0x1a2a44); gridHelper.position.y = -0.1; gridHelper.material.opacity = 0.2; gridHelper.material.transparent = true; scene.add(gridHelper);
 
         const groundY = gridHelper.position.y - 0.05;
-        const groundMap = createGroundMap(THREE, scene, groundY, showToast, { camera, controls, container });
+        const groundMap = createGroundMap(THREE, scene, groundY, showToast);
         const vehicleSimulation = createVehicleSimulation(THREE, scene, groundY);
         const mapVehicleSimulation = createVehicleSimulation(THREE, scene, groundY);
 
@@ -3009,7 +3008,7 @@
         }
 
         function updateGroundMapAttribution() {
-            mapAttribution.innerHTML = getMapLayer(groundMapLayer.value).attribution;
+            mapAttribution.innerHTML = getMapLayer(groundMapLayer.value, true).attribution;
         }
 
         document.getElementById('map-settings').addEventListener('submit', (e) => {
@@ -5292,7 +5291,7 @@
 
         function animate(time) {
             requestAnimationFrame(animate);
-            if (controls.enabled) controls.update();
+            controls.update();
             if (groundMap.update(camera)) updateGroundMapLinks();
             vehicleSimulation.update(time);
             mapVehicleSimulation.update(time);
