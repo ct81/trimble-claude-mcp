@@ -46,7 +46,10 @@ h1 em{font-style:normal;background:linear-gradient(90deg,#7fd8ff,#8a7dff);-webki
 canvas{display:block;width:100%;height:100%}
 .hud{position:absolute;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 10px;font:600 .62rem ui-monospace,Menlo,monospace;letter-spacing:.08em;color:var(--glow);backdrop-filter:blur(6px);z-index:2}
 .hud b{display:block;color:var(--text);font-size:1.05rem;letter-spacing:0}
-.hud.a{left:10px;top:12px;width:132px}.hud.b{right:10px;top:70px;width:118px}
+.hud.a{left:10px;top:12px;width:132px}.hud.b{right:10px;top:70px;width:145px}
+.hud.b::after{content:"";display:inline-block;width:7px;height:7px;margin-top:6px;border-radius:50%;background:var(--glow)}
+.hud.b[data-active="true"]::after{animation:bl 1.2s infinite}
+@media(prefers-reduced-motion:reduce){.hud.b[data-active="true"]::after{animation:none}}
 .mini{display:flex;gap:3px;align-items:flex-end;height:26px;margin-top:6px}
 .mini s{flex:1;background:linear-gradient(var(--glow),transparent);animation:bar 2.2s ease-in-out infinite alternate}
 @keyframes bar{from{transform:scaleY(.35)}to{transform:scaleY(1)}}
@@ -139,7 +142,7 @@ footer{color:var(--muted);text-align:center;font-size:.8rem;padding:20px 0 30px}
             align-items: flex-start;
         }
     }
-@media(max-width:820px){.hero,.detail{grid-template-columns:1fr}.stage{order:-1;height:62vh}.hud.b{display:none}}
+@media(max-width:820px){.hero,.detail{grid-template-columns:1fr}.stage{order:-1;height:62vh}}
 </style>
 </head>
 <body>
@@ -164,7 +167,7 @@ footer{color:var(--muted);text-align:center;font-size:.8rem;padding:20px 0 30px}
   <div class="stage" id="stage">
     <canvas id="c"></canvas>
     <div class="hud a">AI SALES REPRESENTATIVE<b>JENNIE</b><div class="mini" id="mini"></div></div>
-    <div class="hud b">AI PROCESSING<b>98.7%</b></div>
+    <div class="hud b" id="avatarStatus" data-active="false">AVATAR STATUS<b id="avatarStatusText" role="status" aria-live="polite">Ready</b></div>
     <div id="cap"></div>
     <div id="avp" hidden></div>
   </div>
@@ -1208,7 +1211,13 @@ show(0,false,false);
 
 // voice + avatar state
 let muted=false,speaking=false,pulse=0,tmr=0;
-$('mute').onclick=()=>{muted=!muted;$('mute').textContent=muted?'🔇 Voice off':'🔊 Voice on';if(muted&&window.speechSynthesis)speechSynthesis.cancel()};
+let avatarStatusVersion=0;
+function setAvatarStatus(text,active=false){
+  $('avatarStatusText').textContent=text;
+  $('avatarStatus').dataset.active=String(active);
+  return ++avatarStatusVersion;
+}
+$('mute').onclick=()=>{muted=!muted;$('mute').textContent=muted?'🔇 Voice off':'🔊 Voice on';if(muted&&window.speechSynthesis){speechSynthesis.cancel();if(speaking){trTok++;speaking=false;clearTimeout(tmr);cap.style.opacity=0;setAvatarStatus('Ready')}}};
 $('intro').onclick=()=>say('Welcome to the Technology Solutions Hub. I am Jennie, your AI Sales Representative. Choose any solution below and I will show you what it does, its key features, and how to request a live demo.');
 const LANGS=[['English (US)','en-US',0],['English (UK)','en-GB',0],['Chinese','zh-CN','zh-CN'],['Malay','ms-MY','ms'],['Thai','th-TH','th'],['Filipino','fil-PH','tl'],['Korean','ko-KR','ko'],['Japanese','ja-JP','ja'],['Spanish','es-ES','es'],['German','de-DE','de'],['French','fr-FR','fr'],['Finnish','fi-FI','fi']];
 let LI=0,LANG_READY=false,trTok=0;const trC={};
@@ -1219,17 +1228,18 @@ async function tr(t,code){const k=code+'|'+t;if(trC[k])return trC[k];const ps=t.
   const dec=x=>{const e=document.createElement('textarea');e.innerHTML=x;return e.value};
   const out=await Promise.all(ch.map(async c=>{const r=await fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(c.trim())+'&langpair=en|'+code),d=await r.json();if(d.responseStatus!=200||!d.responseData||!d.responseData.translatedText)throw new Error('tr');return dec(d.responseData.translatedText)}));
   return trC[k]=out.join(' ')}
-async function say(t){const my=++trTok,L=LANGS[LI];let o=t,ok=true;
-  clearTimeout(tmr);if(window.speechSynthesis)speechSynthesis.cancel();
-  if(L[2]){cap.textContent='…';cap.style.opacity=1;try{o=await tr(t,L[2])}catch(e){o=t;ok=false}if(my!==trTok)return}
-  sayRaw(o,ok?L[1]:'en-US');return o}
-function sayRaw(t,code){
+async function say(t,statusAfter='Ready'){const my=++trTok,L=LANGS[LI];let o=t,ok=true;
+  clearTimeout(tmr);speaking=false;if(window.speechSynthesis)speechSynthesis.cancel();
+  if(L[2]){setAvatarStatus('Translating...',true);cap.textContent='…';cap.style.opacity=1;try{o=await tr(t,L[2])}catch(e){console.error('Could not translate avatar response:',e);o=t;ok=false}if(my!==trTok)return}
+  sayRaw(o,ok?L[1]:'en-US',statusAfter);return o}
+function sayRaw(t,code,statusAfter='Ready'){
   clearTimeout(tmr);if(window.speechSynthesis)speechSynthesis.cancel();
   cap.textContent=t;cap.style.opacity=1;
-  const end=()=>{speaking=false;cap.style.opacity=0};
+  const token=trTok,statusVersion=setAvatarStatus(muted||!window.speechSynthesis?'Showing response':'Speaking...',true);
+  const end=()=>{if(token!==trTok)return;speaking=false;cap.style.opacity=0;if(statusVersion===avatarStatusVersion)setAvatarStatus(statusAfter)};
   if(muted||!window.speechSynthesis){speaking=true;tmr=setTimeout(end,Math.max(2500,t.length*62));return}
   const u=new SpeechSynthesisUtterance(t),v=voice(code);u.lang=v?v.lang:code;if(v)u.voice=v;
-  u.pitch=1.1;u.onboundary=()=>pulse=1;u.onend=end;u.onerror=end;speaking=true;speechSynthesis.speak(u);
+  u.pitch=1.1;u.onboundary=()=>pulse=1;u.onend=end;u.onerror=e=>{if(token!==trTok)return;const ownsStatus=statusVersion===avatarStatusVersion;end();if(e.error!=='canceled'&&e.error!=='interrupted'){console.error('Avatar speech failed:',e.error);if(ownsStatus)setAvatarStatus('Voice unavailable')}};speaking=true;speechSynthesis.speak(u);
 }
 
 // realistic avatar
@@ -1513,10 +1523,12 @@ function match(text){const n=norm(text),tk=toks(text);let best=null,bs=0;
   return bs>=(QA.threshold||.5)?best:null}
 async function trRev(t,code){const r=await fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(t)+'&langpair='+code+'|en'),d=await r.json();if(d.responseStatus!=200||!d.responseData)throw new Error('tr');const e=document.createElement('textarea');e.innerHTML=d.responseData.translatedText;return e.value}
 async function ask(text){let en=text;const L=LANGS[LI];
-  if(L[2]){try{en=await trRev(text,L[2])}catch(e){}}
+  if(L[2]){setAvatarStatus('Translating...',true);try{en=await trRev(text,L[2])}catch(e){console.error('Could not translate avatar question:',e)}}
+  setAvatarStatus('Finding answer...',true);
   const m=match(en);
   if(m&&m.action==='sendChesterEmail'){
     if(!(m.questions||[]).some(question=>norm(question)===norm(en))){say('To send the email, please say “send an email to Chester”.');return}
+    setAvatarStatus('Sending email...',true);
     try{
       const response=await fetch(CHESTER_EMAIL_API,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
       const result=await response.json();
@@ -1524,7 +1536,7 @@ async function ask(text){let en=text;const L=LANGS[LI];
       say(m.reply);
     }catch(error){
       console.error('Could not send the Build the Impossible email:',error);
-      say(error instanceof Error?error.message:'Could not send the email. Please try again later.');
+      say(error instanceof Error?error.message:'Could not send the email. Please try again later.','Unable to send');
     }
     return;
   }
@@ -1533,18 +1545,19 @@ async function ask(text){let en=text;const L=LANGS[LI];
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition,mic=$('mic');let rec=null,listening=false;
 const note=t=>{cap.textContent=t;cap.style.opacity=1;clearTimeout(tmr);tmr=setTimeout(()=>{if(!speaking)cap.style.opacity=0},4500)};
 mic.onclick=()=>{
-  if(!SR){note('Voice recognition is not supported in this browser. Please use Chrome, Edge or Safari.');return}
+  if(!SR){setAvatarStatus('Voice unavailable');note('Voice recognition is not supported in this browser. Please use Chrome, Edge or Safari.');return}
   if(listening){rec&&rec.stop();return}
-  if(window.speechSynthesis)speechSynthesis.cancel();speaking=false;trTok++;
+  trTok++;clearTimeout(tmr);if(window.speechSynthesis)speechSynthesis.cancel();speaking=false;
+  setAvatarStatus('Starting microphone...',true);
   rec=new SR();rec.lang=LANGS[LI][1];rec.interimResults=true;rec.maxAlternatives=1;let fin='',err='';
-  rec.onstart=()=>{listening=true;mic.classList.add('rec');mic.textContent='⏹ Listening…';cap.textContent='🎤 Listening…';cap.style.opacity=1};
+  rec.onstart=()=>{listening=true;setAvatarStatus('Listening...',true);mic.classList.add('rec');mic.textContent='⏹ Listening…';cap.textContent='🎤 Listening…';cap.style.opacity=1};
   rec.onresult=e=>{let t='';for(let i=0;i<e.results.length;i++)t+=e.results[i][0].transcript;fin=t;cap.textContent='“'+t+'”'};
   rec.onerror=e=>{err=e.error};
   rec.onend=()=>{listening=false;mic.classList.remove('rec');mic.textContent='🎤 Talk';
     if(fin.trim())ask(fin.trim());
-    else if(err==='not-allowed'||err==='service-not-allowed')note('Microphone access is blocked. Please allow it in your browser settings.');
-    else note('I did not hear anything. Tap Talk and try again.')};
-  try{rec.start()}catch(e){}};
+    else if(err==='not-allowed'||err==='service-not-allowed'){setAvatarStatus('Microphone blocked');note('Microphone access is blocked. Please allow it in your browser settings.')}
+    else{setAvatarStatus(err&&err!=='no-speech'?'Microphone error':'Ready');note('I did not hear anything. Tap Talk and try again.')}};
+  try{rec.start()}catch(e){console.error('Could not start avatar microphone:',e);setAvatarStatus('Microphone error');note('Could not start the microphone. Tap Talk and try again.')}};
 $('qaFile').onchange=e=>{const f=e.target.files[0];if(!f)return;f.text().then(t=>{try{const j=JSON.parse(t);if(!Array.isArray(j.entries))throw 0;QA=j;note('Loaded '+j.entries.length+' Q&A entries.')}catch(x){note('That file is not a valid Q&A JSON.')}})};
 $('qaDl').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(QA,null,1)],{type:'application/json'}));a.download='qa.json';a.click()};
 $('trIn').onkeydown=e=>{e.stopPropagation();if(e.key==='Enter')$('trGo').click()};

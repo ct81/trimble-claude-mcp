@@ -9,6 +9,94 @@ const end = page.indexOf('\n};\nshow(0', start);
 assert.ok(start >= 0 && end > start);
 const handler = page.slice(start, end + 3);
 
+function avatarContext() {
+  const elements = {
+    avatarStatus: { dataset: {} }, avatarStatusText: { textContent: 'Ready' },
+    mute: {}, intro: {},
+    mic: { classList: { add() {}, remove() {} } }
+  };
+  const utterances = [], timers = new Map();
+  const context = vm.createContext({
+    $: id => elements[id],
+    cap: { textContent: '', style: {} },
+    console: { error() {} },
+    setTimeout: callback => { const id = timers.size + 1; timers.set(id, callback); return id; },
+    clearTimeout: id => timers.delete(id),
+    SpeechSynthesisUtterance: class { constructor(text) { this.text = text; } },
+    QA: { entries: [] }, S: [],
+    CHESTER_EMAIL_API: '/chester-email',
+    window: { speechSynthesis: {
+      cancel() {}, getVoices: () => [], speak: utterance => utterances.push(utterance)
+    }, SpeechRecognition: class { start() { this.onstart(); } } }
+  });
+  context.speechSynthesis = context.window.speechSynthesis;
+  const voiceStart = page.indexOf('// voice + avatar state');
+  const voiceEnd = page.indexOf('// realistic avatar', voiceStart);
+  vm.runInContext(page.slice(voiceStart, voiceEnd), context);
+  const chatStart = page.indexOf('const STOP=');
+  const chatEnd = page.indexOf("$('qaFile').onchange", chatStart);
+  vm.runInContext(page.slice(chatStart, chatEnd), context);
+  return { context, elements, utterances, timers };
+}
+
+test('avatar status follows speech, ignores canceled speech callbacks, and handles muted captions', async () => {
+  const { context, elements, utterances, timers } = avatarContext();
+  await vm.runInContext("say('First answer')", context);
+  assert.equal(elements.avatarStatusText.textContent, 'Speaking...');
+  assert.equal(elements.avatarStatus.dataset.active, 'true');
+  await vm.runInContext("say('Second answer')", context);
+  utterances[0].onend();
+  assert.equal(elements.avatarStatusText.textContent, 'Speaking...');
+  utterances[1].onend();
+  assert.equal(elements.avatarStatusText.textContent, 'Ready');
+  assert.equal(elements.avatarStatus.dataset.active, 'false');
+  elements.mute.onclick();
+  await vm.runInContext("say('Caption only')", context);
+  assert.equal(elements.avatarStatusText.textContent, 'Showing response');
+  [...timers.values()][0]();
+  assert.equal(elements.avatarStatusText.textContent, 'Ready');
+});
+
+test('avatar status follows microphone events and is not reset by interrupted speech', async () => {
+  const { context, elements, utterances } = avatarContext();
+  await vm.runInContext("say('Answer')", context);
+  elements.mic.onclick();
+  assert.equal(elements.avatarStatusText.textContent, 'Listening...');
+  utterances[0].onend();
+  assert.equal(elements.avatarStatusText.textContent, 'Listening...');
+  vm.runInContext("rec.onerror({error:'not-allowed'});rec.onend()", context);
+  assert.equal(elements.avatarStatusText.textContent, 'Microphone blocked');
+  assert.equal(elements.avatarStatus.dataset.active, 'false');
+});
+
+test('avatar status follows translation and email delivery, including failure feedback', async () => {
+  const { context, elements, utterances } = avatarContext();
+  let finishTranslation;
+  context.tr = () => new Promise(resolve => { finishTranslation = resolve; });
+  const translated = vm.runInContext("LI=2;say('Hello')", context);
+  assert.equal(elements.avatarStatusText.textContent, 'Translating...');
+  finishTranslation('Translated answer');
+  await translated;
+  assert.equal(elements.avatarStatusText.textContent, 'Speaking...');
+  utterances[0].onend();
+
+  context.QA = { entries: [{
+    questions: ['send an email to chester'], action: 'sendChesterEmail', reply: 'Email sent.'
+  }] };
+  for (const success of [true, false]) {
+    let finishRequest;
+    context.fetch = () => new Promise(resolve => { finishRequest = resolve; });
+    const request = vm.runInContext("LI=0;ask('send an email to Chester')", context);
+    assert.equal(elements.avatarStatusText.textContent, 'Sending email...');
+    finishRequest({ ok: success, json: async () => success ? { sent: true } : { error: 'Email failed' } });
+    await request;
+    assert.equal(elements.avatarStatusText.textContent, 'Speaking...');
+    utterances.at(-1).onend();
+    assert.equal(elements.avatarStatusText.textContent, success ? 'Ready' : 'Unable to send');
+    assert.equal(elements.avatarStatus.dataset.active, 'false');
+  }
+});
+
 test('landing page inline scripts parse', () => {
   for (const [, attributes, source] of page.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/gi)) {
     if (!/\bsrc=/.test(attributes) && !/type=["']application\/json/i.test(attributes)) {
