@@ -241,6 +241,60 @@ test('map simulation uses one play/stop toggle on the ground overlay', () => {
     assert.equal(elements['map-sim-label'].textContent, 'Play Map');
 });
 
+test('ground map settings apply the selected mode using the displayed default coordinates', () => {
+    const ids = ['map-lat', 'map-lng', 'map-x', 'map-z'];
+    const fields = Object.fromEntries(ids.map(id => {
+        const tag = page.match(new RegExp(`<input\\b[^>]*\\bid="${id}"[^>]*>`))?.[0];
+        assert.ok(tag, `Missing ${id} input`);
+        const value = tag.match(/\bvalue="([^"]+)"/)?.[1];
+        assert.ok(value !== undefined, `${id} must have an actual value, not just a placeholder`);
+        return [id, { valueAsNumber: Number(value) }];
+    }));
+    const mode = new Element();
+    mode.value = 'interactive';
+    const form = new Element();
+    let activeMode = 'overlay', applied;
+    const context = vm.createContext({
+        document: { getElementById: id => id === 'map-settings' ? form : fields[id] },
+        groundMapMode: mode,
+        groundMap: {
+            setMode(value) { activeMode = value; return true; },
+            show(anchor, layer) { applied = { ...anchor, layer, mode: activeMode }; return true; },
+            get visible() { return false; }
+        },
+        groundMapLayer: { value: 'Street' },
+        hideGroundMap: {}, groundMapLayers: {}, groundMapTools: {},
+        stopMapSimulation() {}, stopVehicleSimulation() {}, resetGroundMapLocation() {},
+        updateGroundMapAttribution() {}, updateGroundMapLinks() {}
+    });
+    const start = page.indexOf("        groundMapMode.addEventListener('change'");
+    const end = page.indexOf("        hideGroundMap.addEventListener('click'", start);
+    assert.ok(start >= 0 && end > start);
+    vm.runInContext(page.slice(start, end), context);
+    mode.listeners.change();
+    form.listeners.submit({ preventDefault() {} });
+    assert.deepEqual(applied, { lat: 1.3521, lng: 103.8198, x: 0, z: 0, layer: 'Street', mode: 'interactive' });
+});
+
+test('interactive map gestures do not select model elements', () => {
+    const listeners = {};
+    const areaSelectBox = { style: {} };
+    const context = vm.createContext({
+        window: { addEventListener: (name, handler) => { listeners[name] = handler; } },
+        selectionMode: 'area', currentIfcModel: {}, areaSelectBox,
+        doAreaSelect() { assert.fail('Map gestures must not select model elements'); }
+    });
+    const start = page.indexOf('        let pointerDownPos =');
+    const end = page.indexOf('        function doAreaSelect(', start);
+    assert.ok(start >= 0 && end > start);
+    vm.runInContext(page.slice(start, end), context);
+    const target = { closest: selector => selector.includes('#interactive-ground-map') };
+    const event = { target, button: 0, clientX: 10, clientY: 10, preventDefault() { assert.fail('Map gesture was prevented'); } };
+    listeners.pointerdown(event);
+    listeners.pointerup(event);
+    assert.notEqual(areaSelectBox.style.display, 'block');
+});
+
 test('SitePulse module scripts parse', () => {
     for (const [, attributes, source] of page.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/gi)) {
         if (/\bsrc=|type=["']importmap/i.test(attributes)) continue;

@@ -1863,11 +1863,11 @@
                     <option value="interactive">Interactive Leaflet map</option>
                 </select>
             </div>
-            <div class="settings-row"><label for="map-lat">Latitude</label><input id="map-lat" type="number" step="any" min="-85.05112878" max="85.05112878" placeholder="1.3521" required></div>
-            <div class="settings-row"><label for="map-lng">Longitude</label><input id="map-lng" type="number" step="any" min="-180" max="180" placeholder="103.8198" required></div>
+            <div class="settings-row"><label for="map-lat">Latitude</label><input id="map-lat" type="number" step="any" min="-85.05112878" max="85.05112878" value="1.3521" required></div>
+            <div class="settings-row"><label for="map-lng">Longitude</label><input id="map-lng" type="number" step="any" min="-180" max="180" value="103.8198" required></div>
             <div class="settings-row"><label for="map-x">Model X (m)</label><input id="map-x" type="number" step="any" value="0" required></div>
             <div class="settings-row"><label for="map-z">Model Z (m)</label><input id="map-z" type="number" step="any" value="0" required></div>
-            <p>Match a latitude and longitude to a point on the grid. North is -Z. Interactive Leaflet mode uses a top-down view and map gestures; switch to 3D overlay to select model elements. Map tiles require an internet connection.</p>
+            <p>The default coordinates are in Singapore; change them to match a point on the model grid. North is -Z. Interactive Leaflet mode uses a top-down view and map gestures; switch to 3D overlay to select model elements. Map tiles require an internet connection.</p>
             <div class="settings-row">
                 <button type="submit">Apply Ground Map</button>
                 <button type="button" id="hide-ground-map" hidden>Hide Map</button>
@@ -4081,7 +4081,7 @@
         let areaStart = { x: 0, y: 0 };
 
         window.addEventListener('pointerdown', (e) => {
-            if (e.target.closest('#leaflet-map-dialog, .ground-map-controls')) return;
+            if (e.target.closest('#leaflet-map-dialog, #interactive-ground-map, .ground-map-controls')) return;
             pointerDownPos = { x: e.clientX, y: e.clientY };
             if (selectionMode === 'area' && currentIfcModel) {
                 if (e.button !== 0) return;
@@ -4110,7 +4110,7 @@
         });
 
         window.addEventListener('pointerup', (event) => {
-            if (event.target.closest('#leaflet-map-dialog') || (!isAreaSelecting && event.target.closest('.ground-map-controls'))) return;
+            if (event.target.closest('#leaflet-map-dialog') || (!isAreaSelecting && event.target.closest('#interactive-ground-map, .ground-map-controls'))) return;
             if (isAreaSelecting) {
                 isAreaSelecting = false;
                 const x1 = Math.min(event.clientX, areaStart.x);
