@@ -146,6 +146,8 @@
             height: min(65dvh, 560px);
             color: #222;
         }
+        .map-simulation-vehicle { background: none; border: 0; }
+        .map-simulation-vehicle span { display: block; font-size: 24px; text-align: center; line-height: 32px; }
 
         #leaflet-map .leaflet-map-control {
             display: grid;
@@ -1816,6 +1818,7 @@
     <dialog id="leaflet-map-dialog" aria-labelledby="leaflet-map-title">
         <div class="leaflet-map-heading">
             <h4 id="leaflet-map-title">Leaflet Map</h4>
+            <button type="button" id="stop-map-simulation-dialog" hidden>Stop simulation</button>
             <form method="dialog"><button class="toolbar-btn" type="submit" autofocus>Close Map</button></form>
         </div>
         <p id="leaflet-map-status" role="status"></p>
@@ -1952,7 +1955,9 @@
                 <span class="toolbar-hint" id="toolbar-hint">Single selection — click any element</span>
             </div>
             <div class="toolbar-group">
-                <button type="button" class="toolbar-btn" id="btn-vehicle" title="Start vehicle" aria-label="Start vehicle">▶</button>
+                <button type="button" class="toolbar-btn" id="btn-vehicle" title="Start 3D vehicle" aria-label="Start 3D vehicle">▶</button>
+                <button type="button" class="toolbar-btn" id="btn-map-sim-play" title="Play map vehicle simulation" aria-label="Play map vehicle simulation" aria-pressed="false"><span aria-hidden="true">▶</span><span class="label">Simulate Map</span></button>
+                <button type="button" class="toolbar-btn" id="btn-map-sim-stop" title="Stop map vehicle simulation" aria-label="Stop map vehicle simulation" disabled>■</button>
                 <button class="toolbar-btn" type="button" id="open-leaflet-map" aria-haspopup="dialog" title="Open Leaflet Map">
                     <span class="tb-icon" aria-hidden="true">🗺</span><span class="label">Map</span>
                 </button>
@@ -2425,9 +2430,57 @@
         const leafletContainer = document.getElementById('leaflet-map');
         const status = document.getElementById('leaflet-map-status');
         let map;
+        const simulationPlay = document.getElementById('btn-map-sim-play');
+        const simulationStop = document.getElementById('btn-map-sim-stop');
+        const dialogStop = document.getElementById('stop-map-simulation-dialog');
+        let simulationFrame = null, simulationMarker = null, simulationRoute = null;
+        function stopMapSimulation() {
+            if (simulationFrame !== null) cancelAnimationFrame(simulationFrame);
+            simulationFrame = null;
+            if (simulationMarker) simulationMarker.remove();
+            if (simulationRoute) simulationRoute.remove();
+            simulationMarker = simulationRoute = null;
+            simulationPlay.setAttribute('aria-pressed', 'false');
+            simulationStop.disabled = true;
+            dialogStop.hidden = true;
+        }
+        function simulationPosition(progress) {
+            const angle = progress * Math.PI * 2;
+            return [1.3521 + .0008 * Math.sin(angle), 103.8198 + .001 * (1 - Math.cos(angle))];
+        }
+        simulationPlay.addEventListener('click', () => {
+            stopMapSimulation();
+            openLeafletMap();
+            if (!map) return;
+            const L = globalThis.L;
+            selectMapLayer('Street');
+            map.setView([1.3521, 103.8208], 17);
+            simulationRoute = L.polyline(Array.from({ length: 121 }, (_, i) => simulationPosition(i / 120)), {
+                color: '#146eff', weight: 3, dashArray: '6 6'
+            }).addTo(map).bindTooltip('Simulated loop (not a road route)');
+            simulationMarker = L.marker(simulationPosition(0), {
+                icon: L.divIcon({ className: 'map-simulation-vehicle', html: '<span aria-label="Simulated vehicle">🚗</span>', iconSize: [32, 32], iconAnchor: [16, 16] })
+            }).addTo(map).bindTooltip('Simulated vehicle');
+            simulationPlay.setAttribute('aria-pressed', 'true');
+            simulationStop.disabled = false;
+            dialogStop.hidden = false;
+            let lastTime = null, elapsed = 0;
+            function move(time) {
+                if (lastTime !== null) elapsed += Math.min(time - lastTime, 100);
+                lastTime = time;
+                simulationMarker.setLatLng(simulationPosition((elapsed % 90000) / 90000));
+                simulationFrame = requestAnimationFrame(move);
+            }
+            simulationFrame = requestAnimationFrame(move);
+        });
+        simulationStop.addEventListener('click', stopMapSimulation);
+        dialogStop.addEventListener('click', stopMapSimulation);
+        dialog.addEventListener('close', stopMapSimulation);
+        let selectMapLayer;
 
-        document.getElementById('open-leaflet-map').addEventListener('click', () => {
-            dialog.showModal();
+        document.getElementById('open-leaflet-map').addEventListener('click', openLeafletMap);
+        function openLeafletMap() {
+            if (!dialog.open) dialog.showModal();
             if (map) {
                 map.invalidateSize();
                 return;
@@ -2478,6 +2531,10 @@
                 map.removeLayer(activeLayer);
                 activeLayer = layers[select.value].addTo(map);
             });
+            selectMapLayer = value => {
+                select.value = value;
+                select.dispatchEvent(new Event('change'));
+            };
 
             function updateLinks() {
                 const links = getMapLinks(map.getCenter(), map.getZoom());
@@ -2513,7 +2570,7 @@
                     ? 'Location access was denied. Allow location access in your browser and try again.'
                     : 'Could not find your location. Check your location settings and try again.';
             });
-        });
+        }
     </script>
 
     <script type="module">
@@ -2945,8 +3002,8 @@
         function stopVehicleSimulation() {
             vehicleSimulation.stop();
             btnVehicle.textContent = '▶';
-            btnVehicle.title = 'Start vehicle';
-            btnVehicle.setAttribute('aria-label', 'Start vehicle');
+            btnVehicle.title = 'Start 3D vehicle';
+            btnVehicle.setAttribute('aria-label', 'Start 3D vehicle');
         }
         btnVehicle.addEventListener('click', () => {
             if (vehicleSimulation.running) {
@@ -2954,8 +3011,8 @@
             } else {
                 vehicleSimulation.start(controls.target);
                 btnVehicle.textContent = '■';
-                btnVehicle.title = 'Stop vehicle';
-                btnVehicle.setAttribute('aria-label', 'Stop vehicle');
+                btnVehicle.title = 'Stop 3D vehicle';
+                btnVehicle.setAttribute('aria-label', 'Stop 3D vehicle');
             }
         });
 
