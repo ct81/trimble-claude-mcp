@@ -1408,7 +1408,8 @@ const FL=[[.36,.22,.2],[.4,.25,.2],[.36,.23,.19],[.28,.17,.16]];
 function seg(par,len,r,m){part(cyl,m,r,len,r,0,-len/2,0,par);part(sph,m,r,r,r,0,0,0,par);part(sph,m,r*.96,r*.96,r*.96,0,-len,0,par);const g=new THREE.Group();g.position.y=-len;par.add(g);return g}
 function mkHand(sd,par){const hand=new THREE.Group();par.add(hand);{const pm=new THREE.Mesh(new THREE.CylinderGeometry(.14,.34,.85,18),plainSkin);pm.scale.z=.42;pm.position.y=-.42;hand.add(pm)}const fing=[];
   FL.forEach((L,k)=>{const j1=new THREE.Group();j1.position.set(sd*(.27-.18*k),-.82,0);hand.add(j1);const r=.062-(k===3?.009:0),n1=seg(j1,L[0],r,plainSkin),n2=seg(n1,L[1],r*.92,plainSkin);seg(n2,L[2],r*.84,plainSkin);fing.push([j1,n1,n2])});
-  const t1=new THREE.Group();t1.position.set(sd*.5,-.28,.05);t1.rotation.z=sd*.6;hand.add(t1);const m1=seg(t1,.32,.075,plainSkin),m2=seg(m1,.28,.068,plainSkin);seg(m2,.22,.06,plainSkin);fing.unshift([t1,m1,m2]);return fing}
+  part(sph,plainSkin,.12,.22,.095,sd*.14,-.4,.025,hand);
+  const t1=new THREE.Group();t1.position.set(sd*.19,-.4,.025);t1.rotation.z=sd*.6;hand.add(t1);const m1=seg(t1,.24,.075,plainSkin),m2=seg(m1,.28,.068,plainSkin);seg(m2,.22,.06,plainSkin);fing.unshift([t1,m1,m2]);return fing}
 function mkArm(sd){const sh=new THREE.Group();sh.position.set(sd*1.62,11.85,0);body.add(sh);
   limb(sh,UA,[.3,.29,.255,.22,.19],plainSkin);
   const el=new THREE.Group();el.position.y=-UA;sh.add(el);limb(el,FA,[.19,.2,.185,.155,.125],plainSkin);
